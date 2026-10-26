@@ -37,10 +37,14 @@ package anthropic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	sdk "github.com/anthropics/anthropic-sdk-go"
@@ -114,27 +118,42 @@ type Backend struct {
 	now     func() time.Time
 
 	projections sync.Map // output schema -> Projection
+	allows      func(role string) bool
 }
 
 // New returns the live backend for an approved configuration: cfg.Approval
-// must be a recorded approval.
+// must be a recorded, complete approval (internal/config/aiapproval),
+// cfg.Model exactly its model, and the credentials exactly the ones it
+// covers, in its order (T-053). The backend serves only the prompt roles
+// the approval's data policy names.
 func New(cfg Config) (*Backend, error) {
 	if !cfg.Approval.Valid() {
-		return nil, errors.New("anthropic: live AI is not approved (H-001, H-017)")
+		return nil, errors.New("anthropic: live AI is not approved (H-001, H-017, H-018)")
 	}
-	return newBackend(cfg, productionURL, nil)
+	if cfg.Model != cfg.Approval.Model() {
+		return nil, errors.New("anthropic: the model is not the approval's model")
+	}
+	labels := make([]string, len(cfg.Credentials))
+	for i, c := range cfg.Credentials {
+		labels[i] = c.Label
+	}
+	if !slices.Equal(labels, cfg.Approval.Credentials()) {
+		return nil, errors.New("anthropic: the credentials are not the ones the approval covers")
+	}
+	return newBackend(cfg, productionURL, nil, cfg.Approval.AllowsRole)
 }
 
 // newBackend checks the rest of cfg. Only New, which checks the approval,
-// and the tests' local server (export_test.go) call it.
-func newBackend(cfg Config, baseURL string, client *http.Client) (*Backend, error) {
+// and the tests' local server (export_test.go) call it. allows says which
+// prompt roles the backend serves.
+func newBackend(cfg Config, baseURL string, client *http.Client, allows func(string) bool) (*Backend, error) {
 	if strings.TrimSpace(cfg.Model) == "" {
 		return nil, errors.New("anthropic: no model; the owner approves one")
 	}
 	if len(cfg.Credentials) == 0 {
 		return nil, errors.New("anthropic: no credential")
 	}
-	b := &Backend{model: cfg.Model, baseURL: baseURL, now: time.Now}
+	b := &Backend{model: cfg.Model, baseURL: baseURL, now: time.Now, allows: allows}
 	seen := map[string]bool{}
 	for _, c := range cfg.Credentials {
 		if c.Label == "" || seen[c.Label] || c.Key.Reveal() == "" {
@@ -151,26 +170,126 @@ func newBackend(cfg Config, baseURL string, client *http.Client) (*Backend, erro
 	}
 	// Never follow a redirect: the key header would go with it.
 	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	// Count the attempts that end without an answer (T-053).
+	base := client.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	client.Transport = tallying{base: base}
 	b.client = client
 	return b, nil
 }
 
 func (b *Backend) Name() string { return "anthropic" }
 
-func (b *Backend) projection(schema string) (Projection, error) {
+// projected is an output schema's projection and its size as sent.
+type projected struct {
+	Projection
+	size int
+}
+
+func (b *Backend) projection(schema string) (projected, error) {
 	if p, ok := b.projections.Load(schema); ok {
-		return p.(Projection), nil
+		return p.(projected), nil
 	}
 	p, err := Project(schema)
 	if err != nil {
-		return Projection{}, err
+		return projected{}, err
 	}
-	b.projections.Store(schema, p)
-	return p, nil
+	data, err := json.Marshal(p.Schema)
+	if err != nil {
+		return projected{}, err
+	}
+	pr := projected{Projection: p, size: len(data)}
+	b.projections.Store(schema, pr)
+	return pr, nil
 }
 
-// Complete sends req, failing over between credentials as D-018 says.
+// quoteOverheadTokens is the quote's allowance for the input the Messages
+// API adds of its own: role framing and the structured-output instructions
+// it compiles from the schema (beyond the schema's own bytes). The usage
+// settles the real number; the allowance only keeps the reservation an
+// upper bound (D-111, PROPOSED).
+const quoteOverheadTokens = 4096
+
+// Quote is the model and the most input tokens one attempt of req can be
+// billed for: the prompt's and the projected schema's bytes (every token
+// of the tokenizer covers at least one byte) and quoteOverheadTokens. The
+// adapter sends no cache_control, so no input token is a cache write.
+func (b *Backend) Quote(req provider.Request) (provider.Quote, error) {
+	proj, err := b.projection(req.OutputSchema)
+	if err != nil {
+		return provider.Quote{}, err
+	}
+	n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
+	return provider.Quote{Model: b.model, MaxInputTokens: n}, nil
+}
+
+// tally counts one call's attempts that ended without an answer after the
+// request may have reached the provider: the transport failed (a lost
+// connection, an attempt's timeout, a cancellation) or the body could not
+// be read to its end. The provider may have billed them (T-053).
+type tally struct{ unknown atomic.Int32 }
+
+type tallyKey struct{}
+
+func tallyOf(ctx context.Context) *tally {
+	t, _ := ctx.Value(tallyKey{}).(*tally)
+	return t
+}
+
+// tallying is the transport that keeps the tally of the call a request
+// belongs to.
+type tallying struct{ base http.RoundTripper }
+
+func (tr tallying) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := tr.base.RoundTrip(req)
+	t := tallyOf(req.Context())
+	if t == nil {
+		return resp, err
+	}
+	if err != nil {
+		t.unknown.Add(1)
+		return resp, err
+	}
+	resp.Body = &tallyBody{ReadCloser: resp.Body, tally: t}
+	return resp, nil
+}
+
+// tallyBody counts a body that could not be read to its end, once.
+type tallyBody struct {
+	io.ReadCloser
+	tally *tally
+	cut   bool
+}
+
+func (b *tallyBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) && !b.cut {
+		b.cut = true
+		b.tally.unknown.Add(1)
+	}
+	return n, err
+}
+
+// Complete sends req, failing over between credentials as D-018 says. It
+// refuses, before any I/O, a request without a spend reservation (only a
+// metered client calls it, T-053) and a prompt role the approval's data
+// policy does not name (PROPOSED D-112).
 func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	if req.Reservation == "" {
+		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
+	}
+	if b.allows == nil || !b.allows(string(req.Prompt.Role)) {
+		return provider.Response{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
+	}
+	t := &tally{}
+	resp, err := b.complete(context.WithValue(ctx, tallyKey{}, t), req)
+	resp.UnknownAttempts = int(t.unknown.Load())
+	return resp, err
+}
+
+func (b *Backend) complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")

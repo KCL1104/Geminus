@@ -54,6 +54,7 @@ const (
 // retryable codes may succeed if the job runs again later.
 var retryable = map[Code]bool{
 	CodeConcurrencyLimited: true, CodeTimeout: true, CodeRateLimited: true, CodeUnavailable: true,
+	CodeSpendUnavailable: true, // no call was made; the ledger may answer next time (T-053)
 }
 
 // Error is a provider failure. It names a credential by label only and
@@ -69,7 +70,10 @@ type Error struct {
 	// Issues locate an invalid output: JSON Pointer paths with the code
 	// AI_OUTPUT_INVALID and a fixed message, never the offending text.
 	Issues []model.ValidationIssue
-	cause  error // context.Canceled or context.DeadlineExceeded only
+	// Limit names the spend limit a quota_exceeded call would have passed
+	// (organization_day, day or month; T-053).
+	Limit string
+	cause error // context.Canceled or context.DeadlineExceeded only
 }
 
 // Retryable reports whether running the job again later may succeed.

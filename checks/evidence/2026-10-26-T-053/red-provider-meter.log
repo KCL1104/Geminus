@@ -1,0 +1,52 @@
+--- FAIL: TestBillableNeedsAMeter (0.00s)
+    meter_test.go:107: New took a billable backend
+--- FAIL: TestTheReservationBoundsTheCall (0.00s)
+    meter_test.go:123: todo
+--- FAIL: TestARefusedReservationRefusesTheCall (0.00s)
+    --- FAIL: TestARefusedReservationRefusesTheCall/quota (0.00s)
+        meter_test.go:161: todo
+    --- FAIL: TestARefusedReservationRefusesTheCall/monthly_quota (0.00s)
+        meter_test.go:161: todo
+    --- FAIL: TestARefusedReservationRefusesTheCall/meter_failed (0.00s)
+        meter_test.go:161: todo
+    --- FAIL: TestARefusedReservationRefusesTheCall/meter_cancelled (0.00s)
+        meter_test.go:161: todo
+--- FAIL: TestNothingIsReservedForARefusedCall (0.00s)
+    --- FAIL: TestNothingIsReservedForARefusedCall/half_an_attribution (0.00s)
+        meter_test.go:195: todo
+    --- FAIL: TestNothingIsReservedForARefusedCall/other_organization's_prompt (0.00s)
+        meter_test.go:195: todo
+    --- FAIL: TestNothingIsReservedForARefusedCall/unpriced_model (0.00s)
+        meter_test.go:195: todo
+    --- FAIL: TestNothingIsReservedForARefusedCall/quote_failed (0.00s)
+        meter_test.go:195: todo
+    --- FAIL: TestNothingIsReservedForARefusedCall/no_attribution (0.00s)
+        meter_test.go:195: todo
+    meter_test.go:214: todo
+--- FAIL: TestSettlement (0.00s)
+    --- FAIL: TestSettlement/an_answer_after_lost_attempts (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/truncated_is_billed (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/exhausted_credentials_are_not_billed (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/a_lost_connection_may_be_billed (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/more_lost_attempts_than_reserved_for (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/cancelled_while_in_flight (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/answer (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/invalid_answer_is_billed (0.00s)
+        meter_test.go:279: todo
+    --- FAIL: TestSettlement/rate_limited_is_not_billed (0.00s)
+        meter_test.go:279: todo
+--- FAIL: TestAFailedSettlementKeepsTheReservation (0.00s)
+    meter_test.go:302: todo
+--- FAIL: TestMemoryMeter (0.00s)
+    meter_test.go:335: granted 5000 refused 0 committed 0
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.106s
+FAIL
+exit=1

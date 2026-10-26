@@ -2,43 +2,220 @@ package aiapproval_test
 
 import (
 	"errors"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
+	"github.com/kcl1104/geminus/internal/ai/spend"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
+	"github.com/kcl1104/geminus/internal/secret"
 )
 
+// Obviously fake keys: no test here (or anywhere) reads a real one.
 const keyA, keyB = "sk-ant-test-primary-0000000000", "sk-ant-test-secondary-1111111111"
 
-// This build records no approval: no ID gives a valid Approval, and the
-// zero value is none (H-017).
-func TestNothingIsRecorded(t *testing.T) {
-	for _, id := range []string{"", "H-001", "H-017", "D-018", "approved", " "} {
+// The owner's H-018 approval is recorded exactly as decided (T-053): Claude
+// Opus 5.5 by its exact model ID, only synthetic data and text the user
+// typed, no raw prompt or response in logs, USD 100 a month for both
+// provider organizations combined, by the owner on 2026-10-20; the Console
+// spend limits of both organizations confirmed by the owner (H-025,
+// 2026-10-26). Whether both organizations have the same data retention
+// arrangement is the owner's to confirm (an account setting the agent
+// cannot see): until it is recorded, the record cannot turn live AI on.
+func TestTheH018Record(t *testing.T) {
+	r, ok := aiapproval.Lookup("H-018")
+	if !ok {
+		t.Fatal("H-018 is not recorded")
+	}
+	want := aiapproval.Record{
+		ID:       "H-018",
+		Provider: "anthropic",
+		Model:    "claude-opus-5-5",
+		DataPolicy: aiapproval.DataPolicy{
+			Inputs:          aiapproval.InputsSyntheticAndUserText,
+			Roles:           []string{"modeler", "scenario"},
+			LogsKeepRawText: false,
+		},
+		MonthlyBudgetUSD: 100,
+		Credentials:      []string{"org-a", "org-b"},
+		ApprovedBy:       "KCL1104 (repository owner)",
+		ApprovedAt:       "2026-10-20",
+		Source:           "H-018 (planning/decisions.json human_decisions; decision page https://claude.ai/artifact/T5R9YeWWw4q2q8kKkGvU2P)",
+		SpendLimits: aiapproval.Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
+			Source: "H-025 (Console spend limits set for both provider organizations; relayed by the coordinator)"},
+		Retention: aiapproval.Retention{},
+	}
+	if !reflect.DeepEqual(r, want) {
+		t.Fatalf("the H-018 record is\n%+v\nwant\n%+v", r, want)
+	}
+	if got := r.Gap(); got != aiapproval.ReasonRetentionUnconfirmed {
+		t.Errorf("gap %q, want %q", got, aiapproval.ReasonRetentionUnconfirmed)
+	}
+	// So this build has no approval that turns live AI on.
+	if a, ok := aiapproval.Recorded("H-018"); ok || a.Valid() {
+		t.Errorf("H-018 yields an approval before the retention confirmation: %+v", a)
+	}
+	// The record is a copy: changing it changes nothing recorded.
+	r.Model, r.DataPolicy.Roles[0] = "other", "importer"
+	if again, _ := aiapproval.Lookup("H-018"); again.Model != "claude-opus-5-5" || again.DataPolicy.Roles[0] != "modeler" {
+		t.Error("Lookup hands out the recorded value itself")
+	}
+}
+
+// Nothing but H-018 is recorded, and the zero Approval is none.
+func TestNothingElseIsRecorded(t *testing.T) {
+	for _, id := range []string{"", "H-001", "H-017", "H-019", "H-025", "D-018", "h-018", "H-018 ", "approved", " "} {
+		if _, ok := aiapproval.Lookup(id); ok {
+			t.Errorf("%q is recorded", id)
+		}
 		if a, ok := aiapproval.Recorded(id); ok || a.Valid() || a.ID() != "" {
 			t.Errorf("%q: %+v %v", id, a, ok)
 		}
 	}
-	if (aiapproval.Approval{}).Valid() {
+	if (aiapproval.Approval{}).Valid() || (aiapproval.Approval{}).Model() != "" || (aiapproval.Approval{}).AllowsRole("modeler") {
 		t.Error("the zero Approval is valid")
 	}
 }
 
-// An Approval is valid while its record is; a token kept after the record
-// goes is not.
+// complete is H-018 with the one confirmation it waits for (test-only):
+// the owner's statement that both organizations have the same retention
+// arrangement.
+func complete(t *testing.T) aiapproval.Record {
+	t.Helper()
+	r, ok := aiapproval.Lookup("H-018")
+	if !ok {
+		t.Fatal("H-018 is not recorded")
+	}
+	r.Retention = aiapproval.Retention{Arrangement: aiapproval.RetentionStandard,
+		Confirmation: aiapproval.Confirmation{By: "owner (test)", At: "2026-10-27", Source: "H-TEST"}}
+	return r
+}
+
+// Every gap of a record has its reason, and only a complete record has
+// none.
+func TestGapReasons(t *testing.T) {
+	if got := complete(t).Gap(); got != "" {
+		t.Fatalf("a complete record has gap %q", got)
+	}
+	for name, c := range map[string]struct {
+		mutate func(*aiapproval.Record)
+		want   aiapproval.Reason
+	}{
+		"no model":                 {func(r *aiapproval.Record) { r.Model = "" }, aiapproval.ReasonIncomplete},
+		"other provider":           {func(r *aiapproval.Record) { r.Provider = "openai" }, aiapproval.ReasonIncomplete},
+		"no approver":              {func(r *aiapproval.Record) { r.ApprovedBy = "" }, aiapproval.ReasonIncomplete},
+		"no date":                  {func(r *aiapproval.Record) { r.ApprovedAt = "" }, aiapproval.ReasonIncomplete},
+		"no source":                {func(r *aiapproval.Record) { r.Source = "" }, aiapproval.ReasonIncomplete},
+		"one credential":           {func(r *aiapproval.Record) { r.Credentials = []string{"org-a"} }, aiapproval.ReasonIncomplete},
+		"customer data":            {func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_data" }, aiapproval.ReasonPolicyUnsupported},
+		"raw text in logs":         {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
+		"no role":                  {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
+		"importer role":            {func(r *aiapproval.Record) { r.DataPolicy.Roles = append(r.DataPolicy.Roles, "importer") }, aiapproval.ReasonPolicyUnsupported},
+		"analyst role":             {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"analyst"} }, aiapproval.ReasonPolicyUnsupported},
+		"no budget":                {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = 0 }, aiapproval.ReasonBudgetMissing},
+		"negative budget":          {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = -100 }, aiapproval.ReasonBudgetMissing},
+		"spend limits unconfirmed": {func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} }, aiapproval.ReasonSpendLimitsUnconfirmed},
+		"spend limits half said":   {func(r *aiapproval.Record) { r.SpendLimits.Source = "" }, aiapproval.ReasonSpendLimitsUnconfirmed},
+		"retention unconfirmed":    {func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} }, aiapproval.ReasonRetentionUnconfirmed},
+		"retention not said":       {func(r *aiapproval.Record) { r.Retention.Arrangement = "" }, aiapproval.ReasonRetentionUnconfirmed},
+		"retention unknown":        {func(r *aiapproval.Record) { r.Retention.Arrangement = "mixed" }, aiapproval.ReasonRetentionUnconfirmed},
+		"retention without who":    {func(r *aiapproval.Record) { r.Retention.By = "" }, aiapproval.ReasonRetentionUnconfirmed},
+	} {
+		r := complete(t)
+		c.mutate(&r)
+		if got := r.Gap(); got != c.want {
+			t.Errorf("%s: gap %q, want %q", name, got, c.want)
+		}
+	}
+	// Zero data retention is the other arrangement the owner may confirm.
+	r := complete(t)
+	r.Retention.Arrangement = aiapproval.RetentionZero
+	if got := r.Gap(); got != "" {
+		t.Errorf("zero data retention: gap %q", got)
+	}
+}
+
+// An Approval is made only from a complete record, and is valid while
+// exactly that record stays recorded.
 func TestRecorded(t *testing.T) {
 	var kept aiapproval.Approval
 	t.Run("recorded", func(t *testing.T) {
-		aiapproval.RecordForTest(t, "H-TEST")
-		a, ok := aiapproval.Recorded("H-TEST")
-		if !ok || !a.Valid() || a.ID() != "H-TEST" {
+		aiapproval.RecordForTest(t, complete(t))
+		a, ok := aiapproval.Recorded("H-018")
+		if !ok || !a.Valid() || a.ID() != "H-018" || a.Model() != "claude-opus-5-5" || a.MonthlyBudgetUSD() != 100 {
 			t.Fatalf("%+v %v", a, ok)
 		}
+		if !a.AllowsRole("modeler") || !a.AllowsRole("scenario") || a.AllowsRole("importer") || a.AllowsRole("analyst") || a.AllowsRole("") {
+			t.Error("roles")
+		}
+		if !slices.Equal(a.Credentials(), []string{"org-a", "org-b"}) {
+			t.Errorf("credentials %v", a.Credentials())
+		}
 		kept = a
+		// A token of the complete record is not valid for a changed one.
+		changed := complete(t)
+		changed.Model = "claude-opus-5"
+		aiapproval.RecordForTest(t, changed)
+		if a.Valid() || a.Model() != "" || a.AllowsRole("modeler") {
+			t.Error("a token outlives a change of its record")
+		}
+		// The changed record yields a token of its own, for its own model.
+		if b, ok := aiapproval.Recorded("H-018"); !ok || b.Model() != "claude-opus-5" {
+			t.Errorf("the changed record: %+v %v", b, ok)
+		}
+		// An incomplete one yields none.
+		changed.Retention = aiapproval.Retention{}
+		aiapproval.RecordForTest(t, changed)
+		if b, ok := aiapproval.Recorded("H-018"); ok || b.Valid() {
+			t.Error("an incomplete record yields an approval")
+		}
 	})
 	if kept.Valid() {
 		t.Error("an Approval outlives its record")
+	}
+	// After the test, the build's own record is back, still incomplete.
+	if r, ok := aiapproval.Lookup("H-018"); !ok || r.Gap() != aiapproval.ReasonRetentionUnconfirmed {
+		t.Errorf("the H-018 record after the test: %+v %v", r, ok)
+	}
+}
+
+// The live adapter takes the approval's own model and credentials only,
+// and serves the roles its data policy names. No request is sent: New
+// opens no connection.
+func TestTheAdapterTakesOnlyTheApproval(t *testing.T) {
+	aiapproval.RecordForTest(t, complete(t))
+	a, ok := aiapproval.Recorded("H-018")
+	if !ok {
+		t.Fatal("no approval")
+	}
+	creds := []anthropic.Credential{{Label: "org-a", Key: secret.Secret(keyA)}, {Label: "org-b", Key: secret.Secret(keyB)}}
+	if _, err := anthropic.New(anthropic.Config{Approval: a, Model: "claude-opus-5-5", Credentials: creds}); err != nil {
+		t.Fatalf("the approved configuration: %v", err)
+	}
+	for name, cfg := range map[string]anthropic.Config{
+		"other model":       {Approval: a, Model: "claude-opus-5", Credentials: creds},
+		"no model":          {Approval: a, Credentials: creds},
+		"one credential":    {Approval: a, Model: "claude-opus-5-5", Credentials: creds[:1]},
+		"swapped order":     {Approval: a, Model: "claude-opus-5-5", Credentials: []anthropic.Credential{creds[1], creds[0]}},
+		"other label":       {Approval: a, Model: "claude-opus-5-5", Credentials: []anthropic.Credential{creds[0], {Label: "org-c", Key: secret.Secret(keyB)}}},
+		"no approval":       {Model: "claude-opus-5-5", Credentials: creds},
+		"incomplete record": {Approval: aiapproval.Approval{}, Model: "claude-opus-5-5", Credentials: creds},
+	} {
+		if _, err := anthropic.New(cfg); err == nil {
+			t.Errorf("%s: accepted", name)
+		} else if strings.Contains(err.Error(), keyA) || strings.Contains(err.Error(), keyB) {
+			t.Errorf("%s: the error leaks a key", name)
+		}
+	}
+	// The record changes after the token was made: the adapter refuses it.
+	changed := complete(t)
+	changed.Retention = aiapproval.Retention{}
+	aiapproval.RecordForTest(t, changed)
+	if _, err := anthropic.New(anthropic.Config{Approval: a, Model: "claude-opus-5-5", Credentials: creds}); err == nil {
+		t.Error("a token of a record that is no longer complete was accepted")
 	}
 }
 
@@ -52,22 +229,50 @@ func (r *recorder) get(k string) string {
 	return r.kv[k]
 }
 
-// With a recorded approval, config reads the keys (D-018: A primary, B
-// optional, labelled org-a and org-b) and the model, and still never an
-// ANTHROPIC_* variable.
-func TestLiveAIApproved(t *testing.T) {
-	aiapproval.RecordForTest(t, "H-TEST")
-	r := &recorder{kv: map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-TEST", "AI_MODEL": "approved-model",
-		"GEMINUS_ANTHROPIC_API_KEY_A": keyA, "GEMINUS_ANTHROPIC_API_KEY_B": keyB, "ANTHROPIC_API_KEY": "must-not-be-read",
-		"AI_MAX_OUTPUT_TOKENS": "4000", "AI_MAX_RETRIES": "0"}}
+// liveEnv is everything live AI needs: the provider, the approval named,
+// its model, both keys and the operator's switch.
+func liveEnv() map[string]string {
+	return map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-018", "AI_MODEL": "claude-opus-5-5",
+		"GEMINUS_ANTHROPIC_API_KEY_A": keyA, "GEMINUS_ANTHROPIC_API_KEY_B": keyB, "GEMINUS_AI_LIVE": "on",
+		"ANTHROPIC_API_KEY": "must-not-be-read"}
+}
+
+func codesOf(err error) []string {
+	var out []string
+	var joined interface{ Unwrap() []error }
+	errs := []error{err}
+	if errors.As(err, &joined) {
+		errs = joined.Unwrap()
+	}
+	for _, e := range errs {
+		var ce *config.Error
+		if errors.As(e, &ce) {
+			out = append(out, ce.Var+":"+ce.Code)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// T-053: live AI turns on with exactly the H-018 record (complete), both
+// keys and the operator's switch; config then reads both keys (D-018: A
+// primary, B secondary, labelled org-a and org-b), the model and the
+// spend limits, and never ANTHROPIC_API_KEY.
+func TestLiveTurnsOn(t *testing.T) {
+	aiapproval.RecordForTest(t, complete(t))
+	r := &recorder{kv: liveEnv()}
+	r.kv["AI_MAX_OUTPUT_TOKENS"], r.kv["AI_MAX_RETRIES"] = "4000", "0"
 	ai, err := config.LoadAI(r.get)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ai.LiveEnabled() || ai.Approval.ID() != "H-TEST" || ai.Model != "approved-model" || len(ai.Credentials) != 2 ||
+	if !ai.LiveEnabled() || ai.LiveOff != "" || ai.Approval.ID() != "H-018" || ai.Model != "claude-opus-5-5" || len(ai.Credentials) != 2 ||
 		ai.Credentials[0].Label != "org-a" || ai.Credentials[0].Key.Reveal() != keyA ||
 		ai.Credentials[1].Label != "org-b" || ai.Credentials[1].Key.Reveal() != keyB {
 		t.Fatalf("%+v", ai)
+	}
+	if want := spend.DefaultLimits(100 * spend.NanoPerUSD); ai.Limits != want {
+		t.Errorf("limits %+v, want %+v", ai.Limits, want)
 	}
 	if ai.Budget.MaxOutputTokens != 4000 || ai.Budget.MaxRetries == nil || *ai.Budget.MaxRetries != 0 {
 		t.Errorf("budget %+v", ai.Budget)
@@ -75,31 +280,166 @@ func TestLiveAIApproved(t *testing.T) {
 	if slices.Contains(r.read, "ANTHROPIC_API_KEY") {
 		t.Error("ANTHROPIC_API_KEY was read")
 	}
-	// Only the primary key: no failover target, still valid.
-	delete(r.kv, "GEMINUS_ANTHROPIC_API_KEY_B")
-	if ai, err := config.LoadAI(r.get); err != nil || len(ai.Credentials) != 1 {
-		t.Errorf("primary only: %+v %v", ai, err)
+	// Lower limits a deployment sets are kept.
+	r.kv["AI_MONTHLY_LIMIT_USD"], r.kv["AI_DAILY_LIMIT_USD"], r.kv["AI_ORGANIZATION_DAILY_LIMIT_USD"] = "50", "4.5", "0.25"
+	if ai, err := config.LoadAI(r.get); err != nil || ai.Limits != (spend.Limits{Month: 50 * spend.NanoPerUSD, Day: 4_500_000_000, OrganizationDay: 250_000_000}) {
+		t.Errorf("set limits: %+v %v", ai.Limits, err)
 	}
 }
 
-// With a recorded approval, the model and the primary key are required.
-func TestLiveAINeedsModelAndKey(t *testing.T) {
-	aiapproval.RecordForTest(t, "H-TEST")
+// Without the operator's switch, a complete record keeps live AI off:
+// no key is read, and the reason is typed.
+func TestTheSwitchIsRequired(t *testing.T) {
+	aiapproval.RecordForTest(t, complete(t))
+	for _, v := range []string{"", "off"} {
+		r := &recorder{kv: liveEnv()}
+		r.kv["GEMINUS_AI_LIVE"] = v
+		ai, err := config.LoadAI(r.get)
+		if err != nil {
+			t.Fatalf("%q: %v", v, err)
+		}
+		if ai.LiveEnabled() || ai.LiveOff != config.LiveOffSwitch || len(ai.Credentials) != 0 || ai.Approval.Valid() {
+			t.Errorf("%q: %+v", v, ai)
+		}
+		for _, k := range r.read {
+			if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || strings.HasPrefix(k, "ANTHROPIC_") {
+				t.Errorf("%q: read %s", v, k)
+			}
+		}
+	}
+	for _, v := range []string{"ON", "true", "1", "yes", "on "} {
+		kv := liveEnv()
+		kv["GEMINUS_AI_LIVE"] = v
+		if _, err := config.LoadAI(func(k string) string { return kv[k] }); !slices.Equal(codesOf(err), []string{"GEMINUS_AI_LIVE:invalid"}) {
+			t.Errorf("%q: %v", v, err)
+		}
+	}
+}
+
+// Any mismatch keeps live AI off with a typed reason. With the switch on
+// the process refuses to start (fail closed and loud); with it off the
+// same reason is reported and the provider answers policy_not_approved.
+// No key is read in either case.
+func TestAnyMismatchKeepsLiveOff(t *testing.T) {
+	type mismatch struct {
+		record func(*aiapproval.Record)
+		env    map[string]string
+		want   string // the typed reason
+		on     []string
+	}
+	cases := map[string]mismatch{
+		"the build's own record (retention unconfirmed)": {record: func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} },
+			want: "retention_unconfirmed", on: []string{"GEMINUS_AI_LIVE:retention_unconfirmed"}},
+		"spend limits unconfirmed": {record: func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} },
+			want: "spend_limits_unconfirmed", on: []string{"GEMINUS_AI_LIVE:spend_limits_unconfirmed"}},
+		"changed policy": {record: func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_data" },
+			want: "policy_unsupported", on: []string{"GEMINUS_AI_LIVE:policy_unsupported"}},
+		"raw text in logs": {record: func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true },
+			want: "policy_unsupported", on: []string{"GEMINUS_AI_LIVE:policy_unsupported"}},
+		"recorded model without a price": {record: func(r *aiapproval.Record) { r.Model = "claude-opus-5" },
+			env: map[string]string{"AI_MODEL": "claude-opus-5"}, want: "model_unpriced", on: []string{"GEMINUS_AI_LIVE:model_unpriced"}},
+		"other model configured": {env: map[string]string{"AI_MODEL": "claude-sonnet-5-5"},
+			want: "model_mismatch", on: []string{"AI_MODEL:model_mismatch"}},
+		"model with a date suffix": {env: map[string]string{"AI_MODEL": "claude-opus-5-5-20260401"},
+			want: "model_mismatch", on: []string{"AI_MODEL:model_mismatch"}},
+		"no model configured": {env: map[string]string{"AI_MODEL": ""},
+			want: "model_mismatch", on: []string{"AI_MODEL:required"}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			r := complete(t)
+			if c.record != nil {
+				c.record(&r)
+			}
+			aiapproval.RecordForTest(t, r)
+			for _, sw := range []string{"on", ""} {
+				rec := &recorder{kv: liveEnv()}
+				for k, v := range c.env {
+					rec.kv[k] = v
+				}
+				rec.kv["GEMINUS_AI_LIVE"] = sw
+				ai, err := config.LoadAI(rec.get)
+				if sw == "on" {
+					if got := codesOf(err); !slices.Equal(got, c.on) {
+						t.Errorf("switch on: codes %v, want %v (%v)", got, c.on, err)
+					}
+					if err != nil && (strings.Contains(err.Error(), keyA) || strings.Contains(err.Error(), keyB)) {
+						t.Error("the error leaks a key")
+					}
+				} else {
+					if err != nil {
+						t.Fatalf("switch off: %v", err)
+					}
+					if ai.LiveEnabled() || ai.LiveOff != c.want || len(ai.Credentials) != 0 {
+						t.Errorf("switch off: %+v, want reason %q", ai, c.want)
+					}
+				}
+				for _, k := range rec.read {
+					if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || k == "ANTHROPIC_API_KEY" {
+						t.Errorf("switch %q: read %s", sw, k)
+					}
+				}
+			}
+		})
+	}
+}
+
+// Both credentials are required (T-053; D-018's two organizations); a
+// missing one keeps live off and names the variable, never a value.
+func TestBothCredentialsAreRequired(t *testing.T) {
+	aiapproval.RecordForTest(t, complete(t))
 	for name, c := range map[string]struct {
-		kv   map[string]string
-		want string
+		unset []string
+		want  []string
 	}{
-		"no model":       {map[string]string{"GEMINUS_ANTHROPIC_API_KEY_A": keyA}, "AI_MODEL:required"},
-		"no primary key": {map[string]string{"AI_MODEL": "m", "GEMINUS_ANTHROPIC_API_KEY_B": keyB}, "GEMINUS_ANTHROPIC_API_KEY_A:required"},
+		"no primary":   {[]string{"GEMINUS_ANTHROPIC_API_KEY_A"}, []string{"GEMINUS_ANTHROPIC_API_KEY_A:required"}},
+		"no secondary": {[]string{"GEMINUS_ANTHROPIC_API_KEY_B"}, []string{"GEMINUS_ANTHROPIC_API_KEY_B:required"}},
+		"neither":      {[]string{"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B"}, []string{"GEMINUS_ANTHROPIC_API_KEY_A:required", "GEMINUS_ANTHROPIC_API_KEY_B:required"}},
 	} {
-		c.kv["AI_PROVIDER"], c.kv["AI_POLICY_APPROVAL"] = "anthropic", "H-TEST"
-		_, err := config.LoadAI(func(k string) string { return c.kv[k] })
-		var ce *config.Error
-		if !errors.As(err, &ce) || ce.Var+":"+ce.Code != c.want {
-			t.Errorf("%s: %v, want %s", name, err, c.want)
+		kv := liveEnv()
+		for _, k := range c.unset {
+			delete(kv, k)
+		}
+		_, err := config.LoadAI(func(k string) string { return kv[k] })
+		if got := codesOf(err); !slices.Equal(got, c.want) {
+			t.Errorf("%s: %v, want %v", name, got, c.want)
 		}
 		if err != nil && (strings.Contains(err.Error(), keyA) || strings.Contains(err.Error(), keyB)) {
 			t.Errorf("%s: the error leaks a key", name)
+		}
+	}
+	// The same key twice is one organization, not two.
+	kv := liveEnv()
+	kv["GEMINUS_ANTHROPIC_API_KEY_B"] = keyA
+	if _, err := config.LoadAI(func(k string) string { return kv[k] }); !slices.Equal(codesOf(err), []string{"GEMINUS_ANTHROPIC_API_KEY_B:invalid"}) {
+		t.Errorf("one key twice: %v", err)
+	}
+}
+
+// The spend limits are the record's monthly budget at most, the
+// deployment's day within the month, an organization's day within the
+// deployment's day.
+func TestSpendLimitsAreChecked(t *testing.T) {
+	aiapproval.RecordForTest(t, complete(t))
+	for name, c := range map[string]struct {
+		kv   map[string]string
+		want []string
+	}{
+		"month above the record":   {map[string]string{"AI_MONTHLY_LIMIT_USD": "100.01"}, []string{"AI_MONTHLY_LIMIT_USD:invalid"}},
+		"day above the month":      {map[string]string{"AI_MONTHLY_LIMIT_USD": "5", "AI_DAILY_LIMIT_USD": "6"}, []string{"AI_DAILY_LIMIT_USD:invalid"}},
+		"org day above the day":    {map[string]string{"AI_DAILY_LIMIT_USD": "2", "AI_ORGANIZATION_DAILY_LIMIT_USD": "3"}, []string{"AI_ORGANIZATION_DAILY_LIMIT_USD:invalid"}},
+		"not an amount":            {map[string]string{"AI_DAILY_LIMIT_USD": "ten"}, []string{"AI_DAILY_LIMIT_USD:invalid"}},
+		"zero":                     {map[string]string{"AI_ORGANIZATION_DAILY_LIMIT_USD": "0"}, []string{"AI_ORGANIZATION_DAILY_LIMIT_USD:invalid"}},
+		"switch without anthropic": {map[string]string{"AI_PROVIDER": "fake", "APP_ENV": "test", "AI_POLICY_APPROVAL": ""}, []string{"GEMINUS_AI_LIVE:invalid"}},
+		"switch without approval":  {map[string]string{"AI_POLICY_APPROVAL": ""}, []string{"GEMINUS_AI_LIVE:invalid"}},
+	} {
+		kv := liveEnv()
+		for k, v := range c.kv {
+			kv[k] = v
+		}
+		_, err := config.LoadAI(func(k string) string { return kv[k] })
+		if got := codesOf(err); !slices.Equal(got, c.want) {
+			t.Errorf("%s: %v, want %v (%v)", name, got, c.want, err)
 		}
 	}
 }

@@ -1,0 +1,66 @@
+--- FAIL: TestRequestShape (0.01s)
+    --- FAIL: TestRequestShape/all (0.00s)
+        anthropic_test.go:237: ai provider: invalid_request
+    --- FAIL: TestRequestShape/auth_token (0.00s)
+        anthropic_test.go:237: ai provider: invalid_request
+    --- FAIL: TestRequestShape/custom_headers (0.00s)
+        anthropic_test.go:237: ai provider: invalid_request
+    --- FAIL: TestRequestShape/none (0.00s)
+        anthropic_test.go:237: ai provider: invalid_request
+--- FAIL: TestFailover (0.00s)
+    --- FAIL: TestFailover/402 (0.00s)
+        anthropic_test.go:297: ai provider: invalid_request
+    --- FAIL: TestFailover/401 (0.00s)
+        anthropic_test.go:297: ai provider: invalid_request
+    --- FAIL: TestFailover/403 (0.00s)
+        anthropic_test.go:297: ai provider: invalid_request
+    anthropic_test.go:325: both refused: ai provider: invalid_request {Provider:anthropic Model: Credential: FailedOver:[] Role:modeler TemplateVersion:modeler-test OutputSchema:proposal-output.schema.json Locale:en InputHash:sha256:7e0850f1b2c797c96e143aea519feef1ffd6f0b037104c5db891323e58ebc715 OutputHash: Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} LatencyMillis:0 ProviderRequestID: Context:{Omitted:map[] Redacted:map[]} CostNanoUSD:0 SpendReservation: SpendUnsettled:false}
+    anthropic_test.go:328: after both were refused: ai provider: invalid_request a=0 b=0
+--- FAIL: TestBillingCooldown (0.00s)
+    anthropic_test.go:343: 402: ai provider: invalid_request {Provider:anthropic Model: Credential: FailedOver:[] Role:modeler TemplateVersion:modeler-test OutputSchema:proposal-output.schema.json Locale:en InputHash:sha256:7e0850f1b2c797c96e143aea519feef1ffd6f0b037104c5db891323e58ebc715 OutputHash: Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} LatencyMillis:0 ProviderRequestID: Context:{Omitted:map[] Redacted:map[]} CostNanoUSD:0 SpendReservation: SpendUnsettled:false}
+--- FAIL: TestSameCredentialRetries (0.00s)
+    anthropic_test.go:377: 429 then 200: ai provider: invalid_request {Provider:anthropic Model: Credential: FailedOver:[] Role:modeler TemplateVersion:modeler-test OutputSchema:proposal-output.schema.json Locale:en InputHash:sha256:7e0850f1b2c797c96e143aea519feef1ffd6f0b037104c5db891323e58ebc715 OutputHash: Usage:{InputTokens:0 OutputTokens:0 CacheReadInputTokens:0 CacheCreationInputTokens:0} LatencyMillis:0 ProviderRequestID: Context:{Omitted:map[] Redacted:map[]} CostNanoUSD:0 SpendReservation: SpendUnsettled:false} a=0 b=0
+    anthropic_test.go:393: 429: ai provider: invalid_request
+    anthropic_test.go:396: 429: hits a=0 b=0, want 1+2 retries on a and none on b
+    anthropic_test.go:393: 529: ai provider: invalid_request
+    anthropic_test.go:396: 529: hits a=0 b=0, want 1+2 retries on a and none on b
+    anthropic_test.go:393: 500: ai provider: invalid_request
+    anthropic_test.go:396: 500: hits a=0 b=0, want 1+2 retries on a and none on b
+    anthropic_test.go:393: 503: ai provider: invalid_request
+    anthropic_test.go:396: 503: hits a=0 b=0, want 1+2 retries on a and none on b
+    anthropic_test.go:403: 400: ai provider: invalid_request a=0 b=0
+    anthropic_test.go:409: no retries: ai provider: invalid_request a=0
+--- FAIL: TestStopReasons (0.00s)
+    anthropic_test.go:458: pause turn: ai provider: invalid_request, want invalid_output
+    anthropic_test.go:458: tool block: ai provider: invalid_request, want invalid_output
+    anthropic_test.go:458: no text: ai provider: invalid_request, want invalid_output
+    anthropic_test.go:458: prose: ai provider: invalid_request, want invalid_output
+    anthropic_test.go:458: max tokens: ai provider: invalid_request, want output_truncated
+    anthropic_test.go:458: refusal: ai provider: invalid_request, want refused
+    anthropic_test.go:458: tool use: ai provider: invalid_request, want invalid_output
+    anthropic_test.go:458: tool use, text only: ai provider: invalid_request, want invalid_output
+--- FAIL: TestTimeoutsAndCancellation (0.00s)
+    anthropic_test.go:482: slow provider: ai provider: invalid_request
+    anthropic_test.go:489: total timeout: ai provider: invalid_request
+    anthropic_test.go:495: cancelled: ai provider: invalid_request
+--- FAIL: TestOnlyAMeteredClientCallsIt (0.01s)
+    spend_test.go:45: unreserved: <nil> hits 1
+    spend_test.go:48: reserved: <nil> hits 2
+--- FAIL: TestQuote (0.00s)
+    spend_test.go:71: quote {Model: MaxInputTokens:0}, want 1874
+    spend_test.go:75: an unknown schema was quoted
+--- FAIL: TestOnlyTheApprovedRoles (0.00s)
+    spend_test.go:87: modeler: ai provider: invalid_request hits 0
+    spend_test.go:94: approved role: ai provider: invalid_request hits 0
+--- FAIL: TestSpend (0.00s)
+    spend_test.go:105: ai provider: invalid_request
+--- FAIL: TestAttemptsWithoutAnAnswerCount (0.00s)
+    --- FAIL: TestAttemptsWithoutAnAnswerCount/lost_connection (0.00s)
+        spend_test.go:157: ai provider: invalid_request (hits 0)
+    --- FAIL: TestAttemptsWithoutAnAnswerCount/cut_body (0.00s)
+        spend_test.go:157: ai provider: invalid_request (hits 0)
+    spend_test.go:173: slow: ai provider: invalid_request
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/anthropic	0.084s
+FAIL
+exit=1

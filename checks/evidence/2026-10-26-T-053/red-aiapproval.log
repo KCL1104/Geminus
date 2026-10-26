@@ -1,0 +1,38 @@
+ok  	github.com/kcl1104/geminus/internal/config	0.022s
+--- FAIL: TestTheH018Record (0.00s)
+    aiapproval_test.go:29: H-018 is not recorded
+--- FAIL: TestGapReasons (0.00s)
+    aiapproval_test.go:98: H-018 is not recorded
+--- FAIL: TestRecorded (0.00s)
+    --- FAIL: TestRecorded/recorded (0.00s)
+        aiapproval_test.go:144: H-018 is not recorded
+    aiapproval_test.go:172: the H-018 record after the test: {ID: Provider: Model: DataPolicy:{Inputs: Roles:[] LogsKeepRawText:false} MonthlyBudgetUSD:0 Credentials:[] ApprovedBy: ApprovedAt: Source: SpendLimits:{By: At: Source:} Retention:{Arrangement: Confirmation:{By: At: Source:}}} false
+--- FAIL: TestLiveTurnsOn (0.00s)
+    aiapproval_test.go:216: H-018 is not recorded
+--- FAIL: TestTheSwitchIsRequired (0.00s)
+    aiapproval_test.go:247: H-018 is not recorded
+--- FAIL: TestAnyMismatchKeepsLiveOff (0.00s)
+    --- FAIL: TestAnyMismatchKeepsLiveOff/the_build's_own_record_(retention_unconfirmed) (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/spend_limits_unconfirmed (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/changed_policy (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/raw_text_in_logs (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/recorded_model_without_a_price (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/other_model_configured (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/model_with_a_date_suffix (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+    --- FAIL: TestAnyMismatchKeepsLiveOff/no_model_configured (0.00s)
+        aiapproval_test.go:304: H-018 is not recorded
+--- FAIL: TestBothCredentialsAreRequired (0.00s)
+    aiapproval_test.go:344: H-018 is not recorded
+--- FAIL: TestSpendLimitsAreChecked (0.00s)
+    aiapproval_test.go:377: H-018 is not recorded
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.027s
+FAIL
+exit=1

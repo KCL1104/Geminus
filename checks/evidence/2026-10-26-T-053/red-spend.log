@@ -1,0 +1,50 @@
+--- FAIL: TestThePinnedPrice (0.00s)
+    spend_test.go:20: no price for claude-opus-5-5
+--- FAIL: TestCost (0.00s)
+    spend_test.go:55: {Input:1 Output:0 CacheWrite:0 CacheRead:0}: 0, want 4000
+    spend_test.go:55: {Input:0 Output:1 CacheWrite:0 CacheRead:0}: 0, want 20000
+    spend_test.go:55: {Input:0 Output:0 CacheWrite:1 CacheRead:0}: 0, want 8000
+    spend_test.go:55: {Input:0 Output:0 CacheWrite:0 CacheRead:1}: 0, want 200
+    spend_test.go:55: {Input:1000000 Output:1000000 CacheWrite:0 CacheRead:0}: 0, want 24000000000
+    spend_test.go:55: {Input:120 Output:30 CacheWrite:10 CacheRead:5}: 0, want 1161000
+    spend_test.go:55: {Input:-5 Output:2 CacheWrite:0 CacheRead:0}: 0, want 40000
+    spend_test.go:60: overflow: 0
+--- FAIL: TestAttemptBound (0.00s)
+    spend_test.go:69: bound 0
+    spend_test.go:75: overflow bound 0
+--- FAIL: TestParseAndFormatUSD (0.00s)
+    spend_test.go:86: "2.25": 0 <nil>, want 2250000000
+    spend_test.go:86: "0.000000001": 0 <nil>, want 1
+    spend_test.go:86: "1000000": 0 <nil>, want 1000000000000000
+    spend_test.go:86: "100": 0 <nil>, want 100000000000
+    spend_test.go:86: "0.5": 0 <nil>, want 500000000
+    spend_test.go:91: "" accepted as 0
+    spend_test.go:91: "0" accepted as 0
+    spend_test.go:91: "0.0" accepted as 0
+    spend_test.go:91: "-1" accepted as 0
+    spend_test.go:91: "+1" accepted as 0
+    spend_test.go:91: "1e3" accepted as 0
+    spend_test.go:91: "1." accepted as 0
+    spend_test.go:91: ".5" accepted as 0
+    spend_test.go:91: "1.0000000001" accepted as 0
+    spend_test.go:91: "1,5" accepted as 0
+    spend_test.go:91: " 1" accepted as 0
+    spend_test.go:91: "1000000.000000001" accepted as 0
+    spend_test.go:91: "NaN" accepted as 0
+    spend_test.go:91: "１" accepted as 0
+    spend_test.go:97: 1: "", want "0.000000001"
+    spend_test.go:97: 1000000000: "", want "1.00"
+    spend_test.go:97: 2250000000: "", want "2.25"
+    spend_test.go:97: 123456789: "", want "0.123456789"
+    spend_test.go:97: 100000000000: "", want "100.00"
+    spend_test.go:97: -1: "", want "-0.000000001"
+    spend_test.go:97: 0: "", want "0.00"
+--- FAIL: TestLimits (0.00s)
+    spend_test.go:108: defaults {Month:0 Day:0 OrganizationDay:0} <nil>
+--- FAIL: TestPeriods (0.00s)
+    spend_test.go:135: day 2026-11-01 03:00:00 +0800 UTC+8
+    spend_test.go:138: month 2026-11-01 03:00:00 +0800 UTC+8
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/spend	0.003s
+FAIL
+exit=1

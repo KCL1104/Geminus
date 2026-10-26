@@ -26,10 +26,12 @@ import (
 // request to the provider's real API (live calls are NOT RUN: H-001, H-017).
 
 const (
-	org     = "org_01M4YDQK00TA00000000000000"
-	keyA    = "sk-ant-test-primary-AAAAAAAAAAAAAAAA"
-	keyB    = "sk-ant-test-secondary-BBBBBBBBBBBBBB"
-	model   = "approved-test-model"
+	org  = "org_01M4YDQK00TA00000000000000"
+	keyA = "sk-ant-test-primary-AAAAAAAAAAAAAAAA"
+	keyB = "sk-ant-test-secondary-BBBBBBBBBBBBBB"
+	// the model H-018 approves: the only one this build can price, so the
+	// only one a metered client reserves for (T-053)
+	model   = "claude-opus-5-5"
 	answerJ = `{"status":"needs_input","summary":"Which station?","assumptions":[],"questions":["Which station?"],"requires_confirmation":true}`
 )
 
@@ -39,6 +41,10 @@ type reply struct {
 	body   string
 	header map[string]string
 	delay  time.Duration
+	// hangUp closes the connection without an answer; cutBody sends the
+	// status and part of the body, then closes it (T-053: attempts the
+	// provider may have billed without the client seeing the answer).
+	hangUp, cutBody bool
 }
 
 func ok(text string) reply {
@@ -93,6 +99,23 @@ func newServer(t *testing.T, scripts map[string][]reply) *server {
 			return
 		}
 		rep := script[min(n, len(script)-1)]
+		if rep.hangUp {
+			conn, _, err := w.(http.Hijacker).Hijack()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			_ = conn.Close()
+			return
+		}
+		if rep.cutBody {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Length", fmt.Sprint(len(rep.body)+100))
+			w.WriteHeader(rep.status)
+			_, _ = io.WriteString(w, rep.body[:len(rep.body)/2])
+			w.(http.Flusher).Flush()
+			panic(http.ErrAbortHandler)
+		}
 		if rep.delay > 0 {
 			select {
 			case <-time.After(rep.delay):
@@ -128,7 +151,17 @@ func config(keys ...string) anthropic.Config {
 	return cfg
 }
 
+// client is a metered client of the backend on the local server (T-053:
+// the adapter is billable, so only a metered client calls it), with a
+// meter whose limit no test reaches unless it means to.
 func client(t *testing.T, s *server, cfg anthropic.Config, mutate ...func(*provider.Budget)) (*provider.Client, *anthropic.Backend) {
+	c, b, _ := meteredClient(t, s, cfg, 1000*spendUSD, mutate...)
+	return c, b
+}
+
+const spendUSD = 1_000_000_000 // nano-USD
+
+func meteredClient(t *testing.T, s *server, cfg anthropic.Config, limit int64, mutate ...func(*provider.Budget)) (*provider.Client, *anthropic.Backend, *provider.MemoryMeter) {
 	t.Helper()
 	b, err := anthropic.NewForTest(cfg, s.srv.URL+"/", s.srv.Client())
 	if err != nil {
@@ -139,11 +172,12 @@ func client(t *testing.T, s *server, cfg anthropic.Config, mutate ...func(*provi
 	for _, m := range mutate {
 		m(&budget)
 	}
-	c, err := provider.New(b, budget)
+	m := provider.NewMemoryMeter(limit)
+	c, err := provider.NewMetered(b, budget, m)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return c, b
+	return c, b, m
 }
 
 func prompt(t *testing.T) provider.Prompt {
@@ -162,7 +196,8 @@ func ask(t *testing.T, c *provider.Client) (provider.ProposalResult, error) {
 }
 
 func askCtx(t *testing.T, ctx context.Context, c *provider.Client) (provider.ProposalResult, error) {
-	return c.GenerateModelProposal(ctx, provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit, Prompt: prompt(t)})
+	return c.GenerateModelProposal(ctx, provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit, Prompt: prompt(t),
+		Attribution: provider.Attribution{TargetType: "ai_proposal", TargetID: "aip_01M4YDQK00TA00000000000001", RequestID: "req_01M4YDQK00TA00000000000001"}})
 }
 
 // The adapter sends the injected key only, to the configured server only:

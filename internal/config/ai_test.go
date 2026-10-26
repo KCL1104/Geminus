@@ -58,6 +58,36 @@ func TestLiveAIStaysOff(t *testing.T) {
 	}
 }
 
+// T-053: this build records H-018, which waits for the owner's retention
+// confirmation, so even with every variable live AI needs set it stays off:
+// with the switch on the process refuses to start, without it LiveOff says
+// why; no key is read either way.
+func TestThisBuildKeepsLiveOff(t *testing.T) {
+	all := map[string]string{"AI_PROVIDER": "anthropic", "AI_POLICY_APPROVAL": "H-018", "AI_MODEL": "claude-opus-5-5",
+		"GEMINUS_ANTHROPIC_API_KEY_A": keyA, "GEMINUS_ANTHROPIC_API_KEY_B": keyB, "GEMINUS_AI_LIVE": "on"}
+	r := &recorder{kv: all}
+	_, err := LoadAI(r.get)
+	if got := codes(t, err); !slices.Equal(got, []string{"GEMINUS_AI_LIVE:retention_unconfirmed"}) {
+		t.Errorf("switch on: %v", got)
+	}
+	off := maps.Clone(all)
+	delete(off, "GEMINUS_AI_LIVE")
+	r2 := &recorder{kv: off}
+	ai, err := LoadAI(r2.get)
+	if err != nil || ai.LiveEnabled() || ai.LiveOff != "retention_unconfirmed" || len(ai.Credentials) != 0 || ai.Model != "" {
+		t.Errorf("switch off: %+v %v", ai, err)
+	}
+	for _, k := range append(r.read, r2.read...) {
+		if strings.HasPrefix(k, "GEMINUS_ANTHROPIC_API_KEY") || strings.HasPrefix(k, "ANTHROPIC_") {
+			t.Errorf("read %s", k)
+		}
+	}
+	// Naming no approval is a reason of its own.
+	if ai, err := LoadAI(env(map[string]string{"AI_PROVIDER": "anthropic"})); err != nil || ai.LiveOff != LiveOffNoApproval {
+		t.Errorf("no approval: %+v %v", ai, err)
+	}
+}
+
 func TestLoadAIRejects(t *testing.T) {
 	live := map[string]string{"AI_PROVIDER": "anthropic", "AI_MODEL": "m", "GEMINUS_ANTHROPIC_API_KEY_A": keyA}
 	with := func(kv map[string]string) map[string]string {

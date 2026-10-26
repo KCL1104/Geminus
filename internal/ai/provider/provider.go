@@ -54,22 +54,27 @@ func (m Mode) Role() Role {
 }
 
 // ProposalContext is a sanitized proposal request for one organization.
+// Attribution names what the call is for; a metered client requires it
+// (T-053).
 type ProposalContext struct {
 	OrganizationID string
 	Mode           Mode
 	Prompt         Prompt
+	Attribution    Attribution
 }
 
 // MappingContext is a sanitized mapping suggestion request.
 type MappingContext struct {
 	OrganizationID string
 	Prompt         Prompt
+	Attribution    Attribution
 }
 
 // AnalysisContext is a sanitized analysis request.
 type AnalysisContext struct {
 	OrganizationID string
 	Prompt         Prompt
+	Attribution    Attribution
 }
 
 // Usage is the token accounting a provider reports.
@@ -97,6 +102,12 @@ type Metadata struct {
 	LatencyMillis     int64      `json:"latency_ms"`
 	ProviderRequestID string     `json:"provider_request_id,omitzero"`
 	Context           Disclosure `json:"context"`
+	// The spend of a metered call (T-053): what it cost in nano-USD, the
+	// reservation it was charged to, and whether settling the reservation
+	// failed (the reservation then stays counted at its bound).
+	CostNanoUSD      int64  `json:"cost_nano_usd,omitzero"`
+	SpendReservation string `json:"spend_reservation_id,omitzero"`
+	SpendUnsettled   bool   `json:"spend_unsettled,omitzero"`
 }
 
 type ProposalResult struct {
@@ -124,6 +135,9 @@ type Request struct {
 	MaxOutputTokens int64
 	AttemptTimeout  time.Duration
 	MaxRetries      int
+	// Reservation is the spend reservation a metered client made for the
+	// call (T-053); a billable backend refuses a request without one.
+	Reservation string
 }
 
 // Response is a Backend's answer: untrusted text and accounting.
@@ -132,8 +146,12 @@ type Response struct {
 	Model             string
 	Credential        string   // label only
 	FailedOver        []string // labels refused (401/402/403) during this call
-	Usage             Usage
+	Usage             Usage    // what the answer that came back was billed for
 	ProviderRequestID string
+	// UnknownAttempts counts the attempts that ended without an answer
+	// after the request may have reached the provider (a timeout, a lost
+	// connection): the provider may have billed them (T-053).
+	UnknownAttempts int
 }
 
 // Backend is one provider mode. Complete returns *Error for every failure
@@ -149,15 +167,22 @@ type Backend interface {
 // valid under the role's full output schema.
 type Client struct {
 	backend Backend
-	budget  Budget
-	mu      sync.Mutex
-	active  map[string]int
+	// billable and meter are set for a billable backend (NewMetered).
+	billable Billable
+	meter    Meter
+	budget   Budget
+	mu       sync.Mutex
+	active   map[string]int
 }
 
-// New returns a Client for b under budget.
+// New returns a Client for b under budget. A billable backend needs a
+// meter: NewMetered (T-053).
 func New(b Backend, budget Budget) (*Client, error) {
 	if b == nil {
 		return nil, errors.New("ai provider: no backend")
+	}
+	if _, ok := b.(Billable); ok {
+		return nil, errors.New("ai provider: a billable backend is only called through a meter (NewMetered)")
 	}
 	if err := budget.Validate(); err != nil {
 		return nil, err
@@ -204,8 +229,10 @@ func (c *Client) release(org string) {
 
 func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 
-// call runs one checked request and returns the schema-valid answer.
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, out any) (jsontext.Value, Metadata, error) {
+// call runs one checked request and returns the schema-valid answer. A
+// metered client also reserves before the call and settles after it
+// (meter.go).
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, out any) (jsontext.Value, Metadata, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Metadata{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -213,6 +240,9 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, out 
 		return nil, Metadata{}, d.err()
 	}
 	if role == "" || !organizationID.MatchString(org) || p.OrganizationID != org || p.Role != role || p.Verify() != nil {
+		return nil, Metadata{}, invalidRequest()
+	}
+	if c.meter != nil && !attr.complete() {
 		return nil, Metadata{}, invalidRequest()
 	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
@@ -225,12 +255,24 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, out 
 
 	meta := Metadata{Provider: c.backend.Name(), Role: role, TemplateVersion: p.TemplateVersion, OutputSchema: role.OutputSchema(),
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
+	req := Request{Prompt: p, OutputSchema: role.OutputSchema(),
+		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
+	var m *metering
+	if c.meter != nil {
+		var err error
+		if m, err = c.reserve(ctx, org, role, attr, req); err != nil {
+			return nil, meta, err
+		}
+		req.Reservation = m.res.ID
+	}
 	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
 	defer cancel()
 	start := time.Now()
-	resp, err := c.backend.Complete(callCtx, Request{Prompt: p, OutputSchema: role.OutputSchema(),
-		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries})
+	resp, err := c.backend.Complete(callCtx, req)
 	meta.LatencyMillis = time.Since(start).Milliseconds()
+	if m != nil {
+		c.settle(ctx, m, m.settlement(resp), &meta)
+	}
 	meta.Model, meta.Credential, meta.FailedOver = resp.Model, resp.Credential, resp.FailedOver
 	meta.Usage, meta.ProviderRequestID = resp.Usage, resp.ProviderRequestID
 	switch {
@@ -280,7 +322,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, out 
 // GenerateModelProposal asks for an edit or scenario proposal.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, &out)
 	if err != nil {
 		return ProposalResult{Metadata: meta}, err
 	}
@@ -290,7 +332,7 @@ func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, &out)
 	if err != nil {
 		return MappingResult{Metadata: meta}, err
 	}
@@ -300,7 +342,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, &out)
+	raw, meta, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, &out)
 	if err != nil {
 		return AnalysisResult{Metadata: meta}, err
 	}
