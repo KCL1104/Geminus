@@ -59,9 +59,13 @@ function summaryOf(result: SimulationResult | null, keys: string[]): MetricSumma
   return typeof s === "object" && s !== null && "population" in s ? (s as MetricSummary) : null;
 }
 
+// The units the UI writes itself; a pack's other units are shown beside the
+// metric's name as given. "ratio" is the electronics line pack's yields and
+// rates (T-032 review r1 L4): a percentage, its difference in points.
 function unitOf(summary: MetricSummary | null): MetricUnit {
   if (summary?.unit === "minute") return "minute";
   if (summary?.unit === "count") return "count";
+  if (summary?.unit === "ratio") return "ratio";
   return "number";
 }
 

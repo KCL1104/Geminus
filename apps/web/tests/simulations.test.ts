@@ -116,8 +116,21 @@ describe("a pair of runs", () => {
     s = reducePair(s, { type: "polled", baseline: b1, scenario: s1 });
     expect(s.scenario).toBe(sCancelled);
     const problem = { kind: "network" as const, code: null, status: null, message: "x", requestId: null, details: [], retryAfterSeconds: null };
-    s = reducePair(s, { type: "cancelFailed", problem });
-    expect([s.cancelling, s.cancelProblem]).toEqual([false, problem]);
+    const other = { ...problem, message: "y" };
+    // One run's cancel failing names that run and ends nothing: the other's goes on until cancelDone (T-032 review r1 M1).
+    s = reducePair(s, { type: "cancelFailed", runId: B, problem });
+    expect([s.cancelling, s.cancelProblem]).toEqual([true, { side: "baseline", problem }]);
+    s = reducePair(s, { type: "cancelDone" });
+    expect([s.cancelling, s.cancelProblem]).toEqual([false, { side: "baseline", problem }]);
+    s = reducePair(s, { type: "cancelStarted" });
+    expect(s.cancelProblem).toBeNull();
+    s = reducePair(s, { type: "cancelFailed", runId: S, problem });
+    expect(s.cancelProblem).toEqual({ side: "scenario", problem });
+    // Both failed: both are named, with the first problem.
+    s = reducePair(s, { type: "cancelFailed", runId: B, problem: other });
+    expect(s.cancelProblem).toEqual({ side: "both", problem });
+    // An answer about a run that is not one of the pair changes nothing.
+    expect(reducePair(s, { type: "cancelFailed", runId: "sim_01M4YDQK00TA00000000T0XXXX", problem: other })).toBe(s);
     s = reducePair(s, { type: "cancelStarted" });
     expect(s.cancelProblem).toBeNull();
     s = reducePair(s, { type: "pollFailed", problem });

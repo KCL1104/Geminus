@@ -108,6 +108,26 @@ describe("the key metrics of a comparison", () => {
     expect(rs.find((r) => r.group === "resources")!.label).toEqual({ key: "metric.utilization", params: { name: "server" } });
   });
 
+  // T-032 review round 1, L4: the electronics line pack's yields and rates
+  // (internal/domainpack/electronicsline metricDefs) have the unit "ratio".
+  it("write a pack metric whose unit is ratio as a ratio (percent, difference in points), with no unit beside its name", () => {
+    const golden = fixture("valid-comparison.json") as Comparison;
+    const base = fixture("valid-result.json") as SimulationResult;
+    const withScrap = { ...base, metrics: { ...base.metrics, domain: { scrap_rate: { ...base.metrics.throughput, unit: "ratio" }, "fpy_input.ict": { ...base.metrics.throughput, unit: "ratio" } } } };
+    const metrics = [
+      ...golden.metrics,
+      { metric_path: "/metrics/domain/scrap_rate/mean", baseline: 0.04, scenario: 0.025, absolute_delta: -0.015, relative_delta: -0.375, status: "available" as const, reason: null },
+      { metric_path: "/metrics/domain/fpy_input.ict/mean", baseline: 0.9, scenario: 0.95, absolute_delta: 0.05, relative_delta: 0.05555555555555555, status: "available" as const, reason: null },
+    ];
+    const rs = keyMetrics({ ...golden, metrics }, null, { baseline: withScrap, scenario: null });
+    const scrap = rs.find((r) => r.path === "/metrics/domain/scrap_rate/mean")!;
+    expect([scrap.group, scrap.label, scrap.unit]).toEqual(["run", { data: "scrap_rate", unit: null }, "ratio"]);
+    // The server's values, unchanged.
+    expect([scrap.baseline, scrap.scenario, scrap.absolute, scrap.relative]).toEqual([0.04, 0.025, -0.015, -0.375]);
+    const fpy = rs.find((r) => r.path === "/metrics/domain/fpy_input.ict/mean")!;
+    expect([fpy.label, fpy.unit]).toEqual([{ data: "fpy_input.ict", unit: null }, "ratio"]);
+  });
+
   it("keep the side-by-side values of runs that are not comparable, with no delta", () => {
     const rs = keyMetrics(fixture("valid-comparison-incomparable.json") as Comparison, null, { baseline: null, scenario: null });
     expect([rs[0]!.status, rs[0]!.reason, rs[0]!.baseline, rs[0]!.scenario, rs[0]!.absolute, rs[0]!.relative]).toEqual(["incomparable", "RUNS_NOT_COMPARABLE", 100, 104.5, null, null]);

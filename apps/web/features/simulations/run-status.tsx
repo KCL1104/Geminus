@@ -4,12 +4,11 @@
 // progress bar while it runs; a failed run's error as the API's problem;
 // one cancel for whatever is still going, for those who may cancel.
 import { ProgressBar } from "react-aria-components";
-import type { Problem } from "../../lib/api/problem";
 import type { Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Button } from "../../ui/button";
-import { isActive, runProblem } from "./run-pair";
+import { type CancelProblem, isActive, runProblem } from "./run-pair";
 import styles from "./simulations.module.css";
 
 export type RunSide = "baseline" | "scenario";
@@ -71,7 +70,8 @@ export function RunPairStatus({ baseline, scenario, canCancel, cancelling, cance
   scenario: Run;
   canCancel: boolean;
   cancelling: boolean;
-  cancelProblem: Problem | null;
+  /** Whose cancel did not go through (one run's or both), with the problem the API answered. */
+  cancelProblem: CancelProblem | null;
   onCancel: () => void;
 }) {
   const { t } = useI18n();
@@ -85,8 +85,8 @@ export function RunPairStatus({ baseline, scenario, canCancel, cancelling, cance
       </ul>
       {cancelProblem && (
         <>
-          <p>{t("runs.cancelFailed")}</p>
-          <ProblemView problem={cancelProblem} headingLevel={3} />
+          <p>{t(`runs.cancelFailed.${cancelProblem.side}`)}</p>
+          <ProblemView problem={cancelProblem.problem} headingLevel={3} />
         </>
       )}
       {active && canCancel && (

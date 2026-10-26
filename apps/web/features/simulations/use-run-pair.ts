@@ -3,9 +3,13 @@
 // again every pollMs while either is queued or running, and stops when
 // both are done, when a read fails (until retry) or when the pair is
 // refused. The worker writes progress about once a second (T-023), so that
-// is the default. Each cancel is one request per run still going, with a
-// key kept for its retries (D-011); the server's answer moves the state on
-// only if it is newer (run-pair.ts).
+// is the default. A cancel is one request per run still going, sent
+// together and each on its own (T-032 review r1 M1), with a key kept for
+// its retries (D-011): a run that has ended since the last read answers 409
+// LIFECYCLE_CONFLICT, which is no failure; any other failure is shown and
+// never keeps the other run from being cancelled. The server's answer moves
+// the state on only if it is newer (run-pair.ts); the runs are read again
+// after every cancel, also when following them had stopped.
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import { type ApiClient, newIdempotencyKey } from "../../lib/api/client";
 import { networkProblem, type Problem } from "../../lib/api/problem";
@@ -72,18 +76,21 @@ export function useRunPair(api: ApiClient, baselineId: string, scenarioId: strin
     const runs = [latest.current.baseline, latest.current.scenario].filter((r): r is Run => r !== null && isActive(r));
     if (runs.length === 0) return;
     dispatch({ type: "cancelStarted" });
-    for (const run of runs) {
-      const key = keys.current.get(run.id) ?? newIdempotencyKey();
-      keys.current.set(run.id, key);
-      const r = await api.cancelSimulation(run.id, key);
-      if (!r.ok) {
-        dispatch({ type: "cancelFailed", problem: r.problem });
-        return;
-      }
-      dispatch({ type: "cancelAnswered", run: r.data });
+    const answers = await Promise.all(
+      runs.map(async (run) => {
+        const key = keys.current.get(run.id) ?? newIdempotencyKey();
+        keys.current.set(run.id, key);
+        const answer = await api.cancelSimulation(run.id, key).catch(() => ({ ok: false as const, problem: networkProblem("The request did not complete.") }));
+        return { run, answer };
+      }),
+    );
+    for (const { run, answer } of answers) {
+      if (answer.ok) dispatch({ type: "cancelAnswered", run: answer.data });
+      // The run completed or failed since the last read: nothing to cancel; the read below shows how it ended.
+      else if (answer.problem.code !== "LIFECYCLE_CONFLICT") dispatch({ type: "cancelFailed", runId: run.id, problem: answer.problem });
     }
     dispatch({ type: "cancelDone" });
-    // Follow the cancel to its end, in case polling had stopped.
+    // Follow the cancel to its end, also when polling had stopped.
     nextAttempt();
   }, [api]);
 

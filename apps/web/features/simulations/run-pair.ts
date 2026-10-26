@@ -41,7 +41,10 @@ export function checkPair(scenarioId: string, baseline: Run, scenario: Run): Pro
   return null;
 }
 
-export type PairState = { baseline: Run | null; scenario: Run | null; problem: Problem | null; cancelProblem: Problem | null; cancelling: boolean };
+/** A cancel that did not go through: whose (one run's, or both), and the first failure's problem. */
+export type CancelProblem = { side: "baseline" | "scenario" | "both"; problem: Problem };
+
+export type PairState = { baseline: Run | null; scenario: Run | null; problem: Problem | null; cancelProblem: CancelProblem | null; cancelling: boolean };
 
 export type PairEvent =
   | { type: "polled"; baseline: Run; scenario: Run }
@@ -49,7 +52,8 @@ export type PairEvent =
   | { type: "retried" }
   | { type: "cancelStarted" }
   | { type: "cancelAnswered"; run: Run }
-  | { type: "cancelFailed"; problem: Problem }
+  /** One run's cancel failed; the other run's goes on (T-032 review r1 M1). */
+  | { type: "cancelFailed"; runId: string; problem: Problem }
   | { type: "cancelDone" };
 
 export const initialPair: PairState = { baseline: null, scenario: null, problem: null, cancelProblem: null, cancelling: false };
@@ -68,8 +72,12 @@ export function reducePair(s: PairState, e: PairEvent): PairState {
       if (s.baseline?.id === e.run.id) return { ...s, baseline: newer(s.baseline, e.run) };
       if (s.scenario?.id === e.run.id) return { ...s, scenario: newer(s.scenario, e.run) };
       return s;
-    case "cancelFailed":
-      return { ...s, cancelling: false, cancelProblem: e.problem };
+    case "cancelFailed": {
+      const side = s.baseline?.id === e.runId ? "baseline" : s.scenario?.id === e.runId ? "scenario" : null;
+      if (side === null) return s;
+      const first = s.cancelProblem;
+      return { ...s, cancelProblem: first === null || first.side === side ? { side, problem: e.problem } : { side: "both", problem: first.problem } };
+    }
     case "cancelDone":
       return { ...s, cancelling: false };
   }

@@ -323,6 +323,110 @@ describe("the runs, from queued to the results", () => {
     expect(api.calls.filter((c) => c.method === "POST").map((c) => c.path)).toEqual([`${v1}/simulations/${SCENARIO_RUN}/cancel`]);
   });
 
+  // T-032 review round 1, M1: each run still going gets its own cancel; a run
+  // that ended since the last read (409 LIFECYCLE_CONFLICT) is no failure and
+  // does not keep the other run from being cancelled; the runs are read again after.
+  it("cancels the other run when one has just completed (409 LIFECYCLE_CONFLICT), and says nothing failed", async () => {
+    const stopping = boardScenarioRun({ status: "running", cancellation_requested: true, progress: progress(3, 1), finished_at: null });
+    const now = { b: runningB, s: runningS };
+    const api = fakeApi({
+      ...scenarioAnswers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}`]: () => json(200, now.b),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}`]: () => json(200, now.s),
+      // The baseline completed after the page's last read.
+      [`POST ${v1}/simulations/${BASELINE_RUN}/cancel`]: () => {
+        now.b = boardBaselineRun();
+        return problem(409, "LIFECYCLE_CONFLICT", "the run is completed; it cannot be cancelled");
+      },
+      [`POST ${v1}/simulations/${SCENARIO_RUN}/cancel`]: () => {
+        now.s = stopping;
+        return json(200, stopping);
+      },
+    });
+    const el = await runResults(api);
+    await waitFor(() => el.querySelectorAll('[role="progressbar"]').length === 2, "running");
+    await press(button(el, en["runs.cancel"]));
+    await waitFor(() => text(el).includes(en["runs.status.stopping"]), "the scenario stopping");
+    await waitFor(() => text(el).includes(en["runs.status.completed"]), "the baseline read again");
+    expect(api.calls.filter((c) => c.method === "POST").map((c) => c.path).sort()).toEqual([`${v1}/simulations/${BASELINE_RUN}/cancel`, `${v1}/simulations/${SCENARIO_RUN}/cancel`]);
+    expect(text(el)).not.toContain(en["runs.cancelFailed.both"]);
+    expect(text(el)).not.toContain(en["runs.cancelFailed.baseline"]);
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+    expect(await violations()).toEqual([]);
+  });
+
+  it("reads the runs again after a cancel even when following them had stopped on a failed read", async () => {
+    const stopping = boardScenarioRun({ status: "running", cancellation_requested: true, progress: progress(3, 1), finished_at: null });
+    // The second read fails: the page stops following the runs until a retry.
+    const reads = { b: [json(200, runningB), problem(503, "SERVICE_UNAVAILABLE")], s: [json(200, runningS), json(200, runningS)] };
+    const after = { b: boardBaselineRun(), s: stopping };
+    let cancelled = false;
+    const api = fakeApi({
+      ...scenarioAnswers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}`]: () => (cancelled ? json(200, after.b) : (reads.b.length > 1 ? reads.b.shift()! : reads.b[0]!).clone()),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}`]: () => (cancelled ? json(200, after.s) : (reads.s.length > 1 ? reads.s.shift()! : reads.s[0]!).clone()),
+      [`POST ${v1}/simulations/${BASELINE_RUN}/cancel`]: () => problem(409, "LIFECYCLE_CONFLICT", "the run is completed; it cannot be cancelled"),
+      [`POST ${v1}/simulations/${SCENARIO_RUN}/cancel`]: () => {
+        cancelled = true;
+        return json(200, stopping);
+      },
+    });
+    const el = await runResults(api);
+    await waitFor(() => button(el, en.retry) !== undefined, "the failed read");
+    const readsBefore = api.calls.filter((c) => c.method === "GET" && c.path === `${v1}/simulations/${BASELINE_RUN}`).length;
+    await press(button(el, en["runs.cancel"]));
+    await waitFor(() => text(el).includes(en["runs.status.completed"]), "the baseline read again");
+    expect(api.calls.filter((c) => c.method === "GET" && c.path === `${v1}/simulations/${BASELINE_RUN}`).length).toBeGreaterThan(readsBefore);
+    expect(text(el)).toContain(en["runs.status.stopping"]);
+  });
+
+  it("shows a cancel that failed (503) as the API's problem with its request ID, names the run, and still cancels the other", async () => {
+    const stopping = boardScenarioRun({ status: "running", cancellation_requested: true, progress: progress(3, 1), finished_at: null });
+    const now = { b: runningB, s: runningS };
+    const api = fakeApi({
+      ...scenarioAnswers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}`]: () => json(200, now.b),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}`]: () => json(200, now.s),
+      [`POST ${v1}/simulations/${BASELINE_RUN}/cancel`]: problem(503, "SERVICE_UNAVAILABLE", "the service is unavailable"),
+      [`POST ${v1}/simulations/${SCENARIO_RUN}/cancel`]: () => {
+        now.s = stopping;
+        return json(200, stopping);
+      },
+    });
+    const el = await runResults(api);
+    await waitFor(() => el.querySelectorAll('[role="progressbar"]').length === 2, "running");
+    await press(button(el, en["runs.cancel"]));
+    await waitFor(() => text(el).includes(en["runs.cancelFailed.baseline"]), "the failure");
+    const alert = el.querySelector('[role="alert"]')!;
+    expect(alert.getAttribute("data-problem")).toBe("unavailable");
+    expect(text(alert)).toContain(en["error.SERVICE_UNAVAILABLE"]);
+    expect(text(alert)).toContain(REQ);
+    await waitFor(() => text(el).includes(en["runs.status.stopping"]), "the scenario stopping");
+    expect(api.calls.filter((c) => c.method === "POST").map((c) => c.path).sort()).toEqual([`${v1}/simulations/${BASELINE_RUN}/cancel`, `${v1}/simulations/${SCENARIO_RUN}/cancel`]);
+    // The baseline still runs, so the cancel stays; pressed again, it goes with the same key (D-011).
+    const first = api.calls.find((c) => c.method === "POST" && c.path.includes(BASELINE_RUN))!.key;
+    await press(button(el, en["runs.cancel"]));
+    await waitFor(() => api.calls.filter((c) => c.method === "POST" && c.path.includes(BASELINE_RUN)).length === 2, "the second try");
+    expect(api.calls.filter((c) => c.method === "POST" && c.path.includes(BASELINE_RUN)).map((c) => c.key)).toEqual([first, first]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("names both runs when neither cancel went through", async () => {
+    const api = fakeApi({
+      ...scenarioAnswers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}`]: json(200, runningB),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, runningS),
+      [`POST ${v1}/simulations/${BASELINE_RUN}/cancel`]: problem(503, "SERVICE_UNAVAILABLE"),
+      [`POST ${v1}/simulations/${SCENARIO_RUN}/cancel`]: problem(503, "SERVICE_UNAVAILABLE"),
+    });
+    const el = await runResults(api, editor, "zh-Hant");
+    await waitFor(() => el.querySelectorAll('[role="progressbar"]').length === 2, "running");
+    await press(button(el, zhHant["runs.cancel"]));
+    await waitFor(() => text(el).includes(zhHant["runs.cancelFailed.both"]), "the failure");
+    expect(el.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(api.calls.filter((c) => c.method === "POST")).toHaveLength(2);
+  });
+
   it("shows a failed run's error as the API's problem, and compares nothing", async () => {
     const failed = boardScenarioRun({
       status: "failed", progress: progress(4, 2),
@@ -432,6 +536,38 @@ describe("the runs, from queued to the results", () => {
     const zh = catalogs["zh-Hant"];
     expect([...el.querySelectorAll("h2")].map((h) => h.textContent)).toEqual(expect.arrayContaining([zh["runs.title"], zh["compare.title"], zh["marey.title"], zh["facts.title"]]));
     expect(text(el)).toContain("前置時間中位數 29.14 分鐘 → 19.77 分鐘：縮短 32.2%。");
+    expect(await violations()).toEqual([]);
+  });
+});
+
+describe("a pack's ratio metric (T-032 review round 1, L4)", () => {
+  it("is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept", async () => {
+    // The electronics line pack's scrap rate: unit "ratio" (internal/domainpack/electronicsline).
+    const ratio = (r: typeof boardResults.baseline, mean: number) => ({
+      ...r,
+      metrics: { ...r.metrics, domain: { scrap_rate: { ...r.metrics.throughput, mean, p50: mean, p95: mean, unit: "ratio", confidence_interval_mean: null } } },
+    });
+    const comparison: Comparison = {
+      ...boardComparison,
+      metrics: [...boardComparison.metrics, { metric_path: "/metrics/domain/scrap_rate/mean", baseline: 0.04, scenario: 0.025, absolute_delta: -0.015, relative_delta: -0.375, status: "available", reason: null }],
+    };
+    const answers = resultAnswers({ comparison });
+    const api = fakeApi({
+      ...scenarioAnswers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}`]: json(200, boardBaselineRun()),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun()),
+      ...answers,
+      [`GET ${v1}/simulations/${BASELINE_RUN}/results`]: json(200, ratio(boardResults.baseline, 0.04)),
+      [`GET ${v1}/simulations/${SCENARIO_RUN}/results`]: json(200, ratio(boardResults.scenario, 0.025)),
+    });
+    const el = await runResults(api, editor, "zh-Hant");
+    await waitFor(() => el.querySelector("table") !== null, "the results");
+    const row = [...el.querySelectorAll("tbody tr")].find((r) => r.querySelector("th code")?.textContent === "scrap_rate")!;
+    expect(row).toBeDefined();
+    expect(text(row.querySelector("th")!)).toBe("scrap_rate");
+    expect(text(row)).not.toContain("ratio");
+    expect([...row.querySelectorAll("data")].map((d) => d.getAttribute("value"))).toEqual(["0.04", "0.025", "-0.015", "-0.375"]);
+    expect([...row.querySelectorAll("data")].map((d) => d.textContent)).toEqual(["4%", "2.5%", zhHant["compare.points"].replace("{value}", "-1.5"), "-37.5%"]);
     expect(await violations()).toEqual([]);
   });
 });
