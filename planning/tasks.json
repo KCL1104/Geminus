@@ -2022,7 +2022,8 @@
         "edit批准與scenario批准清楚分離；409保留local edits。",
         "所有字串經 T-044 catalog；數字、日期、百分比依語言格式化（T-032 的 delta／CI 不因格式化改變值）。",
         "流程依 H-027 Q2：10-19 prototype 的匯入與 AI 建議審閱流程（上傳、無效列與下載、逐一確認的欄位對應、差異、假設、伺服器 risk 與 AI 判斷並列、edit 與 scenario 批准分開、needs_input）；外觀用 Marey，細節依之後批准的規則（D-067–D-072）；介面簡潔，只放需要的控制項（H-027）。",
-        "Hackathon 切片（H-029）：以自然語言提出修改 → 非同步 proposal（Meta provider）→ 差異、AI 的假設、伺服器算的風險與 AI 的判斷並列 → edit 批准與 scenario 批准分開；含照片辨識（T-056）產生的 proposal。匯入與欄位對應的畫面不在切片內。"
+        "Hackathon 切片（H-029）：以自然語言提出修改 → 非同步 proposal（Meta provider）→ 差異、AI 的假設、伺服器算的風險與 AI 的判斷並列 → edit 批准與 scenario 批准分開；含照片辨識（T-056）產生的 proposal。匯入與欄位對應的畫面不在切片內。",
+        "H-031：proposal 的 provider 改為 Claude（T-053 的 adapter；測試用 fake provider），不接 Meta；切片相依 T-053 與 T-015 切片。"
       ],
       "planned_outputs": [
         "apps/web/features/import/",

@@ -12,9 +12,9 @@
 ## Demo 的內容（H-029 (2)）
 
 1. 電子產線範本（SMT、AOI、ICT、燒機批次、包裝）與 synthetic 資料。
-2. **照片 → 模型**：上傳產線照片或平面圖，SAM 3.1 找出機台與輸送帶，Muse Spark 判斷工作站與流向，產生模型 proposal；伺服器驗證、算風險，人工批准才生效。
+2. **照片 → 模型**：上傳產線照片或平面圖，Claude 的影像輸入辨識工作站與流向（H-031；SAM 3.1、Muse Spark 待接上 Meta 後再加），產生模型 proposal；伺服器驗證、算風險，人工批准才生效。
 3. **2D 編輯器**：在畫布上檢視與調整模型。
-4. **用自然語言提出修改**：例如「燒機改成每批 48 片」，Muse Spark 產生 scenario proposal，畫面並列差異、AI 的假設、伺服器算的風險。
+4. **用自然語言提出修改**：例如「燒機改成每批 48 片」，Claude 產生 proposal（H-031），畫面並列差異、AI 的假設、伺服器算的風險。
 5. **模擬與比較**：執行模擬，Marey 圖比較 baseline 與 scenario，加上主要指標。
 
 不變的規則：AI 只提出建議、不能批准或直接改模型；風險與驗證由伺服器計算；租戶隔離；資料不足時回 needs_input；不捏造任何結果或數字。
@@ -23,13 +23,13 @@
 
 | 切片 | 任務 | 相依 | 預定完成（UTC） |
 |---|---|---|---|
-| Meta provider（Muse Spark） | T-055 | T-024、T-025、T-053 | 10-28 |
+| Meta provider（Muse Spark） | T-055（暫停，H-031） | T-024、T-025、T-053 | — |
 | 電子產線範本與指標 | T-051 切片 | T-050 | 10-28 |
 | Synthetic 產線資料 | T-052 切片 | T-051 | 10-29 |
 | 2D 編輯器 | T-015 切片 | T-045 | 10-30 |
-| Container、R2 adapter 與部署（Railway＋Cloudflare，H-030） | T-039 切片 | owner 的帳號與 Auth0 tenant | 10-31 |
-| 照片 → 模型 proposal（SAM 3.1） | T-056 | T-055、T-051 | 10-31 |
-| 自然語言修改與 proposal 審閱畫面 | T-031 切片 | T-055 | 11-01 |
+| Container 與部署（只用 Railway，H-031、H-032） | T-039 切片 | Railway token（已有）、Auth0 tenant | 10-31 |
+| 照片 → 模型 proposal（Claude 影像輸入，H-031） | T-056 | T-053、T-051 | 10-31 |
+| 自然語言修改與 proposal 審閱畫面 | T-031 切片 | T-053、T-015 切片 | 11-01 |
 | 模擬與 Marey 比較畫面 | T-032 切片 | T-031 切片 | 11-02 |
 | 部署、demo 腳本、影片、提交 | T-057 | 以上全部 | 11-04 |
 
@@ -45,12 +45,14 @@
 
 | 時間 | 事項 |
 |---|---|
-| 現在 | 在 Meta Model API 建立 key（Standard mode），加到 Claude Code 的環境變數 `GEMINUS_META_API_KEY`（agent 只檢查名稱，不讀值；新開的 session 才看得到） |
-| 10-29 前 | 建立 Railway 帳號並連結 GitHub repo、Cloudflare 帳號（網域、R2 bucket 與 scoped token）（H-030）；建立 Auth0 的 dev tenant |
-| 10-31 前 | 在雲端平台的 secret 設定填入 Meta key、Auth0 與 session 的 secret（agent 提供清單，secret 不進 repo） |
+| ~~現在~~ | ~~Meta key~~：暫停（H-031）；恢復 T-055 時再建立 `GEMINUS_META_API_KEY` |
+| 已完成 | Railway token 加到環境變數（H-032） |
+| 10-29 前 | 建立 Auth0 的 dev tenant |
+| 10-31 前 | 在 Railway 的 variables 填入 Anthropic key 與 Auth0 的 secret（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
 | 11-04 | 看過 demo 影片（需要的話錄旁白），以 Indie 組 Representative 身分在 Cerebral Valley 提交 |
 
 ## 資料與花費
 
-- Meta 用 Standard mode（官方 pricing 頁：Standard mode 的內容不拿去訓練）；只送 synthetic 資料、demo 圖片與使用者輸入的文字；log 不存原始 prompt 與回應。
-- 花費沿用 T-053 的程式內上限與開關；錄取者有 150 美元的 Meta API 額度（10 天）。官方價格（2026-10-26）：`muse-spark-1.3` 每百萬 token 輸入 1.25、輸出 4.25 美元；`sam-3.1` 每千張圖 2.50 美元。
+- Claude API（H-031）：只送 synthetic 資料、demo 圖片與使用者輸入的文字；request 不指定 inference_geo（D-116 選項 A）；log 不存原始 prompt 與回應。
+- 花費沿用 T-053 的程式內上限與開關（live 只在獨立審查過的程式上執行，H-025）。
+- 若恢復 T-055（Meta）：Standard mode（官方 pricing 頁：Standard mode 的內容不拿去訓練）；錄取者有 150 美元的 Meta API 額度（10 天）；官方價格（2026-10-26）`muse-spark-1.3` 每百萬 token 輸入 1.25、輸出 4.25 美元，`sam-3.1` 每千張圖 2.50 美元。評分的「Use of Meta AI Tooling」占 25%，不接 Meta 會影響這一項。
