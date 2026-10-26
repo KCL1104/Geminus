@@ -27,7 +27,7 @@
 | 電子產線範本與指標 | T-051 切片 | T-050 | 10-28 |
 | Synthetic 產線資料 | T-052 切片 | T-051 | 10-29 |
 | 2D 編輯器 | T-015 切片 | T-045 | 10-30 |
-| Container 與部署 | T-039 切片 | owner 的雲端帳號與 Auth0 tenant | 10-31 |
+| Container、R2 adapter 與部署（Railway＋Cloudflare，H-030） | T-039 切片 | owner 的帳號與 Auth0 tenant | 10-31 |
 | 照片 → 模型 proposal（SAM 3.1） | T-056 | T-055、T-051 | 10-31 |
 | 自然語言修改與 proposal 審閱畫面 | T-031 切片 | T-055 | 11-01 |
 | 模擬與 Marey 比較畫面 | T-032 切片 | T-031 切片 | 11-02 |
@@ -46,7 +46,7 @@
 | 時間 | 事項 |
 |---|---|
 | 現在 | 在 Meta Model API 建立 key（Standard mode），加到 Claude Code 的環境變數 `GEMINUS_META_API_KEY`（agent 只檢查名稱，不讀值；新開的 session 才看得到） |
-| 10-29 前 | 選定雲端廠商（建議 Render：Docker 服務與 managed Postgres 設定最少）並建立帳號、連結 GitHub repo；建立 Auth0 的 dev tenant |
+| 10-29 前 | 建立 Railway 帳號並連結 GitHub repo、Cloudflare 帳號（網域、R2 bucket 與 scoped token）（H-030）；建立 Auth0 的 dev tenant |
 | 10-31 前 | 在雲端平台的 secret 設定填入 Meta key、Auth0 與 session 的 secret（agent 提供清單，secret 不進 repo） |
 | 11-04 | 看過 demo 影片（需要的話錄旁白），以 Indie 組 Representative 身分在 Cerebral Valley 提交 |
 

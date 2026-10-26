@@ -1745,10 +1745,22 @@
       "decided_at": "2026-10-26",
       "source": "Claude Code session：owner 在對話中回覆與 AskUserQuestion 選擇；計畫見 planning/HACKATHON_PLAN.md",
       "still_open": [
-        "雲端廠商（建議 Render）",
+        "~~雲端廠商~~ H-030：Railway＋Cloudflare",
         "Meta API key 的環境變數（GEMINUS_META_API_KEY）",
         "Auth0 tenant",
         "比賽後恢復 H-003 的審查流程與延後的任務"
+      ]
+    },
+    {
+      "id": "H-030",
+      "subject": "公開 demo 的雲端廠商：Railway＋Cloudflare",
+      "decision": "Railway 執行 web、api、worker 與 managed PostgreSQL；Cloudflare 負責 DNS／TLS（proxy）並以 R2 作為 S3 相容的私有 object storage（coordinator 的解讀）。帳號、網域與 secret 由 owner 建立與填入。",
+      "quote": "railway + cloudflare",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-26",
+      "source": "Claude Code session：AskUserQuestion，owner 以自訂答案回覆；用途分配為 coordinator 的解讀",
+      "still_open": [
+        "Owner 建立 Railway 與 Cloudflare 帳號、R2 bucket 與 scoped token、網域"
       ]
     }
   ]
