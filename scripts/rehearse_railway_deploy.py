@@ -1048,6 +1048,14 @@ def main() -> int:
 
         # A2: the same tenant and project again: nothing is created or changed, nothing secret is read.
         callsA, goA_len = len(a0_calls(fa)), len(read(Path(fa["REHEARSAL_GO_LOG"])))
+        # Auth0 may list the grant types in another order: that is no drift.
+        t = a0_state(fa)
+        turned = [c for c in t["apps"] if c.get("client_id") == A0_CLIENT and isinstance(c.get("grant_types"), list)]
+        for c in turned:
+            c["grant_types"].reverse()
+        json.dump(t, open(fa["REHEARSAL_A0_STATE"], "w"))
+        if [c["grant_types"] for c in turned] != [["refresh_token", "authorization_code"]]:
+            failures.append(f"A2: the stand-in's application is not there to list its grant types in another order: {turned}")
         runB, outB, errB, resB = cli(fa)
         tB, sB = a0_state(fa), rw_state(fa)
         a0_shown.append(("A2 the same again", resB + f" ({len(tB['writes']) - len(writes)} writes to Auth0)"))
