@@ -1,0 +1,6 @@
+=== RUN   TestRandomSetupModelsAgainstSpec
+    kernel_check_setup_test.go:428: 1590 of 3000 random models compiled: 303 with finite buffers, 662 with breakdowns, 252 with calendars, 108 with batches; 65486 grants on units that change over, 31904 changeovers (6965 of 0 ticks), 4360 to a unit set up for the type that was not the first free one, 472 first pieces; downs on such resources: 21003 at once, 964 on the released unit, 356 on the repaired unit; 79764 service ends timed
+--- PASS: TestRandomSetupModelsAgainstSpec (4.38s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	4.390s
+exit 0 elapsed 6s

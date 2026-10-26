@@ -114,6 +114,10 @@ const (
 	// process, right after the grant's ObsResource and before the members'
 	// ObsServiceStart (D-054's order).
 	ObsBatchStart // batch Batch of Value members started at batch process Node
+	// ADR-026 D-055 (T-050): only ever observed in a model with a resource
+	// that changes over, and only for a changeover: right after the grant's
+	// ObsResource and before the entity's ObsServiceStart (D-055's order).
+	ObsSetup // Entity's grant at process Node changes unit At of Resource over to its entity type, taking Value ticks before its service
 )
 
 // Observation is one fact the kernel reports, in processing order: by tick,
@@ -134,7 +138,8 @@ type Observation struct {
 	// always the process whose buffer it waits in). For ObsBlocked and
 	// ObsUnblocked it is the node its route reached (that queue or that
 	// process). For ObsResourceDown, ObsResourceUp and ObsBreakdownPending
-	// it is the failure clock. Unused otherwise.
+	// it is the failure clock; for ObsSetup the unit changing over. Unused
+	// otherwise.
 	At int
 	// Batch is the batch number n (from 1 at each batch process; the batch
 	// ID is r<rep>/<process>/b<n>, D-054) of ObsBatchStart and of a batch
@@ -374,6 +379,27 @@ type kernel struct {
 	batches     map[uint64]*batchRun
 	batchHandle uint64
 	timeouts    int64
+
+	// Changeovers (D-055, T-050), allocated only when the program has a
+	// resource that changes over. Each such resource keeps unit identity:
+	// units holds per resource (nil for the others) each unit's state; a
+	// failure clock of such a resource takes a definite unit down, held in
+	// clockUnit (-1 while the clock is up or its failure waits); unitOf is
+	// the unit each entity holds while in service or blocked at a process
+	// that needs such a resource (looked up, never iterated); setupStreams
+	// per resource and unit, created on first use.
+	units        [][]unit
+	clockUnit    [][]int
+	unitOf       map[uint64]int
+	setupStreams [][]*SplitMix64
+}
+
+// unit is one unit of a resource that changes over (D-055): in use (by a
+// grant, until its release), down (for a failure clock), and the entity
+// type it is set up for, -1 for none yet.
+type unit struct {
+	busy, down bool
+	state      int
 }
 
 // clockStreams are one failure clock's streams.
@@ -408,6 +434,23 @@ func runKernel(ctx context.Context, p *Program, index uint32, b *Budget, obs Obs
 		n := len(p.nodes)
 		k.bbuf, k.pend, k.batchNo, k.tgen, k.oldest = make([]batchBuffer, n), make([]*request, n), make([]uint64, n), make([]uint64, n), make([]uint64, n)
 		k.batches = map[uint64]*batchRun{}
+	}
+	if p.setups {
+		n := len(p.resources)
+		k.units, k.clockUnit, k.setupStreams = make([][]unit, n), make([][]int, n), make([][]*SplitMix64, n)
+		k.unitOf = map[uint64]int{}
+		for i, res := range p.resources {
+			if res.setup == nil {
+				continue
+			}
+			k.units[i], k.setupStreams[i] = make([]unit, res.capacity), make([]*SplitMix64, res.capacity)
+			for u := range k.units[i] {
+				k.units[i][u].state = res.setup.initial
+			}
+			if res.ttf != nil {
+				k.clockUnit[i] = slices.Repeat([]int{-1}, res.capacity)
+			}
+		}
 	}
 	if p.breakdowns || p.calendared {
 		r.onStart = k.start
@@ -625,7 +668,7 @@ func (k *kernel) scheduleFailure(i, u int) error {
 // behind the failures already waiting.
 func (k *kernel) failure(i, u int) error {
 	if k.r.p.resources[i].capacity-k.down[i]-k.inUse[i] > 0 {
-		return k.goDown(i, u)
+		return k.goDown(i, u, -1)
 	}
 	k.pending[i] = append(k.pending[i], u)
 	k.observe(Observation{Kind: ObsBreakdownPending, Resource: i, At: u, Value: int64(len(k.pending[i]))})
@@ -633,8 +676,21 @@ func (k *kernel) failure(i, u int) error {
 }
 
 // goDown takes a unit of resource i down for clock u and schedules its
-// repair one TTR (drawn now) later.
-func (k *kernel) goDown(i, u int) error {
+// repair one TTR (drawn now) later. On a resource that changes over the
+// unit is a definite one (D-055): which, the released or repaired unit
+// that takes over a waiting failure, or for one going down at once (which
+// -1) the idle unit of least index; it keeps its setup state.
+func (k *kernel) goDown(i, u, which int) error {
+	if k.units != nil && k.units[i] != nil {
+		if which < 0 {
+			which = slices.IndexFunc(k.units[i], func(x unit) bool { return !x.busy && !x.down })
+		}
+		if which < 0 || k.units[i][which].busy || k.units[i][which].down {
+			return fmt.Errorf("%w: resource %s has no idle unit for clock %d", ErrInternal, k.r.p.resources[i].id, u)
+		}
+		k.units[i][which].down = true
+		k.clockUnit[i][u] = which
+	}
 	k.down[i]++
 	k.observe(Observation{Kind: ObsResourceDown, Resource: i, At: u, Value: int64(k.down[i])})
 	d := k.r.p.resources[i].ttr.draw(k.streams(i, u).ttr)
@@ -656,6 +712,14 @@ func (k *kernel) repair(i, u int) error {
 	if k.down[i]--; k.down[i] < 0 {
 		return fmt.Errorf("%w: resource %s has %d units down", ErrInternal, k.r.p.resources[i].id, k.down[i])
 	}
+	repaired := -1
+	if k.units != nil && k.units[i] != nil {
+		repaired = k.clockUnit[i][u]
+		if repaired < 0 || !k.units[i][repaired].down {
+			return fmt.Errorf("%w: resource %s: clock %d repaired with no unit down", ErrInternal, k.r.p.resources[i].id, u)
+		}
+		k.units[i][repaired].down, k.clockUnit[i][u] = false, -1
+	}
 	k.observe(Observation{Kind: ObsResourceUp, Resource: i, At: u, Value: int64(k.down[i])})
 	if err := k.scheduleFailure(i, u); err != nil {
 		return err
@@ -663,7 +727,7 @@ func (k *kernel) repair(i, u int) error {
 	if len(k.pending[i]) > 0 {
 		w := k.pending[i][0]
 		k.pending[i] = k.pending[i][1:]
-		return k.goDown(i, w)
+		return k.goDown(i, w, repaired)
 	}
 	if f := k.queues[i].front(); f != nil && f.held {
 		f.held = false
@@ -689,7 +753,7 @@ func (k *kernel) serviceComplete(e uint64, n int) error {
 	block := err == nil && k.full(to)
 	reqs := k.r.p.nodes[n].requires
 	if !block {
-		if rerr := k.release(reqs); rerr != nil {
+		if rerr := k.release(reqs, e); rerr != nil {
 			return rerr
 		}
 	}
@@ -715,19 +779,31 @@ func (k *kernel) serviceComplete(e uint64, n int) error {
 	return k.enter(e, to)
 }
 
-// release frees a bundle's units, reporting each level; the released units
-// of a resource with waiting failures go down for them first, one unit per
-// failure in the order they fired (D-051 finish-first, before any grant);
-// a held candidate at the front of one of these resources may fit now.
-func (k *kernel) release(reqs []requirement) error {
+// release frees entity e's bundle (0 for a batch's), reporting each
+// level; the released units of a resource with waiting failures go down
+// for them first, one unit per failure in the order they fired (D-051
+// finish-first, before any grant); a held candidate at the front of one of
+// these resources may fit now. On a resource that changes over the unit e
+// held becomes idle, or goes down for the first waiting failure (D-055).
+func (k *kernel) release(reqs []requirement, e uint64) error {
 	for _, q := range reqs {
 		k.inUse[q.resource] -= q.units
 		k.observe(Observation{Kind: ObsResource, Resource: q.resource, Value: int64(k.inUse[q.resource])})
+		freed := -1
+		if k.units != nil && k.units[q.resource] != nil {
+			u, ok := k.unitOf[e]
+			if !ok || !k.units[q.resource][u].busy {
+				return fmt.Errorf("%w: %s releases no unit of %s", ErrInternal, k.r.EntityID(e), k.r.p.resources[q.resource].id)
+			}
+			delete(k.unitOf, e)
+			k.units[q.resource][u].busy = false
+			freed = u
+		}
 		if k.pending != nil {
 			for n := min(q.units, len(k.pending[q.resource])); n > 0; n-- {
 				u := k.pending[q.resource][0]
 				k.pending[q.resource] = k.pending[q.resource][1:]
-				if err := k.goDown(q.resource, u); err != nil {
+				if err := k.goDown(q.resource, u, freed); err != nil {
 					return err
 				}
 			}
@@ -997,11 +1073,20 @@ func (k *kernel) dispatch() error {
 			}
 			continue
 		}
+		var setup int64
+		if r := p.nodes[req.process].setupRes; r >= 0 {
+			var err error
+			if setup, err = k.changeover(req.entity, req.process, r); err != nil {
+				return err
+			}
+		}
 		k.waiting[req.process]--
 		k.inService++
 		k.observe(Observation{Kind: ObsServiceStart, Entity: req.entity, Node: req.process})
 		d := p.nodes[req.process].service.draw(k.r.stream(req.process, PurposeService))
-		if err := k.r.schedule(d, PriorityServiceComplete, EventServiceComplete, req.process, req.entity); err != nil {
+		// D-055: the service follows the changeover, and one
+		// SERVICE_COMPLETE ends both (past 365 days it is never processed).
+		if err := k.r.schedule(min(setup+d, beyondCap), PriorityServiceComplete, EventServiceComplete, req.process, req.entity); err != nil {
 			return err
 		}
 		if k.blocked != nil && k.blocked[req.process].len() > 0 {
@@ -1025,12 +1110,12 @@ func (k *kernel) unblock(process int) error {
 		number = run.number
 		if run.blocked--; run.blocked == 0 {
 			delete(k.batches, b.batch)
-			if err := k.release(k.r.p.nodes[b.from].requires); err != nil {
+			if err := k.release(k.r.p.nodes[b.from].requires, 0); err != nil {
 				return err
 			}
 		}
 	} else if from := &k.r.p.nodes[b.from]; from.typ == model.NodeProcess {
-		if err := k.release(from.requires); err != nil {
+		if err := k.release(from.requires, b.entity); err != nil {
 			return err
 		}
 	}
@@ -1103,6 +1188,48 @@ func (k *kernel) batchTimeout(n int, gen uint64) error {
 		return nil
 	}
 	return k.ready(n)
+}
+
+// changeover picks the unit of resource r that entity e's grant at process
+// n takes (D-055): of the units neither in use nor down, the one of least
+// index set up for e's entity type, else the one of least index (the
+// count rule has left at least one). When that unit is set up for another
+// type it changes over: the transition's time, else the default's, else 0,
+// drawn from (resource ID, setup/<u>) (none for 0 ticks without a
+// distribution), observed as ObsSetup (D-097 (a): a 0-tick changeover too);
+// a unit set up for no type yet takes e's without one. It returns the
+// changeover's ticks.
+func (k *kernel) changeover(e uint64, n, r int) (int64, error) {
+	units := k.units[r]
+	product := k.r.p.nodes[k.r.entities[e].source].product
+	u := slices.IndexFunc(units, func(x unit) bool { return !x.busy && !x.down && x.state == product })
+	if u < 0 {
+		u = slices.IndexFunc(units, func(x unit) bool { return !x.busy && !x.down })
+	}
+	if u < 0 {
+		return 0, fmt.Errorf("%w: a grant of %s with no idle unit", ErrInternal, k.r.p.resources[r].id)
+	}
+	units[u].busy = true
+	k.unitOf[e] = u
+	from := units[u].state
+	units[u].state = product
+	if from < 0 || from == product {
+		return 0, nil
+	}
+	cs := k.r.p.resources[r].setup
+	s := cs.trans[[2]int{from, product}]
+	if s == nil {
+		s = cs.def
+	}
+	var ticks int64
+	if s != nil {
+		if k.setupStreams[r][u] == nil {
+			k.setupStreams[r][u] = Stream(k.r.seed, k.r.p.resources[r].id, PurposeSetupPrefix+strconv.Itoa(u))
+		}
+		ticks = s.draw(k.setupStreams[r][u])
+	}
+	k.observe(Observation{Kind: ObsSetup, Entity: e, Node: n, Resource: r, At: u, Value: ticks})
+	return ticks, nil
 }
 
 // grantBatch starts the batch of a granted batch request (its bundle's
@@ -1203,7 +1330,7 @@ func (k *kernel) batchComplete(h uint64, n int) error {
 	reqs := k.r.p.nodes[n].requires
 	if !blocked {
 		delete(k.batches, h)
-		if err := k.release(reqs); err != nil {
+		if err := k.release(reqs, 0); err != nil {
 			return err
 		}
 		if len(reqs) > 0 {

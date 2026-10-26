@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"container/heap"
 	"errors"
 	"fmt"
 
@@ -128,6 +129,44 @@ type Collector struct {
 	batchesStarted []int64
 	membersStarted []int64
 	batchBlocked   map[[2]uint64]int64
+
+	// Changeovers (D-055, D-058; T-050; only when the program has a
+	// resource that changes over): per resource the units changing over Z,
+	// ∫Z, the changeovers started in [W, H], the complete ones (started at
+	// or after W, ended by H) and their total length. A changeover ends
+	// inside its grant's service span with no observation of its own, so
+	// the ends to come are kept in a min-heap (at most one per unit) and
+	// applied, in tick order, before each later observation and at Finish.
+	setups        bool
+	changing      []int64
+	changeover    []integral
+	setupsStarted []int64
+	setupsDone    []int64
+	setupTicks    []int64
+	setupEnds     setupEnds
+}
+
+// setupEnd is when a unit of resource r stops changing over.
+type setupEnd struct {
+	tick int64
+	r    int
+}
+
+// setupEnds is a min-heap of changeover ends by tick, then resource (the
+// order of ends at one tick does not change any integral).
+type setupEnds []setupEnd
+
+func (h setupEnds) Len() int { return len(h) }
+func (h setupEnds) Less(i, j int) bool {
+	return h[i].tick < h[j].tick || (h[i].tick == h[j].tick && h[i].r < h[j].r)
+}
+func (h setupEnds) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *setupEnds) Push(x any)   { *h = append(*h, x.(setupEnd)) }
+func (h *setupEnds) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
 }
 
 // NewCollector starts the collector of one replication of p.
@@ -161,6 +200,11 @@ func NewCollector(p *engine.Program) *Collector {
 		c.batchesStarted, c.membersStarted = make([]int64, n), make([]int64, n)
 		c.batchBlocked = map[[2]uint64]int64{}
 	}
+	if p.HasSetups() {
+		c.setups = true
+		c.changing, c.changeover = make([]int64, r), make([]integral, r)
+		c.setupsStarted, c.setupsDone, c.setupTicks = make([]int64, r), make([]int64, r), make([]int64, r)
+	}
 	if p.HasCalendars() {
 		c.calendars = true
 		c.onShift = make([]int64, r)
@@ -177,17 +221,20 @@ func NewCollector(p *engine.Program) *Collector {
 }
 
 // shift keeps the calendar integrals of resource i (D-058) at tick t,
-// after U, S, D or K changed.
+// after U, S, D, K or Z changed.
 func (c *Collector) shift(i int, t int64) {
 	if !c.calendars || !c.p.ResourceHasCalendar(i) {
 		return
 	}
-	u, s, d, k := c.busy[i].level, c.onShift[i], int64(0), int64(0)
+	u, s, d, k, z := c.busy[i].level, c.onShift[i], int64(0), int64(0), int64(0)
 	if c.breakdowns {
 		d = c.down[i].level
 	}
 	if c.finite {
 		k = c.heldUnits[i]
+	}
+	if c.setups {
+		z = c.changing[i]
 	}
 	a := min(s, int64(c.p.ResourceCapacity(i))-d)
 	c.scheduled[i].set(s, t, c.w, c.h)
@@ -195,7 +242,19 @@ func (c *Collector) shift(i int, t int64) {
 	c.overtime[i].set(max(u-s, 0), t, c.w, c.h)
 	c.available[i].set(a, t, c.w, c.h)
 	c.idle[i].set(max(a-u, 0), t, c.w, c.h)
-	c.processing[i].set(min(u-k, s), t, c.w, c.h)
+	c.processing[i].set(min(u-k-z, s), t, c.w, c.h) // P = U − K − Z (ELECTRONICS_LINE §5)
+}
+
+// endSetups applies the changeover ends due by tick t, in tick order: U,
+// S, D and K have not changed since the last observation, so each end's
+// integrals are kept at its own tick.
+func (c *Collector) endSetups(t int64) {
+	for len(c.setupEnds) > 0 && c.setupEnds[0].tick <= t {
+		e := heap.Pop(&c.setupEnds).(setupEnd)
+		c.changing[e.r]--
+		c.changeover[e.r].set(c.changing[e.r], e.tick, c.w, c.h)
+		c.shift(e.r, e.tick)
+	}
 }
 
 func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
@@ -206,11 +265,17 @@ func (c *Collector) inWindow(t int64) bool { return c.w <= t && t <= c.h }
 // (T-022 review). Build accepts only finished collectors; a collector
 // observes nothing after Finish.
 func (c *Collector) Finish() {
+	if c.setups {
+		c.endSetups(c.h) // a later end is cut at H by the integrals
+	}
 	c.arrived, c.entered, c.since, c.batchBlocked, c.finished = nil, nil, nil, nil, true
 }
 
 // Observe implements engine.Observer.
 func (c *Collector) Observe(o engine.Observation) {
+	if c.setups {
+		c.endSetups(o.Tick)
+	}
 	switch o.Kind {
 	case engine.ObsArrival:
 		c.arrived[o.Entity] = o.Tick
@@ -266,6 +331,22 @@ func (c *Collector) Observe(o engine.Observation) {
 			c.batchesStarted[o.Node]++
 			c.membersStarted[o.Node] += o.Value
 		}
+	case engine.ObsSetup:
+		// D-055, D-058: a changeover of Value ticks on a unit of Resource
+		// from now (a 0-tick one counts, D-097 (a)); it started in [W, H],
+		// and is complete when it also ends by H (it is never cut short).
+		r := o.Resource
+		if c.inWindow(o.Tick) {
+			c.setupsStarted[r]++
+		}
+		if o.Tick >= c.w && o.Tick+o.Value <= c.h {
+			c.setupsDone[r]++
+			c.setupTicks[r] += o.Value
+		}
+		c.changing[r]++
+		c.changeover[r].set(c.changing[r], o.Tick, c.w, c.h)
+		c.shift(r, o.Tick)
+		heap.Push(&c.setupEnds, setupEnd{o.Tick + o.Value, r})
 	case engine.ObsResourceDown:
 		// Value is the resource's units down (D); At the failure clock.
 		c.down[o.Resource].set(o.Value, o.Tick, c.w, c.h)
@@ -351,6 +432,10 @@ func (c *Collector) block(n int, t int64, sign int64, batch uint64) {
 // processes (T-050), every one has batches[<process>]: the batches started
 // in [W, H] and their members (a batch is a process feature: its chamber
 // gets no resource_states entry for it; K counts a batch's bundle once).
+// With changeovers (T-050), every resource that changes over (listed even
+// without a finite buffer) adds ∫Z, the changeovers started in [W, H], the
+// complete ones and their ticks, and P = U − K − Z: off a calendar
+// ∫min(P, S) = ∫U − ∫K − ∫Z.
 func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
 	p, w, h := c.p, c.w, c.h
 	if c.batched {
@@ -362,14 +447,15 @@ func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
 			}
 		}
 	}
-	if !c.finite && !c.breakdowns && !c.calendars {
+	if !c.finite && !c.breakdowns && !c.calendars && !c.setups {
 		return
 	}
 	s.ResourceStates = make(map[string]simulation.ResourceState, p.ResourceCount())
 	for i := range p.ResourceCount() {
 		breaks := c.breakdowns && p.ResourceHasBreakdowns(i)
 		onCalendar := c.calendars && p.ResourceHasCalendar(i)
-		if !c.finite && !breaks && !onCalendar {
+		changes := c.setups && p.ResourceHasSetups(i)
+		if !c.finite && !breaks && !onCalendar && !changes {
 			continue // no line-flow feature applies to it
 		}
 		used := c.busy[i].total(w, h)
@@ -377,6 +463,11 @@ func (c *Collector) lineFlow(s *simulation.ReplicationSummary) {
 		if c.finite {
 			held := c.held[i].total(w, h)
 			st.BlockedTicks, st.ScheduledProcessingTicks = &held, used-held
+		}
+		if changes {
+			z, started, done, ticks := c.changeover[i].total(w, h), c.setupsStarted[i], c.setupsDone[i], c.setupTicks[i]
+			st.SetupTicks, st.SetupsStarted, st.SetupsCompleted, st.CompletedSetupTicks = &z, &started, &done, &ticks
+			st.ScheduledProcessingTicks -= z
 		}
 		if breaks {
 			down := c.down[i].total(w, h)

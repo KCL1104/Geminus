@@ -428,8 +428,9 @@ func nameNumbers(ir *model.ModelIR) []float64 {
 // values, and the calendars' periods, shift and exception times, the units
 // on shift and the release schedules' periods, segment starts, rates,
 // release times and quantities (T-049), and the batches' sizes and wait
-// limits (T-050) (views are presentation, not values; names are
-// nameNumbers').
+// limits and the changeovers' distributions (T-050, through the
+// resource's Distributions) (views are presentation, not values; names
+// are nameNumbers').
 func values(ir *model.ModelIR) []float64 {
 	var out []float64
 	add := func(p *float64) {

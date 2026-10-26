@@ -54,6 +54,9 @@ var kinds = map[engine.ObservationKind]simulation.TraceEventType{
 	engine.ObsFailure: simulation.TraceFailure, engine.ObsRework: simulation.TraceRework,
 	// D-049 (T-047): at the node the entity is blocked at (Observation.Node).
 	engine.ObsBlocked: simulation.TraceBlocked, engine.ObsUnblocked: simulation.TraceUnblocked,
+	// D-055 (T-050): at the process whose grant changes the unit over,
+	// with the resource changing over.
+	engine.ObsSetup: simulation.TraceSetupStart,
 }
 
 // Observe implements engine.Observer.
@@ -99,6 +102,9 @@ func (r *Recorder) Observe(o engine.Observation) {
 		// A batch member's service start and end name its batch (D-054;
 		// the schema allows batch_id on these two only).
 		ev.BatchID = engine.FormatBatchID(r.index, node, o.Batch)
+	}
+	if o.Kind == engine.ObsSetup {
+		ev.ResourceID = r.p.ResourceID(o.Resource)
 	}
 	r.events = append(r.events, ev)
 }

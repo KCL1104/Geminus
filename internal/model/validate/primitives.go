@@ -38,11 +38,12 @@ var Primitives = []Primitive{FiniteBuffer, Breakdowns, Lognormal, Weibull, Calen
 // parameter ranges of D-056 and D-075, the D-029 limits and the binding
 // stage of resource distributions); calendars and release schedules
 // (T-049: CALENDAR_INVALID, RELEASE_SCHEDULE_INVALID, D-050 R2 and R4);
-// batch processes (T-050: BATCH_INVALID, batches.go). Changeovers and
+// batch processes and changeovers (T-050: BATCH_INVALID, SETUP_INVALID
+// and the changeovers' references and distributions, batches.go).
 // T-051's primitives are added with their rules, never before. It is only
 // read, never iterated.
 var checked = map[Primitive]bool{FiniteBuffer: true, Breakdowns: true, Lognormal: true, Weibull: true,
-	Calendars: true, ReleaseSchedule: true, Batch: true}
+	Calendars: true, ReleaseSchedule: true, Batch: true, Setups: true}
 
 // Checked reports whether this validator implements p's semantic rules.
 func Checked(p Primitive) bool { return checked[p] }

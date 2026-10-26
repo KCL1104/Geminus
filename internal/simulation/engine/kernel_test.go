@@ -56,6 +56,13 @@ func (r *recorder) Observe(o Observation) {
 		return
 	case ObsResourceDown, ObsResourceUp, ObsBreakdownPending:
 		return // resource events (D-051), not an entity's
+	case ObsSetup:
+		// D-055 (T-050): part of the grant, between the entity's queueing
+		// and its service start, which follows; not a state of its own.
+		if r.state[o.Entity] != ObsQueueEnter || r.queued[o.Entity] != o.Node || r.p.resources[o.Resource].setup == nil {
+			r.t.Fatalf("a changeover of entity %d at %d out of a grant (state %d): %+v", o.Entity, o.Node, r.state[o.Entity], o)
+		}
+		return
 	case ObsArrival:
 		if _, seen := r.state[o.Entity]; seen {
 			r.t.Fatalf("entity %d arrived twice", o.Entity)
@@ -440,8 +447,9 @@ func FuzzKernel(f *testing.F) {
 	for _, m := range calendarSeeds(f) {
 		f.Add([]byte(m), uint32(0))
 	}
-	// T-050: models with batch processes (batch-goldens.json).
-	for _, m := range batchSeeds(f) {
+	// T-050: models with batch processes and changeovers (batch-goldens.json,
+	// setup-goldens.json).
+	for _, m := range append(batchSeeds(f), setupSeeds(f)...) {
 		f.Add([]byte(m), uint32(0))
 	}
 	f.Fuzz(func(t *testing.T, data []byte, index uint32) {

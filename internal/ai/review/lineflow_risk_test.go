@@ -125,6 +125,41 @@ var lineFlowRiskCases = map[validate.Primitive][]lineFlowRiskCase{
 		{"a batch added", func(c *model.ModelIR) { c.Nodes[0].Batch = &model.Batch{MinSize: 2, MaxSize: 2} }, Medium},
 		{"the same batch", func(c *model.ModelIR) { b := *c.Nodes[1].Batch; c.Nodes[1].Batch = &b }, Low},
 	},
+	// T-050 (D-057): any changeover parameter, either way. Resource 1
+	// (line) has setups: initial board_a, default constant 5, board_a ->
+	// board_b Weibull(2, 20), board_b -> board_a triangular(15, 25, 45).
+	validate.Setups: {
+		{"a shorter changeover", func(c *model.ModelIR) {
+			s := *c.Resources[1].Setups
+			s.Transitions = slices.Clone(s.Transitions)
+			min, mode, max := 10.0, 15.0, 30.0
+			s.Transitions[1].Distribution = model.Distribution{Type: model.DistTriangular, Min: &min, Mode: &mode, Max: &max}
+			c.Resources[1].Setups = &s
+		}, Medium},
+		{"a longer default", func(c *model.ModelIR) {
+			s, v := *c.Resources[1].Setups, 8.0
+			s.Default = &model.Distribution{Type: model.DistConstant, Value: &v}
+			c.Resources[1].Setups = &s
+		}, Medium},
+		{"another initial", func(c *model.ModelIR) { s := *c.Resources[1].Setups; s.Initial = "board_b"; c.Resources[1].Setups = &s }, Medium},
+		{"no initial", func(c *model.ModelIR) { s := *c.Resources[1].Setups; s.Initial = ""; c.Resources[1].Setups = &s }, Medium},
+		{"no default", func(c *model.ModelIR) { s := *c.Resources[1].Setups; s.Default = nil; c.Resources[1].Setups = &s }, Medium},
+		{"a transition removed", func(c *model.ModelIR) {
+			s := *c.Resources[1].Setups
+			s.Transitions = s.Transitions[:1]
+			c.Resources[1].Setups = &s
+		}, Medium},
+		{"no setups any more", func(c *model.ModelIR) { c.Resources[1].Setups = nil }, Medium},
+		{"setups added", func(c *model.ModelIR) {
+			v := 3.0
+			c.Resources[2].Setups = &model.Setups{Default: &model.Distribution{Type: model.DistConstant, Value: &v}}
+		}, Medium},
+		{"the same setups", func(c *model.ModelIR) {
+			s := *c.Resources[1].Setups
+			s.Transitions = slices.Clone(s.Transitions)
+			c.Resources[1].Setups = &s
+		}, Low},
+	},
 }
 
 // A primitive the validator checks (its gate lifted) must have server-risk

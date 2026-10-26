@@ -335,6 +335,7 @@ func (c *bchecker) unblockOne(u *cursor, p int) {
 		}
 		delete(c.bat.memberOf, bl.entity)
 	} else if c.p.nodes[bl.from].typ == model.NodeProcess {
+		c.suFree(bl.entity, bl.from) // its unit of a resource with setups (D-055)
 		c.release(u, bl.from, -1)
 	}
 	u.next(fmt.Sprintf("unblocked %d at %d", bl.entity, bl.from), func(o Observation) bool {

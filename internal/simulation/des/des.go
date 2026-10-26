@@ -34,9 +34,11 @@ import (
 // number needs a new version. des-go-0.2.0 (T-047) added finite buffers,
 // des-go-0.3.0 (T-048) resource breakdowns and the lognormal and Weibull
 // distributions, des-go-0.4.0 (T-049) resource calendars and source release
-// schedules, des-go-0.5.0 (T-050) batch processes; a model
-// using none of them gives des-go-0.1.0's Result bit for bit with only
-// engine_version different (ADR-026 D-047).
+// schedules, des-go-0.5.0 (T-050) batch processes and changeovers; a
+// model using none of them gives des-go-0.1.0's Result bit for bit with
+// only engine_version different (ADR-026 D-047), and neutral changeovers
+// (one entity type, no initial) give the Result without them plus their
+// resource_states entries.
 const Version = "des-go-0.5.0"
 
 // ErrWallTimeout: the run exceeded wall_timeout_seconds. Like the engine's

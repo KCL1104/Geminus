@@ -1,0 +1,38 @@
+--- FAIL: TestSetupGoldenResults (0.06s)
+    --- FAIL: TestSetupGoldenResults/G-SU1 (0.04s)
+        setup_test.go:46: resource states {}
+             hand-derived {"smt":{"in_use_ticks":1440000,"setup_ticks":720000,"setups_started":4,"setups_completed":4,"completed_setup_ticks":720000,"scheduled_processing_ticks":720000}}
+    --- FAIL: TestSetupGoldenResults/G-SU2 (0.00s)
+        setup_test.go:46: resource states {}
+             hand-derived {"smt":{"in_use_ticks":1680000,"setup_ticks":240000,"setups_started":1,"setups_completed":1,"completed_setup_ticks":240000,"scheduled_processing_ticks":1440000}}
+    --- FAIL: TestSetupGoldenResults/G-SU3 (0.00s)
+        setup_test.go:46: resource states {}
+             hand-derived {"m1":{"in_use_ticks":1080000,"setup_ticks":840000,"setups_started":4,"setups_completed":4,"completed_setup_ticks":840000,"scheduled_processing_ticks":240000},"m2":{"in_use_ticks":420000,"setup_ticks":180000,"setups_started":3,"setups_completed":3,"completed_setup_ticks":180000,"scheduled_processing_ticks":240000}}
+    --- FAIL: TestSetupGoldenResults/G-SU6 (0.00s)
+        setup_test.go:46: resource states {"smt":{"in_use_ticks":840000,"down_ticks":180000,"breakdowns_started":1,"repairs_completed":1,"completed_repair_ticks":180000,"available_ticks":2220000,"idle_ticks":1380000,"scheduled_processing_ticks":840000}}
+             hand-derived {"smt":{"in_use_ticks":840000,"setup_ticks":480000,"setups_started":2,"setups_completed":2,"completed_setup_ticks":480000,"down_ticks":180000,"breakdowns_started":1,"repairs_completed":1,"completed_repair_ticks":180000,"available_ticks":2220000,"idle_ticks":1380000,"scheduled_processing_ticks":360000}}
+    --- FAIL: TestSetupGoldenResults/G-SU7 (0.00s)
+        setup_test.go:46: resource states {"smt":{"in_use_ticks":3000000,"down_ticks":2400000,"breakdowns_started":4,"repairs_completed":4,"completed_repair_ticks":2400000,"available_ticks":4800000,"idle_ticks":1800000,"scheduled_processing_ticks":3000000}}
+             hand-derived {"smt":{"in_use_ticks":3000000,"setup_ticks":240000,"setups_started":2,"setups_completed":2,"completed_setup_ticks":240000,"down_ticks":2400000,"breakdowns_started":4,"repairs_completed":4,"completed_repair_ticks":2400000,"available_ticks":4800000,"idle_ticks":1800000,"scheduled_processing_ticks":2760000}}
+    --- FAIL: TestSetupGoldenResults/G-SU8 (0.00s)
+        setup_test.go:46: resource states {}
+             hand-derived {"smt":{"in_use_ticks":660000,"setup_ticks":300000,"setups_started":2,"setups_completed":1,"completed_setup_ticks":180000,"scheduled_processing_ticks":360000}}
+    --- FAIL: TestSetupGoldenResults/G-SU9 (0.00s)
+        setup_test.go:46: resource states {"smt":{"in_use_ticks":2520000,"scheduled_ticks":6000000,"scheduled_in_use_ticks":2040000,"overtime_ticks":480000,"available_ticks":6000000,"idle_ticks":3960000,"scheduled_processing_ticks":2040000}}
+             hand-derived {"smt":{"in_use_ticks":2520000,"setup_ticks":720000,"setups_started":3,"setups_completed":3,"completed_setup_ticks":720000,"scheduled_ticks":6000000,"scheduled_in_use_ticks":2040000,"overtime_ticks":480000,"available_ticks":6000000,"idle_ticks":3960000,"scheduled_processing_ticks":1320000}}
+    --- FAIL: TestSetupGoldenResults/G-SU10 (0.00s)
+        setup_test.go:46: resource states {"smt":{"in_use_ticks":780000,"blocked_ticks":0,"scheduled_processing_ticks":780000},"tester":{"in_use_ticks":1800000,"blocked_ticks":0,"scheduled_processing_ticks":1800000}}
+             hand-derived {"smt":{"in_use_ticks":780000,"blocked_ticks":0,"setup_ticks":240000,"setups_started":2,"setups_completed":2,"completed_setup_ticks":240000,"scheduled_processing_ticks":540000},"tester":{"in_use_ticks":1800000,"blocked_ticks":0,"scheduled_processing_ticks":1800000}}
+--- FAIL: TestNeutralSetupsKeepTheResult (0.01s)
+    setup_test.go:168: deterministic-queue.json r0: resource states map[]
+    setup_test.go:168: deterministic-queue.json r1: resource states map[]
+    setup_test.go:168: congested-queue.json r0: resource states map[]
+    setup_test.go:168: congested-queue.json r1: resource states map[]
+    setup_test.go:168: default-delivery.json r0: resource states map[]
+    setup_test.go:168: default-delivery.json r1: resource states map[]
+    setup_test.go:168: report-example.json r0: resource states map[]
+    setup_test.go:168: report-example.json r1: resource states map[]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.080s
+FAIL
+exit 1 elapsed 1s

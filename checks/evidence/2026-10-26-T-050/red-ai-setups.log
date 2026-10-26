@@ -1,0 +1,34 @@
+--- FAIL: TestLiftedPrimitivesHaveRiskCases (0.01s)
+    lineflow_risk_test.go:189: setups, a shorter changeover: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, a longer default: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, another initial: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, no initial: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, no default: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, a transition removed: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, no setups any more: server risk low, want at least medium
+    lineflow_risk_test.go:189: setups, setups added: server risk low, want at least medium
+--- FAIL: TestSetupRisk (0.06s)
+    --- FAIL: TestSetupRisk/a_shorter_default (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestSetupRisk/a_longer_transition (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestSetupRisk/a_lognormal_changeover (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestSetupRisk/the_setups_removed (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestSetupRisk/setups_added (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+    --- FAIL: TestSetupRisk/another_initial (0.00s)
+        setup_risk_test.go:63: status "ready", server risk "low", risk "low", want ready "medium" (map[])
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.085s
+--- FAIL: TestScenarioMode (0.00s)
+    proposal_test.go:560: the scenario rules do not say "/resources/<i>/setups/default"
+    proposal_test.go:560: the scenario rules do not say "/resources/<i>/setups/transitions/<j>/distribution"
+    proposal_test.go:560: the scenario rules do not say "never adds or removes setups"
+    proposal_test.go:560: the scenario rules do not say "never changes initial or a transition's from or to"
+    proposal_test.go:560: the scenario rules do not say "changeover time"
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.014s
+FAIL
+exit 1 elapsed 0s

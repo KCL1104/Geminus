@@ -179,8 +179,8 @@ func TestScenarioMayChangeShiftLabels(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			r := mustApply(t, lineFlow(t), "["+testCalendar+op+"]", Scenario)
 			// valid-line-flow-ir.json also uses primitives whose gate is
-			// still on (setups, declared metrics), so the
-			// candidate is refused by the gate alone.
+			// still on (the declared metrics), so the candidate is refused
+			// by the gate alone.
 			if !r.Applied() || len(r.PatchIssues) > 0 || !gated(r) {
 				t.Fatalf("patch %v, candidate %v", r.PatchIssues, r.Validation.Issues)
 			}

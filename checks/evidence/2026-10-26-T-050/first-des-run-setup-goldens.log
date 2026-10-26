@@ -1,0 +1,51 @@
+=== RUN   TestSetupGoldenResults
+=== RUN   TestSetupGoldenResults/G-SU1
+=== RUN   TestSetupGoldenResults/G-SU2
+=== RUN   TestSetupGoldenResults/G-SU3
+=== RUN   TestSetupGoldenResults/G-SU6
+=== RUN   TestSetupGoldenResults/G-SU7
+=== RUN   TestSetupGoldenResults/G-SU8
+=== RUN   TestSetupGoldenResults/G-SU9
+=== RUN   TestSetupGoldenResults/G-SU10
+--- PASS: TestSetupGoldenResults (0.07s)
+    --- PASS: TestSetupGoldenResults/G-SU1 (0.04s)
+    --- PASS: TestSetupGoldenResults/G-SU2 (0.01s)
+    --- PASS: TestSetupGoldenResults/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldenResults/G-SU9 (0.01s)
+    --- PASS: TestSetupGoldenResults/G-SU10 (0.00s)
+=== RUN   TestSetupTrace
+    setup_test.go:103: 27 sampled changeovers
+--- PASS: TestSetupTrace (0.01s)
+=== RUN   TestNeutralSetupsKeepTheResult
+--- PASS: TestNeutralSetupsKeepTheResult (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/des	0.105s
+=== RUN   TestNeutralSetupsChangeNothing
+    neutral_setups_test.go:141: 1994 of 6000 random models with neutral setups compiled, 436 with finite buffers, 908 with breakdowns, 550 with calendars; 1169148 observations (25984 ResourceDown, 4506 Blocked) identical to des-go-0.4.0
+--- PASS: TestNeutralSetupsChangeNothing (2.02s)
+=== RUN   TestSetupGoldens
+=== RUN   TestSetupGoldens/G-SU1
+=== RUN   TestSetupGoldens/G-SU2
+=== RUN   TestSetupGoldens/G-SU3
+=== RUN   TestSetupGoldens/G-SU6
+=== RUN   TestSetupGoldens/G-SU7
+=== RUN   TestSetupGoldens/G-SU8
+=== RUN   TestSetupGoldens/G-SU9
+=== RUN   TestSetupGoldens/G-SU10
+--- PASS: TestSetupGoldens (0.01s)
+    --- PASS: TestSetupGoldens/G-SU1 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU2 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU3 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU6 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU7 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU8 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU9 (0.00s)
+    --- PASS: TestSetupGoldens/G-SU10 (0.00s)
+=== RUN   TestSetupStreamsPerUnit
+--- PASS: TestSetupStreamsPerUnit (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	2.037s
+exit 0 elapsed 5s

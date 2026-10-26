@@ -55,6 +55,18 @@ type Program struct {
 	calendars  []ccalendar
 	calendared bool
 	batches    bool // some process serves batches (D-054, T-050)
+	setups     bool // some resource changes over (D-055, T-050)
+}
+
+// csetup is a resource's changeovers (D-055): the entity type every unit
+// starts in (-1: none, a unit takes its first entity's type without a
+// changeover), the default changeover time (nil: 0 ticks) and the
+// transitions by (from, to) entity type index. trans is only looked up,
+// never iterated.
+type csetup struct {
+	initial int
+	def     *sampler
+	trans   map[[2]int]*sampler
 }
 
 // cbatch is a batch process's batch (D-054): its sizes and its wait limit
@@ -101,6 +113,12 @@ type cnode struct {
 	xEnd int64
 	// batch is a batch process's batch (D-054, T-050), nil otherwise.
 	batch *cbatch
+	// product is a source's entity type (its index in the model's entity
+	// types by ID; D-055, T-050); setupRes is the resource with changeovers
+	// a process needs (one unit, at most one such resource; D-055), -1 for
+	// none.
+	product  int
+	setupRes int
 }
 
 type requirement struct {
@@ -126,6 +144,8 @@ type cresource struct {
 	// one (S = capacity); cal its calendar's index in Program.calendars.
 	pattern *calendar.Pattern
 	cal     int
+	// setup is the resource's changeovers (D-055, T-050), nil without.
+	setup *csetup
 }
 
 // Compile checks a run input and builds its Program. The IR is validated
@@ -182,13 +202,47 @@ var validateIR = validate.IR
 // des-go-0.2.0 (T-047, D-049); breakdowns, lognormal and Weibull since
 // des-go-0.3.0 (T-048, D-051, D-056); calendars and release schedules
 // since des-go-0.4.0 (T-049, D-052, D-053); batch processes since
-// des-go-0.5.0 (T-050, D-054). Changeovers and T-051's primitives are
-// added together with their kernel change. It is kept apart from the
-// validator's list so that a primitive whose rules are checked but whose
-// kernel is not there yet is still refused. Only read, never iterated.
+// des-go-0.5.0 (T-050, D-054, D-055). T-051's primitives are added
+// together with their kernel change. It is kept apart from the validator's
+// list so that a primitive whose rules are checked but whose kernel is not
+// there yet is still refused. Only read, never iterated.
 var kernelExecutes = map[validate.Primitive]bool{validate.FiniteBuffer: true,
 	validate.Breakdowns: true, validate.Lognormal: true, validate.Weibull: true,
-	validate.Calendars: true, validate.ReleaseSchedule: true, validate.Batch: true}
+	validate.Calendars: true, validate.ReleaseSchedule: true, validate.Batch: true, validate.Setups: true}
+
+// newSetup compiles a resource's changeovers: every entity type it names
+// must exist, and each transition be between two types, at most once.
+func newSetup(s model.Setups, types map[string]int, unit model.TimeUnit, empirical map[string][]int64) (*csetup, error) {
+	cs := &csetup{initial: -1, trans: map[[2]int]*sampler{}}
+	if s.Initial != "" {
+		t, ok := types[s.Initial]
+		if !ok {
+			return nil, fmt.Errorf("no entity type %q", s.Initial)
+		}
+		cs.initial = t
+	}
+	if s.Default != nil {
+		d, err := newSampler(*s.Default, unit, empirical[s.Default.SamplesRef])
+		if err != nil {
+			return nil, err
+		}
+		cs.def = d
+	}
+	for _, tr := range s.Transitions {
+		from, ok1 := types[tr.From]
+		to, ok2 := types[tr.To]
+		key := [2]int{from, to}
+		if !ok1 || !ok2 || from == to || cs.trans[key] != nil {
+			return nil, fmt.Errorf("the transition from %q to %q", tr.From, tr.To)
+		}
+		d, err := newSampler(tr.Distribution, unit, empirical[tr.Distribution.SamplesRef])
+		if err != nil {
+			return nil, err
+		}
+		cs.trans[key] = d
+	}
+	return cs, nil
+}
 
 // unsupported refuses every use of a primitive the kernel does not execute,
 // so no model is ever run as if such a member were absent (D-063).
@@ -417,6 +471,20 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 			}
 		}
 	}
+	// D-055 (T-050): entity types by ID; a source's entities are its
+	// type's, a changeover is between two of them.
+	types := make(map[string]int, len(ir.EntityTypes))
+	for _, e := range ir.EntityTypes {
+		types[e.ID] = 0
+	}
+	ids := make([]string, 0, len(types))
+	for id := range types {
+		ids = append(ids, id)
+	}
+	slices.Sort(ids)
+	for i, id := range ids {
+		types[id] = i
+	}
 	resIndex := make(map[string]int, len(resources))
 	for i, r := range resources {
 		resIndex[r.ID] = i
@@ -447,6 +515,16 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 			c.ttrMax = c.ttr.bound()
 			p.breakdowns = true
 		}
+		if su := r.Setups; su != nil {
+			// D-055 (T-050); the validator has checked the references and
+			// the transitions (UNKNOWN_REFERENCE, SETUP_INVALID).
+			cs, err := newSetup(*su, types, model.TimeUnit(ir.TimeUnit), empirical)
+			if err != nil {
+				return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.SetupInvalid, "/model/resources", r.ID+": "+err.Error(), model.SeverityError)}}
+			}
+			c.setup = cs
+			p.setups = true
+		}
 		p.resources = append(p.resources, c)
 	}
 	flows := slices.Clone(ir.Flows)
@@ -454,7 +532,7 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 
 	p.nodes = make([]cnode, len(nodes))
 	for i, n := range nodes {
-		c := cnode{id: n.ID, typ: n.Type, buffer: -1, outcome: n.Outcome}
+		c := cnode{id: n.ID, typ: n.Type, buffer: -1, outcome: n.Outcome, product: -1, setupRes: -1}
 		var err error
 		sample := func(d *model.Distribution) *sampler {
 			if err != nil {
@@ -476,6 +554,9 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 				c.arrival = sample(&n.Arrival.Distribution)
 			}
 			c.maxEntities = n.Arrival.MaxEntities
+			if t, ok := types[n.EntityType]; ok {
+				c.product = t
+			}
 			p.sources = append(p.sources, i)
 		case model.NodeProcess:
 			c.service = sample(&n.ServiceTime.Distribution)
@@ -501,6 +582,18 @@ func (p *Program) build(ir *model.ModelIR, empirical map[string][]int64) error {
 				c.requires = append(c.requires, requirement{resource: resIndex[r.ResourceID], units: r.Units})
 			}
 			slices.SortFunc(c.requires, func(a, b requirement) int { return cmp.Compare(a.resource, b.resource) })
+			// D-055's P0 limits (T-050), checked by the validator
+			// (SETUP_INVALID) and again here: one unit of at most one
+			// resource with changeovers, none in a batch process.
+			for _, q := range c.requires {
+				if p.resources[q.resource].setup == nil {
+					continue
+				}
+				if q.units != 1 || c.setupRes >= 0 || c.batch != nil {
+					return &InputError{Issues: []model.ValidationIssue{model.NewIssue(validate.SetupInvalid, "/model/nodes", n.ID+": a bundle D-055 does not allow", model.SeverityError)}}
+				}
+				c.setupRes = q.resource
+			}
 			// D-050 B2: the bundle's TTRmax is its resources' longest
 			// repair, none (-1) when one has no bound.
 			for _, q := range c.requires {
@@ -663,6 +756,13 @@ func (p *Program) HasBatches() bool { return p.batches }
 
 // IsBatch reports whether node i is a batch process.
 func (p *Program) IsBatch(i int) bool { return p.nodes[i].batch != nil }
+
+// HasSetups reports whether some resource changes over (D-055): only then
+// are Setup observations made and a Result has setup members.
+func (p *Program) HasSetups() bool { return p.setups }
+
+// ResourceHasSetups reports whether resource i changes over.
+func (p *Program) ResourceHasSetups(i int) bool { return p.resources[i].setup != nil }
 
 // BufferCapacity is process i's buffer capacity, 0 when unlimited.
 func (p *Program) BufferCapacity(i int) int { return p.nodes[i].capacity }

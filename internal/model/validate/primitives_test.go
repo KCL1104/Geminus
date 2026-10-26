@@ -26,7 +26,7 @@ var liftedPrimitives = map[validate.Primitive]bool{
 	validate.FiniteBuffer: true,                                                   // T-047
 	validate.Breakdowns:   true, validate.Lognormal: true, validate.Weibull: true, // T-048
 	validate.Calendars: true, validate.ReleaseSchedule: true, // T-049
-	validate.Batch: true, // T-050
+	validate.Batch: true, validate.Setups: true, // T-050
 }
 
 func TestPrimitiveCatalog(t *testing.T) {
@@ -58,14 +58,13 @@ func TestPrimitiveGate(t *testing.T) {
 		{"/metrics/2/type", "the flow_count metric"},
 		{"/metrics/3/type", "the sink_count metric"},
 		{"/metrics/4/type", "the period_throughput metric"},
-		{"/resources/1/setups", "changeovers"},
 	}
 	// The finite buffers of nodes 3 and 4 are checked since T-047, the
 	// breakdowns of resource 1, their lognormal repair time and the Weibull
-	// changeover time since T-048 (inside setups, which are still refused),
-	// the calendars (the root member, calendar_id and shift_capacity) and
-	// the release schedules of nodes 5–7 since T-049 and the batch of node
-	// 1 since T-050, so they are no use of an unsupported primitive.
+	// changeover time since T-048, the calendars (the root member,
+	// calendar_id and shift_capacity) and the release schedules of nodes
+	// 5–7 since T-049, the batch of node 1 and the changeovers of resource 1
+	// since T-050, so they are no use of an unsupported primitive.
 	if r.Valid() || len(r.Issues) != len(want) {
 		t.Fatalf("got %d issues %v", len(r.Issues), r.Issues)
 	}
@@ -86,9 +85,6 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		edit func(ir map[string]any)
 		path string
 	}{
-		"setups": {func(ir map[string]any) {
-			obj(ir["resources"].([]any)[0])["setups"] = map[string]any{"default": map[string]any{"type": "constant", "value": 1}}
-		}, "/resources/0/setups"},
 		"system wip": {func(ir map[string]any) {
 			ir["metrics"] = []any{map[string]any{"id": "wip", "type": "system_wip"}}
 		}, "/metrics/0/type"},
@@ -117,8 +113,8 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 	}
 	// So does a model with a primitive whose rules are checked (a finite
 	// buffer since T-047; breakdowns, lognormal and Weibull since T-048;
-	// calendars and release schedules since T-049; batches since T-050):
-	// no gate issue, the later stages run.
+	// calendars and release schedules since T-049; batches and changeovers
+	// since T-050): no gate issue, the later stages run.
 	for name, checked := range map[string]func(ir map[string]any){
 		"finite buffer": func(ir map[string]any) {
 			ir["nodes"] = append(nodes(ir), map[string]any{"id": "q", "type": "queue", "capacity": 3})
@@ -145,6 +141,9 @@ func TestPrimitiveGateStopsTheStages(t *testing.T) {
 		},
 		"batch": func(ir map[string]any) {
 			obj(nodes(ir)[1])["batch"] = map[string]any{"min_size": 2, "max_size": 2}
+		},
+		"setups": func(ir map[string]any) {
+			obj(ir["resources"].([]any)[0])["setups"] = map[string]any{"default": map[string]any{"type": "constant", "value": 1}}
 		},
 	} {
 		r = run(t, edit(t, func(ir map[string]any) {

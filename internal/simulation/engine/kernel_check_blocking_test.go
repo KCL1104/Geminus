@@ -76,6 +76,10 @@ type bchecker struct {
 	// Batch processes (D-054, T-050; kernel_check_batch_test.go): nil
 	// without one.
 	bat *batCheck
+
+	// Changeovers and the timing of constant services (D-055, T-050;
+	// kernel_check_setup_test.go).
+	su *suCheck
 }
 
 func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
@@ -100,6 +104,7 @@ func newBChecker(p *Program, ir *model.ModelIR, rep uint32) *bchecker {
 	}
 	c.cal = newCalCheck(p, ir)
 	c.bat = newBatCheck(p, ir)
+	c.su = newSuCheck(p, ir)
 	for i, r := range p.resources {
 		c.ttf[i], c.ttr[i] = -1, -1
 		for _, x := range ir.Resources {
@@ -272,12 +277,15 @@ func (c *bchecker) stalled(e uint64) bool {
 	return true
 }
 
-// goDown takes a unit of r down for failure clock u (D=D+1).
-func (c *bchecker) goDown(o Observation, r, u int) {
+// goDown takes a unit of r down for failure clock u (D=D+1); on a
+// resource with setups the unit which (-1: the idle one of least index,
+// D-097 (c)).
+func (c *bchecker) goDown(o Observation, r, u, which int) {
 	if c.isDown[r] == nil || u < 0 || u >= len(c.isDown[r]) || c.isDown[r][u] {
 		c.fail("tick %d: unit %d of %s goes down twice or has no failure clock", o.Tick, u, c.p.resources[r].id)
 		return
 	}
+	c.suDown(r, u, which)
 	c.down[r]++
 	c.isDown[r][u], c.downSince[r][u] = true, o.Tick
 	c.stats.downs++
@@ -309,7 +317,7 @@ func (c *bchecker) failure(o Observation) {
 		if idle <= 0 {
 			c.fail("tick %d: %s/%d went down with no idle unit (in use %d, down %d)", o.Tick, c.p.resources[r].id, u, c.inUse[r], c.down[r])
 		}
-		c.goDown(o, r, u)
+		c.goDown(o, r, u, -1)
 	case ObsBreakdownPending:
 		if idle > 0 {
 			c.fail("tick %d: %s/%d waits with %d idle units", o.Tick, c.p.resources[r].id, u, idle)
@@ -326,13 +334,15 @@ func (c *bchecker) failure(o Observation) {
 }
 
 // repair checks a repair: the unit was down for the constant TTR, and its
-// next failure is due a TTF later.
-func (c *bchecker) repair(o Observation) {
+// next failure is due a TTF later. It returns the unit repaired on a
+// resource with setups, -1 otherwise.
+func (c *bchecker) repair(o Observation) int {
 	r, u := o.Resource, o.At
 	if c.isDown[r] == nil || u < 0 || u >= len(c.isDown[r]) || !c.isDown[r][u] {
 		c.fail("tick %d: %s/%d repaired while not down", o.Tick, c.p.resources[r].id, u)
-		return
+		return -1
 	}
+	unit := c.suUp(r, u)
 	if c.ttr[r] >= 0 && o.Tick-c.downSince[r][u] != c.ttr[r] {
 		c.fail("tick %d: %s/%d down since %d, TTR %d", o.Tick, c.p.resources[r].id, u, c.downSince[r][u], c.ttr[r])
 	}
@@ -345,6 +355,7 @@ func (c *bchecker) repair(o Observation) {
 	if o.Value != int64(c.down[r]) {
 		c.fail("tick %d: %s down %d after a repair, reconstructed %d", o.Tick, c.p.resources[r].id, o.Value, c.down[r])
 	}
+	return unit
 }
 
 // expect pops the next observation of the group and compares it.
@@ -379,16 +390,18 @@ func (c *bchecker) release(u *cursor, process int, sign int) {
 			continue
 		}
 		// D-051: the released units go down for the waiting failures
-		// first, in the order the failures came (D-049: before any grant).
+		// first, in the order the failures came (D-049: before any grant);
+		// on a resource with setups the one the release freed (D-097 (c)).
 		for range min(q.units, len(c.pending[q.resource])) {
 			unit := c.pending[q.resource][0]
 			c.pending[q.resource] = c.pending[q.resource][1:]
 			if o, ok := u.next(fmt.Sprintf("%s/%d down for its waiting failure", c.p.resources[q.resource].id, unit), func(o Observation) bool {
 				return o.Kind == ObsResourceDown && o.Resource == q.resource && o.At == unit
 			}); ok {
-				c.goDown(o, q.resource, unit)
+				c.goDown(o, q.resource, unit, c.su.freed[q.resource])
 			}
 		}
+		c.su.freed[q.resource] = -1
 	}
 }
 
@@ -404,6 +417,7 @@ func (c *bchecker) finishGroup() {
 			a := g[u.at]
 			u.at++
 			c.arrival(a)
+			c.suArrival(a)
 			c.state[a.Entity] = "route"
 			c.ids[a.Entity] = FormatEntityID(c.rep, c.p.nodes[a.Node].id, uint64(a.Value))
 			c.route(u, a.Entity, a.Node)
@@ -433,8 +447,11 @@ func (c *bchecker) finishGroup() {
 			c.fail("service end of %d at %d from %q", end.Entity, end.Node, c.state[end.Entity])
 		}
 		c.nService--
-		// Blocked iff the event ends in Blocked; then nothing is released.
+		c.serviceEnded(end)
+		// Blocked iff the event ends in Blocked; then nothing is released
+		// (a unit of a resource with setups stays the entity's, D-055).
 		if g[len(g)-1].Kind != ObsBlocked {
+			c.suFree(end.Entity, end.Node)
 			c.release(u, end.Node, -1)
 		}
 		u.next("service end", func(o Observation) bool { return o == end })
@@ -452,14 +469,14 @@ func (c *bchecker) finishGroup() {
 		// an event of its own).
 		c.sweep(c.lastTick)
 		u.at++
-		c.repair(first)
+		repaired := c.repair(first)
 		if r := first.Resource; len(c.pending[r]) > 0 {
 			unit := c.pending[r][0]
 			c.pending[r] = c.pending[r][1:]
 			if o, ok := u.next(fmt.Sprintf("%s/%d down on the repaired unit for its waiting failure", c.p.resources[r].id, unit), func(o Observation) bool {
 				return o.Kind == ObsResourceDown && o.Resource == r && o.At == unit
 			}); ok {
-				c.goDown(o, r, unit)
+				c.goDown(o, r, unit, repaired)
 			}
 		}
 	default:
@@ -564,6 +581,7 @@ func (c *bchecker) dispatch(u *cursor) {
 			continue
 		}
 		c.occupied[w.process]--
+		c.grantService(u, w.entity, w.process) // a changeover first (D-055)
 		u.next(fmt.Sprintf("service start of %d at %d", w.entity, w.process), func(o Observation) bool {
 			return o.Kind == ObsServiceStart && o.Entity == w.entity && o.Node == w.process && o.Batch == 0
 		})

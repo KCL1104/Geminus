@@ -1,0 +1,45 @@
+--- FAIL: TestSetupRules (0.01s)
+    --- FAIL: TestSetupRules/a_default_only (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/a_zero_default (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/transitions_both_ways (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/an_initial_type (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/lognormal_and_Weibull_changeovers (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/an_unknown_initial_type (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [UNKNOWN_REFERENCE /resources/0/setups/initial error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/an_unknown_from (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [UNKNOWN_REFERENCE /resources/0/setups/transitions/0/from error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/an_unknown_to (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [UNKNOWN_REFERENCE /resources/0/setups/transitions/0/to error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_self_transition (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [SETUP_INVALID /resources/0/setups/transitions/0 error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_pair_twice (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [SETUP_INVALID /resources/0/setups/transitions/2 error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_malformed_default (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [DISTRIBUTION_INVALID /resources/0/setups/default error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_changeover_over_365_days (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [LIMIT_EXCEEDED /resources/0/setups/transitions/0/distribution/value error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_Weibull_shape_out_of_range (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [DISTRIBUTION_INVALID /resources/0/setups/default error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/two_units_of_a_resource_with_changeovers (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [SETUP_INVALID /nodes/1/requires/0 error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/two_resources_with_changeovers_in_one_bundle (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want [[SETUP_INVALID /nodes/1/requires/1 error]]
+    --- FAIL: TestSetupRules/one_resource_with_changeovers_and_one_without (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+    --- FAIL: TestSetupRules/a_batch_process_needing_a_resource_with_changeovers (0.00s)
+        calendars_test.go:88: issue 0: [PRIMITIVE_NOT_SUPPORTED /resources/0/setups error], want [SETUP_INVALID /nodes/1/requires/0 error] (this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model)
+    --- FAIL: TestSetupRules/a_resource_with_changeovers_and_breakdowns (0.00s)
+        calendars_test.go:84: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}], want []
+--- FAIL: TestSetupMessages (0.00s)
+    setups_test.go:95: message "this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model" does not say "differ"
+    setups_test.go:95: message "this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model" does not say "batch"
+    setups_test.go:91: issues [{PRIMITIVE_NOT_SUPPORTED /resources/0/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error} {PRIMITIVE_NOT_SUPPORTED /resources/1/setups this build does not support changeovers (ADR-026 D-055) yet; remove it to publish or run the model error}]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/model/validate	0.058s
+FAIL
+exit 1 elapsed 1s

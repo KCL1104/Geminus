@@ -52,6 +52,11 @@ const (
 	PurposeRepairPrefix  = "ttr/"
 )
 
+// PurposeSetupPrefix (ADR-026 D-055, T-050): unit u of a resource that
+// changes over draws its changeover times from (resource ID, "setup/<u>"),
+// so another unit of capacity never shifts a unit's draws (G-S5).
+const PurposeSetupPrefix = "setup/"
+
 // ReplicationSeed is the first 8 bytes, little-endian, of
 // SHA256("dt-rep-v1\x00" || uint64LE(baseSeed) || uint32LE(index)).
 func ReplicationSeed(baseSeed uint64, index uint32) uint64 {

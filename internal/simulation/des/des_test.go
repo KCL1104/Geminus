@@ -580,8 +580,9 @@ func FuzzRun(f *testing.F) {
 	// never stalls (R3), so ErrStalled stays an untyped failure too.
 	// T-049: models with calendars and release schedules (R2, R4: a valid
 	// one never stalls either).
-	// T-050: models with batch processes (R1, R2, R4 hold for them too).
-	for _, file := range []string{"blocking-goldens.json", "breakdown-goldens.json", "calendar-goldens.json", "batch-goldens.json"} {
+	// T-050: models with batch processes and changeovers (R1, R2, R4 hold
+	// for them too).
+	for _, file := range []string{"blocking-goldens.json", "breakdown-goldens.json", "calendar-goldens.json", "batch-goldens.json", "setup-goldens.json"} {
 		if err := json.Unmarshal(contracttest.ReadFile(f, filepath.Join(contracttest.Root(f), "testdata/simulation", file)), &doc); err != nil {
 			f.Fatal(err)
 		}

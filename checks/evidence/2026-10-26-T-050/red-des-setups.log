@@ -1,0 +1,25 @@
+--- FAIL: TestSetupGoldenResults (0.03s)
+    --- FAIL: TestSetupGoldenResults/G-SU1 (0.03s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU2 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU3 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (2 issue(s)) engine: invalid run input (2 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU6 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU7 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU8 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU9 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+    --- FAIL: TestSetupGoldenResults/G-SU10 (0.00s)
+        setup_test.go:46: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+--- FAIL: TestSetupTrace (0.00s)
+    setup_test.go:67: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+--- FAIL: TestNeutralSetupsKeepTheResult (0.01s)
+    setup_test.go:160: run: engine: invalid run input (1 issue(s)) engine: invalid run input (1 issue(s))
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/simulation/des	0.052s
+FAIL
+exit 1 elapsed 1s

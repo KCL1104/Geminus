@@ -67,7 +67,10 @@ func modeRules(mode provider.Mode) string {
 			"/nodes/<i>/batch/max_size and /nodes/<i>/batch/max_wait (replace only: a scenario never adds or removes a batch or a max_wait); " +
 			"1 <= min_size <= max_size <= 10000, a batch that may start below max_size needs max_wait (in model time units), and a finite " +
 			"buffer in front of it must hold max_size, or the candidate is refused (BATCH_INVALID); any change to a batch, either way, is at " +
-			"least medium risk. Every distribution a scenario may replace can be " +
+			"least medium risk. For a resource with changeovers (setups) it may replace /resources/<i>/setups/default (when it has one) and " +
+			"/resources/<i>/setups/transitions/<j>/distribution (replace only: a scenario never adds or removes setups, a default or a " +
+			"transition, and never changes initial or a transition's from or to); any change to a changeover time, either way, is at least " +
+			"medium risk. Every distribution a scenario may replace can be " +
 			"constant, exponential, triangular, empirical (an existing samples_ref), lognormal (mean, cv with 0 < cv <= 10) or weibull (shape, scale " +
 			"with 0.1 <= shape <= 20). It never adds or removes entities and never changes IDs, names, views or metadata.\n"
 	}
