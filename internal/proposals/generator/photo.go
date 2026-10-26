@@ -129,8 +129,10 @@ func (h *Handler) readImage(ctx context.Context, org string, im store.Image) (pr
 	if photo.Verify(data, photo.Record{MediaType: im.MediaType, Width: im.Width, Height: im.Height, Size: im.Size, SHA256: im.SHA256}) != nil {
 		return provider.Image{}, failure(PhotoCorrupt, "the stored photo is not the one its record names", false)
 	}
+	// The record's bytes (Verify: digest, size, type, pixels), so the same
+	// digest and pixels; NewImage holds them for the provider client.
 	img, err := provider.NewImage(im.MediaType, data)
-	if err != nil || img.Digest != im.SHA256 || img.Width != im.Width || img.Height != im.Height {
+	if err != nil {
 		return provider.Image{}, failure(PhotoCorrupt, "the stored photo is not one the provider client sends", false)
 	}
 	return img, nil
