@@ -1,0 +1,12 @@
+=== RUN   TestDifferentialAgainstFrozen020
+    differential020_test.go:137: 23746 of 50000 random models compiled (race detector: false), 5516 with finite buffers; 11698033 observations identical to des-go-0.2.0, 47742 of them Blocked; endings map[active:1559 none:20013 visits:2174]
+--- PASS: TestDifferentialAgainstFrozen020 (13.05s)
+=== RUN   TestDifferentialAgainstFrozen030
+    differential030_test.go:125: 21501 of 50000 random models compiled (race detector: false), 4947 with finite buffers, 9553 with breakdowns; 10428435 observations identical to des-go-0.3.0, 45649 of them Blocked, 121862 ResourceDown; endings map[active:1602 none:17908 visits:1991]
+--- PASS: TestDifferentialAgainstFrozen030 (13.53s)
+=== RUN   TestDifferentialAgainstFrozen040
+    differential040_test.go:129: 20213 of 50000 random models compiled (race detector: false), 4572 with finite buffers, 8602 with breakdowns, 5291 with calendars, 6270 with release schedules; 11773609 observations identical to des-go-0.4.0, 52461 of them Blocked, 219031 ResourceDown, 553303 Capacity; endings map[active:1569 none:16627 visits:2017]
+--- PASS: TestDifferentialAgainstFrozen040 (12.85s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/simulation/engine	39.444s
+exit 0 elapsed 41s
