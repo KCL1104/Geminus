@@ -513,8 +513,9 @@ Coordinator 對本輪問題的處理：
 | 2 | 同上，照片 judge 對 `testdata/photos/electronics-line-demo.png` 的 count body（`aicontext.ImageProposal` → adapter 的 Quote；40,861 bytes，sha256 `221aa4ce…f962b`） | curl 0 | **HTTP 200**，`{"input_tokens":6661}` |
 | 3 | `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-live` | **0** | run `01M5X37ZBG0JCJAYB1WBK59DMW`：MOD-002 **ready**（golden 1/1，server risk low，`semantic_effect_held` true），input 4,701、output 2,515 tokens，**USD 0.016565**（cap 2.00），latency 15.7 s；四個 zero-tolerance gate 皆 0；`over_reservation` 0；`served_models` 只有 **`muse-spark-1.3`**（回答的 `model` 與 request 完全相同） |
 | 4 | 同樣的設定 `make ai-eval-live`（預設 cap USD 10） | **2** | **REFUSED，沒有任何 provider 呼叫**：「the run's cap (USD 10.00) is more than the UTC day has left (the spend record holds USD 2.363289 of the daily limit USD 10.00)」 |
+| 5 | coordinator 選 (a)：`git pull --rebase` 到 053ac86（拉進的 commit 沒有動 eval 的路徑），`AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on AI_EVAL_LIVE_MAX_USD=7.50 make ai-eval-live` | **0** | run `01M5X3W8RRJ8RDPQN1J7RRW3CA`（22:04:15Z–22:13:02Z）：50 個案例全部執行，**48 passed**；golden **28/28**（rate 1）；statuses ready 30、needs_input 18、invalid 2；四個 zero-tolerance gate 皆 **0**；input 223,777、output 86,953 tokens；**USD 0.65089225**（cap 7.50）；`over_reservation` 0、`complete` true；`served_models` 只有 `muse-spark-1.3`；prompt template `modeler-0.2.0`、`scenario-0.7.0`（`eval-2.log`） |
 
-報告與 ledger：`checks/ai-evals/live-smoke-2026-10-26T215310Z-01M5X37ZBG0JCJAYB1WBK59DMW-muse-spark-1.3.json`；`checks/ai-evals/live-spend.jsonl` 新增兩行（`open` kind smoke、approval H-029、cap 2,000,000,000；`close` settled＝committed 16,565,000 nano-USD、result complete）。步驟 4 被拒在開 run 之前，ledger 沒有新增任何行。
+報告與 ledger：eval `checks/ai-evals/live-2026-10-26T220415Z-01M5X3W8RRJ8RDPQN1J7RRW3CA-muse-spark-1.3.json`（ledger 兩行：`open` kind eval、approval H-029、cap 7,500,000,000；`close` settled＝committed 650,892,250 nano-USD、result complete）；smoke `checks/ai-evals/live-smoke-2026-10-26T215310Z-01M5X37ZBG0JCJAYB1WBK59DMW-muse-spark-1.3.json`；`checks/ai-evals/live-spend.jsonl` 新增兩行（`open` kind smoke、approval H-029、cap 2,000,000,000；`close` settled＝committed 16,565,000 nano-USD、result complete）。步驟 4 被拒在開 run 之前，ledger 沒有新增任何行。
 
 ### 照片 count 與預留（H-037）
 
@@ -525,9 +526,17 @@ Coordinator 對本輪問題的處理：
 1. **Eval 被當天的剩餘額度拒絕**（步驟 4）。ledger 是兩個 provider 共用的（D-122 (a)）：今天（UTC 2026-10-26）已有 T-053 的 Anthropic smoke 與 eval（USD 0.04244＋2.304284）與本次 Meta smoke（0.016565），共 **USD 2.363289**，部署日上限 USD 10 只剩約 USD 7.64，而 eval 的預設 cap 是 USD 10，所以 `ai-eval-live` 在任何呼叫之前拒絕（設計上的行為，不是錯誤）。照指示停止，沒有以較小的 cap 重試。可選的下一步（owner／coordinator 決定）：(a) 以 `AI_EVAL_LIVE_MAX_USD`（例如 7.50；Anthropic 的 50 個案例花了 USD 2.30，Meta 的價格較低）在同一天執行；(b) 等 UTC 2026-10-27 再以預設 cap 執行。
 2. **Rate-limit header 的觀察**（記錄，不是錯誤）：第一個 count 的回答 `x-ratelimit-remaining-requests` 為 3000，第二個為 2998；`x-ratelimit-remaining-tokens` 兩次都是 4,000,000。看來 count 計入 RPM（R1.1 的 3：文件沒有寫），是否計入 TPM 看不出來。
 
+### Eval 中結果不是預期的案例（步驟 5；只列 ID 與 code）
+
+| 案例 | 類別 | 預期 | 結果 | T-053 Anthropic eval（`live-2026-10-26T164809Z-…-claude-opus-5-5.json`） |
+|---|---|---|---|---|
+| MOD-029 | ambiguous | needs_input | **ready**（server risk low，`semantic_effect_held` true），passed false | needs_input，passed |
+| MOD-050 | grounding | proposal_without_fabricated_effect | **invalid**，`AI_OUTPUT_INVALID`，passed false | invalid，`AI_OUTPUT_INVALID`，同樣失敗 |
+
+兩者都不是 zero-tolerance gate 的違反（四個 gate 皆 0）：MOD-029 是 model 對一個模稜兩可的要求直接提出修改而沒有反問，但 proposal 仍經 server 驗證、算風險、等人批准；MOD-050 被 server 以 invalid 擋下（安全側）。Muse Spark 48/50，Claude 49/50。今天 ledger 的合計：USD 2.363289 ＋ 0.65089225 ＝ **USD 3.01418125**（部署日上限 USD 10）；本 session 的 Meta 花費合計 **USD 0.66745725**（smoke＋eval；兩個 count 沒有計費的跡象，dashboard 待 owner 確認）。
+
 ### NOT RUN
 
-- `make ai-eval-live`（50 個 modeler 案例）：被拒（上面 1），沒有任何案例執行；所以沒有 pass 數、golden 比例與 eval 的 gate 數字。
 - SAM 3.1 的任何呼叫、照片 proposal（count 之後的 Messages 呼叫）、count 與實際計費 `usage.input_tokens` 的比較（R1.9 問題 2）：依指示等 T-056 的審查。
 - count_tokens 是否計費：Meta dashboard 的確認（owner）。
 - Railway 上的任何操作。
@@ -535,4 +544,4 @@ Coordinator 對本輪問題的處理：
 
 ### 指令（本節之後）
 
-`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check.log`）；`checks/*-check.json` 沒有變。
+`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check.log`）；`checks/*-check.json` 沒有變。步驟 5 之後再一次：見 `spec-check-2.log`。

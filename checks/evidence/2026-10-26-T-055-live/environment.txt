@@ -6,3 +6,6 @@ GEMINUS_MUSE_API_KEY: present（只檢查名稱；值沒有讀出）
 count_tokens text 2026-10-26T21:52:08Z; photo 2026-10-26T21:52:17Z
 ai-smoke-live 2026-10-26T21:52:39Z .. 2026-10-26T21:53:25Z, exit 0
 ai-eval-live 2026-10-26T21:53:42Z .. 2026-10-26T21:53:44Z, exit 2 (REFUSED before any provider call)
+
+Second run (coordinator's option (a)): HEAD 053ac86f37f6b6a06a04788b2a633107d5d135f2 after git pull --rebase (053ac86; no change in the eval path: aievals, cmd/ai-eval-live, provider/meta, spend untouched by the pulled commits)
+ai-eval-live with AI_EVAL_LIVE_MAX_USD=7.50 2026-10-26T22:03:54Z .. 2026-10-26T22:13:02Z, exit 0
