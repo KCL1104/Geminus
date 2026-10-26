@@ -2277,7 +2277,8 @@
         "dependency/secret/container scans與attack regression corpus。",
         "BFF session：cookie flags、CSRF／Origin、refresh reuse、logout、login／refresh rate limiting（ADR-018）。",
         "一般 API rate limiting（H-006）：每個 route 的限額（依 user 與 organization 計）、超過時回 429 `RATE_LIMITED` 與 `Retry-After`（D-025）；不因限額洩漏其他 tenant 的存在；限額數值與儲存方式另立 ADR，不引入 P0 停止線外的元件（如 Redis）。",
-        "評估把 `tenant.Tx` 縮成不含 `Conn()` 的介面，並 review 非 storage package 中的 SQL（含 `set_config` 改 tenant context，T-009 re-review R3a，見 ADR-019）。"
+        "評估把 `tenant.Tx` 縮成不含 `Conn()` 的介面，並 review 非 storage package 中的 SQL（含 `set_config` 改 tenant context，T-009 re-review R3a，見 ADR-019）。",
+        "T-035 review 第 1 輪的後續（D-091、D-094）：對 handler package 的 error 以 %s／%v 格式化非 ID 值的 lint（沒有引號的值是 log filter 的殘餘風險）；worker 的「reaping failed」告警（reaper fail closed 時該 organization 過期的 lease 不會被收回）。"
       ],
       "planned_outputs": [
         "internal/securitytest/",
