@@ -1,0 +1,8 @@
+date: 2026-10-26 (UTC), runs between 12:33 and the end of the e2e run
+branch: t032-hk (from c7cf86c); code under test at 66db83c (the report commit adds only docs and evidence)
+node: v22.22.0 (package.json asks for >=24.21.0; installed with npm ci --engine-strict=false)
+npm: 10.9.4
+playwright: 1.56.1 (apps/web-e2e), Chromium build 1194 (preinstalled, not reinstalled)
+go: not run; no Go, schema, OpenAPI or migration changed (the fixture generator ran once with go1.27.3 from the module cache, GOTOOLCHAIN=local, and was deleted)
+python: /home/user/Geminus/.venv/bin/python (spec-check, fixture schema check)
+machine: shared with other agents (load average 15-28 during the runs); the e2e ports 3100-3102 are fixed, so the browser runs waited for them (scripts/run_when_free.py)

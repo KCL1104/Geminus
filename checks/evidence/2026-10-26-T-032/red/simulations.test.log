@@ -1,0 +1,26 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web
+
+ ❯ tests/simulations.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/simulations.test.ts [ tests/simulations.test.ts ]
+Error: Cannot find module '../features/simulations/run-config' imported from /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web/tests/simulations.test.ts
+ ❯ tests/simulations.test.ts:10:1
+      8| import { describe, expect, it } from "vitest";
+      9| import type { Run, Scenario } from "../lib/contracts";
+     10| import { defaultRunForm, keysFor, parseRunForm, runName, runRequests }…
+       | ^
+     11| import { checkPair, isActive, newer, pairPhase, reducePair, runProblem…
+     12|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:51:44
+   Duration  283ms (worker 97%, environment 3%)
+
+exit 1

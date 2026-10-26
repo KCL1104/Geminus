@@ -1,0 +1,71 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web
+
+stderr | tests/results-view.test.tsx > the runs, from queued to the results > follows both runs to completion, then shows the server's metrics and the chart, with no violation on the way
+An update to RunResults inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ tests/results-view.test.tsx (21 tests | 2 failed) 3733ms
+   ❯ the runs, from queued to the results (12)
+     × follows both runs to completion, then shows the server's metrics and the chart, with no violation on the way 144ms
+     × cancels the runs that are still going, each with an empty body and its own key, and then has nothing to compare 75ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > follows both runs to completion, then shows the server's metrics and the chart, with no violation on the way
+AssertionError: expected [] to deeply equal [ '' ]
+
+- Expected
++ Received
+
+- [
+-   "",
+- ]
++ []
+
+ ❯ tests/results-view.test.tsx:241:25
+    239|     ]);
+    240|     // Progress is not announced every second; the region waits, empty…
+    241|     expect(outcome(el)).toEqual([""]);
+       |                         ^
+    242|     expect(await violations()).toEqual([]);
+    243|     now.b = boardBaselineRun();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/results-view.test.tsx > the runs, from queued to the results > cancels the runs that are still going, each with an empty body and its own key, and then has nothing to compare
+AssertionError: expected [] to deeply equal [ Array(1) ]
+
+- Expected
++ Received
+
+- [
+-   "There is nothing to compare: a run did not complete. Go back to the scenario to run it again.",
+- ]
++ []
+
+ ❯ tests/results-view.test.tsx:301:25
+    299|     expect(cancels.map((c) => [c.path, c.body])).toEqual([[`${v1}/simu…
+    300|     expect(cancels[0]?.key).not.toBe(cancels[1]?.key);
+    301|     expect(outcome(el)).toEqual([en["runs.noComparison"]]);
+       |                         ^
+    302|     expect(text(el).match(new RegExp(en["runs.status.cancelled"], "g")…
+    303|     expect(button(el, en["runs.cancel"])).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 19 passed (21)
+   Start at  13:39:04
+   Duration  7.45s (tests 53%, import 25%, transform 12%, environment 10%, worker 1%)
+
+exit 1

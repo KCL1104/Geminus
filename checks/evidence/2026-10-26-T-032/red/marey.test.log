@@ -1,0 +1,26 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web
+
+ ❯ tests/marey.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/marey.test.ts [ tests/marey.test.ts ]
+Error: Cannot find module '../features/results/marey' imported from /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web/tests/marey.test.ts
+ ❯ tests/marey.test.ts:9:1
+      7| import { describe, expect, it } from "vitest";
+      8| import type { ModelIR, TraceArtifact, TraceEvent } from "../lib/contra…
+      9| import {
+       | ^
+     10|   assignLanes,
+     11|   entityPaths,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:45:39
+   Duration  319ms (worker 97%, environment 3%)
+
+exit 1

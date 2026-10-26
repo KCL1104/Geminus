@@ -1,0 +1,36 @@
+killed: lanes: scenario stacks from the top (tests/marey.test.ts)
+killed: a truncated trace is extended (tests/marey.test.ts)
+killed: a queue entry that cannot be placed is guessed (tests/marey.test.ts)
+killed: blocking is drawn as service (tests/marey.test.ts)
+killed: rework back edge kept in the ranks (tests/marey.test.ts)
+killed: sinks not last (tests/marey.test.ts)
+killed: a missing run-level metric is left out (tests/results-metrics.test.ts)
+killed: relative delta recomputed in the browser (tests/results-metrics.test.ts)
+SURVIVED: CI taken for a median (tests/results-metrics.test.ts)
+killed: relative shown as a plain number (tests/results-metrics.test.ts)
+killed: ratio difference not in points (tests/results-metrics.test.ts)
+killed: an older answer replaces a newer one (tests/simulations.test.ts)
+killed: a run from another scenario is accepted (tests/results-view.test.tsx)
+killed: the baseline gets the scenario (tests/simulations.test.ts)
+killed: a new key on every retry (tests/results-view.test.tsx)
+killed: a second cancel press is sent (tests/results-simplicity.test.tsx)
+killed: the cancel offered to a viewer (tests/results-view.test.tsx)
+killed: no word when runs cannot be compared (tests/results-view.test.tsx)
+killed: the summary claims a change when not comparable (tests/results-metrics.test.ts)
+killed: polling goes on after both runs end (tests/results-view.test.tsx)
+killed: no chart notes for a missing trace (tests/results-view.test.tsx)
+killed: the review page is always on (tests/results-preview.test.tsx)
+killed: a colour literal in a feature stylesheet (tests/design-rules.test.ts)
+SURVIVED: the run variant is not green (tests/tokens.test.ts)
+killed: a run created with a draft ID (tests/runs-api.test.ts)
+23/25 killed
+
+After the first pass:
+- "CI taken for a median": equivalent under the contract. Only a population=replication summary may carry a CI (simulation.schema.json, CB-23), and the only non-mean rows are lead_time_minutes p50/p95, an entity population, whose CI is always null; no valid Result can tell the mutant apart.
+- "the run variant is not green": no test read the run button's colours. Added tests/run-button.test.ts; the same mutant re-run:
+killed : the run variant is not green (tests/run-button.test.ts, added after the first pass)
+Result: 24 killed, 1 equivalent, 0 surviving. Every file was restored after its mutant (git diff checked).
+
+After the bundled-JSON finding (tests/results-preview.test.tsx):
+killed: a fixture's JSON bundled into the review page
+killed: the review page passes other data than the files hold

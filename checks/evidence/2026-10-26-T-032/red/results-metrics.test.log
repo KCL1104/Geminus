@@ -1,0 +1,26 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web
+
+ ❯ tests/results-metrics.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-metrics.test.ts [ tests/results-metrics.test.ts ]
+Error: Cannot find module '../features/results/format' imported from /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web/tests/results-metrics.test.ts
+ ❯ tests/results-metrics.test.ts:11:1
+      9| import type { Comparison, ModelIR, Result as SimulationResult } from "…
+     10| import { i18nFor } from "../lib/i18n/provider";
+     11| import { formatAbsolute, formatRelative, formatValue } from "../featur…
+       | ^
+     12| import { keyMetrics, leadTimeSummary, metricKeys } from "../features/r…
+     13| import boardModel from "../features/results/fixtures/board-line-model.…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  12:48:12
+   Duration  323ms (worker 97%, environment 3%)
+
+exit 1

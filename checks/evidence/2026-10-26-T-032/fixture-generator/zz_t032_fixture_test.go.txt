@@ -1,0 +1,89 @@
+package compare_test
+
+// TEMPORARY (T-032 hackathon slice): writes a real engine run of a small
+// synthetic board line, baseline and scenario, for the web app's fixtures.
+// Deleted before commit; the generator is kept in the evidence folder.
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/results/compare"
+	"github.com/kcl1104/geminus/internal/simulation"
+	"github.com/kcl1104/geminus/internal/simulation/des"
+)
+
+func TestWriteT032Fixture(t *testing.T) {
+	out := os.Getenv("T032_OUT")
+	if out == "" {
+		t.Skip("set T032_OUT")
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "line.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ir model.ModelIR
+	if err := json.Unmarshal(raw, &ir); err != nil {
+		t.Fatal(err)
+	}
+	limits := simulation.ExecutionLimits{WallTimeoutSeconds: 300, MaxEvents: 10_000_000, MaxActiveEntities: 100_000, MaxEntityVisits: 10_000, MaxTraceEvents: 100_000}
+	cfg := simulation.RunConfig{Horizon: simulation.Duration{Value: 600, Unit: model.Minute}, Warmup: simulation.Duration{Value: 0, Unit: model.Minute}, Replications: 5, Seed: 42, TraceLevel: simulation.TraceSampled}
+	pinnedData, err := model.Encode(&ir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinned, err := hashing.Model(pinnedData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runOne := func(m model.ModelIR, id string) (*des.Output, string) {
+		data, err := model.Encode(&m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		h, err := hashing.Model(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		in := simulation.RunInput{Model: m, ModelHash: pinned, EffectiveModelHash: h, Limits: limits, Config: cfg}
+		o, err := (&des.Engine{}).RunWithTrace(context.Background(), in, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		o.Result.RunID = id
+		return o, h
+	}
+	scen := ir
+	scen.Resources = append([]model.Resource(nil), ir.Resources...)
+	scen.Resources[2].Capacity = 2
+	b, bh := runOne(ir, "sim_01M4YDQK00TA00000000T032BA")
+	s, sh := runOne(scen, "sim_01M4YDQK00TA00000000T032SC")
+	cmpRun := func(o *des.Output, id, eff, patch string) compare.Run {
+		return compare.Run{ID: id, ModelVersionID: "mv_01M4YDQK00TA0000000000T032", EngineVersion: o.Result.EngineVersion,
+			DatasetManifestHash: o.Result.Reproducibility.DatasetManifestHash, ModelHash: pinned, EffectiveModelHash: eff,
+			ConfigHash: o.Result.Reproducibility.ConfigHash, ScenarioPatch: []byte(patch), Config: cfg, Result: o.Result}
+	}
+	c, err := compare.Compare(cmpRun(b, b.Result.RunID, bh, "[]"), cmpRun(s, s.Result.RunID, sh, `[{"op":"test","path":"/resources/2/id","value":"ict_fixture"},{"op":"replace","path":"/resources/2/capacity","value":2}]`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(name string, v any) {
+		data, err := json.MarshalIndent(v, "", " ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(out, name), data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("baseline-result.json", b.Result)
+	write("scenario-result.json", s.Result)
+	write("baseline-trace.json", b.Trace)
+	write("scenario-trace.json", s.Trace)
+	write("comparison.json", c)
+}

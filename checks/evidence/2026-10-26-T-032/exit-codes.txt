@@ -1,0 +1,13 @@
+npm ci --prefix apps/web --engine-strict=false: 0
+npm ci --prefix apps/web-e2e --engine-strict=false: 0
+make frontend-test (e1cac95): 0 (29 files, 713 tests; frontend-test.log)
+make frontend-build (e1cac95): 0 (frontend-build.log)
+make e2e-test (66db83c): 0 (228 passed, 32 skipped = screenshots NOT RUN; e2e-test-66db83c.log)
+make e2e-test (e1cac95): 0 (228 passed, 32 skipped = screenshots NOT RUN; e2e-test.log)
+npm audit --prefix apps/web --omit=dev: 0 (0 vulnerabilities; npm-audit.log)
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python (T-032 set to in_progress, as instructed): 2 (spec-decisions: "T-032: started before its dependencies"; spec-check-with-in-progress.log)
+make spec-check PYTHON=/home/user/Geminus/.venv/bin/python (T-032 status unchanged, not_started; final tree): 0 (spec-check.log)
+fixture schema check (fixture-generator/validate_fixtures.py): 0 (fixture-schema-check.log)
+mutation (scripts/mutants.py, mutants2.py): 27 mutants, 26 killed, 1 equivalent (mutants.txt)
+local preview screenshots (scripts/shots.mjs on next start :3200, e1cac95): 0 (local-shots/scroll-widths.txt)
+NOT RUN: screenshot comparison (CI container only), Go tests and make integration-test (no Go/schema/migration change), Node 24, screen readers, Firefox, Safari, push/CI.

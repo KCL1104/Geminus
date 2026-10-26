@@ -1,0 +1,93 @@
+
+ RUN  v5.0.4 /home/user/Geminus/.claude/worktrees/agent-a72a328327cdce612/apps/web
+
+ ❯ tests/runs-api.test.ts (6 tests | 6 failed) 33ms
+   ❯ runs (T-023) through the client (6)
+     × queues a run with its Idempotency-Key and the request as given, and reads the 202 26ms
+     × queues a saved scenario by its ID 1ms
+     × reads a run, its result and its trace, and cancels it with an empty body and its key 1ms
+     × calls each operation at the contract's method and path, with the tenant selector 1ms
+     × maps a run that has no result yet, and a run without a trace, to the contract's problems 1ms
+     × refuses bad IDs and keys before sending anything 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > queues a run with its Idempotency-Key and the request as given, and reads the 202
+TypeError: api(...).createSimulation is not a function
+ ❯ tests/runs-api.test.ts:46:28
+     44|   it("queues a run with its Idempotency-Key and the request as given, …
+     45|     const f = fakeFetch(json(202, accepted, { "X-Request-ID": REQ }));
+     46|     const r = await api(f).createSimulation(request, "key-run-0001");
+       |                            ^
+     47|     expect(r.ok && [r.data, r.requestId]).toEqual([accepted, REQ]);
+     48|     const c = f.calls[0]!;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > queues a saved scenario by its ID
+TypeError: api(...).createSimulation is not a function
+ ❯ tests/runs-api.test.ts:57:18
+     55|     const f = fakeFetch(json(202, accepted));
+     56|     const body: RunRequest = { model_version_id: VERSION, name: "Two f…
+     57|     await api(f).createSimulation(body, "key-run-0002");
+       |                  ^
+     58|     expect(JSON.parse(String(f.calls[0]!.init.body))).toEqual(body);
+     59|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > reads a run, its result and its trace, and cancels it with an empty body and its key
+TypeError: client.getSimulation is not a function
+ ❯ tests/runs-api.test.ts:67:26
+     65|     const f = fakeFetch(json(200, run), json(200, result), json(200, t…
+     66|     const client = api(f);
+     67|     expect((await client.getSimulation(RUN)).ok && true).toBe(true);
+       |                          ^
+     68|     const got = await client.getSimulationResults(RUN);
+     69|     expect(got.ok && got.data).toEqual(result);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > calls each operation at the contract's method and path, with the tenant selector
+TypeError: client.createSimulation is not a function
+ ❯ tests/runs-api.test.ts:86:18
+     84|     const f = fakeFetch(json(202, accepted), json(200, {}), json(200, …
+     85|     const client = api(f);
+     86|     await client.createSimulation(request, "key-run-0003");
+       |                  ^
+     87|     await client.getSimulation(RUN);
+     88|     await client.cancelSimulation(RUN, "key-cancel-0002");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > maps a run that has no result yet, and a run without a trace, to the contract's problems
+TypeError: client.getSimulationResults is not a function
+ ❯ tests/runs-api.test.ts:105:28
+    103|     const f = fakeFetch(json(409, notReady), json(404, noTrace));
+    104|     const client = api(f);
+    105|     const r = await client.getSimulationResults(RUN);
+       |                            ^
+    106|     expect(!r.ok && [r.problem.kind, r.problem.code]).toEqual(["confli…
+    107|     const t = await client.downloadSimulationTrace(RUN);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  tests/runs-api.test.ts > runs (T-023) through the client > refuses bad IDs and keys before sending anything
+TypeError: client.createSimulation is not a function
+ ❯ tests/runs-api.test.ts:115:20
+    113|     const client = api(f);
+    114|     const refused = [
+    115|       await client.createSimulation({ ...request, model_version_id: "m…
+       |                    ^
+    116|       await client.createSimulation({ model_version_id: VERSION, name:…
+    117|       await client.createSimulation(request, "short"),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed (6)
+   Start at  12:50:32
+   Duration  261ms (transform 50%, tests 30%, import 16%, worker 4%)
+
+exit 1

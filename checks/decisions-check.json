@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 90,
-    "proposed": 10,
+    "approved": 91,
+    "proposed": 9,
     "rejected": 0,
     "superseded": 0
   },
@@ -35,41 +35,22 @@
     "H-026",
     "H-027",
     "H-028",
-    "H-029"
+    "H-029",
+    "H-030",
+    "H-031",
+    "H-032"
   ],
   "tasks_by_status": {
     "blocked": 0,
-    "done": 34,
-    "in_progress": 2,
-    "not_started": 21,
+    "done": 35,
+    "in_progress": 4,
+    "not_started": 18,
     "review": 0
   },
   "ready_tasks": [
     "T-030"
   ],
-  "next_after_review": [
-    {
-      "id": "T-050",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-096",
-        "D-097"
-      ]
-    },
-    {
-      "id": "T-053",
-      "awaiting_task_review": [],
-      "awaiting_decisions": [
-        "D-110",
-        "D-111",
-        "D-112",
-        "D-113",
-        "D-114",
-        "D-115",
-        "D-116"
-      ]
-    }
-  ],
+  "next_after_review": [],
   "gates": {
     "D-001": {
       "status": "approved",
@@ -865,7 +846,7 @@
       ]
     },
     "D-116": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-053 驗收前（A 在回答前也不少記，不擋 H-025 的 live run）",
       "gates_tasks": [
         "T-053"

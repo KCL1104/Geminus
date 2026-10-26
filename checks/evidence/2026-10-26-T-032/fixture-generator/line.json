@@ -1,0 +1,34 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00TA0000000000T032",
+  "domain": "software_delivery",
+  "name": "Board line (synthetic)",
+  "time_unit": "minute",
+  "entity_types": [{ "id": "board", "name": "Board" }],
+  "resources": [
+    { "id": "smt_line", "type": "machine", "name": "SMT line", "capacity": 1, "queue_discipline": "fifo" },
+    { "id": "aoi_station", "type": "machine", "name": "AOI station", "capacity": 1, "queue_discipline": "fifo" },
+    { "id": "ict_fixture", "type": "machine", "name": "ICT fixture", "capacity": 1, "queue_discipline": "fifo" },
+    { "id": "packer", "type": "human", "name": "Packer", "capacity": 1, "queue_discipline": "fifo" }
+  ],
+  "nodes": [
+    { "id": "boards", "type": "source", "name": "Boards in", "entity_type": "board", "arrival": { "distribution": { "type": "exponential", "mean": 6 } } },
+    { "id": "smt", "type": "process", "name": "SMT", "service_time": { "distribution": { "type": "triangular", "min": 3.5, "mode": 4.5, "max": 6 } }, "requires": [{ "resource_id": "smt_line", "units": 1 }] },
+    { "id": "aoi", "type": "process", "name": "AOI", "service_time": { "distribution": { "type": "triangular", "min": 2, "mode": 3, "max": 4 } }, "requires": [{ "resource_id": "aoi_station", "units": 1 }] },
+    { "id": "q_ict", "type": "queue", "name": "ICT buffer" },
+    { "id": "ict", "type": "process", "name": "ICT", "service_time": { "distribution": { "type": "triangular", "min": 4.5, "mode": 5.8, "max": 7.5 } }, "requires": [{ "resource_id": "ict_fixture", "units": 1 }] },
+    { "id": "pack", "type": "process", "name": "Pack", "service_time": { "distribution": { "type": "triangular", "min": 1.5, "mode": 2, "max": 3 } }, "requires": [{ "resource_id": "packer", "units": 1 }] },
+    { "id": "shipped", "type": "sink", "name": "Shipped", "outcome": "completed" }
+  ],
+  "flows": [
+    { "id": "f1", "from": "boards", "to": "smt", "routing": { "type": "probability", "probability": 1 } },
+    { "id": "f2", "from": "smt", "to": "aoi", "routing": { "type": "probability", "probability": 1 } },
+    { "id": "f3", "from": "aoi", "to": "q_ict", "routing": { "type": "probability", "probability": 1 } },
+    { "id": "f4", "from": "q_ict", "to": "ict", "routing": { "type": "probability", "probability": 1 } },
+    { "id": "f5", "from": "ict", "to": "pack", "routing": { "type": "probability", "probability": 1 } },
+    { "id": "f6", "from": "pack", "to": "shipped", "routing": { "type": "probability", "probability": 1 } }
+  ],
+  "constraints": [],
+  "metrics": [ { "id": "lead_time", "type": "entity_cycle_time" }, { "id": "throughput", "type": "sink_throughput" } ],
+  "views": { "2d": {}, "3d": { "layout_mode": "derived_from_2d" } }
+}

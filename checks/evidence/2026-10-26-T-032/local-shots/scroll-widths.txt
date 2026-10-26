@@ -1,0 +1,12 @@
+results-results-en-1280.png scrollWidth=1280
+results-running-en-1280.png scrollWidth=1280
+results-results-en-390.png scrollWidth=390
+results-results-zh-Hant-1280.png scrollWidth=1280
+results-running-zh-Hant-1280.png scrollWidth=1280
+results-results-zh-Hant-390.png scrollWidth=390
+results-results-en-1280-dark.png scrollWidth=1280
+results-running-en-1280-dark.png scrollWidth=1280
+results-results-en-390-dark.png scrollWidth=390
+results-results-zh-Hant-1280-dark.png scrollWidth=1280
+results-running-zh-Hant-1280-dark.png scrollWidth=1280
+results-results-zh-Hant-390-dark.png scrollWidth=390
