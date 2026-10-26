@@ -900,8 +900,10 @@ paths:
       summary: Queue an edit proposal from a photo or floor plan
       description: 'T-056 (H-029, H-033): an editor or owner sends a photo or floor plan of the line for the model''s latest
         version, and the AI proposes the stations and flow it shows as an edit proposal; nothing in the model changes until a
-        person approves it (approveProposal). The caller''s role, this deployment''s AI (503 AI_PROVIDER_NOT_CONFIGURED or
-        AI_POLICY_NOT_APPROVED) and object storage (503 SERVICE_UNAVAILABLE) are checked before any of the body is read. The
+        person approves it (approveProposal). The caller''s role, this deployment''s photo path (503 AI_PROVIDER_NOT_CONFIGURED
+        or AI_POLICY_NOT_APPROVED, details[0].code AI_IMAGE_UNSUPPORTED: decided from the photo path''s settings as the worker
+        decides whether it takes a photo, never from a key; D-124) and object storage (503 SERVICE_UNAVAILABLE) are checked
+        before any of the body is read. The
         parts base_version_id and, optionally, output_locale (en or zh-Hant; en when absent) come first, each once, and file is
         the last part; another or a repeated part, or a part after file, is refused. The file is a PNG or a JPEG, told by its
         first bytes (its name and the part''s Content-Type are not trusted); anything else (GIF, WebP, HEIC, SVG, PDF, an archive
@@ -974,7 +976,52 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Nothing was read or stored. The photo path is off in this deployment: the API decides it from the
+            photo path''s settings that are not secret (AI_VISION_PROVIDER, AI_VISION_POLICY_APPROVAL, AI_VISION_MODEL, and the
+            AI_PROVIDER, AI_POLICY_APPROVAL, AI_MODEL and GEMINUS_AI_LIVE they follow) with the worker''s own check, never with
+            a key, so a photo the worker would fail with AI_IMAGE_UNSUPPORTED is refused before any of the body is read
+            (D-124): AI_PROVIDER_NOT_CONFIGURED when the photo path is disabled, AI_POLICY_NOT_APPROVED when its live provider is
+            not on (an approval that names no image, such as H-018''s, another model, the switch off), both with
+            details[0].code AI_IMAGE_UNSUPPORTED. Proposals in words (createProposal) are decided on their own and are not
+            affected. Object storage that is not configured, or a request to retry with the same Idempotency-Key, is
+            SERVICE_UNAVAILABLE (no details). Codes: AI_PROVIDER_NOT_CONFIGURED, AI_POLICY_NOT_APPROVED, SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                photo_path_not_configured:
+                  summary: The photo path is disabled (AI_VISION_PROVIDER=disabled, or AI_PROVIDER disabled and followed)
+                  value:
+                    error:
+                      code: AI_PROVIDER_NOT_CONFIGURED
+                      message: photos are not taken in this deployment; its photo path is not configured
+                      details:
+                      - path: ''
+                        reason: the photo path is off, so the worker would not take the photo
+                        code: AI_IMAGE_UNSUPPORTED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                photo_path_not_approved:
+                  summary: The photo path's live provider is not on (here Claude's H-018, whose approval names no image)
+                  value:
+                    error:
+                      code: AI_POLICY_NOT_APPROVED
+                      message: photos are not taken until the owner turns on a photo path whose approval names images
+                      details:
+                      - path: ''
+                        reason: the photo path is off, so the worker would not take the photo
+                        code: AI_IMAGE_UNSUPPORTED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                no_storage:
+                  summary: Object storage is not configured for this deployment
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: object storage is not configured for this deployment
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
       requestBody:
         required: true
         content:
