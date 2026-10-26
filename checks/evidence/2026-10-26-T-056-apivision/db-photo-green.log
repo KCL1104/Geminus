@@ -1,0 +1,37 @@
+=== RUN   TestAPhotoProposalEndToEnd
+--- PASS: TestAPhotoProposalEndToEnd (1.79s)
+=== RUN   TestPhotoRefusals
+--- PASS: TestPhotoRefusals (0.88s)
+=== RUN   TestPhotoStaleBaseAndAvailability
+--- PASS: TestPhotoStaleBaseAndAvailability (2.48s)
+=== RUN   TestPhotoIdempotency
+--- PASS: TestPhotoIdempotency (0.74s)
+=== RUN   TestPhotoOutcomes
+=== RUN   TestPhotoOutcomes/no_box
+=== RUN   TestPhotoOutcomes/a_box_outside_the_image
+=== RUN   TestPhotoOutcomes/injection_stays_text
+=== RUN   TestPhotoOutcomes/an_answer_that_claims_authority
+=== RUN   TestPhotoOutcomes/too_many_steps
+=== RUN   TestPhotoOutcomes/the_vision_model_asks
+=== RUN   TestPhotoOutcomes/a_segmenter_that_keeps_failing
+=== RUN   TestPhotoOutcomes/a_domain_without_photos
+--- PASS: TestPhotoOutcomes (3.96s)
+    --- PASS: TestPhotoOutcomes/no_box (0.30s)
+    --- PASS: TestPhotoOutcomes/a_box_outside_the_image (0.15s)
+    --- PASS: TestPhotoOutcomes/injection_stays_text (0.66s)
+    --- PASS: TestPhotoOutcomes/an_answer_that_claims_authority (0.63s)
+    --- PASS: TestPhotoOutcomes/too_many_steps (0.60s)
+    --- PASS: TestPhotoOutcomes/the_vision_model_asks (0.68s)
+    --- PASS: TestPhotoOutcomes/a_segmenter_that_keeps_failing (0.31s)
+    --- PASS: TestPhotoOutcomes/a_domain_without_photos (0.47s)
+=== RUN   TestProposalsNeedAI
+--- PASS: TestProposalsNeedAI (0.58s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	11.612s
+=== RUN   TestRunServesAndStops
+--- PASS: TestRunServesAndStops (0.08s)
+=== RUN   TestTheServedHandlerDecidesPhotosOnTheirOwn
+--- PASS: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.33s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	1.526s
+exit 0

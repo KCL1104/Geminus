@@ -1,0 +1,146 @@
+--- FAIL: TestAPIAIIsKeyFree (0.00s)
+    apiai_test.go:85: anthropic: the photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}
+    apiai_test.go:85: meta: the photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}
+--- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.07s)
+    apivision_test.go:123: claude, no approval, switch "", test, photo ""/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:anthropic Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-018"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-029"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo ""/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", test, photo "disabled"/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:disabled Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:}
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-018"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-029"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "disabled"/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", test, photo "fake"/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:fake Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:}
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-018"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-029"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "fake"/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", test, photo "anthropic"/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:anthropic Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-018"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-029"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "anthropic"/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/""/"claude-opus-5-5": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/""/"muse-spark-1.3": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/""/"muse-spark-1.3-contributor": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-018"/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:provider_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-018"/"claude-opus-5-5": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:provider_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-018"/"muse-spark-1.3": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:provider_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-018"/"muse-spark-1.3-contributor": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:provider_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-029"/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:model_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-029"/"claude-opus-5-5": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:model_mismatch}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-029"/"muse-spark-1.3": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:switch_off}
+    apivision_test.go:123: claude, no approval, switch "", test, photo "meta"/"H-029"/"muse-spark-1.3-contributor": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:meta Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:model_mismatch}
+    apivision_test.go:105: claude, no approval, switch "", test, photo "meta"/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:not_approved]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "meta"/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:not_approved]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "meta"/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:not_approved]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "meta"/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:not_approved]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/""/"": the API [], the worker [AI_VISION_PROVIDER:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/""/"claude-opus-5-5": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/""/"muse-spark-1.3": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-018"/"": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-029"/"": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-033"/"": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", test, photo "Meta"/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_PROVIDER:invalid AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", production, photo ""/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:anthropic Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:no_approval_named}
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-018"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-018"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-018"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-018"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-029"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-029"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-029"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-029"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-033"/"": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-033"/"claude-opus-5-5": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-033"/"muse-spark-1.3": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo ""/"H-033"/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_POLICY_APPROVAL:invalid AI_VISION_MODEL:invalid]
+    apivision_test.go:123: claude, no approval, switch "", production, photo "disabled"/""/"": the API's photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}, the worker's {Provider:disabled Approval:{rec:<nil>} Model: Credentials:[] SegmentationModel: LiveOff:}
+    apivision_test.go:105: claude, no approval, switch "", production, photo "disabled"/""/"claude-opus-5-5": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo "disabled"/""/"muse-spark-1.3": the API [], the worker [AI_VISION_MODEL:invalid]
+    apivision_test.go:105: claude, no approval, switch "", production, photo "disabled"/""/"muse-spark-1.3-contributor": the API [], the worker [AI_VISION_MODEL:invalid]
+... (4418 lines in all, 4410 failure lines; the middle is omitted to keep the log small) ...
+    apivision_test.go:196: claude, meta for photos, no approval, the switch off: {Provider:anthropic Approval:{rec:<nil>} Model: LiveOff:switch_off Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, the photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}
+    apivision_test.go:192: disabled, fake photos: the photo path's provider was not read
+    apivision_test.go:196: disabled, fake photos: {Provider:disabled Approval:{rec:<nil>} Model: LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, the photo path {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}
+    apivision_test.go:229: an unknown photo provider: [] {Provider:meta Approval:{rec:0x25d8ecc96000} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_PROVIDER:invalid]
+    apivision_test.go:229: fake photos in production: [] {Provider:meta Approval:{rec:0x25d8ecc96780} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_PROVIDER:invalid]
+    apivision_test.go:229: a photo model to follow: [] {Provider:meta Approval:{rec:0x25d8ece5b040} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_MODEL:invalid]
+    apivision_test.go:229: meta photos, Claude's approval: [] {Provider:anthropic Approval:{rec:0x25d8ecc1a3c0} Model:claude-opus-5-5 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:provider_mismatch]
+    apivision_test.go:229: a photo approval to follow: [] {Provider:meta Approval:{rec:0x25d8ecc1ab40} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:229: meta photos, no approval: [] {Provider:anthropic Approval:{rec:0x25d8ecc1bcc0} Model:claude-opus-5-5 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:required]
+    apivision_test.go:229: claude photos, no approval: [] {Provider:meta Approval:{rec:0x25d8ecbc48c0} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:required]
+    apivision_test.go:229: both wrong, after the proposals': [AI_MODEL:required] {Provider: Approval:{rec:<nil>} Model: LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_MODEL:required AI_VISION_MODEL:required]
+    apivision_test.go:229: a photo approval while off: [] {Provider:disabled Approval:{rec:<nil>} Model: LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:invalid]
+    apivision_test.go:229: meta photos, no model: [] {Provider:anthropic Approval:{rec:0x25d8ecbc5040} Model:claude-opus-5-5 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_MODEL:required]
+    apivision_test.go:229: meta photos, the Contributor: [] {Provider:anthropic Approval:{rec:0x25d8ecbc57c0} Model:claude-opus-5-5 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_MODEL:model_mismatch]
+    apivision_test.go:229: meta photos, unrecorded: [] {Provider:anthropic Approval:{rec:0x25d8ecdaa140} Model:claude-opus-5-5 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:not_approved]
+    apivision_test.go:229: claude photos, Meta's approval: [] {Provider:meta Approval:{rec:0x25d8ecdaac80} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:provider_mismatch]
+    apivision_test.go:229: a capitalised photo provider: [] {Provider:meta Approval:{rec:0x25d8ecdab540} Model:muse-spark-1.3 LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_PROVIDER:invalid]
+    apivision_test.go:229: fake photos without APP_ENV: [] {Provider:disabled Approval:{rec:<nil>} Model: LiveOff: Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_PROVIDER:invalid]
+    apivision_test.go:229: meta photos unrecorded, off: [] {Provider:anthropic Approval:{rec:<nil>} Model: LiveOff:switch_off Vision:{Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:}}, want [AI_VISION_POLICY_APPROVAL:not_approved]
+--- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    apivision_test.go:244: meta: {Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:} <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/config	0.089s
+FAIL
+exit 1

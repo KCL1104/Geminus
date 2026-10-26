@@ -1451,7 +1451,7 @@
       "resolves": [],
       "source_gap": "T-053 review I5：開關 on 時 API 也會經 config.Load 讀兩把 key，但 API 從不呼叫 provider；不給 API key 時，部署後的 API 對每個 proposal 回 503。",
       "source_pages": "N/A（coordinator 決定，2026-10-26；checks/T-055_VALIDATION.md §10；ADR-027 addendum）",
-      "proposal": "API 以與 worker 相同的檢查（liveGate）只依 AI_PROVIDER、AI_POLICY_APPROVAL、AI_MODEL、GEMINUS_AI_LIVE 判斷：開關 off 時照常啟動、proposal 回 503（AI_POLICY_NOT_APPROVED 或 AI_PROVIDER_NOT_CONFIGURED）；開關 on 而設定不符時拒絕啟動；環境中出現任何 AI key 變數（internal/config/apiai.go 的 apiKeyVars，非空值）就拒絕啟動（key_forbidden，只寫變數名稱）。API 與 worker 的四個設定在 variables.json 宣告相同、由 owner 設相同的值。選項 B：API 照舊讀 key（secret 多放一處）；選項 C：API 一律接受、由 worker 失敗（使用者要等 job 失敗才知道）。照片路徑的設定（AI_VISION_*）由後續切片加入。建議 A，已實作。",
+      "proposal": "API 以與 worker 相同的檢查（liveGate）只依 AI_PROVIDER、AI_POLICY_APPROVAL、AI_MODEL、GEMINUS_AI_LIVE 判斷：開關 off 時照常啟動、proposal 回 503（AI_POLICY_NOT_APPROVED 或 AI_PROVIDER_NOT_CONFIGURED）；開關 on 而設定不符時拒絕啟動；環境中出現任何 AI key 變數（internal/config/apiai.go 的 apiKeyVars，非空值）就拒絕啟動（key_forbidden，只寫變數名稱）。API 與 worker 的四個設定在 variables.json 宣告相同、由 owner 設相同的值。選項 B：API 照舊讀 key（secret 多放一處）；選項 C：API 一律接受、由 worker 失敗（使用者要等 job 失敗才知道）。照片路徑的設定已加入（T-056 的 follow-up，2026-10-26 coordinator 決定，同樣 proposed）：API 也讀 AI_VISION_PROVIDER、AI_VISION_POLICY_APPROVAL、AI_VISION_MODEL（不讀 key），以 worker 的同一段判斷（internal/config 的 decide）決定是否接受照片；照片路徑關閉時 createImageProposal 在讀 body 前回 503（AI_PROVIDER_NOT_CONFIGURED 或 AI_POLICY_NOT_APPROVED，details[0].code 為 AI_IMAGE_UNSUPPORTED），文字 proposal 不受影響；三個設定在 api 與 worker 宣告相同。建議 A，已實作。",
       "approved_by": null,
       "approved_at": null
     }

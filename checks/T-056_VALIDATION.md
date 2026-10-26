@@ -247,3 +247,89 @@ Coordinator 對 §9 問題的處理：
 另：T-055 review 第 1 輪 M1（照片的預留約 USD 4.04、organization 日上限 USD 5）由 owner 選擇以 count_tokens 處理（H-037）；部署變數由 owner 填完即 sealed（H-036）。
 
 下一步：T-055 的修正（H-037、L1–L5）與 API 的照片可用性；之後 T-056 的一輪獨立審查，範圍包含 count_tokens 的預留。
+
+## API 端的照片可用性（T-056 的 follow-up，2026-10-26）
+
+Branch `t056-apivision`（自 1425e3a，本機，**沒有 push**）。依 §9 問題 6 與 coordinator 的 answer 6（**coordinator 的決定**，不是 owner 的）；D-124 維持 **PROPOSED**。只用 fake、本機測試與一次性 database；**沒有任何 live AI 呼叫**，沒有讀取、印出或 grep 任何 key 的值（只有變數名稱），Railway 沒有任何操作。證據在 `checks/evidence/2026-10-26-T-056-apivision/`（`run.sh` 執行並在每個 log 最後一行記 exit code）。
+
+### 設計
+
+- **一段判斷**：`internal/config` 的 `decide`（由 `LoadAI` 拆出，內容不變）決定文字 proposal（開關、`AI_POLICY_APPROVAL`、`AI_MODEL`）與照片路徑（`AI_VISION_PROVIDER`，不設＝跟 `AI_PROVIDER`；`AI_VISION_POLICY_APPROVAL`、`AI_VISION_MODEL`）。每個 live provider 的 gate 以參數傳入：worker 的 `LoadAI` 用 `loadLive`（gate 通過後才讀 key），API 的 `LoadAPIAI` 用 `keyFree`（`liveGate` 加 build 記錄的批准，從不讀 key）；`loadLive` 即 `keyFree` 再讀 key。四個 `LiveEnabled`（`AI`、`AIVision`、`APIAI`、`APIVision`）共用 `liveFor`。`APIAI.Vision`（新型別 `APIVision`）是沒有 credential 的 `AIVision`。所以沒有第二份規則。
+- **`cmd/api`**：`photoAvailability` 與文字的 `aiAvailability` 用同一個對應 `availability`（fake 或已開的 live provider → `Available`；未開的 live provider → `PolicyNotApproved`；其他 → `NotConfigured`）；`handlerOptions` 把 `WithAI` 與新的 `WithPhotoAI` 交給 handler；照片路徑為 live provider 時啟動 log 寫 `photo proposals are accepted; the worker calls the provider`（`code` `PHOTO_PATH_ON`）或 `photo proposals are refused`（typed reason，例如 `IMAGES_NOT_APPROVED`），與 worker 的 `the photo path is on/off` 對應。
+- **`internal/proposals`**：`Service.Photo`（zero 值拒絕照片，與文字的設定無關）取代 `BeginImage` 與 `CreateFromImage` 中的 `Service.AI`；照片路徑關閉時 503，`error.code` 依照片路徑的可用性（`AI_PROVIDER_NOT_CONFIGURED`，或 live provider 未開時 `AI_POLICY_NOT_APPROVED`），`details[0]` 為 `{path: "", code: "AI_IMAGE_UNSUPPORTED"}`，即 worker 會用的失敗碼（`generator.ImageUnsupported`；`TestTheAPIRefusesAPhotoWithTheWorkersCode` 守住兩者相同）。在讀 body 前拒絕，不存影像、不建 proposal、不寫 audit。
+- **Contract 先改**（commit 9647e5a）：`openapi.yaml` 的 createImageProposal 描述與自己的 503（三個範例：照片路徑未設定、未批准、沒有 object storage）。錯誤碼目錄（D-025）沒有新碼，所以 schema、TS 型別與 client 不變（client 本來就保留 `details`：`apps/web/tests/api.test.ts` 的 storage_failed 測試）。
+- **不變的**：文字 proposal（`createProposal`）；API 的環境中有任何 AI key 變數仍拒絕啟動（`key_forbidden`）；worker 的行為。**新的拒絕啟動**：照片路徑的設定不合時（例如未知的 `AI_VISION_PROVIDER`、production 的 `fake`、跟隨時設了 `AI_VISION_MODEL`、開關 on 而另一個 provider 沒有批准），API 與 worker 以相同的錯誤碼拒絕啟動（之前 API 不讀這些設定而照常啟動）。
+- **例子**：Claude（H-018）為主、沒有另設照片路徑 → 文字接受，照片 503 `AI_POLICY_NOT_APPROVED`／`AI_IMAGE_UNSUPPORTED`（之前接受上傳、job 才以 `AI_IMAGE_UNSUPPORTED` 失敗）；Claude 為主、`AI_VISION_PROVIDER=meta`＋H-029＋`muse-spark-1.3`、開關 on → 兩者都接受；Meta（H-029）為主 → 兩者都接受；`AI_PROVIDER=disabled`、`AI_VISION_PROVIDER=fake`（只在 development／test）→ 照片接受、文字 503（worker 的照片管線本來就不經文字 provider）。
+- **部署**（commit 4a77901）：`deploy/railway/variables.json` 的 api 與 worker 都宣告三個設定，宣告相同（`{"secret": false, "source": "owner", "required": false}`；worker 之前也沒有宣告）；`scripts/check_deploy.py` 的 `API_AI_SETTINGS` 為七個（兩邊宣告必須相同、不是 secret、API 沒有其他 AI 設定）；`checks/deploy-check.json` 重新產生；`scripts/rehearse_railway_deploy.py` 也檢查 deployer 從不設這三個；`deploy.sh` 開頭註解、runbook §4.4／§7.3。文件：SECURITY §7、ADR-027 addendum、D-124（與 `planning/decisions.json`）。
+
+### 測試（先紅後綠）
+
+| 範圍 | 測試 | 紅 → 綠 |
+|---|---|---|
+| `internal/config` | `TestTheAPIsPhotoDecisionIsTheWorkers`：8 種文字設定 × 開關 3 × `APP_ENV` 2 × `AI_VISION_PROVIDER` 6 × `AI_VISION_POLICY_APPROVAL` 4 × `AI_VISION_MODEL` 4 = **4,608 種組合**，API（沒有 key）與 worker（三把 key 都在）的錯誤碼、照片路徑（provider、on、typed reason、批准、model、segmentation model）與文字的判斷都相同；API 只讀它的設定與 key 變數的有無；每種結果都出現（拒絕啟動 4,014、fake 20、disabled 42、同 provider on 4、另一 provider on 2、`images_not_approved` 28、`switch_off` 34、`no_approval_named` 168、`model_mismatch` 128、`provider_mismatch` 168）。`TestAPIAIReadsThePhotoSettings`（15 種設定的預期結果；16 種 API 與 worker 都拒絕啟動的設定與錯誤碼）、`TestAPIVisionLiveEnabled`（7 種手造值）、`TestAPIAIIsKeyFree`（改：見下）、`TestAPIAIRefusesAnyKey`（多 5 種照片設定 × 8 個 key 變數） | `red-config.log`（以保留舊行為的暫時 stub：`APIVision` 型別存在但 `LoadAPIAI` 不填；stub 沒有 commit）→ `green-new-tests-v.log` |
+| `cmd/api` | `TestAPIPhotoAvailability`（15 種設定的文字與照片可用性；6 種手造值）、`TestAPIAvailabilityNeedsNoKey`（多照片的 log）、`TestAPIAvailabilityRefusesAMismatch`（多 7 種照片設定，exit 1、typed code、不碰 database）、`TestAPIRefusesToStartWithAKey`（多 2 種照片設定）；DB：`TestTheServedHandlerDecidesPhotosOnTheirOwn`（經 `handlerOptions` 的 handler，6 種設定：照片 503＋`AI_IMAGE_UNSUPPORTED` 恰好在照片路徑關閉時，文字另外判斷，什麼都不存） | `red-api.log`（stub：照片跟文字的可用性）→ 綠；`RefusesToStartWithAKey` 在 stub 也成立（regression） |
+| `cmd/worker` | `TestTheAPIsPhotoDecisionIsThePhotoPaths`：6 種文字 × 7 種照片 × 開關 3 × `APP_ENV` 2 = 252 種組合，API 接受照片恰好等於 worker 由同樣設定與 key 建出的 judge 收影像（`photoPath`，只建不呼叫），或兩者都拒絕啟動 | `red-worker.log` → 綠 |
+| `internal/proposals`、`generator` | `TestRefusedPhotoPathOff`（兩種可用性的 503、`details[0]`；body 與 openapi.yaml 的範例相同；文字的 503 不變、沒有 details；`Service{AI: Available}` 不收照片）、`TestTheAPIRefusesAPhotoWithTheWorkersCode` | `red-proposals.log` → 綠 |
+| `internal/api`（DB） | `TestPhotoStaleBaseAndAvailability`：7 種（文字與照片都關、都未批准；文字開而照片關／未批准／沒說；文字關而照片開；沒有 storage），照片的 code 與 `details[0].code`、存了幾個 proposal 與影像、同一部署的文字 proposal | 紅：見 Mutation 的 W1–W7（舊行為即 W1）；綠：`db-photo-green.log` |
+| 部署 | `check_deploy_negatives.py`（18 個：照片設定缺一邊、兩邊都缺、deployer 設值、`required` 不同、宣告不同、secret、`fake`、限額與 budget 在 API、以及既有的 key 與四個設定的 regression；`later` 不同不算不同） | `red-deploy.log`：新的檢查對 ea7d220 的 `variables.json` 失敗（`AI_VISION_PROVIDER must be declared on the API and on the worker`），舊的檢查對新的 `variables.json` 失敗（`the API reads no other AI setting: [AI_VISION_*]`）→ `check-deploy-negatives.log` 18/18 |
+
+**`TestAPIAIIsKeyFree` 的改動（不是放寬）**：原本它斷言 API 不讀 `AI_VISION_*`，即使值不合法（`openai`、跟隨時的 model）也照常啟動；這正是 coordinator 的決定要改的行為。現在它斷言照片路徑的判斷（Meta：on；Claude：`images_not_approved`）與 API 不讀限額與 budget；不合法的照片設定改由 `TestAPIAIReadsThePhotoSettings` 斷言為拒絕啟動（較嚴）。其他既有的 assertion 沒有改、沒有加 skip。`setupPhotos` 與 `TestPhotoStaleBaseAndAvailability` 既有的兩種情況多給 `WithPhotoAI`（照片路徑 zero 值即拒絕），預期結果不變。
+
+### Mutation（`mutate.py`，5247cc4 的 `git archive` 複本，在 scratch 中）
+
+37 個 mutant；build 失敗另列 INVALID，不算 killed（這次沒有）。
+
+- **不需 database 的 30 個**（`mutation.log`，每個跑 `./internal/config/...`、`./cmd/api/`、`./cmd/worker/`、`./internal/proposals/`、`./internal/proposals/generator/` 中相關的部分）：**29 killed、1 survived（等價）**。範圍：`LoadAPIAI` 保留的照片路徑（V1–V8：不保留、丟掉批准、reason 用文字的、provider 用文字的、丟掉 segmentation model、API 用讀 key 的 gate、丟掉錯誤、fakeOK 一律 true）、`liveFor` 與 `APIVision.LiveEnabled`（L1–L5）、共用的 `decide`／`keyFree`（D1–D5：兩邊同時改變，由明確的預期測試殺掉）、`cmd/api` 的對應與 log（P1–P7）、拒絕的 body（R1–R5）。存活的 **L5**（`liveFor` 拿掉 `a.Valid()`）是等價的：`Approval.Provider()` 對無效的 token 回空字串，而 live provider 的名稱不是空字串（T-055 §10.5 的 L3 同理）。
+- **需要 database 的 7 個**（`mutation-db.log`，`dt_test_t056av1`，`GEMINUS_REQUIRE_DB_TESTS=1`，只跑 `TestPhotoStaleBaseAndAvailability`、`TestTheServedHandlerDecidesPhotosOnTheirOwn`、`TestAPhotoProposalEndToEnd`）：**7 killed**。W1（`BeginImage` 問文字的可用性，即改動前的行為）、W2（拒絕沒有標為照片）、W3（`CreateFromImage` 問文字的可用性）、W4（handler 把文字的可用性給照片）、W5（`WithPhotoAI` 無效）、W6、W7（`handlerOptions` 給照片文字的可用性、沒有 `WithPhotoAI`）。
+- 第一次執行（21:07）與另一個 agent 共用了 scratchpad 的 `mut/` 目錄，複本不是本分支的程式（25 個 NOT APPLIED、5 個 INVALID），結果作廢；改在自己的目錄重跑，上面的數字是重跑的結果（`mutation.log` 已覆寫）。已通知 coordinator 另一個 agent 的 mutation 結果可能受影響。
+
+### 指令與 exit code（Go 1.27.3、`GOTOOLCHAIN=local`；Python `.venv/bin/python -I`；deploy 腳本以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行）
+
+DB 測試都在 coordinator 建立的**一次性 cluster**（PostgreSQL 16.15，socket `/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450）上自己建立的 `dt_test_*` database 執行：共用的 cluster（55440）在 container 重啟後沒有執行，依指示沒有啟動它；也沒有啟動或停止一次性的 cluster。
+
+| 指令 | exit | Log |
+|---|---|---|
+| `gofmt -l cmd internal schemas scripts prompts` | 0（空） | `gofmt.log` |
+| `go vet ./internal/config/... ./cmd/... ./internal/proposals/... ./internal/api/` | 0 | `vet.log` |
+| 紅：`go test -count=1`（stub）`./internal/config/`、`./cmd/api/`、`./cmd/worker/`、`./internal/proposals/ ./internal/proposals/generator/` | 1、1、1、1 | `red-config.log`（4,418 行，中間省略）、`red-api.log`、`red-worker.log`、`red-proposals.log` |
+| `go test -count=1 ./internal/config/... ./cmd/api/ ./cmd/worker/ ./internal/proposals/... ./internal/api/` | 0（9 個 package；DB 測試在此 skip） | `tests.log`、`green-new-tests-v.log` |
+| `go test -race -count=1 -timeout 30m`（同上） | 0 | `race.log` |
+| `make db-test`（`dt_test_t056av1`） | 0 | `db-test-av1.log` |
+| `go test -race -p 1 -v -run '…Photo…|TestProposalsNeedAI|TestRunServesAndStops|TestTheServedHandlerDecidesPhotosOnTheirOwn' ./internal/api/ ./cmd/api/`（`dt_test_t056av1`） | 0（8 個測試 PASS，沒有 SKIP） | `db-photo-green.log` |
+| `make backend-test GOFLAGS=-count=1` | 0（gofmt、vet、83 個 package ok，0 FAIL，沒有 cached；`scripts/check-architecture` 的測試在預設 10 分鐘內通過） | `backend-test.log` |
+| `make architecture-check` | 0（95 packages、25 rules、16 build configurations） | `architecture-check.log` |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python` | 0、0（本節寫完後再跑一次；`checks/*.json` 沒有再改變；不含官方完整 OpenAPI validator：NOT_RUN_UNAVAILABLE） | `spec-check.log`、`spec-check-final.log` |
+| `scripts/check_deploy.py` | 0 | `check-deploy.log` |
+| `check_deploy_negatives.py`、`red_deploy.py` | 0（18/18）、0（2/2 紅） | `check-deploy-negatives.log`、`red-deploy.log` |
+| `scripts/rehearse_railway_deploy.py` | 0，`rehearsal: PASS`（Railway 本身 NOT RUN） | `rehearsal.log` |
+| `bash deploy/railway/deploy.sh --dry-run` | 0（沒有呼叫任何遠端；三個照片設定是 owner 的，計畫中不設） | `deploy-dry-run.log` |
+| mutation（不需 / 需要 database） | 0、0（29/30 killed＋1 等價；7/7 killed） | `mutation.log`、`mutation-db.log` |
+| `make integration-test`（新建的 `dt_test_t056av2`） | **0**（`make db-test` 的 migration up／down／up 與全部 SQL 測試，加上 `make db-go-test`：38 個 package ok，`-race -p 1`，`GEMINUS_REQUIRE_DB_TESTS=1`，沒有 FAIL 或 SKIP；含 `internal/api` 的照片測試與 `cmd/api` 的 `TestTheServedHandlerDecidesPhotosOnTheirOwn`） | `integration-test.log` |
+
+兩個 `dt_test_t056av*` database 在最後都已 DROP。
+
+### NOT RUN
+
+- 任何 live AI 呼叫；`make ai-eval-live`、`make ai-smoke-live`；Railway 上的任何操作（部署後 API 與 worker 的照片設定值是否相同，靜態檢查與 rehearsal 看不到值）。
+- `make e2e-test` 與 frontend（`make frontend-test`、build）：依指示不執行；前端沒有改（錯誤碼目錄不變，client 照舊保留 `details`）。
+- `make backend-race`（整個 repository 的 `-race`）：只跑了上面範圍的 `-race`。
+- 照片路徑的 **record 變動**（`aiapproval.RecordForTest`）× 設定的 API-vs-worker 比較：`internal/config/aiapproval` 依指示不動，所以 4,608 種組合只用這個 build 的兩個 record（H-018、H-029）；record 的變動只在既有的 272 種比較（文字的 gate）中。
+- 獨立審查：尚未進行。
+
+### 問題
+
+1. **錯誤碼**：照片路徑關閉時用既有的 `AI_PROVIDER_NOT_CONFIGURED`／`AI_POLICY_NOT_APPROVED`，加上 `details[0].code` `AI_IMAGE_UNSUPPORTED`，沒有在 D-025 的目錄加新碼（加新碼要改 schema、TS 型別與前端的對應）。這樣可以嗎？
+2. **UI**：前端沒有改；照片按鈕在照片路徑關閉時仍出現，按下後顯示一般的 503 訊息，`details` 的 reason 是英文（`ProblemView` 對不認得的 code 顯示原文）。要加 `AI_IMAGE_UNSUPPORTED` 的中英文訊息，或讓 UI 事先知道照片路徑是否開啟（目前沒有 endpoint 說這件事）嗎？
+3. **Claude 的照片路徑**：若之後的 record 讓 H-018 列有圖片，config 會把 Claude 的照片路徑打開，API 接受照片，但 worker 因為 Claude 的 adapter 不收影像而拒絕啟動（`photoBackends`），照片 proposal 停在 generating（與沒有 key 的情況相同）。要讓 config 也知道「哪個 provider 的 adapter 收影像」，在 API 端就拒絕嗎？
+4. **record 變動的比較**：要在 `aiapproval` 的 `TestTheAPIsGateIsTheWorkers` 加上照片路徑（另一個 agent 改完 `aiapproval` 之後）嗎？
+5. **舊的證據**：`checks/evidence/2026-10-26-T-055-apiavail/check_deploy_negatives.py` 的「the photo path's provider on the API」一例預期的訊息已不同（現在 API 有宣告這個設定）；那是 T-055 的歷史證據，沒有修改也沒有重跑。
+
+### Commits（`t056-apivision`）
+
+| Commit | 內容 |
+|---|---|
+| 9647e5a | contract first：createImageProposal 的 503 與範例 |
+| ea7d220 | `config.decide`／`keyFree`／`liveFor`、`APIVision`、`photoAvailability`、`WithPhotoAI`、`Service.Photo`、照片的 503；全部測試（先寫，紅燈以未 commit 的 stub） |
+| 4a77901 | `variables.json`、`check_deploy.py`、rehearsal、`deploy.sh` 註解、`deploy-check.json`、runbook §4.4／§7.3 |
+| 5247cc4 | `cmd/api` 的 `handlerOptions` 與經 handler 的 DB 測試（為了殺掉 wiring 的 mutant） |
+| （本節的 commit） | 本節、D-124、`planning/decisions.json`、SECURITY §7、ADR-027 addendum、證據 |

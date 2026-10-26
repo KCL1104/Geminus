@@ -1,0 +1,10 @@
+ok  	github.com/kcl1104/geminus/internal/config	1.986s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	3.937s
+ok  	github.com/kcl1104/geminus/cmd/api	3.924s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.816s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.401s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	3.845s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.952s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	2.448s
+ok  	github.com/kcl1104/geminus/internal/api	2.045s
+exit 0

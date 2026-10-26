@@ -1,0 +1,195 @@
+baseline (no change, ./cmd/api/ ./cmd/worker/ ./internal/config/... ./internal/proposals/ ./internal/proposals/generator/): SURVIVED (22 s)
+
+V1 the photo path not kept | internal/config/apiai.go | KILLED (8 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.31s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.338s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.091s
+    --- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.175s
+V2 the photo approval dropped | internal/config/apiai.go | KILLED (8 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.28s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.318s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.122s
+    --- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.02s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.170s
+V3 the photo reason the proposals' | internal/config/apiai.go | KILLED (10 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.35s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.386s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.054s
+V4 the photo provider the proposals' | internal/config/apiai.go | KILLED (8 s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.21s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.252s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.060s
+    --- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.068s
+V5 the segmentation model dropped | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.21s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.259s
+V6 the API's gate reads the keys | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestAPIAIRefusesAnyKey (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.69s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.747s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	0.664s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+V7 the decision's errors dropped | internal/config/apiai.go | KILLED (8 s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestAPIAISelection (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.16s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.186s
+    --- FAIL: TestTheAPIsGateIsTheWorkers (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/config/aiapproval	1.022s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.115s
+    --- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.086s
+V8 the photo path's own fakeOK ignored | internal/config/apiai.go | KILLED (9 s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.13s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.144s
+    --- FAIL: TestAPIAvailabilityRefusesAMismatch (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.075s
+    --- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.214s
+L1 APIVision without images | internal/config/apiai.go | KILLED (7 s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.137s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.095s
+L2 APIVision any valid approval | internal/config/apiai.go | KILLED (6 s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.273s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.049s
+L3 liveFor without the provider | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.140s
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.052s
+L4 liveFor without images | internal/config/ai.go | KILLED (10 s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.097s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.250s
+L5 liveFor without a valid approval | internal/config/ai.go | SURVIVED (9 s)
+D1 keyFree keeps no approval | internal/config/ai.go | KILLED (10 s)
+    --- FAIL: TestThisBuildsRecord (0.00s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.09s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    --- FAIL: TestMetaLiveTurnsOn (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.108s
+    --- FAIL: TestH026TurnsLiveOn (0.00s)
+    --- FAIL: TestLiveTurnsOn (0.00s)
+    --- FAIL: TestSpendLimitsAreChecked (0.00s)
+D2 keyFree past an off gate | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestThisBuildsRecord (0.00s)
+    --- FAIL: TestAPIAIMismatches (0.00s)
+    --- FAIL: TestLoadAPI (0.00s)
+    --- FAIL: TestTheAPIsPhotoDecisionIsTheWorkers (0.77s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestMetaWithoutTheSwitch (0.00s)
+    --- FAIL: TestMetaMismatchesKeepLiveOff (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.964s
+    --- FAIL: TestH026TurnsLiveOn (0.00s)
+    --- FAIL: TestAnAlteredRetentionRefuses (0.04s)
+    --- FAIL: TestTheSwitchIsRequired (0.00s)
+D3 another photo provider without images | internal/config/ai.go | KILLED (12 s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.196s
+D4 the proposals' provider's photos without images | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.266s
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.091s
+    --- FAIL: TestRunNamesTheLiveMetaProvider (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/worker	0.128s
+D5 the photo path never follows | internal/config/ai.go | KILLED (11 s)
+    --- FAIL: TestAPIAIIsKeyFree (0.00s)
+    --- FAIL: TestAPIAIReadsThePhotoSettings (0.00s)
+    --- FAIL: TestAPIVisionLiveEnabled (0.00s)
+    --- FAIL: TestMetaLiveTurnsOn (0.00s)
+    --- FAIL: TestMetaWithoutTheSwitch (0.00s)
+    --- FAIL: TestTheVisionPath (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/config	0.609s
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.02s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.130s
+    --- FAIL: TestThePhotoPath (0.00s)
+    --- FAIL: TestRunNamesTheLiveMetaProvider (0.00s)
+P1 photos follow the proposals | cmd/api/main.go | KILLED (4 s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.069s
+P2 photos on with the proposals | cmd/api/main.go | KILLED (4 s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.095s
+P3 photos of the proposals' provider | cmd/api/main.go | KILLED (4 s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.082s
+P4 a live provider not on is not configured | cmd/api/main.go | KILLED (4 s)
+    --- FAIL: TestAPIAvailability (0.00s)
+    --- FAIL: TestAPIPhotoAvailability (0.00s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.060s
+P5 no photo log when on | cmd/api/main.go | KILLED (4 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.063s
+P6 the photo log's reason the proposals' | cmd/api/main.go | KILLED (5 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.074s
+P7 no photo log for a live photo path | cmd/api/main.go | KILLED (5 s)
+    --- FAIL: TestAPIAvailabilityNeedsNoKey (0.01s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	2.089s
+R1 the photo refusal is the proposals' | internal/proposals/image_http.go | KILLED (3 s)
+    --- FAIL: TestRefusedPhotoPathOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals	0.094s
+R2 the detail's code | internal/proposals/image_http.go | KILLED (3 s)
+    --- FAIL: TestRefusedPhotoPathOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals	0.142s
+R3 not approved as not configured | internal/proposals/image_http.go | KILLED (4 s)
+    --- FAIL: TestRefusedPhotoPathOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals	0.058s
+R4 the detail at /file | internal/proposals/image_http.go | KILLED (3 s)
+    --- FAIL: TestRefusedPhotoPathOff (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals	0.054s
+R5 another code | internal/proposals/image.go | KILLED (4 s)
+    --- FAIL: TestRefusedPhotoPathOff (0.01s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals	0.105s
+    --- FAIL: TestTheAPIRefusesAPhotoWithTheWorkersCode (0.00s)
+    FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.435s
+
+30 mutants (no database): 29 killed, 1 survived, 0 invalid (do not build), 0 not applied or timed out
+exit 0

@@ -1,0 +1,8 @@
+--- FAIL: TestRefusedPhotoPathOff (0.00s)
+    image_test.go:95: photos, 0: details []
+    image_test.go:95: photos, 1: details []
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals	0.071s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.275s
+FAIL
+exit 1

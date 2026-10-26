@@ -1,0 +1,37 @@
+=== RUN   TestAPIAIIsKeyFree
+--- PASS: TestAPIAIIsKeyFree (0.00s)
+=== RUN   TestAPIAIRefusesAnyKey
+--- PASS: TestAPIAIRefusesAnyKey (0.00s)
+=== RUN   TestTheAPIsPhotoDecisionIsTheWorkers
+    apivision_test.go:147: 4608 combinations: map[off: disabled:42 off: images_not_approved:28 off: model_mismatch:128 off: no_approval_named:168 off: provider_mismatch:168 off: switch_off:34 on: another provider:2 on: the proposals' provider:4 refused to start:4014 the fake:20]
+--- PASS: TestTheAPIsPhotoDecisionIsTheWorkers (0.11s)
+=== RUN   TestAPIAIReadsThePhotoSettings
+--- PASS: TestAPIAIReadsThePhotoSettings (0.00s)
+=== RUN   TestAPIVisionLiveEnabled
+--- PASS: TestAPIVisionLiveEnabled (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config	0.123s
+=== RUN   TestAPIPhotoAvailability
+--- PASS: TestAPIPhotoAvailability (0.00s)
+=== RUN   TestAPIAvailabilityNeedsNoKey
+--- PASS: TestAPIAvailabilityNeedsNoKey (0.01s)
+=== RUN   TestAPIAvailabilityRefusesAMismatch
+--- PASS: TestAPIAvailabilityRefusesAMismatch (0.00s)
+=== RUN   TestAPIRefusesToStartWithAKey
+--- PASS: TestAPIRefusesToStartWithAKey (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/api	0.061s
+=== RUN   TestTheAPIsPhotoDecisionIsThePhotoPaths
+    apiphoto_test.go:87: map[both refuse to start:112 both take photos: live:6 both take photos: the fake:16 neither takes photos:118]
+--- PASS: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/cmd/worker	0.065s
+=== RUN   TestRefusedPhotoPathOff
+--- PASS: TestRefusedPhotoPathOff (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals	0.032s
+=== RUN   TestTheAPIRefusesAPhotoWithTheWorkersCode
+--- PASS: TestTheAPIRefusesAPhotoWithTheWorkersCode (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.095s
+exit 0

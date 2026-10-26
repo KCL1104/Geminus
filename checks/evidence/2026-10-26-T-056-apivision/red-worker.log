@@ -1,0 +1,96 @@
+--- FAIL: TestTheAPIsPhotoDecisionIsThePhotoPaths (0.00s)
+    apiphoto_test.go:53: meta, another model, photos meta, Claude's approval, switch "", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, Claude's approval, switch "", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, Claude's approval, switch "off", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, Claude's approval, switch "off", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:68: meta, another model, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, another model, photos the fake, switch "", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: meta, another model, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, another model, photos the fake, switch "off", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:53: meta, another model, photos meta, switch "", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, switch "", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, switch "off", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, another model, photos meta, switch "off", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:68: nothing set, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: nothing set, photos the fake, switch "", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: nothing set, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: nothing set, photos the fake, switch "off", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: disabled, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: disabled, photos the fake, switch "", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: disabled, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: disabled, photos the fake, switch "off", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: the fake, photos following, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: the fake, photos following, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: the fake, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: the fake, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: claude, photos meta, switch "on", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: claude, photos meta, switch "on", production: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: claude, photos meta, no approval, switch "on", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (required): the photo path's provider needs the owner's approval of it
+    apiphoto_test.go:53: claude, photos meta, no approval, switch "on", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (required): the photo path's provider needs the owner's approval of it
+    apiphoto_test.go:53: claude, photos meta, Claude's approval, switch "on", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (provider_mismatch): names an approval of another provider
+    apiphoto_test.go:53: claude, photos meta, Claude's approval, switch "on", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (provider_mismatch): names an approval of another provider
+    apiphoto_test.go:53: claude, photos claude, switch "", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: claude, photos claude, switch "", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: claude, photos claude, switch "off", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: claude, photos claude, switch "off", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: claude, photos claude, switch "on", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: claude, photos claude, switch "on", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:68: claude, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: claude, photos the fake, switch "", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: claude, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: claude, photos the fake, switch "off", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: claude, photos the fake, switch "on", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: claude, photos the fake, switch "on", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: meta, photos following, switch "on", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: meta, photos following, switch "on", production: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: meta, photos the fake, switch "", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, photos the fake, switch "", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: meta, photos the fake, switch "off", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, photos the fake, switch "off", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:68: meta, photos the fake, switch "on", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, photos the fake, switch "on", production: the API <nil>, the worker AI_VISION_PROVIDER (invalid): the fake provider is for development and tests only: APP_ENV must be development or test
+    apiphoto_test.go:53: meta, photos meta, switch "", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, switch "", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, switch "off", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, switch "off", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, switch "on", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, switch "on", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:68: meta, photos meta, no approval, switch "on", test: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:68: meta, photos meta, no approval, switch "on", production: the worker's judge takes images: true; the API takes photos: false ({Provider: Approval:{rec:<nil>} Model: SegmentationModel: LiveOff:})
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "off", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "off", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "on", test: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:53: meta, photos meta, Claude's approval, switch "on", production: the API <nil>, the worker AI_VISION_POLICY_APPROVAL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+        AI_VISION_MODEL (invalid): must be empty unless AI_VISION_PROVIDER names a live provider other than AI_PROVIDER's
+    apiphoto_test.go:87: map[both refuse to start:70 both take photos: live:6 both take photos: the fake:16 neither takes photos:118]
+FAIL
+FAIL	github.com/kcl1104/geminus/cmd/worker	0.062s
+FAIL
+exit 1

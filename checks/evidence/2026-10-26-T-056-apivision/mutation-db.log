@@ -1,0 +1,34 @@
+baseline (no change, -p 1 -run TestPhotoStaleBaseAndAvailability|TestTheServedHandlerDecidesPhotosOnTheirOwn|TestAPhotoProposalEndToEnd ./internal/api/ ./cmd/api/): SURVIVED (7 s)
+
+W1 BeginImage asks the proposals' availability | internal/proposals/image.go | KILLED (9 s)
+    --- FAIL: TestPhotoStaleBaseAndAvailability (1.33s)
+    FAIL	github.com/kcl1104/geminus/internal/api	1.798s
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.31s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.374s
+W2 BeginImage's refusal not a photo's | internal/proposals/image.go | KILLED (8 s)
+    --- FAIL: TestPhotoStaleBaseAndAvailability (1.25s)
+    FAIL	github.com/kcl1104/geminus/internal/api	1.931s
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.29s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.324s
+W3 CreateFromImage asks the proposals' availability | internal/proposals/image.go | KILLED (8 s)
+    --- FAIL: TestPhotoStaleBaseAndAvailability (1.18s)
+    FAIL	github.com/kcl1104/geminus/internal/api	1.645s
+W4 the service's photo path the proposals' | internal/api/api.go | KILLED (8 s)
+    --- FAIL: TestPhotoStaleBaseAndAvailability (1.21s)
+    FAIL	github.com/kcl1104/geminus/internal/api	1.716s
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.22s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.244s
+W5 WithPhotoAI ignored | internal/api/api.go | KILLED (7 s)
+    --- FAIL: TestAPhotoProposalEndToEnd (0.20s)
+    --- FAIL: TestPhotoStaleBaseAndAvailability (1.04s)
+    FAIL	github.com/kcl1104/geminus/internal/api	1.270s
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.35s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.412s
+W6 the served photos as the proposals | cmd/api/main.go | KILLED (6 s)
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.38s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.423s
+W7 the served handler without WithPhotoAI | cmd/api/main.go | KILLED (5 s)
+    --- FAIL: TestTheServedHandlerDecidesPhotosOnTheirOwn (0.16s)
+    FAIL	github.com/kcl1104/geminus/cmd/api	0.186s
+
+7 mutants (database): 7 killed, 0 survived, 0 invalid (do not build), 0 not applied or timed out

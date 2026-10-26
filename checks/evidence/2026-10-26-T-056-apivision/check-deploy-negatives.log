@@ -1,0 +1,20 @@
+PASS the file as committed: api_ai ['AI_PROVIDER', 'AI_POLICY_APPROVAL', 'AI_MODEL', 'GEMINUS_AI_LIVE', 'AI_VISION_PROVIDER', 'AI_VISION_POLICY_APPROVAL', 'AI_VISION_MODEL']
+PASS the API has no AI_VISION_PROVIDER: variables.json: AI_VISION_PROVIDER must be declared on the API and on the worker (T-053 I5)
+PASS the worker has no AI_VISION_MODEL: variables.json: AI_VISION_MODEL must be declared on the API and on the worker (T-053 I5)
+PASS neither has AI_VISION_POLICY_APPROVAL: variables.json: AI_VISION_POLICY_APPROVAL must be declared on the API and on the worker (T-053 I5)
+PASS the API's photo provider set by the deployer: variables.json: the API's AI_VISION_PROVIDER must be declared as the worker's (T-053 I5)
+PASS the API's photo model required: variables.json: the API's AI_VISION_MODEL must be declared as the worker's (T-053 I5)
+PASS the API's photo approval generated: variables.json: the API's AI_VISION_POLICY_APPROVAL must be declared as the worker's (T-053 I5)
+PASS the photo provider a secret on both: variables.json: AI_VISION_PROVIDER is a setting, not a secret (T-053 I5)
+PASS the test provider for photos on both: deploy/railway/variables.json mentions 'fake': the test setup never reaches the public deployment
+PASS a spend limit on the API: variables.json: the API reads no other AI setting (T-053 I5): ['AI_DAILY_LIMIT_USD']
+PASS a budget setting on the API: variables.json: the API reads no other AI setting (T-053 I5): ['AI_MAX_RETRIES']
+PASS the API has no AI_MODEL: variables.json: AI_MODEL must be declared on the API and on the worker (T-053 I5)
+PASS the API's switch set by the deployer: variables.json: the API's GEMINUS_AI_LIVE must be declared as the worker's (T-053 I5)
+PASS the API holds the Meta key: variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): ['GEMINUS_MUSE_API_KEY']
+PASS the API does not forbid ANTHROPIC_AUTH_TOKEN: variables.json: the API must forbid every AI key variable it refuses to start with (T-053 I5): ['ANTHROPIC_AUTH_TOKEN']
+PASS the Go list lacks the Meta key: internal/config/apiai.go: apiKeyVars (the AI key variables the API refuses) was not found, or lacks a live adapter's key
+PASS the notes differ: None
+PASS a note on the API's photo provider: None
+18/18 cases as expected
+exit 0

@@ -1,0 +1,5 @@
+the extended check, variables.json at ea7d220: variables.json: AI_VISION_PROVIDER must be declared on the API and on the worker (T-053 I5)
+the check at ea7d220, variables.json on disk: variables.json: the API reads no other AI setting (T-053 I5): ['AI_VISION_MODEL', 'AI_VISION_POLICY_APPROVAL', 'AI_VISION_PROVIDER']
+the extended check, variables.json on disk: PASS
+2/2 red runs fail as expected
+exit 0
