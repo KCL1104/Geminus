@@ -203,3 +203,47 @@ Web（vitest）：`tests/photo-api.test.ts`（operation inventory 的 method、p
 ## 11. 證據
 
 `checks/evidence/2026-10-26-T-056/`：`run.sh`（以 Go 1.27.3 執行並記錄 exit code，`-db` 只接受 `dt_test_*`）、`red-*.log`（測試先寫）、`green-*.log`（實作後，採用 T-055 前）、`green-after-t055.log`、`db-*.log`、`architecture-check-*.log`、`sample-server-review.log`、`mutants*.txt`、`scripts/`（mutation 腳本、暫時測試的副本）與 §7 的各 log。使用的資料庫：`dt_test_t056a`、`dt_test_t056b`、`dt_test_t056c`、`dt_test_t056m`，都由本任務建立，結束時都已 DROP。
+
+## Coordinator 驗證（2026-10-26）
+
+`t056-photo`（到 b1f67ef）以 `git merge --no-ff` 合併到已整合 T-055 的主線（merge commit 28f6941）：這個分支先前合併過 t055-meta，cherry-pick 會重複 T-055 的 commit。衝突處理：
+- `internal/audit/audit.go`：保留 T-052 的 `"warnings": {shape: count}`，以及 T-056 的 `fieldsOf(providerCall, photoCall, …)`。
+- `internal/domainpack/domainpack.go`：兩組介面都保留（T-052 的 `EventRulesProvider`／`EventIssue`、T-056 的 `PhotoVocabulary`）。
+- `docs/domains/ELECTRONICS_LINE.md`：T-052 為 §12、T-056 的照片概念改為 §13；AI_SPEC 與 D-131 的引用改為 §13。
+- `docs/DECISIONS_AND_TBD.md`、`planning/decisions.json`：分支帶來的重複 D-121–D-123 刪除，保留主線（T-055 review 前）的版本。
+
+指令與結果（evidence：`checks/evidence/2026-10-26-T-056-coordinator/`，`exit-codes.txt` 依執行順序；go1.27.3、Node 22，`--engine-strict=false`）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test GOFLAGS=-count=1` | 2 | 82 個 package ok；`scripts/check-architecture` 在 load 約 10–18 時超過 go test 的 10 分鐘預設（`panic: test timed out after 10m0s`） |
+| 同一個測試單獨重跑，`-timeout 30m`（container 重啟後，load 約 2–3） | 0 | 296 s；`check-architecture-rerun.log` |
+| `make architecture-check` | 0 | 95 packages、25 rules、16 build configurations |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-electronics-line-data -check` | 0 | |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、config、domainpack、results、cmd、generator、gen-photo-demo、proposals、storage/proposals、observability、prompts、audit） | 1 | 36 個 package ok；`internal/ai/provider/meta` 的 `TestRetriesBackOff` 失敗（`an HTTP date: waited [1.77961857s], want 2s`）：T-055 review 第 1 輪 L1 指出的問題，測試以真實時鐘產生秒精度的 HTTP date，等待時間會少於 2 s。不是 T-056 造成的；由 T-055 的修正固定時鐘，修好前不算通過 |
+| `make integration-test`（新的 dt_test_hkb5c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+| `npm ci`（apps/web、apps/web-e2e） | 0、0 | |
+| `make frontend-test` | 0 | 45 個檔案、1005 個測試 |
+| `make frontend-build` | 0 | |
+| `npm audit --prefix apps/web --omit=dev` | 0 | 0 vulnerabilities |
+| `make e2e-test`（等 3100–3101 沒有其他執行時才開始） | 0 | 504 passed、32 skipped（只在 CI 比對的 screenshot） |
+
+NOT RUN：任何 live 呼叫（SAM 3.1、Muse Spark）；完整的 `make backend-race`；CI 的 screenshot 比對（push 後由 CI 執行）；獨立審查（H-029 的一輪，下一步）。
+
+Coordinator 對 §9 問題的處理：
+1. 合併順序：T-055 先進主線（85a7750），T-056 之後以 merge 合併（28f6941）。
+2. D-130–D-132 維持 PROPOSED，比賽後放進決策頁（H-029 (4)）；照建議的做法使用，不視為已批准。
+3. Claude 影像備援：owner 決定先不要（H-035 (3)），照片只走 Meta。
+4. EXIF 方向：demo 影像由 `scripts/gen-photo-demo` 產生，沒有 orientation；先不做，比賽後再處理。
+5. Demo 影像的保證：owner 選擇以 UI 的資料提醒為準（H-035 (1)），不做 digest 白名單。
+6. API 端的照片可用性：coordinator 決定 API 也讀照片路徑的非 secret 設定（`AI_VISION_*`，不讀 key），照片路徑關閉時直接 503，不讓 job 才失敗；與 key-free availability 的後續一起實作並驗證。
+7. Segmenter 先花費：照片 proposal 的預留改為 count_tokens 加 10%（H-037）後，judge 被上限拒絕的情況大幅減少；接受 segmenter 最多約 USD 0.02 的損失，比賽後再考慮一起預留。
+8. 底稿模型：demo 使用 bare line；產品要用哪個範本比賽後決定。
+9. 概念清單：live 時依 SAM 3.1 的實際結果調整，調整要記錄。
+10. 編號：D-130–D-132 不重新編號（合併後沒有衝突）。
+
+另：T-055 review 第 1 輪 M1（照片的預留約 USD 4.04、organization 日上限 USD 5）由 owner 選擇以 count_tokens 處理（H-037）；部署變數由 owner 填完即 sealed（H-036）。
+
+下一步：T-055 的修正（H-037、L1–L5）與 API 的照片可用性；之後 T-056 的一輪獨立審查，範圍包含 count_tokens 的預留。

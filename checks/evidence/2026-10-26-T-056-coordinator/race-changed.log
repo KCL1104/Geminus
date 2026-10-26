@@ -1,0 +1,42 @@
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	17.140s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	31.132s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.221s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.170s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.589s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	69.037s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.608s
+--- FAIL: TestRetriesBackOff (0.77s)
+    messages_test.go:502: an HTTP date: waited [1.77961857s], want 2s
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/meta	12.912s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+ok  	github.com/kcl1104/geminus/internal/ai/review	9.954s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.163s
+ok  	github.com/kcl1104/geminus/internal/aievals	3.170s
+ok  	github.com/kcl1104/geminus/internal/config	1.036s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	6.787s
+ok  	github.com/kcl1104/geminus/internal/domainpack	2.119s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	52.785s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	101.327s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	3.217s
+ok  	github.com/kcl1104/geminus/internal/results/compare	43.633s
+ok  	github.com/kcl1104/geminus/internal/results/metrics	3.360s
+ok  	github.com/kcl1104/geminus/internal/results/observed	1.074s
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	1.160s
+ok  	github.com/kcl1104/geminus/cmd/api	3.328s
+ok  	github.com/kcl1104/geminus/cmd/migrate	1.226s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.060s
+ok  	github.com/kcl1104/geminus/cmd/worker	2.882s
+ok  	github.com/kcl1104/geminus/scripts/gen-electronics-line-data	17.999s
+ok  	github.com/kcl1104/geminus/scripts/gen-photo-demo	9.561s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.308s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	5.732s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	5.588s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	3.549s
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	1.236s
+ok  	github.com/kcl1104/geminus/internal/observability	1.854s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry	1.039s
+ok  	github.com/kcl1104/geminus/internal/observability/telemetry/export	3.198s
+ok  	github.com/kcl1104/geminus/prompts	1.016s
+ok  	github.com/kcl1104/geminus/internal/audit	1.763s
+FAIL

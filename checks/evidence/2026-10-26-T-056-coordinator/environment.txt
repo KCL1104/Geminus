@@ -1,0 +1,6 @@
+HEAD 28f694199e4dd8c3ff9397c601ba1506d6f382cb
+uncommitted besides evidence: 
+go version go1.27.3 linux/amd64
+2026-10-26T19:16:44Z
+ 19:16:44 up 15:24,  0 user,  load average: 10.08, 9.39, 10.18
+ports free: 19:38:58

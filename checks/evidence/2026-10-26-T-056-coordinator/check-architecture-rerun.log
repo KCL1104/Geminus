@@ -1,0 +1,4 @@
+ 20:02:42 up 2 min,  0 user,  load average: 1.55, 0.89, 0.35
+ok  	github.com/kcl1104/geminus/scripts/check-architecture	296.379s
+elapsed 321 s
+check-architecture-rerun (-timeout 30m) exit 0
