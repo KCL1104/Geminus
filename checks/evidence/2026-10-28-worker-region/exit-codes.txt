@@ -1,0 +1,3 @@
+check-deploy exit 0
+rehearsal exit 0
+spec-check exit 0

@@ -610,3 +610,13 @@ project 中原本就有的 `Geminus` 服務（接了這個 repo 的 branch）沒
 5. **（Low）重試會重複花錢**：AI 回答之後才發生的失敗（例如 audit），job 重試時會重新呼叫 AI。
 
 **花費**（2026-10-27／28 的 live，依 worker 的 log）：文字提案 3 次約 USD 0.13、照片 judge 與 SAM 約 USD 0.75（含 audit 錯誤造成的重試）。都在 organization 每日 USD 5 的上限內。精確數字以資料庫的 spend ledger 為準。
+
+### Worker 的 region 寫進 config（2026-10-28）
+
+`deploy/railway/worker.railway.json` 的 `deploy` 加上 `multiRegionConfig: {"asia-southeast1-eqsg3a": {"numReplicas": 1}, "us-west2": null}`。這和 owner 選擇後手動送出的 patch 相同。Deployer 會把 config 檔的 `deploy` 設定（`numReplicas` 除外）一起送出，所以之後重跑 `--apply` 時 worker 會留在 Singapore。
+
+`check_deploy.py`、rehearsal（PASS）、`make spec-check` 都是 exit 0（`checks/evidence/2026-10-28-worker-region/`）。
+
+Rehearsal 的替身不模擬 region，所以這個改變**沒有 red**。
+
+這只處理 region：Meta 對部分出口回 404 的問題仍然存在（見上一節）。
