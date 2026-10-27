@@ -734,7 +734,7 @@ def main() -> int:
         want_files = {s: f"/deploy/railway/{s}.railway.json" for s in ("migrate", "api", "worker", "web")}
         if st.get("config_files") != want_files:
             failures.append(f"config-as-code files: {st.get('config_files')}, want {want_files}")
-        want_builds = {s: json.load(open(ROOT / f"deploy/railway/{s}.railway.json"))["build"] for s in want_files}
+        want_builds = {s: dict(json.load(open(ROOT / f"deploy/railway/{s}.railway.json"))["build"], watchPatterns=[]) for s in want_files}
         if st.get("builds") != want_builds:
             failures.append(f"Dockerfile builds: {st.get('builds')}, want {want_builds}")
         owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE",

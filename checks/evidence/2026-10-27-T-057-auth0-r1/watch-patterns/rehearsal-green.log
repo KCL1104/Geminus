@@ -1,0 +1,207 @@
+run 1 | ed
+run 1 | 6. seed (one synthetic organization)
+run 1 |   $ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' -owner-issuer https://geminus-demo.us.auth0.com/ -owner-subject 'auth0|rehearsal-owner'
+run 1 |    organization org_01M5W4RHAFH8Q7Y8PNQT1RAF4T
+run 1 |   $ railway variable set WORKER_ORGANIZATION_IDS=org_01M5W4RHAFH8Q7Y8PNQT1RAF4T --service worker --environment production --skip-deploys --json
+run 1 |    no judge's account (GEMINUS_JUDGE_SUBJECT is not set): none added
+run 1 |    removing this run's TCP proxy
+run 1 |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+run 1 | 7. deploy api, worker, web
+run 1 |   $ railway up --service api --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+run 1 |    api: SUCCESS
+run 1 |   $ railway up --service worker --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+run 1 |    worker: SUCCESS
+run 1 |   $ railway up --service web --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+run 1 |    web: SUCCESS
+run 1 | 8. verify
+run 1 |    https://api-production-1a2b.up.railway.app/healthz -> 200
+run 1 |    https://api-production-1a2b.up.railway.app/readyz -> 200
+run 1 |    https://api-production-1a2b.up.railway.app/v1/me -> 401
+run 1 |    https://web-production-1a2b.up.railway.app/ -> 200
+run 1 |    https://web-production-1a2b.up.railway.app/auth/login -> 503 
+run 1 |    TCP proxies of Postgres: none open
+run 1 |    Auth0 Application: Allowed Callback URL https://web-production-1a2b.up.railway.app/auth/callback, Allowed Logout URL https://web-production-1a2b.up.railway.app/
+
+run 2 | ce web --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+run 2 |    web: SUCCESS
+run 2 | 8. verify
+run 2 |    note: the owner's secrets not sealed: GEMINUS_ANTHROPIC_API_KEY_A on worker, GEMINUS_ANTHROPIC_API_KEY_B on worker, GEMINUS_MUSE_API_KEY on worker, BFF_OIDC_CLIENT_SECRET on web. `railway variable list` returns an unsealed value to whoever lists the variables (this script drops it on receipt: kept, printed and stored nowhere); seal each in Railway (the service → Variables → the variable's 3-dot menu → Seal; it cannot be unsealed, the value can still be replaced)
+run 2 |    https://api-production-1a2b.up.railway.app/healthz -> 200
+run 2 |    https://api-production-1a2b.up.railway.app/readyz -> 200
+run 2 |    https://api-production-1a2b.up.railway.app/v1/me -> 401
+run 2 |    https://web-production-1a2b.up.railway.app/ -> 200
+run 2 |    https://web-production-1a2b.up.railway.app/auth/login -> 303 https://geminus-demo.us.auth0.com/authorize
+run 2 |    TCP proxies of Postgres: none open
+run 2 |    Auth0 Application: Allowed Callback URL https://web-production-1a2b.up.railway.app/auth/callback, Allowed Logout URL https://web-production-1a2b.up.railway.app/
+run 2 | deploy: done. Variables that are the owner's: docs/runbooks/deploy.md §7.3.
+
+run 4 | ction --json
+run 4 | 2b. Auth0: GEMINUS_AUTH0_SETUP=manual, the owner's (docs/runbooks/auth0.md §6)
+run 4 | 3. variables (secrets on stdin, never printed)
+run 4 |   $ railway variable set GEMINUS_MIGRATOR_DB_PASSWORD --stdin --service migrate --environment production --skip-deploys --json   (value on stdin)
+run 4 |     failed (exit 1): error: GEMINUS_MIGRATOR_DB_PASSWORD=[redacted] rejected
+run 4 |    TCP proxies of Postgres: none open
+
+run 1: 97 CLI calls, 7 psql calls, result FAIL: verification:
+run 2: 76 CLI calls, result done; the owner's values looked for in its state, output, result and the 516 values its methods returned or raised
+run 3: ['FAIL: verification:', 'FAIL: verification:']
+run 4: FAIL: `railway variable set` failed
+P1 the removal fails | FAIL: verification:
+P1 the removal fails |   - could not remove this run's TCP proxy tcp_1 (railway exit 1): remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production`
+P1 the removal fails |   - TCP proxy tcp_1 on Postgres is still open, this run's: remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P2.1 a proxy from before the run | FAIL: verification:
+P2.1 a proxy from before the run |   - TCP proxy tcp_left_by_killed_run on Postgres is still open, open before this run (used, not removed: it may be someone's, or left by an interrupted run): remove it with `railway tcp-proxy delete tcp_left_by_killed_run --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P2.2 a proxy from before the run | FAIL: verification:
+P2.2 a proxy from before the run |   - TCP proxy tcp_left_by_killed_run on Postgres is still open, open before this run (used, not removed: it may be someone's, or left by an interrupted run): remove it with `railway tcp-proxy delete tcp_left_by_killed_run --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P2.3 the same with GEMINUS_KEEP_DB_PROXY=1 | done
+P2.3 the same with GEMINUS_KEEP_DB_PROXY=1 |    warning: TCP proxy tcp_left_by_killed_run on Postgres is still open, open before this run (used, not removed: it may be someone's, or left by an interrupted run): remove it with `railway tcp-proxy delete tcp_left_by_killed_run --yes --service Postgres --environment production` (GEMINUS_KEEP_DB_PROXY=1: kept)
+P3 a removal that did not remove | FAIL: verification:
+P3 a removal that did not remove |   - TCP proxy tcp_1 on Postgres is still open, this run's: remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P4 create prints no id | done (proxies left: [])
+P5 the final listing fails | FAIL: verification:
+P5 the final listing fails |   - could not list the TCP proxies of Postgres (`railway tcp-proxy list`): check Railway → Postgres → Settings → Networking and remove any TCP proxy
+P7 a failed step with a proxy open | FAIL: `railway up --service` failed; if its log says the password authentication failed, Railway did not expand the sealed password in GEMINUS_MIGRATE_DATABASE_URL: docs/runbooks/deploy.md §7.7 (recovery)
+P7 a failed step with a proxy open |   - TCP proxy tcp_left_by_killed_run on Postgres is still open, open before this run (used, not removed: it may be someone's, or left by an interrupted run): remove it with `railway tcp-proxy delete tcp_left_by_killed_run --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P6 SIGTERM at the logins (exit 143, proxies left: []) |   $ psql -X -v ON_ERROR_STOP=1 -Atc 'SELECT rolname FROM pg_roles WHERE rolname LIKE '"'"'geminus\_%'"'"''
+P6 SIGTERM at the logins (exit 143, proxies left: []) |   $ psql -X -v ON_ERROR_STOP=1 -q -f deploy/sql/create_logins.sql
+P6 SIGTERM at the logins (exit 143, proxies left: []) | deploy: interrupted (SIGTERM): cleaning up, then exiting
+P6 SIGTERM at the logins (exit 143, proxies left: []) |    removing this run's TCP proxy
+P6 SIGTERM at the logins (exit 143, proxies left: []) |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+P6 SIGTERM at the logins (exit 143, proxies left: []) |    TCP proxies of Postgres: none open
+P6 SIGTERM at the logins (exit 143, proxies left: []) | deploy: INTERRUPTED (exit 143): rerun deploy/railway/deploy.sh --apply
+P6 SIGHUP at the logins (exit 129, proxies left: []) |   $ psql -X -v ON_ERROR_STOP=1 -Atc 'SELECT rolname FROM pg_roles WHERE rolname LIKE '"'"'geminus\_%'"'"''
+P6 SIGHUP at the logins (exit 129, proxies left: []) |   $ psql -X -v ON_ERROR_STOP=1 -q -f deploy/sql/create_logins.sql
+P6 SIGHUP at the logins (exit 129, proxies left: []) | deploy: interrupted (SIGHUP): cleaning up, then exiting
+P6 SIGHUP at the logins (exit 129, proxies left: []) |    removing this run's TCP proxy
+P6 SIGHUP at the logins (exit 129, proxies left: []) |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+P6 SIGHUP at the logins (exit 129, proxies left: []) |    TCP proxies of Postgres: none open
+P6 SIGHUP at the logins (exit 129, proxies left: []) | deploy: INTERRUPTED (exit 129): rerun deploy/railway/deploy.sh --apply
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) |   $ psql -X -v ON_ERROR_STOP=1 -q -f deploy/sql/create_logins.sql
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) | deploy: interrupted (SIGTERM): cleaning up, then exiting
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) |    removing this run's TCP proxy
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) | deploy: could not remove this run's TCP proxy tcp_1 (railway exit 1): remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production`
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) | deploy: TCP proxy tcp_1 on Postgres is still open, this run's: remove it with `railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production` (or set GEMINUS_KEEP_DB_PROXY=1 to keep it)
+P6 SIGTERM with the removal failing at the logins (exit 143, proxies left: ['tcp_1']) | deploy: INTERRUPTED (exit 143): rerun deploy/railway/deploy.sh --apply
+M2 stdout closed at the logins (exit 74, proxies left: []) | stderr: (empty)
+T1 a project token without the services | FAIL: a project token (RAILWAY_TOKEN) cannot create the missing Postgres, migrate, api, worker, web: the Railway CLI creates each one and then fails (`Project not found. Run railway link`). Set RAILWAY_API_TOKEN (an account or workspace token) instead, with GEMINUS_RAILWAY_PROJECT=<the project's name>; nothing was created
+T2 no token, the CLI signed in | done
+T3 no token, not signed in | FAIL: preflight:
+T4 Postgres without DATABASE_PUBLIC_URL | done
+T5 build settings committed, not kept | FAIL: Railway did not keep the Dockerfile builds of migrate, api, worker, web (`railway environment config`): {'migrate': None, 'api': None, 'worker': None, 'web': None}
+E1 the CLI quotes the token |     failed (exit 1): error: the token [redacted] is not authorized
+E1 the CLI quotes the token | FAIL: `railway service list` failed
+A1 | 2b. Auth0 (H-034): the API, the web application, sign-up off, the judge's account (H-035 (2)); the CLI signed in by the owner's approval and signed out at the end
+A1 |    the owner's approval: the CLI's device sign-in (the owner signs in to Auth0 in their own browser; no password or token is handed over)
+A1 |   $ auth0 login --domain geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |    Auth0 sign-in: open https://auth0.auth0.com/activate?user_code=QWER-TYUI in your browser, check that it shows the code QWER-TYUI, and approve (within 15 minutes)
+A1 |    signed in to geminus-demo.us.auth0.com
+A1 |   $ auth0 users show 'auth0|rehearsal-owner' --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ auth0 apis list --number 1000 --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ auth0 apis create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+A1 |    API https://api.geminus-demo.invalid: created
+A1 |   $ auth0 apps list --number 1000 --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ auth0 apps create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+A1 |    application 'Geminus demo web': created
+A1 |    callback https://web-production-1a2b.up.railway.app/auth/callback and logout https://web-production-1a2b.up.railway.app/ only; client ID a0rehearsalclient000000000000001
+A1 |   $ auth0 connections list --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ auth0 connections update con_db --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+A1 |    sign-up on Username-Password-Authentication: turned off
+A1 |   $ auth0 connections enabled-clients update con_google --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+A1 |    connection google-oauth2: the application disabled
+A1 |    the application signs users in through Username-Password-Authentication only
+A1 |   $ auth0 users search-by-email judge@geminus-demo.invalid --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ auth0 users create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+A1 |    the judge's account judge@geminus-demo.invalid: created (its password is shown once, at the end of the run)
+A1 |   $ auth0 apps show a0rehearsalclient000000000000001 --reveal-secrets --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A1 |   $ railway variable set BFF_OIDC_CLIENT_SECRET --stdin --service web --environment production --skip-deploys --json   (value on stdin)
+A1 |    web's BFF_OIDC_CLIENT_SECRET: set from the Auth0 CLI on stdin (never printed, never in a file)
+A1 |   $ railway environment edit --environment production --message 'T-057 deploy.sh: seal the Auth0 client secret' --json   (value on stdin)
+A1 |    web's BFF_OIDC_CLIENT_SECRET: sealed
+A1 |    signing the Auth0 CLI out and removing its home
+A1 |   $ auth0 logout geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+
+A1 | ' -member-issuer https://geminus-demo.us.auth0.com/ -member-subject 'auth0|rehearsaljudge0001' -member-role editor
+A1 |    organization org_01M5W4RHAFH8Q7Y8PNQT1RAF4T
+A1 |   $ railway variable set WORKER_ORGANIZATION_IDS=org_01M5W4RHAFH8Q7Y8PNQT1RAF4T --service worker --environment production --skip-deploys --json
+A1 |    the judge's account: an editor of the demo organization, and a member of nothing else
+A1 |   $ psql -X -v ON_ERROR_STOP=1 -At -v issuer=https://geminus-demo.us.auth0.com/ -v 'subject=auth0|rehearsaljudge0001' -f -
+A1 |    the judge's account auth0|rehearsaljudge0001: editor of org_01M5W4RHAFH8Q7Y8PNQT1RAF4T, nothing else
+A1 |    removing this run's TCP proxy
+A1 |   $ railway tcp-proxy delete tcp_1 --yes --service Postgres --environment production --json
+A1 | 7. deploy api, worker, web
+A1 |   $ railway up --service api --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+A1 |    api: SUCCESS
+A1 |   $ railway up --service worker --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+A1 |    worker: SUCCESS
+A1 |   $ railway up --service web --environment production --detach --json --message 'T-039 deploy.sh 5e51bf2'
+A1 |    web: SUCCESS
+A1 | 8. verify
+A1 |    https://api-production-1a2b.up.railway.app/healthz -> 200
+A1 |    https://api-production-1a2b.up.railway.app/readyz -> 200
+A1 |    https://api-production-1a2b.up.railway.app/v1/me -> 401
+A1 |    https://web-production-1a2b.up.railway.app/ -> 200
+A1 |    https://web-production-1a2b.up.railway.app/auth/login -> 303 https://geminus-demo.us.auth0.com/authorize
+A1 |    TCP proxies of Postgres: none open
+A1 |    Auth0 Application: Allowed Callback URL https://web-production-1a2b.up.railway.app/auth/callback, Allowed Logout URL https://web-production-1a2b.up.railway.app/ (set by the Auth0 step)
+A1 | deploy: done. Variables that are the owner's: docs/runbooks/deploy.md §7.3.
+
+
+A1 stderr | deploy: the judge's demo account (H-035 (2)), shown this once and nowhere else (not in a log, not in a file); put it in the submission text now:
+A1 stderr |   email:    judge@geminus-demo.invalid
+A1 stderr |   password: <the judge's password: here, on stderr, once>
+
+
+A1 a fresh tenant and project | done
+A2 the same again | done (0 writes to Auth0)
+A3 a drifted tenant | done (['apis update', 'apps update', 'connections update', 'connections enabled-clients update', 'connections enabled-clients update'])
+A12 the password reset, a CLI home left by an interrupted run | done
+A4 a CLI that is not the pinned build | FAIL: preflight:
+A4 a CLI that is not the pinned build |   - the auth0 on PATH (/tmp/tmpdse9pbjf/bin/auth0) is not the pinned Auth0 CLI 1.37.0 (its SHA-256 is not 2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c) and was not run: install the pinned one with deploy/railway/deploy.sh --install-auth0-cli DIR
+A5 a failed step | FAIL: `auth0 apps create` failed
+A7 signed in to another tenant | FAIL: the Auth0 CLI signed in to 'someone-else.eu.auth0.com', not geminus-demo.us.auth0.com (GEMINUS_AUTH0_ISSUER's tenant): nothing was changed; approve the sign-in for that tenant
+A14 a sign-out that keeps the session | FAIL: Auth0: the Auth0 CLI may still be signed in (['geminus-demo.us.auth0.com']); its home /tmp/tmpdse9pbjf/xdg-state/geminus-deploy/auth0-cli is removed, the session's token with it
+A8 sign-up not kept off | FAIL: sign-up on Username-Password-Authentication is still on after the update: turn it off in the dashboard (docs/runbooks/auth0.md §6)
+A15.1 Railway refuses to seal the client secret | FAIL: verification:
+A15.1 Railway refuses to seal the client secret |   - web's BFF_OIDC_CLIENT_SECRET is set but Railway did not seal it: rerun deploy/railway/deploy.sh --apply (it seals it without reading it again), or seal it in Railway's UI (web → Variables → BFF_OIDC_CLIENT_SECRET's 3-dot menu → Seal)
+A15.2 the rerun | done
+A9 the CLI quotes the password in its error | FAIL: `auth0 users create` failed
+A9 the CLI quotes the password in its error |     failed (exit 1): api/rehearsal (status 400); the CLI's message is not shown (the call carried a secret)
+A13 the owner outside the database connection | FAIL: the owner's Auth0 user auth0|rehearsal-owner is not in the database connection Username-Password-Authentication (its connections: ['google-oauth2']): the application will be enabled on that connection only, so the owner could not sign in; nothing was changed
+A10 the demo organization seeded before the judge's account | FAIL: verification:
+A10 the demo organization seeded before the judge's account |   - the judge's account auth0|rehearsaljudge0001 (usr_01M5W4RHAGH9JGFGMTQ8H6SK6H) has no membership: the demo organization org_01M5W4RHAFH8Q7Y8PNQT1RAF4T was seeded before it existed, and provisioning adds members only to an organization it creates (migration 0004); an owner of it adds the account as an editor (POST /v1/organizations/<organization>/memberships with {"user_id": "usr_01M5W4RHAGH9JGFGMTQ8H6SK6H", "role": "editor"}, ADR-023; docs/runbooks/deploy.md §7.8)
+A11 the judge also in another organization | FAIL: verification:
+A11 the judge also in another organization |   - the judge's account auth0|rehearsaljudge0001 has the memberships ['org_01M5W4RHAFH8Q7Y8PNQT1RAF4T editor', 'org_01M5W4RHAFH8Q7Y8PNQT1RAF4X viewer'], want only editor of org_01M5W4RHAFH8Q7Y8PNQT1RAF4T: an owner removes the others (ADR-023)
+M1 the manual fallback with GEMINUS_JUDGE_SUBJECT | FAIL: verification:   - the owner has not set BFF_OIDC_CLIENT_SECRET on web (Railway → web → Variables)
+D1 the dry run | done
+D1 the dry run |   $ auth0 login --domain geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 users show 'auth0|rehearsal-owner' --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 apis list --number 1000 --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 apis create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+D1 the dry run |   $ auth0 apps list --number 1000 --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 apps create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+D1 the dry run |   $ auth0 connections list --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 connections update '<connection id>' --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+D1 the dry run |   $ auth0 connections enabled-clients update '<connection id>' --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+D1 the dry run |   $ auth0 users search-by-email judge@geminus-demo.invalid --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |   $ auth0 users create --data @- --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color   (JSON on stdin)
+D1 the dry run |   $ auth0 apps show '<client ID>' --reveal-secrets --tenant geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+D1 the dry run |    signing the Auth0 CLI out (`auth0 logout <tenant>`) and removing its home
+D1 the dry run |   $ auth0 
+A6 SIGTERM at connections update (exit 143) | deploy: interrupted (SIGTERM): cleaning up, then exiting
+A6 SIGTERM at connections update (exit 143) |    signing the Auth0 CLI out and removing its home
+A6 SIGTERM at connections update (exit 143) |   $ auth0 logout geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A6 SIGTERM at connections update (exit 143) |    TCP proxies of Postgres: none open
+A6 SIGTERM at connections update (exit 143) | deploy: INTERRUPTED (exit 143): rerun deploy/railway/deploy.sh --apply
+A6 SIGTERM at apps show --reveal-secrets (exit 143) | deploy: interrupted (SIGTERM): cleaning up, then exiting
+A6 SIGTERM at apps show --reveal-secrets (exit 143) |    signing the Auth0 CLI out and removing its home
+A6 SIGTERM at apps show --reveal-secrets (exit 143) |   $ auth0 logout geminus-demo.us.auth0.com --agent-mode --no-input --no-color
+A6 SIGTERM at apps show --reveal-secrets (exit 143) |    TCP proxies of Postgres: none open
+A6 SIGTERM at apps show --reveal-secrets (exit 143) | deploy: INTERRUPTED (exit 143): rerun deploy/railway/deploy.sh --apply
+M2 epipe in the Auth0 step (exit 74) | last calls: ['connections show', 'logout', 'tenants list']; stderr: (empty)
+M2 hup in the Auth0 step (exit 129) | last calls: ['connections list', 'logout', 'tenants list']; stderr: (empty)
+I1 --install-auth0-cli with an archive that is not the pinned one (exit 1) | sha256sum: WARNING: 1 computed checksum did NOT match
+I1 --install-auth0-cli with an archive that is not the pinned one (exit 1) | deploy.sh: the Auth0 CLI archive's SHA-256 is not the pinned one; nothing installed
+Auth0 step: A1 5 writes to Auth0, A2 0; signals [('connections update', 143), ('apps show --reveal-secrets', 143)]; stdout lost [('epipe', 74), ('hup', 129)]
+signals [('TERM', 143), ('HUP', 129), ('TERM with the removal failing', 143)]; deploy.sh --help with bash -x, SHELLOPTS=xtrace, plain: exits [2, 2, 0]
+rehearsal: PASS (the deployer against stand-ins; Railway itself NOT RUN)

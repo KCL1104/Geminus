@@ -626,7 +626,9 @@ class Run:
         for s in SERVICES:
             path = self.spec["services"][s]["config"]
             code = json.loads((ROOT / path).read_text())
-            changes[s] = {"configFile": "/" + path, "build": code["build"],
+            # No watch patterns: Railway skips a `railway up` whose files match none of them since the last
+            # deployment (web's second upload was SKIPPED, the first --apply that reached step 7).
+            changes[s] = {"configFile": "/" + path, "build": dict(code["build"], watchPatterns=[]),
                           "deploy": {k: v for k, v in code["deploy"].items() if k != "numReplicas"}}  # replicas: multiRegionConfig
         self.env_edit(changes, "T-039 deploy.sh: config-as-code settings", check=True)
         if not self.dry:

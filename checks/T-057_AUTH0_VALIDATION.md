@@ -499,3 +499,30 @@ Rehearsal：
 - Run 1 新增檢查：四個服務的 build 設定都必須與 config 檔相同。
 - Red：拿掉 deployer 的修正時，build 檢查與 T5 失敗（`builds/rehearsal-red.log`）。
 - Green：`rehearsal: PASS`（`builds/rehearsal-green.log`）。
+
+## 第六、七次 `--apply` 與 web 的重新部署：部署完成（2026-10-27，coordinator）
+
+- **第六次**：build 設定的讀回檢查通過，四個服務都是 `DOCKERFILE`。Owner 核准 Auth0 時，Auth0 回「Invalid network change. Login again from a trusted network.」，腳本以 FAIL 結束；cleanup 照常，沒有改動任何東西。
+- **第七次**（owner 再次核准）：
+  - **步驟 2b**：Auth0 的設定沒有任何改動；評審帳號已存在，密碼不變；web 的 client secret 不再讀取，直接 seal。
+  - **步驟 3–6**：變數已設定；四個 login 已建立；migration 17 個；seed 建立了 demo organization，評審帳號只是它的 editor，沒有其他 membership。
+  - **步驟 7**：api SUCCESS、worker SUCCESS，web **FAILED**。Build log 只有一行「builder v4」，沒有錯誤訊息，17 秒內結束。
+- **web 的重新部署**（coordinator 以 deployer 同樣的 `railway up --service web …` 執行，沒有重跑整個 `--apply`，避免 owner 再核准一次）：
+  - 第一次重新部署被標為 **SKIPPED**：web 的 `watchPatterns` 只有 `/apps/web/**`，而這次上傳與上一次的檔案相同，Railway 判定沒有符合的變動。
+  - 以 `environment edit`（JSON 經 stdin，committed）清空 web 的 watch patterns 後再部署：**SUCCESS**（約 120 s）。
+  - Deployer 改為在 patch 中送出 `watchPatterns: []`。替身沒有模擬 Railway 的 watch pattern 跳過，所以這個修正**沒有 red**；rehearsal 只確認送出的 patch 帶有 `[]`（`watch-patterns/rehearsal-green.log`，PASS）。Live 的 web 重新部署就是它的證據。
+
+**部署後的驗證**（`watch-patterns/live-verify.txt`，2026-10-27T14:48Z；等同 deployer 步驟 8 的 HTTP 部分，由 coordinator 執行）：
+- api：`/healthz` 200、`/readyz` 200、`/v1/me` 401。
+- web：`/` 200；`/auth/login` 303，導向 tenant 的 `/authorize`。
+- Security header：CSP（`default-src 'none'`、nonce、`strict-dynamic`）、HSTS、`X-Frame-Options: DENY`、`nosniff`、`Referrer-Policy: no-referrer`、`Permissions-Policy`。
+- 9 個 secret 都 **sealed**（以變數清單唯讀確認，只看值是否為 null）。
+- Postgres 沒有開著的 TCP proxy。
+
+**NOT RUN**（部署後要確認的事，見 runbook §8 與交接 4.2）：
+- 以評審帳號實際登入。
+- 整個 demo 流程與照片流程（live AI 是關的：worker 的 `AI_PROVIDER=disabled`；要不要開由 owner 決定，key 由 owner 填並 seal）。
+- `GOMEMLIMIT`：API 服務的記憶體上限還沒確認，所以沒有設定。
+- 部署結束後執行 `railway logout`。
+
+project 中原本就有的 `Geminus` 服務（接了這個 repo 的 branch）沒有動到，是否刪除由 owner 決定。

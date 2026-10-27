@@ -1,0 +1,4 @@
+rehearsal exit 0
+check-deploy exit 0
+bash-n exit 0
+spec-check exit 0
