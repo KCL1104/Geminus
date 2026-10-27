@@ -1,0 +1,33 @@
+BASELINE ./internal/aievals/ ./internal/config/aiapproval/ Photo|Concept|Frame exit 0
+BASELINE ./internal/ai/review/ ./internal/proposals/generator/ Photo exit 0
+BASELINE ./internal/ai/provider/ TestASegmentation|TestCheckConcepts|TestSegmentation exit 0
+BASELINE ./internal/domainpack/electronicsline/ ./internal/ai/aicontext/ ./internal/proposals/generator/ ./internal/aievals/ ./scripts/gen-photo-demo/ Photo|Concept|Shape|Reproducible|ImageProposal exit 0
+L1 the latency written to a copy (the old bug) KILLED ['--- FAIL: TestASegmentationsLatencyIsReturned (0.11s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.261s']
+C1 nine concepts pass KILLED ['--- FAIL: TestASegmentationRequestIsChecked (0.00s)', '--- FAIL: TestCheckConcepts (0.01s)', 'FAIL']
+C2 any characters pass KILLED ['--- FAIL: TestASegmentationRequestIsChecked (0.00s)', '--- FAIL: TestCheckConcepts (0.01s)', 'FAIL']
+C3 a repeated concept passes KILLED ['--- FAIL: TestASegmentationRequestIsChecked (0.00s)', '--- FAIL: TestCheckConcepts (0.01s)', 'FAIL']
+C4 65 bytes pass KILLED ['--- FAIL: TestASegmentationRequestIsChecked (0.00s)', '--- FAIL: TestCheckConcepts (0.01s)', 'FAIL']
+C5 the client stops using CheckConcepts KILLED ['--- FAIL: TestASegmentationRequestIsChecked (0.00s)', '--- FAIL: TestCheckConcepts (0.01s)', 'FAIL']
+O1 an empty item is skipped KILLED ['--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.09s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.251s']
+O2 the override is not checked before the run KILLED ['--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.15s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.352s']
+O3 Run does not check the override KILLED ['--- FAIL: TestThePhotoSmokesConceptsAreThePacksByDefault (0.08s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.311s']
+O4 the override is ignored KILLED ['--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)', '--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)', 'FAIL']
+O5 the override is not reported KILLED ['--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.326s']
+O6 the flag wins over the variable KILLED ['--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.08s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.243s']
+O7 -concepts without -smoke-photo KILLED ['--- FAIL: TestTheConceptOverrideIsTheSmokesOnly (0.01s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.312s']
+O8 sizes over the other side KILLED ['--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)', '--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)', 'FAIL']
+O9 sizes to 2 places KILLED ['--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.310s']
+O10 no per-concept entries KILLED ['--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)', '--- FAIL: TestThePhotoSmokeFindsTheFloorPlansShapes (0.02s)', '--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.01s)']
+O11 the summary does not name the override KILLED ['--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.07s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.255s']
+O12 the variable is not read KILLED ['--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.17s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.365s']
+O13 a box outside the frame is sized KILLED ['--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.338s']
+O14 the worker names the variable KILLED ['--- FAIL: TestTheConceptOverrideIsTheSmokesOnly (0.01s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.326s']
+V1 the old concepts KILLED ['--- FAIL: TestPhotoConcepts (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/domainpack/electronicsline\t0.026s']
+V2 no arrow KILLED ['--- FAIL: TestPhotoConcepts (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/domainpack/electronicsline\t0.012s']
+V3 the server's rules say nothing of shapes KILLED ['--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.033s']
+V4 the template keeps its old version KILLED ['--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.069s']
+V5 the template says nothing of shapes KILLED ['--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.043s']
+V6 the demo script's concepts are not the pack's KILLED ['--- FAIL: TestTheCommittedFilesAreReproducible (0.07s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/scripts/gen-photo-demo\t0.075s']
+R1 one step more than boxes passes KILLED ['--- FAIL: TestPhotoRefusesMoreStepsThanBoxes (0.00s)', '--- FAIL: TestPhotoIssuesAreClean (0.00s)', 'FAIL']
+27/27 killed; survived: []; invalid or not applied: []
+exit 0

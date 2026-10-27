@@ -1,0 +1,346 @@
+[
+ {
+  "id": "L1 the latency written to a copy (the old bug)",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationsLatencyIsReturned (0.11s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.261s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "C1 nine concepts pass",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationRequestIsChecked (0.00s)",
+   "--- FAIL: TestCheckConcepts (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.273s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "C2 any characters pass",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationRequestIsChecked (0.00s)",
+   "--- FAIL: TestCheckConcepts (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.257s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "C3 a repeated concept passes",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationRequestIsChecked (0.00s)",
+   "--- FAIL: TestCheckConcepts (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.259s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "C4 65 bytes pass",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationRequestIsChecked (0.00s)",
+   "--- FAIL: TestCheckConcepts (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.269s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "C5 the client stops using CheckConcepts",
+  "file": "internal/ai/provider/segment.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmentationRequestIsChecked (0.00s)",
+   "--- FAIL: TestCheckConcepts (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider\t0.259s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O1 an empty item is skipped",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.09s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.251s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O2 the override is not checked before the run",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.15s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.352s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O3 Run does not check the override",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokesConceptsAreThePacksByDefault (0.08s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.311s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O4 the override is ignored",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)",
+   "--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.350s",
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.06s)",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O5 the override is not reported",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.326s",
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.248s"
+  ]
+ },
+ {
+  "id": "O6 the flag wins over the variable",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.08s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.243s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O7 -concepts without -smoke-photo",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestTheConceptOverrideIsTheSmokesOnly (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.312s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O8 sizes over the other side",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)",
+   "--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.318s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O9 sizes to 2 places",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.310s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O10 no per-concept entries",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesOtherConcepts (0.02s)",
+   "--- FAIL: TestThePhotoSmokeFindsTheFloorPlansShapes (0.02s)",
+   "--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.01s)",
+   "--- FAIL: TestThePhotoSmokesConceptsAreThePacksByDefault (0.10s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.337s"
+  ]
+ },
+ {
+  "id": "O11 the summary does not name the override",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.07s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.255s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O12 the variable is not read",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeTakesConceptsToExplore (0.17s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.365s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O13 a box outside the frame is sized",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestABoxOutsideTheFrameHasNoSize (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.338s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "O14 the worker names the variable",
+  "file": "cmd/worker/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestTheConceptOverrideIsTheSmokesOnly (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.326s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "V1 the old concepts",
+  "file": "internal/domainpack/electronicsline/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoConcepts (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/domainpack/electronicsline\t0.026s",
+   "--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.055s"
+  ]
+ },
+ {
+  "id": "V2 no arrow",
+  "file": "internal/domainpack/electronicsline/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoConcepts (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/domainpack/electronicsline\t0.012s",
+   "--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.070s"
+  ]
+ },
+ {
+  "id": "V3 the server's rules say nothing of shapes",
+  "file": "internal/ai/aicontext/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.033s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "V4 the template keeps its old version",
+  "file": "prompts/photo/system.md",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.069s",
+   "--- FAIL: TestThePhotoDemo (0.08s)",
+   "--- FAIL: TestThePhotoDemoFromShapes (0.01s)",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "V5 the template says nothing of shapes",
+  "file": "prompts/photo/system.md",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/aicontext\t0.043s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "V6 the demo script's concepts are not the pack's",
+  "file": "scripts/gen-photo-demo/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestTheCommittedFilesAreReproducible (0.07s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/scripts/gen-photo-demo\t0.075s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R1 one step more than boxes passes",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesMoreStepsThanBoxes (0.00s)",
+   "--- FAIL: TestPhotoIssuesAreClean (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.013s",
+   "--- FAIL: TestThePhotoDemoFromShapes (0.02s)",
+   "FAIL"
+  ]
+ }
+]
