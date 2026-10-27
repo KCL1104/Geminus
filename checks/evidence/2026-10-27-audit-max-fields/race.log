@@ -1,0 +1,12 @@
+ok  	github.com/kcl1104/geminus/internal/audit	2.109s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.345s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	3.045s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.829s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	171.347s
+ok  	github.com/kcl1104/geminus/internal/worker	1.043s
+?   	github.com/kcl1104/geminus/internal/worker/handler	[no test files]
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	1.091s
+ok  	github.com/kcl1104/geminus/cmd/api	3.477s
+ok  	github.com/kcl1104/geminus/cmd/migrate	1.210s
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.026s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.335s

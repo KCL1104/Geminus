@@ -359,16 +359,16 @@ func TestShapes(t *testing.T) {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	// At most 32 fields.
+	// At most MaxFields fields.
 	e := gen
 	e.Metadata = map[string]any{}
-	for i := range 33 {
+	for i := range audit.MaxFields + 1 {
 		e.Metadata["k"+strconv.Itoa(i)] = 1
 	}
 	// The bound is checked before any field, so the refusal names it.
 	var ie *audit.InvalidError
 	if err := audit.Check(e); !errors.As(err, &ie) || ie.Field != "metadata" {
-		t.Errorf("33 fields: %v", err)
+		t.Errorf("%d fields: %v", audit.MaxFields+1, err)
 	}
 }
 

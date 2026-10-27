@@ -61,8 +61,12 @@ func (e *InvalidError) Error() string {
 
 func (e *InvalidError) Unwrap() error { return ErrInvalid }
 
-// MaxFields bounds an event's metadata.
-const MaxFields = 32
+// MaxFields bounds an event's metadata. It is at least the most fields an
+// action declares (TestEveryDeclaredFieldFits): proposal.generate of a ready
+// photo proposal records 34 (the provider's call, the photo's segmentation,
+// the risk), and 32 refused it live (2026-10-27). Each field's shape is
+// still checked one by one.
+const MaxFields = 40
 
 // maxLabels bounds a label list (failed_over_from).
 const maxLabels = 8

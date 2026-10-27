@@ -865,3 +865,36 @@ M1–M3 由 coordinator 驗證；依 H-029 可以執行 live 的照片 smoke。
 - `output_config.effort` 仍然不送。
 
 **NOT RUN**：經 API／worker／DB 的照片 proposal、人工批准、Railway 上的照片流程（部署後確認）。
+
+## Live：成功的照片提案寫 audit 時超過欄位上限（2026-10-27／28，coordinator）
+
+**怎麼發現的**：在 live 網站上，以評審帳號在空產線上做照片提案。空產線是一個模型的 version 2，由 coordinator 經網站的 API 建立：以 D-020 的規則（每個元素先 `test` 它的識別欄位）把 draft patch 成 `testdata/photos/bare-line.json`，再發佈。
+
+結果 SAM 找到 10 個框，judge 也回答了，但 job 以 `INTERNAL` 失敗：`audit: proposal.generate: metadata: more than 32 fields`。job 把它當成可重試的錯誤，**重試了 3 次**，每次都重新呼叫 SAM 與 judge：花費 3 × (USD 0.02 + 約 0.035–0.05)，約 **USD 0.19**。
+
+**原因**：
+- `audit.MaxFields` = 32。
+- `proposal.generate` 的 catalogue 宣告了 **34** 個欄位：provider 呼叫 17、照片 10、狀態與風險 7。
+- 被拒絕的提案沒有 4 個風險欄位，所以剛好過得去，這也是之前那次 invalid 的照片提案沒有出錯的原因。
+- 上午的 smoke 不寫 DB，integration test 使用假 provider，所以都沒有抓到。
+
+**修正**：
+- `MaxFields` = 40：不小於任何 action 宣告的欄位數。每個欄位的型別與格式仍然逐一檢查，沒有放寬。
+- 新增 `internal/audit/catalogue_internal_test.go` 的 `TestEveryDeclaredFieldFits`：catalogue 裡任何一個 action 宣告的欄位數超過上限，測試就失敗。
+- `TestShapes` 的「超過上限會被拒絕」改用 `MaxFields+1`（原本寫死 33），檢查的強度不變。
+
+**驗證**（`checks/evidence/2026-10-27-audit-max-fields/`）：
+- Red：修正前 `TestEveryDeclaredFieldFits` 失敗（「proposal.generate declares 34 fields」）。
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `go test ./internal/audit/... ./internal/proposals/...` | 0 | 5 個 package ok |
+| `make spec-check` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 84 ok |
+| `make architecture-check` | 0 | |
+| `go test -race`（audit、proposals、worker、cmd） | 0 | 11 ok |
+| `make integration-test`（一次性 PostgreSQL 16.15，與 CI 相同） | 0 | 38 ok，沒有 FAIL 或 SKIP |
+
+**仍然存在（Low，延後）**：audit 寫入失敗屬於可重試的 `INTERNAL`，所以 job 重試時會重新呼叫 AI，花費會重複。比較好的做法是：AI 回答之後才發生的失敗，不要再呼叫 AI。
+
+**NOT RUN（寫入本節時）**：修正後在 live 上的照片提案（部署後執行）。

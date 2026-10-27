@@ -1,0 +1,5 @@
+--- FAIL: TestEveryDeclaredFieldFits (0.00s)
+    catalogue_internal_test.go:12: proposal.generate declares 34 fields, more than MaxFields 32
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/audit	0.004s
+FAIL
