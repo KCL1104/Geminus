@@ -1,0 +1,4 @@
+check-deploy exit 0
+bash-n exit 0
+spec-check exit 0
+rehearsal green exit 0; red (the deployer's fix removed) exit 1

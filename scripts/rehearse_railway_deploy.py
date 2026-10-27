@@ -185,6 +185,12 @@ elif cmd == "variable" and a[1] == "set":
     else:
         k, _, v = a[2].partition("=")
         st["vars"].setdefault(svc, {})[k] = v
+        if svc == "Postgres" and k == "DATABASE_PUBLIC_URL":  # the template's references, resolved as Railway does
+            st["public_url_defined"] = True
+            if st["proxies"]:
+                st["vars"]["Postgres"][k] = "postgresql://postgres:REHEARSALADMINPW@shuttle.proxy.rlwy.net:41234/railway"
+            else:
+                st["vars"]["Postgres"].pop(k)
 elif cmd == "tcp-proxy" and a[1] == "list":
     if os.environ.get("REHEARSAL_PROXY_LIST_FAILS_LATE") and st.get("proxy_deleted"):
         fail("error: could not reach Railway")
@@ -193,7 +199,9 @@ elif cmd == "tcp-proxy" and a[1] == "list":
                         "endpoint": "shuttle.proxy.rlwy.net:41234", "syncStatus": "ACTIVE"} for p in st["proxies"]]}
 elif cmd == "tcp-proxy" and a[1] == "create":
     st["proxies"].append("tcp_1")
-    st["vars"]["Postgres"]["DATABASE_PUBLIC_URL"] = "postgresql://postgres:REHEARSALADMINPW@shuttle.proxy.rlwy.net:41234/railway"
+    # REHEARSAL_NO_PUBLIC_URL: a database made without DATABASE_PUBLIC_URL (the third --apply found one).
+    if not os.environ.get("REHEARSAL_NO_PUBLIC_URL") or st.get("public_url_defined"):
+        st["vars"]["Postgres"]["DATABASE_PUBLIC_URL"] = "postgresql://postgres:REHEARSALADMINPW@shuttle.proxy.rlwy.net:41234/railway"
     proxy = {"id": "tcp_1", "domain": "shuttle.proxy.rlwy.net", "proxyPort": 41234, "applicationPort": 5432,
              "endpoint": "shuttle.proxy.rlwy.net:41234", "syncStatus": "ACTIVE"}
     # The CLI prints "proxy": null when the proxy is not available yet.
@@ -925,6 +933,15 @@ def main() -> int:
         shown.append(("T3 no token, not signed in", res.splitlines()[0]))
         if "or the Railway CLI signed in" not in res or {c["argv"][0] for c in state(name)["calls"][len(base["calls"]):]} != {"--version", "whoami"}:
             failures.append(f"T3 (no token, not signed in) must stop in the preflight: {res[:300]}")
+
+        # T4: a database without DATABASE_PUBLIC_URL: the deployer defines it (references only) and goes on.
+        name = scenario("t4", base)
+        _, out, res = apply(REHEARSAL_NO_PUBLIC_URL="1")
+        sets = [c["argv"] for c in state(name)["calls"] if c["argv"][:2] == ["variable", "set"] and c["argv"][2].startswith("DATABASE_PUBLIC_URL=")]
+        shown.append(("T4 Postgres without DATABASE_PUBLIC_URL", res.splitlines()[0]))
+        if res.startswith("FAIL") or len(sets) != 1 or "${{RAILWAY_TCP_PROXY_DOMAIN}}" not in sets[0][2] or "REHEARSALADMINPW" in sets[0][2] \
+                or "--skip-deploys" not in sets[0]:
+            failures.append(f"T4 (no DATABASE_PUBLIC_URL) must define it once, references only, and go on: {res[:300]} {sets}")
 
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)

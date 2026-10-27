@@ -432,3 +432,23 @@ Runbook §7.7 的 Token 段落已更新。部署完成後執行 `railway logout`
 - Red：只拿掉 deployer 的修正時，A1 失敗，訊息正是 live 的 `auth0 connections enabled-clients failed`（`enabled-clients/rehearsal-red.log`）。
 - Green：`rehearsal: PASS`（`enabled-clients/rehearsal-green.log`）。
 - Runbook §7.8 的表格已更新。
+
+## 第三次 `--apply`（2026-10-27，coordinator）：Postgres 沒有 `DATABASE_PUBLIC_URL`
+
+Owner 再次核准 Auth0 的裝置登入。步驟 1、2、2b、3 都成功：
+- **API、application**：與 H-034 相同，沒有改動。
+- **社群登入**：Google connection 停用這個 application，application 只經 database connection 登入。
+- **評審帳號** `judge@geminus-demo.invalid`：已建立，密碼只在 stderr 出現一次，存在 coordinator 的私有檔，交給 owner 後刪除。
+- **Client secret**：經 stdin 設在 web 上，並且 sealed。
+- **變數**：已設定。
+
+接著步驟 4 開了 TCP proxy，但 Postgres 的變數裡**沒有 `DATABASE_PUBLIC_URL`**（以 `railway variable list` 唯讀確認，只看名稱）。等了 300 s 後，腳本以「the TCP proxy did not become active」停下。它開的 proxy 已移除，沒有開著的 proxy。
+
+**原因**：這個 database 是第一次執行時以 `railway add --database postgres`（CLI 5.64.2）建立的，它的變數有 `DATABASE_URL`、`PGHOST` 等，但沒有範本平常會定義的 `DATABASE_PUBLIC_URL`。
+
+**修正**：`admin()` 在等待之前先看名稱。沒有這個變數時，照範本的寫法以 `--skip-deploys` 定義它：`postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_TCP_PROXY_DOMAIN}}:${{RAILWAY_TCP_PROXY_PORT}}/${{PGDATABASE}}`。值全部是 reference，argv 中沒有任何 secret；proxy 生效後由 Railway 解析。
+
+Rehearsal 的替身新增 `REHEARSAL_NO_PUBLIC_URL`（一個沒有定義這個變數的 database）與 T4 情境：
+- T4 必須只定義一次、只用 reference、帶 `--skip-deploys`，並且繼續跑完。
+- Red：拿掉 deployer 的修正時，T4 停在 live 的同一句錯誤（`public-url/rehearsal-red.log`，在另一個 worktree 跑，真的等滿 300 s）。
+- Green：`rehearsal: PASS`（`public-url/rehearsal-green.log`）。

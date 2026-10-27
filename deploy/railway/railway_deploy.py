@@ -1208,9 +1208,17 @@ class Run:
         if self.dry:
             self.say("  (reads Postgres's DATABASE_PUBLIC_URL from `railway variable list --service Postgres --json`; never printed)")
             return {}
+        db = self.spec["database"]
+        if "DATABASE_PUBLIC_URL" not in self.variables_of(db):
+            # A database made by `railway add --database` (CLI 5.64.2) may lack it (found by the third --apply):
+            # the template's own definition, references only (no value in argv), resolved once the proxy is up.
+            self.rw("variable", "set", "DATABASE_PUBLIC_URL=postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@"
+                    "${{RAILWAY_TCP_PROXY_DOMAIN}}:${{RAILWAY_TCP_PROXY_PORT}}/${{PGDATABASE}}", "--service", db, *self.env(),
+                    "--skip-deploys", "--json")
+            self.say("   Postgres had no DATABASE_PUBLIC_URL: defined as the template defines it (references only)")
         deadline = time.time() + 300
         while True:
-            url = self.variables_of(self.spec["database"], keep=frozenset({"DATABASE_PUBLIC_URL"})).get("DATABASE_PUBLIC_URL")
+            url = self.variables_of(db, keep=frozenset({"DATABASE_PUBLIC_URL"})).get("DATABASE_PUBLIC_URL")
             if isinstance(url, str) and url:
                 break
             if time.time() > deadline:
