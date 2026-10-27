@@ -621,7 +621,24 @@ AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIV
 
 （Go 1.27.3、`GOTOOLCHAIN=local`；Python `/home/user/Geminus/.venv/bin/python`；DB 只在一次性 cluster（socket `/var/lib/postgresql/geminus-throwaway-hkb6`、port 55450）上本任務新建的 `dt_test_t056c2a`，最後 DROP；沒有啟動或停止任何 cluster。）
 
-RESULTS_TABLE
+| 指令 | exit | Log | 結果 |
+|---|---|---|---|
+| 紅／綠：`go test -run TestASegmentationsLatencyIsReturned ./internal/ai/provider/` | 1／0 | `red-latency.log`、`green-latency.log` | 紅：4 種情況的延遲都是 0 |
+| 紅／綠：覆寫的測試（provider、aievals、aiapproval） | 1／0 | `red-override.log`、`green-override.log`、`green-size-outside.log` | 紅：缺 `PhotoConfig.Concepts` 等名稱（build 失敗） |
+| 紅／綠：詞彙的測試（electronicsline、aicontext、generator、aievals） | 1／0 | `red-vocabulary.log`、`green-vocabulary.log` | 紅：舊清單；smoke 在形狀的 fake 上重現 live（needs_input、`no_boxes` 1、USD 0.02） |
+| `go run ./scripts/gen-photo-demo`（重新產生 fixture） | 0 | `gen-photo-demo.log` | 只有兩個 `*.segments.json` 的 `concepts` 改變 |
+| mutation（`scripts/mutate.py`） | 0 | `mutants.log`、`mutants.json` | 27／27 killed |
+| `gofmt -l cmd internal schemas scripts prompts` | 0（空） | `gofmt.log` | |
+| `go vet`（改動的 package：`./internal/ai/... ./internal/aievals/... ./internal/config/... ./internal/proposals/... ./internal/domainpack/... ./internal/contracttest/ ./internal/audit/ ./internal/api/ ./scripts/gen-photo-demo/ ./prompts/ ./cmd/ai-eval-live/ ./cmd/worker/`） | 0 | `vet.log` | |
+| `go test -count=1`（同上） | 0 | `test-changed.log` | 28 個 package ok（DB 測試在此 skip，由 integration-test 跑） |
+| `go test -race -count=1 -timeout 30m`（同上） | 0 | `race-changed.log` | 28 個 package ok，沒有 data race |
+| `go run ./scripts/gen-photo-demo -check` | 0 | `gen-photo-demo-check.log` | committed 的 fixture 可重現 |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | `backend-test.log` | gofmt、`go vet`、84 個 package ok、12 個沒有測試檔、0 FAIL |
+| `make architecture-check` | 0 | `architecture-check.log` | `PASS architecture: 96 packages, 26 rules, 16 build configurations` |
+| `make ai-eval` | 0 | `ai-eval.log` | fake corpus 的 context gate 與 server review |
+| `make integration-test`（新建的 `dt_test_t056c2a`） | 0 | `integration-test.log` | `make db-test`（migration up／down／up 與全部 SQL 測試）＋ `make db-go-test`（`-race -p 1`、`GEMINUS_REQUIRE_DB_TESTS=1`）：38 個 package ok，沒有 FAIL 或 SKIP（含 `internal/api` 的照片測試：`photo-0.2.0`、新的 fixture） |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（驗證時，與本節寫完後再一次） | 0、0 | `spec-check.log`、`spec-check-final.log` | contracts、planning、docs、SQL inventory、reference math、decisions、TS contracts、hashes、DB tests、deploy 都 PASS；`checks/*-check.json` 沒有改變（不含官方完整 OpenAPI validator：NOT_RUN_UNAVAILABLE） |
+| `dropdb dt_test_t056c2a`；`SELECT count(*) FROM pg_database WHERE datname LIKE 'dt_test_t056c%'` | 0；0 | — | 已刪除；沒有啟動或停止任何 cluster |
 
 ### NOT RUN
 

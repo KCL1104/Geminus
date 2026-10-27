@@ -1,0 +1,31 @@
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	6.630s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	15.726s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	1.180s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	1.074s
+ok  	github.com/kcl1104/geminus/internal/ai/photopipeline	1.051s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	2.064s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	43.381s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	1.153s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	13.293s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+ok  	github.com/kcl1104/geminus/internal/ai/review	5.826s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	1.048s
+ok  	github.com/kcl1104/geminus/internal/aievals	11.488s
+ok  	github.com/kcl1104/geminus/internal/config	1.542s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	7.338s
+ok  	github.com/kcl1104/geminus/internal/proposals	1.342s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	2.699s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	3.799s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	136.863s
+ok  	github.com/kcl1104/geminus/internal/domainpack	1.468s
+ok  	github.com/kcl1104/geminus/internal/domainpack/conformance	27.857s
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	57.320s
+ok  	github.com/kcl1104/geminus/internal/domainpack/softwaredelivery	3.924s
+?   	github.com/kcl1104/geminus/internal/contracttest	[no test files]
+ok  	github.com/kcl1104/geminus/internal/audit	2.025s
+ok  	github.com/kcl1104/geminus/internal/api	2.262s
+ok  	github.com/kcl1104/geminus/scripts/gen-photo-demo	7.196s
+ok  	github.com/kcl1104/geminus/prompts	1.026s
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	1.174s
+ok  	github.com/kcl1104/geminus/cmd/worker	1.265s
+exit 0
