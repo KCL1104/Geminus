@@ -691,3 +691,42 @@ Coordinator 對本節問題的處理：
 3. Burn-in 與手工站沒有自己的概念：demo 沒有這兩種；比賽後再考慮第 9 個概念（需改 D-123）。
 4. 提交的 fake 回答仍以機台概念找站：live 探索後，把 fixture 換成 SAM 實際回的形狀（後續）。
 5. 新的 prompt 版本 `photo-0.2.0`：下一步由有 key 的 session 先跑探索（`AI_SMOKE_PHOTO_CONCEPTS`），再以新詞彙跑一次 `make ai-smoke-photo-live`。
+
+## Live 執行：照片 — SAM 概念探索（2026-10-27）
+
+依 coordinator 的下一步（「SAM 概念調整」與其 coordinator 驗證，HEAD 138d863），在有 key 的 session 執行 (a) 探索一次。Key 的規則同前（只看名稱、不在 argv）；`AI_VISION_*` 沒有設；沒有 curl、沒有經 API 的照片 proposal、Railway 沒有操作、沒有提高任何上限。證據：`checks/evidence/2026-10-27-T-056-live/smoke-photo-explore.log`、`environment.txt`。不記 prompt、回答文字、影像 bytes、框座標、key。
+
+### (a) 探索
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on AI_SMOKE_PHOTO_CONCEPTS="rectangle,box,square,arrow,line,bar" make ai-smoke-photo-live`（02:15:43Z–02:16:12Z） | **1**（`ai-eval-live: exit 1`；make 為 2） | run `01M5XJ8Q4RJCQBESJZWZPG4BPJ`：status **failed**，code **`AI_OUTPUT_TRUNCATED`**，server risk none；gates `pipeline_failed` **1**、`needs_input_kept_changes` 0、`ready_without_server_validation` 0；observations 全部 0（含 `billed_input_over_reserved`、`frame_not_the_image`、`images_processed_not_one`、`no_boxes`）；prompt template `photo-0.2.0` |
+
+- **Report**：`checks/ai-evals/live-smoke-photo-2026-10-27T021543Z-01M5XJ8Q4RJCQBESJZWZPG4BPJ-muse-spark-1.3.json`。
+- **Spend record**：`open` kind `smoke-photo`、cap 1,000,000,000；`close` settled＝committed 59,302,250 nano-USD、result **`gate_failed`**。
+- **Segmenter（SAM 3.1）**：6 個概念皆回答，`images_processed` 各 1，frame **`1200x520`**（等於影像），latency 3,882 ms（延遲的修正在 live 有效），30 個框，花費 15,000,000（USD 0.015）。每個概念（`segmenter.by_concept`，尺寸為相對於 frame 的寬 × 高）：
+
+| 概念 | 框 | 相對尺寸 |
+|---|---|---|
+| `rectangle` | **6** | 4 × 0.10×0.19、0.142×0.231、0.158×0.231（＝6 個站的方框：AOI、ICT 1、ICT 2、FCT 為 0.10×0.19，SMT、PACK 較大） |
+| `box` | 6 | 與 `rectangle` 相同的 6 個尺寸 |
+| `square` | 7 | 同樣 6 個，加 1 個 0.101×0.115 |
+| `arrow` | **4** | 0.073–0.085 × 0.031–0.035（＝4 段輸送帶的箭頭） |
+| `line` | 7 | 2 個 0.014×0.308（ICT 兩側的直條）、1 個 0.013×0.01、4 個約 0.063–0.085 × 0.031–0.035（與 arrow 相同的位置） |
+| `bar` | 0 | — |
+
+  結論：pack 的新詞彙 `rectangle`、`arrow` 在 demo 平面圖上**找得到**，數目正好是 6 個站與 4 段流向（D-131 (h) 的預期）。
+- **Judge（Muse Spark）**：有執行。count_tokens **7,793**，預留 input 8,573（＋10%），**計費 input 7,589（計費／count 0.974，沒有超過 count，也沒有超過預留）**；output **8,192 ＝ `max_tokens` 上限** → `stop_reason` 為截斷，server 以 `AI_OUTPUT_TRUNCATED` 結束（一個呼叫，沒有重試）。預留 136,596,750，花費 44,302,250（7,589 × 1,250 + 8,192 × 4,250）。`served_models` 為 `muse-spark-1.3` 與 `sam-3.1`（judge 回答的 model 字串正好是 `muse-spark-1.3`）。H-037 的未決事項：demo 的照片 request 計費 input **低於** count（約 −2.6%），10% 的 margin 足夠。
+- **花費**：**USD 0.05930225**（cap 1.00）；同時持有的最大值 151,596,750。今天（UTC 2026-10-27）的 record：0.02 ＋ 0.05930225 ＝ USD 0.07930225。
+
+### 意外的結果，以及為什麼沒有執行 (b)
+
+1. **Judge 的 output 用完 8,192 tokens 被截斷**（`AI_OUTPUT_TRUNCATED`）。D-121 (f) 已預見：Muse Spark 的推理 tokens 計入 `max_tokens`，預設 8192 可能使長的推理截斷。這次的 SEGMENTS 有 30 個重疊的框（6 個概念彼此重複），可能使推理更長；但文字 smoke 的 output 也已有 2,515 tokens，照片的 context（system 12 KB 以上、影像、框）多半更長。
+2. **(b) 沒有執行（NOT RUN）**：coordinator 的條件（`rectangle`／`arrow` 有框）成立，但 (a) 的 judge 以管線失敗結束，這是之前約定的「第一個意外的結果就停」；(b) 用同一個 judge、同一個 `max_tokens`，很可能同樣截斷（約 USD 0.06）。是否繼續由 coordinator／owner 決定。可選：(i) 照原計畫直接跑 (b)（10 個框而非 30 個，看是否仍截斷）；(ii) 先提高照片 judge 的 `MaxOutputTokens`（例如 16,384；預留與 output 的價格跟著變，屬 D-121 (f)／D-111 的設定，需 reviewed change）；(iii) 縮短照片 prompt 或要求更短的回答。
+
+### NOT RUN
+
+- (b) pack 詞彙的 smoke（見上）；照片 proposal 為 ready 的 live 結果；judge 對新詞彙的回答。
+- 經 API／worker／DB 的照片 proposal、人工批准、Railway。
+
+`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check-explore.log`）。
