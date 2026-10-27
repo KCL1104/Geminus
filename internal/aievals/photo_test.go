@@ -152,7 +152,7 @@ func TestThePhotoSmokeRunsThePipeline(t *testing.T) {
 	d := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
 	samPrice, _ := spend.ImagePriceOf("sam-3.1")
 	muse, _ := spend.PriceOf("muse-spark-1.3")
-	judgeReserved := 3 * muse.AttemptBound(7328, provider.DefaultBudget().MaxOutputTokens)
+	judgeReserved := 3 * muse.AttemptBound(7328, provider.ImageMaxOutputTokens)
 	judgeCost := muse.Cost(spend.Tokens{Input: 6702, Output: 1100})
 	if r.Status != "ready" || r.ServerRisk == "" || r.PatchHash == "" || !r.Complete || !r.Ok() || r.NewProcessSteps != 4 {
 		t.Fatalf("%+v", r)
@@ -163,7 +163,8 @@ func TestThePhotoSmokeRunsThePipeline(t *testing.T) {
 		t.Errorf("segmenter %+v", s)
 	}
 	if g := r.Judge; !g.Asked || g.Quotes != 1 || g.Calls != 1 || g.Counted != 6661 || g.ReservedInput != 7328 || g.BilledInput != 6702 ||
-		g.Reservations != 1 || g.ReservedNanoUSD != judgeReserved || g.CostNanoUSD != judgeCost || g.OverReservation {
+		g.Reservations != 1 || g.ReservedNanoUSD != judgeReserved || g.CostNanoUSD != judgeCost || g.OverReservation ||
+		g.MaxOutput != provider.ImageMaxOutputTokens || g.Thinking != nil {
 		t.Errorf("judge %+v", g)
 	}
 	if c := r.Cost; c.NanoUSD != 8*samPrice+judgeCost || c.NanoUSD != run.Spent() || c.CommittedNanoUSD != c.NanoUSD ||

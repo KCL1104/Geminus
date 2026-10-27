@@ -361,3 +361,5 @@ Go 沒有修改，所以沒有重跑 `make backend-test`（這次的 commit 只�
 - L3–L6。
 
 注意：原本負責修正的 agent 在用量上限停止、工作遺失，所以這次的修正由 coordinator 自己完成並驗證（本節），**修正者與驗證者是同一人**，沒有另一個人檢查修正本身。依 H-029，M1、M2 修完並經 coordinator 驗證即可部署。
+
+CI（0bc6161，run 40495844724）：**spec-check 失敗**，其餘 5 個 job 成功。原因是 commit 漏了重新產生的 `checks/docs-check.json`：新增的 `T-057_AUTH0_REVIEW_r1.md` 讓 `markdown_files` 由 139 變成 140，CI 的「Committed check reports match a fresh run」因此失敗。這不是程式的失敗，下一個 commit 會帶上重新產生的檔案。

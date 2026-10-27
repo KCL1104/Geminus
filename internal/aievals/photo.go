@@ -71,8 +71,8 @@ const PhotoSmokeKind = "smoke-photo"
 // default (AI_EVAL_LIVE_MAX_USD sets another): SAM's 8 concepts are
 // reserved for at 3 images each in turn (USD 0.0075 each) and settled at
 // what they billed, about USD 0.02; the judge's call, at T-055's count of
-// the demo prompt (6,661 input tokens), about USD 0.13: about USD 0.15
-// held at most.
+// the demo prompt (6,661 input tokens) and provider.ImageMaxOutputTokens,
+// about USD 0.44: about USD 0.50 held at most.
 const DefaultPhotoSmokeCap = spend.NanoPerUSD
 
 // The checks of a photo smoke (PhotoReport.Gates): a ready proposal
@@ -382,6 +382,8 @@ type PhotoReport struct {
 		BilledInput     int64   `json:"billed_input_tokens"`
 		BilledOverCount float64 `json:"billed_over_counted,omitzero"`
 		Output          int64   `json:"output_tokens"`
+		Thinking        *int64  `json:"thinking_tokens"` // null: the provider did not report it
+		MaxOutput       int64   `json:"max_output_tokens"`
 		Calls           int     `json:"calls"`
 		Reservations    int     `json:"reservations"`
 		ReservedNanoUSD int64   `json:"reserved_nano_usd"`
@@ -573,6 +575,7 @@ func (r *PhotoRun) Run(ctx context.Context, cfg PhotoConfig, in *PhotoInputs) (*
 		rep.Judge.Asked = true
 		rep.Template = v.TemplateVersion
 		rep.Judge.BilledInput, rep.Judge.Output, rep.Judge.CostNanoUSD = v.Usage.InputTokens, v.Usage.OutputTokens, v.CostNanoUSD
+		rep.Judge.Thinking, rep.Judge.MaxOutput = v.Usage.ThinkingTokens, provider.ImageMaxOutputTokens
 		rep.Judge.OverReservation, rep.Judge.LatencyMillis = v.SpendOverReservation, v.LatencyMillis
 		if v.Model != "" {
 			rep.Served = append(rep.Served, v.Model)

@@ -14,13 +14,16 @@ type Budget struct {
 	// token of the provider's tokenizer covers at least one byte, so this
 	// is also an upper bound on input tokens.
 	MaxPromptBytes int
-	// MaxOutputTokens is the provider's max_tokens.
+	// MaxOutputTokens is the provider's max_tokens (a request with images
+	// has its own: ImageMaxOutputTokens).
 	MaxOutputTokens int64
 	// MaxOutputBytes bounds the answer the server reads and validates.
 	MaxOutputBytes int
-	// Timeout bounds the whole call: every attempt, retry and failover.
+	// Timeout bounds the whole call: every attempt, retry and failover (a
+	// request with images: ImageTimeout of it).
 	Timeout time.Duration
-	// AttemptTimeout bounds one HTTP attempt.
+	// AttemptTimeout bounds one HTTP attempt (a request with images:
+	// ImageTimeout of it).
 	AttemptTimeout time.Duration
 	// MaxRetries is the number of retries on the same credential for 408,
 	// 409, 429, 5xx, 529 and connection errors (D-018).
@@ -41,6 +44,26 @@ func DefaultBudget() Budget {
 		MaxRetries:                   2,
 		MaxConcurrentPerOrganization: 2,
 	}
+}
+
+// ImageMaxOutputTokens is max_tokens for a request with images: the model's
+// reasoning counts toward max_tokens (dev.meta.ai/docs/reasoning), and live
+// the photo judge used all of 8192 twice (T-056, runs 01M5XJ8Q4RJCQBESJZWZPG4BPJ
+// and 01M5XJCVYRB05MV25ZJ5R6Q8V7). The reservation follows it (meter.go).
+// A request with images uses it whatever the deployment's MaxOutputTokens
+// (AI_MAX_OUTPUT_TOKENS) says: the spend caps (D-110) still bound what it costs.
+// ponytail: one constant, not a deployment setting; add one if a deployment
+// ever needs a lower bound for images than for text.
+const ImageMaxOutputTokens int64 = 32000
+
+// ImageTimeout is a timeout of the budget for a request with images: scaled
+// as its output bound is (ImageMaxOutputTokens / MaxOutputTokens), at most
+// BudgetCaps.Timeout (the job timeout of D-007). Live, 8192 output tokens took
+// about 24 s, so ImageMaxOutputTokens takes about 94 s, more than the default
+// attempt timeout of 90 s; scaled, the defaults give 300 s. The worker's lease
+// is renewed by its heartbeat, not bounded by it.
+func (b Budget) ImageTimeout(d time.Duration) time.Duration {
+	return min(d*time.Duration(ImageMaxOutputTokens)/time.Duration(b.MaxOutputTokens), BudgetCaps.Timeout)
 }
 
 // BudgetCaps are the largest values a deployment may configure.

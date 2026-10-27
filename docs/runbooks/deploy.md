@@ -122,7 +122,7 @@ go run ./cmd/provision-tenant organization -name 'Demo line (synthetic)' \
 | `AI_VISION_PROVIDER` | api、worker（**兩者相同**） | 否 | 否 | 照片路徑（T-055 給 T-056）：不設＝跟 `AI_PROVIDER`；`disabled` 關閉；`anthropic`／`meta` 為另一個 live provider 時需下面兩個變數、自己的 key 與同一個開關；批准沒列圖片（H-018）時照片路徑維持關閉（`images_not_approved`），proposal 不受影響。API 以同一段判斷決定是否接受照片（D-124），不讀 key：照片路徑關閉時 `createImageProposal` 在讀 body 前回 503（`AI_PROVIDER_NOT_CONFIGURED` 或 `AI_POLICY_NOT_APPROVED`，`details[0].code` 為 `AI_IMAGE_UNSUPPORTED`） |
 | `AI_VISION_POLICY_APPROVAL`、`AI_VISION_MODEL` | api、worker（**兩者相同**） | `AI_VISION_PROVIDER` 是另一個 live provider 時 | 否 | 該 provider 的批准與 model（同 `AI_POLICY_APPROVAL`／`AI_MODEL` 的規則）；其他情況必須不設（API 與 worker 都拒絕啟動） |
 | `AI_MONTHLY_LIMIT_USD`、`AI_DAILY_LIMIT_USD`、`AI_ORGANIZATION_DAILY_LIMIT_USD` | 每個 worker 相同 | 否 | 否 | 花費上限（D-110）；限額是每個 process 的設定，不同的 worker 必須相同（T-053 I2） |
-| `AI_MAX_PROMPT_BYTES`、`AI_MAX_OUTPUT_TOKENS`、`AI_TIMEOUT_SECONDS`、`AI_ATTEMPT_TIMEOUT_SECONDS`、`AI_MAX_RETRIES`、`AI_MAX_CONCURRENT_PER_ORGANIZATION` | worker | 否 | 否 | 覆蓋 provider 的預設 budget |
+| `AI_MAX_PROMPT_BYTES`、`AI_MAX_OUTPUT_TOKENS`、`AI_TIMEOUT_SECONDS`、`AI_ATTEMPT_TIMEOUT_SECONDS`、`AI_MAX_RETRIES`、`AI_MAX_CONCURRENT_PER_ORGANIZATION` | worker | 否 | 否 | 覆蓋 provider 的預設 budget；有圖片的 request（照片 judge）的 `max_tokens` 固定為 32,000（`provider.ImageMaxOutputTokens`），不受 `AI_MAX_OUTPUT_TOKENS` 影響，兩個 timeout 依同一比例（32,000 ÷ `AI_MAX_OUTPUT_TOKENS`）放大、至多 300 s；花費的上限仍是 D-110 的日上限 |
 | `AI_API_KEY` | — | — | — | 一律拒絕（D-018） |
 | `GEMINUS_META_API_KEY`（Meta key 的舊名稱）、`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`、`MODEL_API_KEY` | — | — | — | 從不讀取（D-018）；**API 的環境中有其中任何一個，或 `AI_API_KEY`、上面任何一把 key，API 即拒絕啟動**（`key_forbidden`，錯誤只寫變數名稱；T-053 I5） |
 

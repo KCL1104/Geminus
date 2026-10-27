@@ -748,3 +748,89 @@ Coordinator 看過 (a) 之後選 (i)：照原計畫以 pack 的 8 個概念跑�
 結論：框數由 30 降為 10、input 由 7,589 降為 6,727，judge 仍用滿 8,192 個 output token；截斷與框數無關，是照片 judge 的推理／回答本身超過預設的 `max_tokens`（D-121 (f) 的已知風險）。依 coordinator 的說明，`max_tokens` 的調整由 coordinator 以 reviewed change 進行；本 session 沒有改任何程式或上限。count 的 margin 兩次都足夠（計費 input 比 count 少約 3%）。
 
 `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本小節之後、commit 之前）：**exit 0**（`spec-check-vocabulary.log`）。
+
+## 照片 judge 的輸出上限（live 截斷之後，2026-10-27，coordinator）
+
+**原因。** 上面的 (a)、(b) 兩次 live 中，照片 judge（Muse Spark）都用滿了 `max_tokens` 8,192 而截斷（`AI_OUTPUT_TRUNCATED`）。截斷與框數無關：30 個框、10 個框都一樣。文字 proposal 的 output 只有 2,515。
+
+**依據**（dev.meta.ai，2026-10-27 讀取）：
+- `/docs/reasoning`：「Reasoning tokens count toward your output-token budget … and toward billed output tokens」；不送 effort 時，推理的深度由模型決定。
+- `/docs/api-reference/messages/schemas`：`AnthropicOutputConfig.effort` 為 low／medium／high／xhigh／max；`max_tokens` 為 ≥1 的整數（沒有列出上限）；`AnthropicUsage.output_tokens_details.thinking_tokens` 是選填欄位。
+
+**修法**（最小變更）：
+- `provider.ImageMaxOutputTokens` = 32,000（= `BudgetCaps.MaxOutputTokens`）。有圖片的 request 用它，文字 request 維持 budget 的 8,192。預留自動跟著改，因為 meter 用的是 `req.MaxOutputTokens`。
+- `provider.Usage.ThinkingTokens`（`thinking_tokens,omitzero`）：Meta adapter 解析 `output_tokens_details.thinking_tokens`，值為負數或大於 `output_tokens` 的回答一律拒收。
+- 照片 smoke 報告的 judge 部分加上 `thinking_tokens` 與 `max_output_tokens`。
+- `output_config.effort` **先不送**：它會影響回答的品質。若 32,000 仍然截斷，屬於行為變更，先問 owner 再考慮 `low`。
+- 文件：D-121、D-131 的說明、ADR-030 的 addendum、`planning/decisions.json` 的 D-121。`decisions.json` 本來就沒有 D-130–D-132，這次沒有處理。
+
+**預留。** 以 demo 的 live count 6,661 計算，judge 每次照片 proposal 預留約 USD 0.435（3 個 attempt），加上 SAM 的預留 USD 0.06，在 organization 日上限 USD 5 之下約可做 10 次。
+
+**放寬一個門檻（容量數字，不是安全 assertion）。** `TestADemoPhotoProposalFitsTheOrganizationCap` 在使用刻意偏高的 count（40,147）時，門檻從「至少 10 次」改為「至少 7 次」；用 live 的 count 時仍是 10 次。
+
+**Red → green。**
+- Red：測試先寫好，常數未定義，所以編譯失敗（`red.log`）。
+- Green：21 個 package ok（`green.log`）。
+- Mutants 4/4 killed（`mutants.txt`）：拿掉圖片的上限、拿掉 thinking 的對應、拿掉 thinking 的上界、拿掉報告欄位，各自都讓測試失敗。
+
+**指令與 exit code**（e44ccbc 加上這次的修改；go1.27.3、`GOTOOLCHAIN=local`；WSL2；evidence：`checks/evidence/2026-10-27-T-056-judge-budget/`）：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 84 個 package ok |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、proposals、cmd） | 0 | 21 個 package ok |
+| `make integration-test`（一次性 PostgreSQL 16.15 instance，與 CI 相同：trust、`dt_admin`、localhost:54329，用完刪除） | **0** | 38 個 package ok，沒有 FAIL 或 SKIP |
+
+之前在本機 system cluster 上嘗試過幾次 integration-test，都是環境問題，沒有一次是程式的結果，所以都不算數：
+- 有三次在 Go 測試開始之前就停了：PATH 上沒有 `go`；PATH 含空白被切開；`/usr/local/go` 是 1.25.5。這三次的 log 沒有保留。
+- 有一次經 Unix socket 連線，peer authentication 拒絕了測試的 login，`internal/tenant` 因此卡住，最後由 coordinator 停止（exit 143；`integration-test-system-cluster-peer-auth.log`）。這次留下的資料庫與 role 都已刪除。
+
+**獨立審查**（H-029，一輪，reviewer 是一個新開的 agent）：**ACCEPT**，另有 3 個 Medium 與幾個 Low。Reviewer 沒有 shell 可用，所以沒有自己跑測試，結論是讀程式與 evidence 得出的。它確認了：
+- 預留和送出的 `max_tokens` 是同一個變數，沒有少預留的路徑。
+- `count_tokens` 與這個上限無關。
+- 10→7 的門檻是容量數字（5e9 ÷ 633,607,500 = 7.89），安全的那一半（`before != 1`）沒有變。
+- Thinking 的內容仍然不讀，只留數字。
+
+依 H-029 修正 Medium，由 coordinator 驗證：
+
+| # | 審查的發現 | 修正 |
+|---|---|---|
+| M1 | 有圖片的 request 不理會部署的 `AI_MAX_OUTPUT_TOKENS`，文件仍寫「這是 provider 的 `max_tokens`」 | 刻意如此：預設的 8,192 正是截斷的原因。沒有另加一個部署設定，而是在 `budget.go`、runbook 的 budget 列、D-121、D-131、ADR-030 寫明這個例外。花費的上限仍是 D-110 的日上限 |
+| M2 | attempt timeout 90 s 短於 32,000 個 token 所需的時間（live 速度約 340 token/s → 約 94 s）。可能以 `AI_TIMEOUT` 結束，並以整個預留結算兩個 attempt | 有圖片的 request 的 attempt timeout 與整個呼叫的 timeout，依同一比例（32,000 ÷ budget 的 `max_tokens`）放大，至多 `BudgetCaps.Timeout` 300 s（`Budget.ImageTimeout`）：預設的 90 s／120 s 都成為 300 s。Worker 的 lease 由 heartbeat 續期，不限制呼叫的長度。`TestTheCountKeepsTheCallsDeadline` 的輸入由 300 ms 改為 100 ms（放大後是 390 ms，測試的 1.5 s 上限不變） |
+| M3 | 報告會把 provider 沒有送的 `thinking_tokens` 記為 0 | `provider.Usage.ThinkingTokens` 與報告的欄位改為 `*int64`，沒有回報時為 null。測試新增：沒有回報 → nil；負值 → 拒收 |
+
+Low 延後（H-029）：
+- 不合理的 `thinking_tokens` 會讓整個回答作廢。
+- 測試偏薄：沒有非零 thinking 的照片 smoke 測試。
+- 報告的 `MaxOutput` 是常數，沒有記實際送出的值。
+- 文件中的舊數字：`photo.go` 的註解**已順手改正**；ADR-030 與 D-131 前段的舊數字由 addendum 取代，沒有在原處標註。
+- 32,000 是否會被 Meta 以 400 拒收，要 live 才知道。
+
+修正的 mutants 6/6 killed（`mutants-review-r1.txt`），各自拿掉的部分如下：
+- 圖片的 timeout 全部；
+- 只拿掉整個呼叫的 timeout；
+- 300 s 的上限；
+- 沒有回報時記為 0；
+- 負值的檢查；
+- 報告記 0。
+
+**修正後的指令與 exit code**：`checks/evidence/2026-10-27-T-056-judge-budget/review-r1/exit-codes.txt`（結果見下一節）。
+
+**NOT RUN**：live 照片 smoke（以 32,000 的上限）；e2e。
+
+### 審查修正之後的指令與 exit code（最後的程式碼；`review-r1/exit-codes.txt`）
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 84 個 package ok |
+| `make architecture-check` | 0 | |
+| `make ai-eval` | 0 | |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、proposals、cmd） | 0 | 21 個 package ok |
+| `make integration-test`（新的一次性 PostgreSQL 16.15 instance，與 CI 相同，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+| Mutants（`mutants-review-r1.txt`） | 6/6 killed | |
+
+M1–M3 由 coordinator 驗證；依 H-029 可以執行 live 的照片 smoke。

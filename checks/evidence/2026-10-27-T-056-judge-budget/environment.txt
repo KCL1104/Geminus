@@ -1,0 +1,4 @@
+HEAD e44ccbc5e7f4e60787e2fba6bdab7521f8371b62 + uncommitted: docs/DECISIONS_AND_TBD.md docs/adr/ADR-030-meta-model-api-adapter.md internal/ai/provider/budget.go internal/ai/provider/meta/count_test.go internal/ai/provider/meta/messages_test.go internal/ai/provider/meta/meta.go internal/ai/provider/meta/photosmoke_test.go internal/ai/provider/prompt_images_test.go internal/ai/provider/provider.go internal/aievals/photo.go internal/aievals/photo_test.go planning/decisions.json 
+go version go1.27.3 linux/amd64
+2026-10-27T08:24:17Z
+5.15.167.4-microsoft-standard-WSL2

@@ -1,0 +1,6 @@
+M5-no-image-timeouts: killed (--- FAIL: TestImagesGetTheirOwnOutputBound (0.00s))
+M6-no-call-timeout: killed (--- FAIL: TestImagesGetTheirOwnOutputBound (0.00s))
+M7-no-cap: killed (--- FAIL: TestImagesGetTheirOwnOutputBound (0.00s))
+M8-absent-is-zero: killed (--- FAIL: TestSpend: "thinking not reported"); the first try used cmp.Or without importing cmp and did not build, which the script read as SURVIVED
+M9-no-negative-check: killed (--- FAIL: TestSpend (0.12s))
+M10-report-zero: killed (--- FAIL: TestThePhotoSmokeRunsThePipeline (0.03s))

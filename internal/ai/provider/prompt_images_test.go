@@ -7,6 +7,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
 	"github.com/kcl1104/geminus/internal/model/hashing"
@@ -104,16 +105,53 @@ func TestImagesAreSealed(t *testing.T) {
 	}
 }
 
+// A request with images may answer with ImageMaxOutputTokens (reasoning
+// over an image used all of 8192 live, twice) with timeouts scaled as that
+// bound is, at most BudgetCaps.Timeout; one without keeps the budget's.
+func TestImagesGetTheirOwnOutputBound(t *testing.T) {
+	b := &imageBackend{accepts: true}
+	c := client(t, b, func(bu *Budget) {
+		bu.MaxOutputTokens, bu.Timeout, bu.AttemptTimeout = 1234, 100*time.Second, 50*time.Second
+	})
+	for _, p := range []Prompt{imagePrompt(t, testImage(t, 3, 2)), imagePrompt(t)} {
+		if _, err := c.GenerateModelProposal(context.Background(), ProposalContext{OrganizationID: orgA, Mode: ModeEdit, Prompt: p}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(b.seen) != 2 || b.seen[0].MaxOutputTokens != ImageMaxOutputTokens || b.seen[1].MaxOutputTokens != 1234 {
+		t.Errorf("max output tokens: %+v", b.seen)
+	}
+	if len(b.seen) != 2 || b.seen[0].AttemptTimeout != BudgetCaps.Timeout || b.seen[1].AttemptTimeout != 50*time.Second ||
+		len(b.left) != 2 || b.left[0] <= 100*time.Second || b.left[0] > BudgetCaps.Timeout || b.left[1] > 100*time.Second {
+		t.Errorf("timeouts: attempts %v, %v; the call's time left %v", b.seen[0].AttemptTimeout, b.seen[1].AttemptTimeout, b.left)
+	}
+	if ImageMaxOutputTokens > BudgetCaps.MaxOutputTokens {
+		t.Errorf("ImageMaxOutputTokens %d is over the cap %d", ImageMaxOutputTokens, BudgetCaps.MaxOutputTokens)
+	}
+	// Scaled: the default budget's 90 s attempt is 351 s for an image, so the cap; a small one keeps its ratio.
+	small := Budget{MaxOutputTokens: 8000}
+	if d := DefaultBudget().ImageTimeout(DefaultBudget().AttemptTimeout); d != BudgetCaps.Timeout {
+		t.Errorf("the default image attempt timeout %v, want the cap", d)
+	}
+	if d := small.ImageTimeout(time.Second); d != 4*time.Second {
+		t.Errorf("a 1 s timeout at 8000 tokens is %v for an image, want 4 s", d)
+	}
+}
+
 // imageBackend is a test backend that takes images when accepts says so.
 type imageBackend struct {
 	accepts bool
 	seen    []Request
+	left    []time.Duration // the call's time left when it reached the backend
 }
 
 func (b *imageBackend) Name() string        { return "test-images" }
 func (b *imageBackend) AcceptsImages() bool { return b.accepts }
-func (b *imageBackend) Complete(_ context.Context, req Request) (Response, error) {
+func (b *imageBackend) Complete(ctx context.Context, req Request) (Response, error) {
 	b.seen = append(b.seen, req)
+	if d, ok := ctx.Deadline(); ok {
+		b.left = append(b.left, time.Until(d))
+	}
 	return Response{Text: []byte(validNeedsInput), Model: "test-model"}, nil
 }
 

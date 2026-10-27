@@ -139,7 +139,7 @@ func TestImageParts(t *testing.T) {
 	// The reservation: every attempt at the count and 10% and max_tokens,
 	// at the list price (no geo).
 	p, _ := spend.PriceOf(model)
-	per := p.AttemptBound(3300, provider.DefaultBudget().MaxOutputTokens)
+	per := p.AttemptBound(3300, provider.ImageMaxOutputTokens)
 	if want := int64(1+provider.DefaultBudget().MaxRetries) * per; len(charges.charges) != 1 || charges.charges[0] != want {
 		t.Errorf("reserved %v, want %d", charges.charges, want)
 	}
@@ -586,6 +586,22 @@ func TestSpend(t *testing.T) {
 	if _, err := ask(t, c); err != nil || m.Spent() != cost+1000*150 {
 		t.Errorf("cached: %v spent %d", err, m.Spent())
 	}
+	// Reasoning tokens are reported (usage.output_tokens_details) and are
+	// already part of output_tokens: kept for the record, not billed twice.
+	// usageJ reports 30 output tokens, 12 of them reasoning.
+	s = newServer(t, map[string][]reply{messagesPath: {ok(answerJ)}})
+	c, _, m, _ = meteredClient(t, s, 10*spendUSD)
+	if res, err := ask(t, c); err != nil || m.Spent() != cost || res.Metadata.Usage.ThinkingTokens == nil || *res.Metadata.Usage.ThinkingTokens != 12 || res.Metadata.Usage.OutputTokens != 30 {
+		t.Errorf("thinking: %v spent %d, usage %+v", err, m.Spent(), res.Metadata.Usage)
+	}
+	// Not reported (the field is optional): nil, not a 0 the provider never said.
+	plain := ok(answerJ)
+	plain.body = strings.Replace(plain.body, `,"output_tokens_details":{"thinking_tokens":12}`, "", 1)
+	s = newServer(t, map[string][]reply{messagesPath: {plain}})
+	c, _, _, _ = meteredClient(t, s, 10*spendUSD)
+	if res, err := ask(t, c); err != nil || res.Metadata.Usage.ThinkingTokens != nil {
+		t.Errorf("thinking not reported: %v, %v", err, res.Metadata.Usage.ThinkingTokens)
+	}
 	for name, first := range map[string]reply{"lost connection": {hangUp: true}, "cut body": {status: 200, body: ok(answerJ).body, cutBody: true},
 		"500": apiError(500, "api_error")} {
 		s := newServer(t, map[string][]reply{messagesPath: {first, ok(answerJ)}})
@@ -595,10 +611,14 @@ func TestSpend(t *testing.T) {
 		}
 	}
 	for name, r := range map[string]reply{
-		"not a message":     {status: 200, body: `{"id":"msg_1","type":"message","usage":`},
-		"another envelope":  {status: 200, body: `{"id":"resp_1","object":"response","output":[]}`},
-		"another type":      {status: 200, body: strings.Replace(ok(answerJ).body, `"type":"message"`, `"type":"completion"`, 1)},
-		"negative usage":    message("end_turn", `[{"type":"text","text":"{}"}]`, `{"input_tokens":-5,"output_tokens":1}`),
+		"not a message":    {status: 200, body: `{"id":"msg_1","type":"message","usage":`},
+		"another envelope": {status: 200, body: `{"id":"resp_1","object":"response","output":[]}`},
+		"another type":     {status: 200, body: strings.Replace(ok(answerJ).body, `"type":"message"`, `"type":"completion"`, 1)},
+		"negative usage":   message("end_turn", `[{"type":"text","text":"{}"}]`, `{"input_tokens":-5,"output_tokens":1}`),
+		"thinking over output": message("end_turn", `[{"type":"text","text":"{}"}]`,
+			`{"input_tokens":1,"output_tokens":1,"output_tokens_details":{"thinking_tokens":2}}`),
+		"negative thinking": message("end_turn", `[{"type":"text","text":"{}"}]`,
+			`{"input_tokens":1,"output_tokens":1,"output_tokens_details":{"thinking_tokens":-1}}`),
 		"a 201":             {status: 201, body: ok(answerJ).body},
 		"too large":         {status: 200, body: ok(answerJ).body[:20] + strings.Repeat(" ", meta.MaxResponseBytes) + ok(answerJ).body[20:]},
 		"invalid UTF-8":     {status: 200, body: strings.Replace(ok(answerJ).body, "Which", "Wh\xffich", 1)},

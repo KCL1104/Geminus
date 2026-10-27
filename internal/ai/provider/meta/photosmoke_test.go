@@ -231,7 +231,7 @@ func TestThePhotoSmokeOverHTTP(t *testing.T) {
 	}
 	samPrice, _ := spend.ImagePriceOf(samModel)
 	price, _ := spend.PriceOf(model)
-	reserved := 3 * price.AttemptBound(7328, provider.DefaultBudget().MaxOutputTokens)
+	reserved := 3 * price.AttemptBound(7328, provider.ImageMaxOutputTokens)
 	cost := price.Cost(spend.Tokens{Input: 6702, Output: 1100})
 	if r.Status != "ready" || !r.Ok() || r.ServerRisk == "" || r.PatchHash == "" || r.NewProcessSteps != 4 {
 		t.Fatalf("%+v", r)

@@ -83,6 +83,10 @@ type Usage struct {
 	OutputTokens             int64 `json:"output_tokens"`
 	CacheReadInputTokens     int64 `json:"cache_read_input_tokens,omitzero"`
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens,omitzero"`
+	// ThinkingTokens is the part of OutputTokens the model spent reasoning;
+	// nil when the provider did not report it (not 0: AGENTS.md §2). Never
+	// billed on top of OutputTokens.
+	ThinkingTokens *int64 `json:"thinking_tokens,omitzero"`
 }
 
 // Metadata describes a call for the audit record and provider_metadata
@@ -288,9 +292,13 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
 	req := Request{Prompt: p, OutputSchema: role.OutputSchema(),
 		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
+	timeout := c.budget.Timeout
+	if len(p.Images) > 0 {
+		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
+	}
 	// One deadline for the whole call: a billable backend's quote (which may
 	// ask the provider, H-037) and the call itself.
-	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var m *metering
 	if c.meter != nil {

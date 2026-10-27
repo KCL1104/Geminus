@@ -1,0 +1,4 @@
+M1-no-image-bound: killed (--- FAIL: TestImagesGetTheirOwnOutputBound)
+M2-no-thinking-mapping: killed (--- FAIL: TestSpend)
+M3-no-thinking-bound: killed (--- FAIL: TestSpend)
+M4-report-max-output: killed (--- FAIL: TestThePhotoSmokeRunsThePipeline)

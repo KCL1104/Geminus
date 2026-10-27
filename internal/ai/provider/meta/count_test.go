@@ -42,11 +42,11 @@ import (
 // image blocks, and its fields have no max_tokens.
 
 // imageRequest is a request of the test prompt with images, as the client
-// sends it under the default budget.
+// sends it under the default budget (max_tokens: ImageMaxOutputTokens).
 func imageRequest(t *testing.T, images ...provider.Image) provider.Request {
 	t.Helper()
 	b := provider.DefaultBudget()
-	return provider.Request{Prompt: sealed(t, images...), OutputSchema: "proposal-output.schema.json", MaxOutputTokens: b.MaxOutputTokens,
+	return provider.Request{Prompt: sealed(t, images...), OutputSchema: "proposal-output.schema.json", MaxOutputTokens: provider.ImageMaxOutputTokens,
 		AttemptTimeout: b.AttemptTimeout, MaxRetries: b.MaxRetries}
 }
 
@@ -82,7 +82,7 @@ func TestAnImageRequestIsCountedFirst(t *testing.T) {
 		t.Errorf("the count's headers: bearer %v, x-api-key %q, content type %q", h.Get("Authorization") == "Bearer "+key, h.Get("X-Api-Key"), h.Get("Content-Type"))
 	}
 	p, _ := spend.PriceOf(model)
-	if want := int64(1+budget.MaxRetries) * p.AttemptBound(3300, budget.MaxOutputTokens); len(charges.charges) != 1 || charges.charges[0] != want {
+	if want := int64(1+budget.MaxRetries) * p.AttemptBound(3300, provider.ImageMaxOutputTokens); len(charges.charges) != 1 || charges.charges[0] != want {
 		t.Errorf("reserved %v, want %d (3 attempts at 3,000 + 10%% input tokens and max_tokens)", charges.charges, want)
 	}
 	m, _ := json.Marshal(res.Metadata)
@@ -206,13 +206,14 @@ func TestACountThatCannotBeTrustedSendsNothing(t *testing.T) {
 	}
 }
 
-// The count runs within the call's deadline (the budget's Timeout) and
-// stops when the caller cancels; neither sends the message or reserves.
+// The count runs within the call's deadline (the budget's Timeout, scaled for
+// an image: 100 ms is 390 ms) and stops when the caller cancels; neither sends
+// the message or reserves.
 func TestTheCountKeepsTheCallsDeadline(t *testing.T) {
 	slow := counted("3000")
 	slow.delay = 2 * time.Second
 	s := newServer(t, map[string][]reply{countPath: {slow}, messagesPath: {ok(answerJ)}})
-	c, _, m, _ := meteredClient(t, s, 100*spendUSD, func(b *provider.Budget) { b.Timeout, b.AttemptTimeout = 300*time.Millisecond, 300*time.Millisecond })
+	c, _, m, _ := meteredClient(t, s, 100*spendUSD, func(b *provider.Budget) { b.Timeout, b.AttemptTimeout = 100*time.Millisecond, 100*time.Millisecond })
 	start := time.Now()
 	_, err := ask(t, c, pngImage(t, 8, 8))
 	if provider.CodeOf(err) != provider.CodeTimeout || !errors.Is(err, context.DeadlineExceeded) || s.count(messagesPath) != 0 || m.Committed() != 0 {
@@ -269,7 +270,7 @@ func TestTheCountIsRetried(t *testing.T) {
 		t.Errorf("requests %v, waits %v", got, w.all())
 	}
 	p, _ := spend.PriceOf(model)
-	if want := int64(1+budget.MaxRetries) * p.AttemptBound(3300, budget.MaxOutputTokens); len(charges.charges) != 1 || charges.charges[0] != want {
+	if want := int64(1+budget.MaxRetries) * p.AttemptBound(3300, provider.ImageMaxOutputTokens); len(charges.charges) != 1 || charges.charges[0] != want {
 		t.Errorf("reserved %v, want %d", charges.charges, want)
 	}
 }
@@ -380,7 +381,7 @@ func TestADemoPhotoProposalFitsTheOrganizationCap(t *testing.T) {
 	}
 	price, _ := spend.PriceOf(model)
 	attempts := int64(1 + budget.MaxRetries)
-	want := attempts * price.AttemptBound(count+(count+9)/10, budget.MaxOutputTokens)
+	want := attempts * price.AttemptBound(count+(count+9)/10, provider.ImageMaxOutputTokens)
 	if len(charges.charges) != 1 || charges.charges[0] != want {
 		t.Fatalf("reserved %v, want %d", charges.charges, want)
 	}
@@ -391,7 +392,9 @@ func TestADemoPhotoProposalFitsTheOrganizationCap(t *testing.T) {
 	t.Logf("demo photo proposal: text %d bytes + image, count %d tokens, reserved %d input tokens per attempt; judge %d nano-USD (USD %.4f), segmentation %d nano-USD; "+
 		"%d fit the organization's USD 5 a day (the context-window bound: %d nano-USD, USD %.4f, %d fit)",
 		len(p.System)+len(p.User()), count, count+(count+9)/10, want, float64(want)/1e9, segmentation, fits, window, float64(window)/1e9, before)
-	if fits < 10 || before != 1 {
-		t.Errorf("%d demo photo proposals fit the organization cap (want at least 10); %d under the old bound", fits, before)
+	// 7 at this pessimistic count since images get ImageMaxOutputTokens (live, the
+	// judge used all of 8192 twice); 10 at the live count of the demo (6,661).
+	if fits < 7 || before != 1 {
+		t.Errorf("%d demo photo proposals fit the organization cap (want at least 7); %d under the old bound", fits, before)
 	}
 }

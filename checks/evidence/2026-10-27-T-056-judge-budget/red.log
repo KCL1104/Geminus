@@ -1,0 +1,10 @@
+# github.com/kcl1104/geminus/internal/ai/provider [github.com/kcl1104/geminus/internal/ai/provider.test]
+internal/ai/provider/prompt_images_test.go:117:54: undefined: ImageMaxOutputTokens
+internal/ai/provider/prompt_images_test.go:120:5: undefined: ImageMaxOutputTokens
+internal/ai/provider/prompt_images_test.go:121:58: undefined: ImageMaxOutputTokens
+FAIL	github.com/kcl1104/geminus/internal/ai/provider [build failed]
+FAIL
+# github.com/kcl1104/geminus/internal/ai/provider/meta_test [github.com/kcl1104/geminus/internal/ai/provider/meta.test]
+internal/ai/provider/meta/messages_test.go:595:82: res.Metadata.Usage.ThinkingTokens undefined (type provider.Usage has no field or method ThinkingTokens)
+FAIL	github.com/kcl1104/geminus/internal/ai/provider/meta [build failed]
+FAIL

@@ -1,0 +1,8 @@
+spec-check exit 0
+backend-test exit 0
+architecture-check exit 0
+ai-eval exit 0
+race-changed exit 0
+done
+integration-test exit 143 (system cluster over the Unix socket: peer authentication refused the test logins, internal/tenant hung on it; stopped by the coordinator; integration-test-system-cluster-peer-auth.log)
+integration-test exit 0 (a disposable PostgreSQL 16.15 instance like CI's: trust, dt_admin, localhost:54329)

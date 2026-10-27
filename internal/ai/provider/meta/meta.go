@@ -459,6 +459,9 @@ type usage struct {
 	OutputTokens             int64 `json:"output_tokens"`
 	CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 	CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
+	OutputTokensDetails      struct {
+		ThinkingTokens *int64 `json:"thinking_tokens"` // optional in the schema
+	} `json:"output_tokens_details"`
 }
 
 // decodeMessage reads a 200 answer: one strict JSON document (valid UTF-8,
@@ -471,7 +474,8 @@ func decodeMessage(body []byte) (message, bool) {
 	}
 	u := m.Usage
 	if m.Type != "message" || m.Role != "assistant" || u == nil || u.InputTokens < 0 || u.OutputTokens < 0 ||
-		u.CacheCreationInputTokens < 0 || u.CacheReadInputTokens < 0 {
+		u.CacheCreationInputTokens < 0 || u.CacheReadInputTokens < 0 ||
+		(u.OutputTokensDetails.ThinkingTokens != nil && (*u.OutputTokensDetails.ThinkingTokens < 0 || *u.OutputTokensDetails.ThinkingTokens > u.OutputTokens)) {
 		return message{}, false
 	}
 	return m, true
@@ -492,7 +496,8 @@ func safeID(id string) string {
 // decoded (structured.Projection.Decode, fail closed).
 func (b *Backend) answer(m message, resp provider.Response, proj structured.Projection) (provider.Response, error) {
 	resp.Usage = provider.Usage{InputTokens: m.Usage.InputTokens, OutputTokens: m.Usage.OutputTokens,
-		CacheReadInputTokens: m.Usage.CacheReadInputTokens, CacheCreationInputTokens: m.Usage.CacheCreationInputTokens}
+		CacheReadInputTokens: m.Usage.CacheReadInputTokens, CacheCreationInputTokens: m.Usage.CacheCreationInputTokens,
+		ThinkingTokens: m.Usage.OutputTokensDetails.ThinkingTokens}
 	resp.ProviderRequestID = safeID(m.ID)
 	invalid := func(msg string) (provider.Response, error) {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)
