@@ -147,7 +147,14 @@ elif cmd == "environment" and a[1] == "edit":
                     st.setdefault("sealed", []).append([svc, name])
             if inst.get("configFile"):
                 st.setdefault("config_files", {})[svc] = inst["configFile"]
+            if inst.get("build") and not os.environ.get("REHEARSAL_DROP_BUILD"):  # DROP: committed, not kept (T5)
+                st.setdefault("builds", {})[svc] = inst["build"]
         out = {"committed": True}
+elif cmd == "environment" and a[1] == "config":
+    # Each service's config, with its variables' values (the deployer must drop them as it parses).
+    out = {"services": {"svc_" + n: {"build": st.get("builds", {}).get(n, {"builder": "RAILPACK"}),
+                                     "variables": {k: {"value": v} for k, v in st["vars"].get(n, {}).items()}}
+                        for n in st["services"]}}
 elif cmd == "service" and a[1] == "list":
     if os.environ.get("REHEARSAL_ECHO_TOKEN"):
         # A CLI that quotes the token in its error: the deployer must redact it.
@@ -727,6 +734,9 @@ def main() -> int:
         want_files = {s: f"/deploy/railway/{s}.railway.json" for s in ("migrate", "api", "worker", "web")}
         if st.get("config_files") != want_files:
             failures.append(f"config-as-code files: {st.get('config_files')}, want {want_files}")
+        want_builds = {s: json.load(open(ROOT / f"deploy/railway/{s}.railway.json"))["build"] for s in want_files}
+        if st.get("builds") != want_builds:
+            failures.append(f"Dockerfile builds: {st.get('builds')}, want {want_builds}")
         owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE",
                  "AI_POLICY_APPROVAL", "AI_MODEL", "AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL"}
         for svc, vs in st["vars"].items():
@@ -958,6 +968,14 @@ def main() -> int:
         if res.startswith("FAIL") or len(sets) != 1 or "${{RAILWAY_TCP_PROXY_DOMAIN}}" not in sets[0][2] or "REHEARSALADMINPW" in sets[0][2] \
                 or "--skip-deploys" not in sets[0]:
             failures.append(f"T4 (no DATABASE_PUBLIC_URL) must define it once, references only, and go on: {res[:300]} {sets}")
+
+        # T5: Railway commits the build settings and does not keep them: the run stops at once, naming them.
+        name = scenario("t5", {"projects": ["geminus-demo"], "services": [], "buckets": [], "vars": {}, "domains": {}, "proxies": [],
+                               "calls": [], "deploys": []})
+        _, out, res = apply(REHEARSAL_DROP_BUILD="1")
+        shown.append(("T5 build settings committed, not kept", res.splitlines()[0]))
+        if not res.startswith("FAIL: Railway did not keep the Dockerfile builds") or state(name)["deploys"]:
+            failures.append(f"T5 (builds not kept) must stop before any deployment: {res[:300]}")
 
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)

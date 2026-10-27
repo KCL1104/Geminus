@@ -620,8 +620,21 @@ class Run:
         for s in SERVICES:
             if self.find_id(services, s) is None:
                 self.rw("add", "--service", s, "--json")
-        self.env_edit({s: {"configFile": "/" + self.spec["services"][s]["config"]} for s in SERVICES},
-                      "T-039 deploy.sh: config-as-code files", check=True)
+        # The config-as-code file's build and deploy settings go in as well: Railway committed a configFile patch
+        # and kept no configFile (the fifth --apply), while its build and deploy fields are the service's own.
+        changes = {}
+        for s in SERVICES:
+            path = self.spec["services"][s]["config"]
+            code = json.loads((ROOT / path).read_text())
+            changes[s] = {"configFile": "/" + path, "build": code["build"],
+                          "deploy": {k: v for k, v in code["deploy"].items() if k != "numReplicas"}}  # replicas: multiRegionConfig
+        self.env_edit(changes, "T-039 deploy.sh: config-as-code settings", check=True)
+        if not self.dry:
+            got = self.build_settings()
+            wrong = [s for s in SERVICES if got.get(s) != changes[s]["build"]["dockerfilePath"]]
+            if wrong:
+                raise Failed(f"Railway did not keep the Dockerfile builds of {', '.join(wrong)} (`railway environment config`): "
+                             f"{ {s: got.get(s) for s in wrong} }")
         for s in SERVICES:
             dom = self.spec["services"][s].get("public_domain")
             if not dom:
@@ -1082,6 +1095,20 @@ class Run:
         if check and not done:
             raise Failed(f"`railway environment edit` did not commit the changes ({message}): {out if isinstance(out, dict) else 'no JSON'}")
         return done
+
+    def build_settings(self) -> dict:
+        """{service name: its dockerfilePath when its builder is DOCKERFILE} from `railway environment config --json`;
+        every "variables" object is dropped as the JSON is parsed (it holds values), so none is kept."""
+        def receive(pairs):
+            return {k: (Seen.SET if k == "variables" else v) for k, v in pairs}
+        config = self.run(["railway", "environment", "config", *self.env(), "--json"], quiet=True, parse=receive)
+        names = {d.get("id"): d.get("name") for d in self.walk(self.rw("service", "list", *self.env(), "--json", quiet=True))}
+        out = {}
+        for sid, inst in ((config or {}).get("services") or {}).items():
+            build = inst.get("build") or {}
+            if build.get("builder") == "DOCKERFILE" and sid in names:
+                out[names[sid]] = build.get("dockerfilePath")
+        return out
 
     def seal_now(self, pairs: list, message: str) -> bool:
         changes: dict = {}

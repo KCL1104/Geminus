@@ -484,3 +484,18 @@ Rehearsal：
 - Green：`rehearsal: PASS`（`env-edit/rehearsal-green.log`）。
 
 **另外**：project 中原本就有的 `Geminus` 服務接了這個 repo 的 `claude/lucid-meitner-vq1awo` branch（RAILPACK）。它不是 deployer 建的，所以不會被動到；是否刪除由 owner 決定。
+
+### 第五次 `--apply`（2026-10-27）：`configFile` 被 commit 了，Railway 卻沒有保存
+
+改成以 stdin 送出之後，config-as-code 的 patch 得到 `committed: true`。但讀回 `railway environment config`（只看 build／deploy）時，四個服務仍然沒有 `configFile`，builder 仍是 RAILPACK。所以 coordinator 在 owner 核准 Auth0 之前，就以 SIGTERM 停止了這次執行：exit 143，CLI 已登出，沒有開著的 proxy。
+
+**修正：**
+- 同一個 patch 中，直接寫入每個服務 config 檔的 `build` 與 `deploy`（不送 `numReplicas`，replica 數由 `multiRegionConfig` 管理）。這些欄位都是 CLI 5.64.2 `BuildConfig`／`DeployConfig` 的欄位，名稱一一對應。`configFile` 照樣送。
+- Commit 之後以 `railway environment config --json` 讀回，確認 builder 是 `DOCKERFILE`，而且 `dockerfilePath` 正確，否則在任何部署之前停下。讀回時，`variables` 物件在解析的當下就被丟掉。
+
+Rehearsal：
+- 替身新增 `environment config`。它刻意在回應中帶上變數的值，讓 leak 檢查能確認 deployer 沒有留下任何值。
+- 新增 `REHEARSAL_DROP_BUILD`（committed 了但沒有保存）與 T5 情境：必須在任何部署之前停下。
+- Run 1 新增檢查：四個服務的 build 設定都必須與 config 檔相同。
+- Red：拿掉 deployer 的修正時，build 檢查與 T5 失敗（`builds/rehearsal-red.log`）。
+- Green：`rehearsal: PASS`（`builds/rehearsal-green.log`）。
