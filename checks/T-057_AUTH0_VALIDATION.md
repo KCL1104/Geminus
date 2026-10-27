@@ -410,3 +410,25 @@ Red／green（evidence 在 `session/`）：
 - `check_deploy.py`、`bash -n` 都是 exit 0。
 
 Runbook §7.7 的 Token 段落已更新。部署完成後執行 `railway logout`。
+
+## 第二次 `--apply`（2026-10-27，coordinator）：`enabled-clients update` 不認得 `--data @-`
+
+使用已登入的 Railway CLI，沒有任何 token 或 AI key 在環境中。前面的步驟都成功：
+- 步驟 1、2：project、bucket、四個服務、config files、網域。已經存在的 `Postgres` 沿用，沒有重建。
+- 步驟 2b：owner 核准 Auth0 的裝置登入之後，owner 的使用者檢查通過，API 建立，web application 建立，sign-up 本來就是關的。真實 tenant 上 M1 的修正有效：connection 的 options 沒有讓腳本停下。
+
+接著 `auth0 connections enabled-clients update <id> --data @-` 以 exit 1 結束：「invalid --data value: must be a JSON array of {client_id, status}: invalid character '@'」。腳本的清理都有執行：CLI 已登出、home 已刪除、沒有開著的 TCP proxy、stderr 是空的。
+
+**原因**（CLI v1.37.0 的原始碼）：
+- `internal/cli/connections.go:499-507`：`enabled-clients update` 直接 `json.Unmarshal` `--data` 的值。
+- 其他指令（`apis`、`apps`、`users`、`connections create/update`）經 `readJSONInput`（`internal/cli/data_json.go:125-127`），那裡會從 stdin 讀 `@-`。
+- 沒有 `--data` 時，`ResolveData` 以 piped stdin 為 payload（`data_json.go:163-188`）。
+
+逐一核對過，只有這一個指令是例外。
+
+**修正：**
+- 這個呼叫不加 `--data`，JSON 仍經 stdin。
+- Rehearsal 的替身照真實 CLI 處理這個指令（`--data` 的值就是 JSON；沒有 `--data` 時讀 stdin）。
+- Red：只拿掉 deployer 的修正時，A1 失敗，訊息正是 live 的 `auth0 connections enabled-clients failed`（`enabled-clients/rehearsal-red.log`）。
+- Green：`rehearsal: PASS`（`enabled-clients/rehearsal-green.log`）。
+- Runbook §7.8 的表格已更新。

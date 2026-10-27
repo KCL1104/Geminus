@@ -317,6 +317,9 @@ while i < len(a):
     i += 1
 key = " ".join(words)
 stdin = sys.stdin.read() if "@-" in a else None
+if key == "connections enabled-clients update":
+    # CLI 1.37.0: --data's value is the JSON itself ("@-" fails); without --data the piped stdin is the payload.
+    stdin = a[a.index("--data") + 1] if "--data" in a else (sys.stdin.read() or None)
 home = os.environ.get("HOME", "")
 cfg_path = os.path.join(home, ".config", "auth0", "config.json")
 with open(log_path, "a") as f:

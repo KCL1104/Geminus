@@ -980,7 +980,10 @@ class Run:
                   if isinstance(x, dict)}
             if (cid == conn_id) != (client_id in on):
                 status = cid == conn_id
-                self.a0("connections", "enabled-clients", "update", cid, "--data", "@-",
+                # No --data: this command parses --data's value as the JSON itself ("@-" is not read from
+                # stdin, internal/cli/connections.go at v1.37.0); without it the piped stdin is the payload
+                # (ResolveData, internal/cli/data_json.go). Found by the first --apply.
+                self.a0("connections", "enabled-clients", "update", cid,
                         stdin=json.dumps([{"client_id": client_id, "status": status}]))
                 self.say(f"   connection {c.get('name')}: the application {'enabled' if status else 'disabled'}")
         if not self.dry:
