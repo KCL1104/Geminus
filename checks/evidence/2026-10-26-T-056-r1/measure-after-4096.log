@@ -1,0 +1,17 @@
+=== RUN   TestR1Measure
+    zz_r1_measure_test.go:73: base420.jpg            in   135806 B | accepted                                                     | out   322533 B |    326 ms | peak heap +  24 MiB | allocated   24 MiB
+    zz_r1_measure_test.go:73: base444.jpg            in   246901 B | accepted                                                     | out   331190 B |    483 ms | peak heap +  48 MiB | allocated   48 MiB
+    zz_r1_measure_test.go:73: basecmyk.jpg           in   286282 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: gray16.png             in  1404072 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: gray8.jpg              in    71735 B | accepted                                                     | out   212049 B |    168 ms | peak heap +  21 MiB | allocated   21 MiB
+    zz_r1_measure_test.go:73: gray8.png              in   119623 B | accepted                                                     | out   181095 B |    191 ms | peak heap +  17 MiB | allocated   17 MiB
+    zz_r1_measure_test.go:73: palette8.png           in   838361 B | accepted                                                     | out   907355 B |    136 ms | peak heap +  18 MiB | allocated   18 MiB
+    zz_r1_measure_test.go:73: prog444.jpg            in   280266 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: progcmyk.jpg           in   310635 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: rgb8.png               in   542022 B | accepted                                                     | out   724960 B |    738 ms | peak heap +  66 MiB | allocated   66 MiB
+    zz_r1_measure_test.go:73: rgba16.png             in  3730410 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: rgba8-interlaced.png   in   842071 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: rgba8.png              in   598701 B | accepted                                                     | out   837497 B |    799 ms | peak heap +  66 MiB | allocated   66 MiB
+--- PASS: TestR1Measure (2.88s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	2.893s

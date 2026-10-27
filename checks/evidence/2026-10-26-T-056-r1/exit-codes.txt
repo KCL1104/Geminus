@@ -1,0 +1,10 @@
+gofmt 0
+vet 0
+test-changed 0
+race-changed 0
+backend-test 0
+architecture-check 0
+ai-eval 0
+integration-test 127
+frontend-test 0
+integration-test 0

@@ -1,0 +1,13 @@
+=== RUN   TestPhotoIdempotency
+--- PASS: TestPhotoIdempotency (0.17s)
+=== RUN   TestPhotoReplayAfterPublish
+    photo_test.go:690: the retry after a publish: 409 {"error":{"code":"MODEL_VERSION_CONFLICT","message":"base_version_id is not the model's latest version","details":[{"path":"/base_version_id","reason":"not the latest version"}],"request_id":"req_01M5X6263YXNM5APTS8KNTMQPM"}}, want the first {"proposal_id":"aip_01M5X62638XMPGJE182F3ZS4QT","status":"generating"}
+    photo_test.go:698: the same key with another file: 409 {"error":{"code":"MODEL_VERSION_CONFLICT","message":"base_version_id is not the model's latest version","details":[{"path":"/base_version_id","reason":"not the latest version"}],"request_id":"req_01M5X6264BHPJCZPMKCJVCWKXR"}}
+--- FAIL: TestPhotoReplayAfterPublish (0.13s)
+=== RUN   TestPhotoConcurrentSameKey
+    photo_test.go:776: 4 objects stored for one proposal: [/tmp/TestPhotoConcurrentSameKey3006664643/001/tenant/org_01M5X6265XX7T79YEYJN3BPENA/assets/proposal-images/aip_01M5X6267W4172YV2WDX5F0DWW/image /tmp/TestPhotoConcurrentSameKey3006664643/001/tenant/org_01M5X6265XX7T79YEYJN3BPENA/assets/proposal-images/aip_01M5X62682CHBMKRRV0SHB1J9F/image /tmp/TestPhotoConcurrentSameKey3006664643/001/tenant/org_01M5X6265XX7T79YEYJN3BPENA/assets/proposal-images/aip_01M5X6268D6R5Y01GGK018ZMPM/image /tmp/TestPhotoConcurrentSameKey3006664643/001/tenant/org_01M5X6265XX7T79YEYJN3BPENA/assets/proposal-images/aip_01M5X6268GTVFMSW8C852B9P1Z/image]
+--- FAIL: TestPhotoConcurrentSameKey (0.14s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/api	0.468s
+FAIL
+exit 1

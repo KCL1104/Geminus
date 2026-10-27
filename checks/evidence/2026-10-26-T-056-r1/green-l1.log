@@ -1,0 +1,17 @@
+=== RUN   TestClean
+--- PASS: TestClean (0.00s)
+=== RUN   TestPhotoAcceptsWhatThePhotoShows
+--- PASS: TestPhotoAcceptsWhatThePhotoShows (0.00s)
+=== RUN   TestPhotoRefusesMoreStepsThanBoxes
+--- PASS: TestPhotoRefusesMoreStepsThanBoxes (0.00s)
+=== RUN   TestPhotoRefusesNumbersOfItsOwn
+--- PASS: TestPhotoRefusesNumbersOfItsOwn (0.00s)
+=== RUN   TestPhotoRefusesNumbersOutsideTheTypedMembers
+--- PASS: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)
+=== RUN   TestPhotoIssuesAreClean
+--- PASS: TestPhotoIssuesAreClean (0.00s)
+=== RUN   TestSegmentation
+--- PASS: TestSegmentation (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/review	0.011s
+exit 0

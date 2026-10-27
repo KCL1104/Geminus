@@ -3836,6 +3836,14 @@
           "summary": "Hackathon 切片（H-029、H-033），fake 為止、沒有任何 live 呼叫：模型頁（電子產線，editor／owner）一個按鈕選 PNG／JPEG 照片 → createImageProposal（multipart，5 MiB、32–4096 px，解碼後重新編碼只留像素，不存檔名；migration 0017 的影像 record，RLS、tenant FK、insert-only、有影像恰好等於 intent 為空）→ worker：讀回影像並比對 record → T-055 的 SegmentClient（pack 的 8 個概念，框在影像內、confidence 有限、至多 64 個物件）→ T-055 的 judge（影像為 prompt 的影像部分，template photo-0.1.0）→ 一般 edit 審查＋照片規則（新步驟不多於物件數、數字只能沿用 base）→ ready／invalid／needs_input／failed，沒有物件時 server 回 needs_input；/proposals/<id> 標明以照片提出；/ui-gallery/proposal?state=photo 範例。建在 t055-meta（19fb02a、339fea5）的名稱上，已合併進本分支；D-130–D-132 PROPOSED（沒有批准）。SAM 3.1 與 Muse Spark 的 live 呼叫、Claude 影像備援的 adapter 為 NOT RUN／未接，見報告。",
           "reviewer": null,
           "accepted_at": null
+        },
+        {
+          "date": "2026-10-26",
+          "branch": "t056-r1",
+          "report": "checks/T-056_VALIDATION.md",
+          "summary": "Review 第 1 輪（checks/T-056_REVIEW_r1.md）的修正，fake 與本機 test server 為止、沒有任何 live 呼叫：M1 用過的 Idempotency-Key 先於 base 判斷（publish 之後同 key 同檔仍 replay 第一次的 202）；L4 同 key 的並行請求在 API process 中依序執行，只存一個 object；M2 由 header 拒絕解碼成數倍記憶體的 PNG／JPEG（progressive、CMYK／YCCK／RGB JPEG、16-bit 或 interlaced PNG：415），重新編碼在 5 MiB 截斷，一次解碼至多 80 MiB（量測最大 66 MiB，修正前 329 MiB）；L1 照片規則也讀 metric 的 period 與 domain_attributes 的數字。照片管線的 AI 部分移到 internal/ai/photopipeline，worker 與新的 make ai-smoke-photo-live（cmd/ai-eval-live -smoke-photo：demo 影像一次、worker 的照片路徑 gate、USD 1 上限、spend record 與 live-smoke-photo-*.json report）共用。D-130–D-132 仍 PROPOSED。",
+          "reviewer": null,
+          "accepted_at": null
         }
       ]
     },

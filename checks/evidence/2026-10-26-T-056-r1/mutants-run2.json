@@ -1,0 +1,89 @@
+[
+ {
+  "id": "P3 interlaced PNG accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.89s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t7.006s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R3 the base's attribute numbers not known",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.010s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R4 the base's metric periods not known",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.012s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R7 an out-of-range number taken",
+  "file": "internal/ai/review/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "G4 the segmenter's metadata lost on its failure",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestASegmenterFailureKeepsItsMetadata (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/photopipeline\t0.015s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S6 the run's line not closed",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.07s)",
+   "--- FAIL: TestThePhotoSmokeReportsAFailedCount (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.180s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S10 SAM's images not observed",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeObserves (0.06s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.229s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S15 the inputs not verified as the worker does",
+  "file": "internal/aievals/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ }
+]

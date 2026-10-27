@@ -1,0 +1,15 @@
+=== RUN   TestAPhotoProposalEndToEnd
+--- PASS: TestAPhotoProposalEndToEnd (1.29s)
+=== RUN   TestPhotoRefusals
+--- PASS: TestPhotoRefusals (0.53s)
+=== RUN   TestPhotoStaleBaseAndAvailability
+--- PASS: TestPhotoStaleBaseAndAvailability (1.54s)
+=== RUN   TestPhotoIdempotency
+--- PASS: TestPhotoIdempotency (0.57s)
+=== RUN   TestPhotoReplayAfterPublish
+--- PASS: TestPhotoReplayAfterPublish (0.73s)
+=== RUN   TestPhotoConcurrentSameKey
+--- PASS: TestPhotoConcurrentSameKey (0.53s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/api	6.277s
+exit 0

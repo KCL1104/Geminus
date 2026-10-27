@@ -1,0 +1,17 @@
+=== RUN   TestR1Measure
+    zz_r1_measure_test.go:73: base420.jpg            in   135806 B | accepted                                                     | out   322533 B |    352 ms | peak heap +  25 MiB | allocated   25 MiB
+    zz_r1_measure_test.go:73: base444.jpg            in   246901 B | accepted                                                     | out   331190 B |    489 ms | peak heap +  49 MiB | allocated   49 MiB
+    zz_r1_measure_test.go:73: basecmyk.jpg           in   286282 B | accepted                                                     | out   372536 B |    948 ms | peak heap + 170 MiB | allocated  169 MiB
+    zz_r1_measure_test.go:73: gray16.png             in  1404072 B | accepted                                                     | out  1480206 B |    828 ms | peak heap +  64 MiB | allocated   70 MiB
+    zz_r1_measure_test.go:73: gray8.jpg              in    71735 B | accepted                                                     | out   212049 B |    178 ms | peak heap +  16 MiB | allocated   16 MiB
+    zz_r1_measure_test.go:73: gray8.png              in   119623 B | accepted                                                     | out   181095 B |    156 ms | peak heap +  17 MiB | allocated   17 MiB
+    zz_r1_measure_test.go:73: palette8.png           in   838361 B | accepted                                                     | out   907355 B |    136 ms | peak heap +  19 MiB | allocated   19 MiB
+    zz_r1_measure_test.go:73: prog444.jpg            in   280266 B | accepted                                                     | out   331190 B |    944 ms | peak heap + 241 MiB | allocated  241 MiB
+    zz_r1_measure_test.go:73: progcmyk.jpg           in   310635 B | accepted                                                     | out   372536 B |   1177 ms | peak heap + 330 MiB | allocated  329 MiB
+    zz_r1_measure_test.go:73: rgb8.png               in   542022 B | accepted                                                     | out   724960 B |    718 ms | peak heap +  67 MiB | allocated   67 MiB
+    zz_r1_measure_test.go:73: rgba16.png             in  3730410 B | accepted                                                     | out  4133396 B |   2621 ms | peak heap + 255 MiB | allocated  267 MiB
+    zz_r1_measure_test.go:73: rgba8-interlaced.png   in   842071 B | accepted                                                     | out   837497 B |    869 ms | peak heap + 128 MiB | allocated  131 MiB
+    zz_r1_measure_test.go:73: rgba8.png              in   598701 B | accepted                                                     | out   837497 B |    785 ms | peak heap +  67 MiB | allocated   67 MiB
+--- PASS: TestR1Measure (10.26s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	10.296s

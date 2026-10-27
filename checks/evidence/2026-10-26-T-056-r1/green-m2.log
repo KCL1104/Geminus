@@ -1,0 +1,27 @@
+=== RUN   TestSanitizeRefusesWhatTakesTooMuchMemory
+--- PASS: TestSanitizeRefusesWhatTakesTooMuchMemory (2.84s)
+=== RUN   TestADecodeStaysWithinItsBound
+    memory_test.go:280: a baseline 4:4:4 header: 280278 bytes in, photo: the image does not decode, allocated 48.0 MiB
+    memory_test.go:280: noise re-encoded too big: 4695481 bytes in, photo: the file is too large, allocated 29.0 MiB
+    memory_test.go:280: an 8-bit RGBA PNG: 262401 bytes in, <nil>, allocated 65.8 MiB
+    memory_test.go:280: an 8-bit RGB PNG: 211830 bytes in, <nil>, allocated 65.7 MiB
+--- PASS: TestADecodeStaysWithinItsBound (3.86s)
+=== RUN   TestAtMostTwoDecodesAtOnce
+--- PASS: TestAtMostTwoDecodesAtOnce (0.03s)
+=== RUN   TestTheReencodingStopsAtMaxBytes
+--- PASS: TestTheReencodingStopsAtMaxBytes (0.00s)
+=== RUN   TestSanitizeKeepsOnlyThePixels
+--- PASS: TestSanitizeKeepsOnlyThePixels (0.00s)
+=== RUN   TestFormatIsReadFromTheBytes
+--- PASS: TestFormatIsReadFromTheBytes (0.00s)
+=== RUN   TestSanitizeRefuses
+--- PASS: TestSanitizeRefuses (0.00s)
+=== RUN   TestRead
+--- PASS: TestRead (0.02s)
+=== RUN   TestVerify
+--- PASS: TestVerify (0.00s)
+=== RUN   TestWhatIsStoredIsWhatTheProviderSends
+--- PASS: TestWhatIsStoredIsWhatTheProviderSends (0.03s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	6.824s
+exit 0

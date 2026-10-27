@@ -1,0 +1,35 @@
+=== RUN   TestSanitizeRefusesWhatTakesTooMuchMemory
+    memory_test.go:207: a progressive 4:4:4 JPEG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: a lossless JPEG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: an arithmetic-coded JPEG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: an RGB JPEG (Adobe transform 0): <nil>, want ErrEncoding
+    memory_test.go:207: an RGB JPEG, marked after its scan: <nil>, want ErrEncoding
+    memory_test.go:207: a component in two scans: <nil>, want ErrEncoding
+    memory_test.go:207: a 16-bit RGBA PNG: <nil>, want ErrEncoding
+    memory_test.go:210: a 16-bit RGBA PNG: it allocated 258.6 MiB: it was decoded
+    memory_test.go:207: an interlaced PNG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:210: an interlaced PNG: it allocated 65.0 MiB: it was decoded
+    memory_test.go:207: a CMYK JPEG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: a 12-bit JPEG: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: an RGB JPEG by its component IDs: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: a progressive JPEG behind extra data: photo: the image does not decode, want ErrEncoding
+    memory_test.go:207: a 16-bit gray PNG: <nil>, want ErrEncoding
+    memory_test.go:210: a 16-bit gray PNG: it allocated 65.6 MiB: it was decoded
+    memory_test.go:207: a progressive JPEG: photo: the image does not decode, want ErrEncoding
+--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (4.97s)
+=== RUN   TestADecodeStaysWithinItsBound
+    memory_test.go:268: an 8-bit RGBA PNG: 262401 bytes in, <nil>, allocated 65.8 MiB
+    memory_test.go:268: an 8-bit RGB PNG: 211830 bytes in, <nil>, allocated 65.8 MiB
+    memory_test.go:268: a baseline 4:4:4 header: 280278 bytes in, photo: the image does not decode, allocated 48.0 MiB
+    memory_test.go:268: noise re-encoded too big: 4695481 bytes in, photo: the file is too large, allocated 56.0 MiB
+--- PASS: TestADecodeStaysWithinItsBound (4.06s)
+=== RUN   TestAtMostTwoDecodesAtOnce
+    memory_test.go:311: a header check waited for a slot: context deadline exceeded
+--- FAIL: TestAtMostTwoDecodesAtOnce (0.03s)
+=== RUN   TestTheReencodingStopsAtMaxBytes
+    memory_test.go:325: 1 <nil> "0123456789x"
+--- FAIL: TestTheReencodingStopsAtMaxBytes (0.00s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/photo	9.091s
+FAIL
+exit 1

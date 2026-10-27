@@ -1,0 +1,7 @@
+=== RUN   TestR1Concurrent
+    zz_r1_conc_test.go:59: 6 at once (2 slots): 2608 ms, peak heap in use +261 MiB
+--- PASS: TestR1Concurrent (2.61s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	2.639s
+GOMEMLIMIT=192MiB: 6 at once (2 slots): 2371 ms, peak heap in use +196 MiB
+GOMEMLIMIT=256MiB: 6 at once (2 slots): 2459 ms, peak heap in use +261 MiB

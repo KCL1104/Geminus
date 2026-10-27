@@ -1,0 +1,28 @@
+ok  	github.com/kcl1104/geminus/internal/proposals	0.172s
+ok  	github.com/kcl1104/geminus/internal/proposals/approval	0.355s
+ok  	github.com/kcl1104/geminus/internal/proposals/generator	0.342s
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	9.668s
+ok  	github.com/kcl1104/geminus/internal/ai/aicontext	0.591s
+ok  	github.com/kcl1104/geminus/internal/ai/corpus	2.334s
+ok  	github.com/kcl1104/geminus/internal/ai/idpool	0.047s
+ok  	github.com/kcl1104/geminus/internal/ai/locale	0.005s
+ok  	github.com/kcl1104/geminus/internal/ai/photopipeline	0.035s
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.369s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/anthropic	10.753s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/fake	0.123s
+ok  	github.com/kcl1104/geminus/internal/ai/provider/meta	2.719s
+?   	github.com/kcl1104/geminus/internal/ai/provider/structured	[no test files]
+--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)
+    photo_test.go:212: 1e400 copied from the base: [/nodes/2/domain_attributes /nodes/5/domain_attributes /metrics/1/period]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.925s
+ok  	github.com/kcl1104/geminus/internal/ai/spend	0.023s
+ok  	github.com/kcl1104/geminus/internal/aievals	0.357s
+ok  	github.com/kcl1104/geminus/internal/config	0.150s
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.593s
+ok  	github.com/kcl1104/geminus/cmd/ai-eval-live	0.017s
+ok  	github.com/kcl1104/geminus/cmd/worker	0.093s
+ok  	github.com/kcl1104/geminus/cmd/api	2.041s
+ok  	github.com/kcl1104/geminus/internal/api	0.116s
+FAIL
+exit 1

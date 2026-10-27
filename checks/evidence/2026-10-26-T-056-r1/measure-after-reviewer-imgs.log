@@ -1,0 +1,8 @@
+=== RUN   TestR1Measure
+    zz_r1_measure_test.go:73: gray16.png             in    42260 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: prog444.jpg            in   219417 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: progcmyk.jpg           in   287514 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+    zz_r1_measure_test.go:73: rgba16.png             in   152379 B | photo: a PNG or JPEG of a kind the server does not decode    | out        0 B |      0 ms | peak heap +   0 MiB | allocated    0 MiB
+--- PASS: TestR1Measure (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/proposals/photo	0.018s

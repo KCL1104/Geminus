@@ -1,0 +1,10 @@
+--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)
+    photo_test.go:175: a number deep in the attributes: [], want [/nodes/7/domain_attributes]
+    photo_test.go:175: a number too large to read: [], want [/nodes/5/domain_attributes]
+    photo_test.go:175: a metric's period: [], want [/metrics/0/period]
+    photo_test.go:175: numbers in a new step's attributes: [], want [/nodes/5/domain_attributes]
+    photo_test.go:175: a number in an existing step's attributes: [], want [/nodes/2/domain_attributes]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/review	0.010s
+FAIL
+exit 1

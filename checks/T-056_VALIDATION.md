@@ -360,3 +360,143 @@ Coordinator 對本節問題的處理：
 5. T-055 舊 evidence 中的 negative case 訊息不同：歷史紀錄保留原樣。
 
 下一步：T-056 的一輪獨立審查（H-029），範圍包含照片路徑、H-037 的 count_tokens 預留與 D-124 的 API 可用性（含照片）。
+
+## Review round 1 fixes（2026-10-26）
+
+Branch `t056-r1`（自 68d5344，本機，**沒有 push、沒有 PR**）。依 `checks/T-056_REVIEW_r1.md`（CHANGES REQUESTED：M1、M2；L1–L5；I1–I7）修正 M1、M2、L1、L4，並加上 I1 要的 live 照片 smoke。**沒有任何 live AI 呼叫**（SAM 3.1、Muse Spark、count_tokens、Claude 都沒有）；沒有讀取、印出或 grep 任何 key 的值（只有變數名稱，`run.sh` 一律 unset）；Railway 沒有任何操作。D-130–D-132 仍 **PROPOSED**（只改內容與量測的數字，沒有批准）。證據在 `checks/evidence/2026-10-26-T-056-r1/`（`run.sh` 執行並在每個 log 最後一行記 exit code；`verify.sh` 依序跑驗證並寫 `exit-codes.txt`）。
+
+### 修正
+
+| 項目 | 修正 | 測試（先紅後綠） |
+|---|---|---|
+| **M1** replay 在 base 變舊後回 409 | `internal/proposals/image.go`：唯讀 transaction 先 `idempotency.Seen`，**只有沒用過的 key** 才 `checkBase`；write transaction 本來就先 `Claim`（replay 直接回）。與文字的 createProposal 相同（D-011）。 | DB：`TestPhotoReplayAfterPublish`：202 → publish version 2 → 同 key 同檔 **202、body 與第一次相同**（修正前 409 `MODEL_VERSION_CONFLICT`）；新 key、舊 base → 409 `MODEL_VERSION_CONFLICT`；同 key 別的檔 → 409 `IDEMPOTENCY_KEY_CONFLICT`（修正前也是 409 `MODEL_VERSION_CONFLICT`）；proposal、image record、job、object 都只有 1 個。紅：`red-m1-l4.log`；綠：`green-m1-l4.log` |
+| **L4** 同 key 並行各存一個 object | 同一個 API process 中，同一個 Idempotency-Key 的照片請求由讀取到 commit 依序執行（`keyLocks`：每個 key 一個 slot，等候至多到請求的 context 結束；沒有人持有或等候的 key 不留在表中）。後到的看到 key 已用過，只算 hash、不解碼、不存檔，Claim 再 replay。請求路徑仍**從不刪 object**（D-044：只有 maintenance 持有 `objects.Maintainer`），所以不同 API process 之間的競爭仍可能留下孤兒，與 commit 失敗的一樣由 D-044 的 maintenance 清理（D-130 (e)、`image.go` 註解）。 | DB：`TestPhotoConcurrentSameKey`：同 key 同時 4 個 → 4 個都是同一個 202、1 個 proposal、1 個 image record、1 個 job、**1 個 object**（修正前 4 個 object）；`TestPhotoIdempotency` 在 replay 與 conflict 前後數 object（review 的 mutant I2）；單元：`TestImageKeysRunOneAfterTheOther`（同 key 等候、別的 key 不等、context 逾時、表中不留 key） |
+| **M2** 解碼記憶體遠超過文件 | `internal/proposals/photo`：`inspect` 在解碼任何像素之前（也在等 decode slot 之前）由 header 拒絕 `ErrEncoding`（415 `IMAGE_FORMAT_REJECTED`，details 在 `/file`）：JPEG 只收 SOF0／SOF1、8-bit、1 或 3 個 component；拒絕 SOF2（progressive）、SOF3／5–15（lossless、arithmetic、hierarchical）、4 個 component（CMYK、YCCK）、會被 `image/jpeg` 解成 RGB 複本的 3-component（檔案**任何位置**的 Adobe APP14 transform 0，包括 scan 之後：`image/jpeg` 在 scan 之後也讀它；component ID 為 R、G、B）、同一 component 在兩個 scan（T.81 sequential 每個 component 一個 scan）；marker 的走法與 `image/jpeg` 相同（segment 依長度、非 marker 的 bytes 略過、entropy-coded data 到下一個 marker）。PNG 拒絕 16-bit 與 interlaced（IHDR）。收下的解碼成每像素至多 4 bytes；重新編碼寫進 `capped`（超過 5 MiB 即停並回 413，不再為整個編碼長 buffer）。`MaxDecodeBytes` = 80 MiB（文件化的上限），`decodeSlots` 仍為 2。 | `TestSanitizeRefusesWhatTakesTooMuchMemory`（14 種：16-bit gray／RGBA、interlaced、progressive、progressive 4:4:4、lossless、arithmetic、CMYK、12-bit、Adobe transform 0（開頭與 scan 之後；並以 `jpeg.Decode` 確認兩者真的被解成 `*image.RGBA`）、R/G/B ID、兩個 scan、額外 bytes 之後的 progressive；每種都 `ErrEncoding` 且配置 < 1 MiB；9 種仍收下）、`TestADecodeStaysWithinItsBound`（4096² 的最壞接受：8-bit RGBA PNG、RGB PNG、baseline 4:4:4 header、重新編碼 11 MB 的 noise JPEG：每個 `TotalAlloc` ≤ `MaxDecodeBytes`；slot 數 × 上限 ≤ 160 MiB）、`TestAtMostTwoDecodesAtOnce`、`TestTheReencodingStopsAtMaxBytes`、`TestRefusedFormatsAreTheContracts`（body 即 openapi 的兩個 415 範例）；DB：`TestPhotoRefusals` 加 16-bit PNG 與 progressive JPEG（415、什麼都不存）。紅：`red-m2.log`（以未 commit 的 stub：16-bit RGBA PNG 被接受並配置 258.6 MiB、16-bit gray 65.6 MiB、interlaced 65.0 MiB、noise 的重新編碼 56.0 MiB 而且沒有 413）；綠：`green-m2.log` |
+| **L1** 照片規則沒有讀到每個數字 | `internal/ai/review/photo.go`：metric 的 `period` 不是 base 的值 → `/metrics/<i>/period`；node 的 `domain_attributes` 中任何深度的 JSON number 不是 base 的值、或不在 float64 範圍內（1e400）→ `/nodes/<i>/domain_attributes`；base 的 metric period 與 `domain_attributes` 數字也算 base 的值；文字不讀。D-132 與 AI_SPEC 寫明範圍。 | `TestPhotoRefusesNumbersOutsideTheTypedMembers`：metric period 437、calendar 的 period 與 shift（review 存活的 mutant R5）、新步驟與既有步驟 attributes 的數字、深層的數字、1e400；沿用 base 的值（只在 base metric 的 300、只在 base attributes 的 5、calendar 的 480）被接受；從 base 抄來的 1e400 仍拒絕。紅：`red-l1.log`；綠：`green-l1.log` |
+| **I3**（Info） | OpenAPI 的描述改成程式的順序：用過的 key 先判斷；沒用過的 key 先查 base（404／422／409）再查檔案。 | — |
+| **I1** 第一次 live SAM 3.1 呼叫的程式路徑 | 見下面的「Live 照片 smoke」。 | — |
+
+**Contract 先改**（commit 17ce21d）：`openapi.yaml` 的 createImageProposal 描述（M1 的順序、M2 拒絕的種類、超過 5 MiB 的重新編碼為 413）與自己的 415（兩個範例：不是 PNG／JPEG、解碼代價過高的種類）。錯誤碼與 details 碼都是既有的（`UNSUPPORTED_MEDIA_TYPE`、`IMAGE_FORMAT_REJECTED`），所以 schema、TS 型別與 generated client 不變；UI 的 `photo.problem.format`（en、zh-Hant）改為說明收哪些種類（「非交錯式的 8 位元 PNG，或基線 JPEG」），`make frontend-test` 見下。
+
+### 量測：解碼的記憶體（修正前／後）
+
+方式：`photo.Sanitize` 一次，`runtime.MemStats` 的 `TotalAlloc` 差（配置的總量，是 heap 峰值的上界）與每 1 ms 取樣的 `HeapInuse` 峰值，Go 1.27.3、`GOGC` 預設；影像由 ImageMagick 6.9.12 產生（`scripts/mkimgs.sh`，4096×4096，都在 5 MiB 內），probe 為 `scripts/zz_r1_measure_test.go.txt`（scratch 的 `git archive` 複本中執行，沒有 commit），log：`measure-before-4096.log`、`measure-after-4096.log`。
+
+| 上傳（4096×4096） | 大小 | 修正前：配置／峰值 | 修正後 |
+|---|---|---|---|
+| progressive CMYK JPEG | 310,635 B | **329 MiB／330 MiB**，接受 | 415，0 MiB（header） |
+| 16-bit RGBA PNG | 3,730,410 B | **267／255 MiB**，接受 | 415，0 MiB |
+| progressive 4:4:4 JPEG | 280,266 B | **241／241 MiB**，接受 | 415，0 MiB |
+| baseline CMYK JPEG | 286,282 B | 169／170 MiB，接受 | 415，0 MiB |
+| interlaced 8-bit RGBA PNG | 842,071 B | 131／128 MiB，接受 | 415，0 MiB |
+| 16-bit gray PNG | 1,404,072 B | 70／64 MiB，接受 | 415，0 MiB |
+| 8-bit RGBA PNG（最壞的接受） | 598,701 B | 67／67 MiB | **66／66 MiB**，接受 |
+| 8-bit RGB PNG | 542,022 B | 67／67 MiB | 66／66 MiB |
+| baseline 4:4:4 JPEG | 246,901 B | 49／49 MiB | 48／48 MiB |
+| baseline 4:2:0 JPEG | 135,806 B | 25／25 MiB | 24／24 MiB |
+| gray JPEG、gray PNG、palette PNG | | 16–19 MiB | 17–21 MiB |
+
+Reviewer 的四個檔（`rv056/imgs`：16-bit gray／RGBA PNG、progressive 4:4:4、progressive CMYK）修正後都在 header 被拒，配置 0 MiB（`measure-after-reviewer-imgs.log`）。Commit 的測試以 Go 自己產生的最壞接受（4096²）量測：8-bit RGBA PNG 65.8 MiB、RGB PNG 65.7 MiB、baseline 4:4:4 header 48.0 MiB、重新編碼為 11 MB 的 noise JPEG 修正前 56.0 MiB（且被接受）→ 修正後 29.0 MiB（413）。
+
+**上限**：一次 `Sanitize` 至多配置 80 MiB（`MaxDecodeBytes`；量測最大 66 MiB），兩個 slot 同時解碼的存活資料至多 160 MiB。**Process 的 heap 會比這個大**：GC 在下一次回收前讓 heap 長到存活資料的約兩倍（`GOGC=100`）。量測（`scripts/zz_r1_conc_test.go.txt`，6 個 `Sanitize` 同時，`measure-*-concurrent.log`）：修正前 6 個 progressive CMYK JPEG heap in use 峰值 **+636 MiB**；修正後 6 個 8-bit RGBA PNG **+261 MiB**；`GOMEMLIMIT=192MiB` 時 +196 MiB，`256MiB` 時 +261 MiB（不受限）。等候 slot 的請求各持有至多 5 MiB 的 body，這部分不在 slot 的上限內（同時上傳的請求數沒有限制）。
+
+**`GOMEMLIMIT`：沒有設定。** 理由：repository 沒有記錄 API 容器的記憶體上限（Railway 的方案與 service 的設定不在 `deploy/` 中），而 `GOMEMLIMIT` 是相對於那個上限的值；沒有它就無從說明某個值是對的。上面的量測顯示它有效（192 MiB 把 6 個並行的峰值壓到 +196 MiB）。建議（不是我改的，`deploy/railway/` 由另一個 agent 處理）：owner 知道 API service 的記憶體上限 M 之後，在 API（與 worker）的部署變數設 `GOMEMLIMIT` ≈ 0.75 × M（M 為 512 MiB 時約 `384MiB`），並在 `variables.json` 宣告、`check_deploy.py` 檢查。
+
+### Live 照片 smoke（I1；make ai-smoke-photo-live）
+
+第一次 live SAM 3.1 呼叫要經過真的照片管線、不手動 curl。做法：
+
+- **共用的程式**：照片管線的 AI 部分（segmenter → server 的框檢查 → judge → `review.Review` → `review.Photo`）由 generator 原樣移到 `internal/ai/photopipeline`（`Concepts`、`TakesImages`、`Propose`）。Worker 的 generator 在讀回並驗證影像之後、dataset binding 之前呼叫它；generator 的所有既有測試不改即通過（行為相同）。Smoke 呼叫同一個 `Propose`，不是複本。
+- **輸入**：`testdata/photos/electronics-line-demo.png` 經 `photo.Sanitize`（API 存的樣子）與 `photo.Verify`、`provider.NewImage`（worker 讀回時的檢查）；`testdata/photos/bare-line.json` 以 eval 的 synthetic organization／model ID。這些在開 spend record **之前**讀，讀不了即 exit 2。
+- **Gate**（與 worker 相同）：`config.LoadAI` 的 `AIVision.LiveEnabled()`（照片路徑的 live provider、完整的 record 且列有圖片、它的 model 與 key、`GEMINUS_AI_LIVE=on`），provider 為 meta（這個 build 唯一收圖片的 adapter），批准列有 segmentation model；backend 以 worker 的 `photoBackends` 的方式建（`meta.New` 為 judge、`meta.NewSegmenter` 為 SAM 3.1，同一把 key；`cmd/ai-eval-live` 的 `livePhoto`），之後再確認 judge 收圖片。任何一項不成立：exit 2、不建 backend、不寫任何檔。
+- **花費**：自己的 in-memory 上限，預設 **USD 1**（`AI_EVAL_LIVE_MAX_USD` 可改），須 ≤ 部署的日上限，且 ≤ `checks/ai-evals/live-spend.jsonl` 留給該 UTC 日與月的額度（與文字的 run 同一段 `begin`，訊息不變）；第一次呼叫前寫 open line（kind `smoke-photo`、judge 的 model、approval、上限、report 檔名），結束時不論結果寫 close line（花費與 meter 持有的金額）。預期：SAM 8 個 concept 依序各預留 3 張（USD 0.0075）、各結算為計費的張數（約 USD 0.02）；judge 以 count（T-055 live 時 demo 為 6,661）加 10% 預留 3 個 attempt（約 USD 0.132）；同時持有至多約 USD 0.152。
+- **Report**：`checks/ai-evals/live-smoke-photo-<UTC 開始>-<run ID>-<model>.json`（可 commit；從不覆寫）：status、code、provider 的 status／error type、issue code、server／provider risk、patch hash、新的 process 步驟數；segmenter：概念數、呼叫數、有回答的概念數、有框的概念數、框數與各概念的框數、**每個概念的 `images_processed`**、計費的影像數、回答的 frame（例如 `1200x520`）、unknown attempt、預留數與金額、花費、延遲；judge：quote 次數與失敗數、**count（count_tokens 的 input_tokens）、預留的 input token（count 加 10%）、實際計費的 input token、兩者之比**、output token、預留與花費；總花費、meter 持有的金額、同時持有的最大值、上限；gate（`ready_without_server_validation`、`needs_input_kept_changes`、`pipeline_failed`）與 observation（`over_reservation`、`billed_input_over_reserved`、`images_processed_not_one`、`frame_not_the_image`、`no_boxes`：H-037 與 I1 要看的事，> 0 時 stderr 有 WARNING）。**不記** prompt、回答文字、框座標、影像 bytes、key、server 位址。為了記 count，`provider.Quote` 多一個 `Counted`（Meta adapter 的 count_tokens quote 填入；文字 request 為 0；預留仍只用 `MaxInputTokens`）。
+- **Exit**：0 完整且 gate 為 0；1 管線以失敗結束（例如 count 失敗）、gate 失敗、或上限／取消停止（report 仍寫、record 關閉）；2 拒絕（沒有呼叫）；3 呼叫之後的錯誤或 report／close line 寫不進去。
+
+**執行方式**（coordinator 在有 key 的 session，依 I1：一次、只用 demo 影像）：
+
+```sh
+AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on \
+  make ai-smoke-photo-live            # = go build -o bin/ai-eval-live ./cmd/ai-eval-live && bin/ai-eval-live -smoke-photo -root .
+```
+
+`GEMINUS_MUSE_API_KEY` 由環境提供（只看名稱）；`AI_VISION_PROVIDER`、`AI_VISION_POLICY_APPROVAL`、`AI_VISION_MODEL` 不設（照片路徑跟隨 `AI_PROVIDER`，與 worker 讀法相同；若要設，值必須與 worker 的相同）；`AI_EVAL_LIVE_MAX_USD` 不設即 USD 1；日／月上限（`AI_DAILY_LIMIT_USD`、`AI_MONTHLY_LIMIT_USD`）照部署。Run 之後 commit report 與 `live-spend.jsonl`。今天的 record 已有約 USD 3.03（T-053／T-055 的 run），預設日上限 USD 10 下還有餘裕。
+
+**Smoke 的測試**（都沒有呼叫任何 provider）：
+
+| 範圍 | 測試 |
+|---|---|
+| 在 process 內的 fake（billed 如 Meta） | `internal/aievals`：`TestThePhotoSmokeRunsThePipeline`（ready、8 個概念各 1 張、frame 1200x520、count 6661／預留 7328／計費 6702、預留與花費的金額、同時持有的最大值、report 不含回答文字、pool、影像的 base64、框、`untrusted_data`；檔名與不覆寫）、`TestAFailedCountSendsNothing`（count 失敗：judge 不預留不送、SAM 的花費照記、failed）、`TestTheCapStopsThePhotoSmoke`（上限低於 judge 的預留：SAM 之後停；低於一個概念：什麼都不呼叫）、`TestThePhotoSmokeAsksTheJudgeFirst`（judge 不收圖片：segmenter 不花錢）、`TestThePhotoSmokeObserves`（沒有框、轉向的 frame、SAM 說 2 張）、`TestMainRefusesThePhotoSmokeWhileThePhotoPathIsOff`（什麼都沒設、H-029 沒有開關、H-018（沒有圖片）、與 `-smoke`／`-cases` 同用、build 沒有 photo backend：exit 2、不建 backend、不寫檔、不印 key） |
+| 兩個 Meta adapter + 本機 server（Responses、Messages、count_tokens） | `internal/ai/provider/meta`：`TestThePhotoSmokeOverHTTP`（8 個 `/v1/responses`、然後 count、然後一個 `/v1/messages`；count 的 body 即 call 的 body 去掉 `max_tokens`；ready；預留與花費依 Meta 的價格；report 不含 key、server 位址、回答、影像、框）、`TestThePhotoSmokeStopsAtAFailedCount`（500 重試後放棄、`1.5`、超過 context window：沒有 Messages request、judge 不預留、SAM 的花費照記）；`TestTheCountsMargin` 也檢查 `Quote.Counted` |
+| Main 的 live 路徑（in-process fake、fake key） | `internal/config/aiapproval`：`TestThePhotoSmokeRunsBehindTheWorkersGate`（backend 以照片路徑的設定建：meta、muse-spark-1.3、sam-3.1、一把 key；record 兩行：open kind `smoke-photo`、close `complete` 與花費；report 檔名；不含 key）、`TestThePhotoSmokeCapFitsTheDay`（上限高於日上限、高於 record 留下的額度、open line 以整個上限計、不是金額、沒有 record：exit 2、不建 backend、record 不變；在額度內則執行）、`TestThePhotoSmokeReportsAFailedCount`（exit 1，record `gate_failed` 與 SAM 的花費，WARNING 行）；`cmd/ai-eval-live`：`TestThePhotoBackendsAreThePhotoPaths` |
+| 共用的管線 | `internal/ai/photopipeline`：`TestThePipelinesChecks`、`TestASegmenterFailureKeepsItsMetadata`；其餘由 generator、`internal/api` 的照片測試涵蓋 |
+
+### Mutation（`/tmp/claude-0/…/scratchpad/t056r1-mut/`，`git archive` 的複本；`scripts/mutate.py`）
+
+每個 mutant 只改一處、跑指定的測試、逐 byte 還原；build 失敗記 INVALID（不算 killed）。DB mutant 在 `dt_test_t056r1m`（`make db-test` migrate），`GEMINUS_REQUIRE_DB_TESTS=1`。結束時以 `diff -rq` 確認複本的 `internal/`、`cmd/` 與本 branch 相同。
+
+- 第一輪（`mutants-run1.log`／`.json`，HEAD 95375a5）：52 個，**44 killed、5 survived、3 INVALID**。存活：R3（base 的 attributes 數字不算已知）、R4（base 的 metric period 不算已知）：測試用的值在 base 的其他地方也有（2、480），殺不掉；G4（segmenter 失敗時丟掉它的 metadata：review 的 L2 同一個缺口，在管線層）；S10（SAM 的 `images_processed` 不是 1 時不記）；S15（不做 `photo.Verify`）。INVALID：P3、R7、S6（寫法不能 build，之後改寫）。
+- 補測試（commit 40f2d25）：只在 base 一處出現的值（300、5）、從 base 抄來的 1e400、segmenter 失敗時 `Result.Segmenter` 仍在、SAM 說 2 張；並拿掉 `ParseFloat` 之後永遠不成立的 NaN／Inf 檢查（JSON number 不會是 NaN／Inf，超出範圍是 `ParseFloat` 的錯誤）。第二輪（`mutants-run2.log`）：P3、R3、R4、G4、S6、S10 killed，R7、S15 存活，R7 由 1e400 的案例補上。**那個 1e400 的案例本身寫錯了**（借用了前一個案例的 base，拿掉了它的數字 5，修正後的程式上測試也失敗）：我在它之上跑的一次 R 系列 mutant 因此全部「killed」而沒有意義，結果已作廢、不列入；這個錯誤由下面第一次 `verify.sh` 的 `test-changed` 抓到（`test-changed-first.log`、`exit-codes-first.txt`），commit 83df7e1 修正。之後 `mutate.py` 先在未改的複本上跑每一組測試（baseline 必須 exit 0）才跑 mutant。
+- **最終一輪**（`mutants-final.log`／`.json`，83df7e1，6 組 baseline 都 exit 0）：52 個，**51 killed、1 survived（S15，等價）、0 INVALID**。S15 等價：`Sanitize` 的輸出一定通過 `Verify`，smoke 做這一步只為與 worker 相同。範圍：M1（K1、K2）、L4（K3–K7：不等候、表不清除、逾時不扣、永不等候、replay 重新存檔）、M2（P1–P16：每一種拒絕、scan 之後的 marker、非 marker 的 bytes、截斷、slot 數、header 在 slot 之前、上限常數往上與往下）、HTTP 的對應（H1）、L1（R1–R7）、共用管線（G1–G5）、smoke（S1–S16：count、quote 的 count、judge 先問、gate、日額度、record 的 close 與 kind、上限、peak、observation、report 名稱、失敗的 gate、日上限）。P11、G5 以 panic 失敗（仍是測試失敗）。第一輪的 P1、P2 因 `TestAtMostTwoDecodesAtOnce` 的 header 檢查以 `context.Background()` 等 slot 而卡到 10 分鐘才被殺；該測試改用自己的 2 秒 context（40f2d25），最終一輪 P1、P2、P13 都在幾秒內被殺。
+
+### 指令與 exit code
+
+（Go 1.27.3、`GOTOOLCHAIN=local`；Python `.venv/bin/python`；`run.sh` unset 所有 AI 變數。DB 測試只在一次性 cluster（socket `/var/lib/postgresql/geminus-throwaway-hkb6`、port 55450）上本任務新建的 `dt_test_t056r1a`（開發）、`dt_test_t056r1b`（integration）、`dt_test_t056r1m`（mutant），最後都已 DROP；沒有啟動或停止任何 cluster。）
+
+| 指令 | exit | Log | 結果 |
+|---|---|---|---|
+| 紅：`go test -count=1 -p 1 -run '^(TestPhotoIdempotency\|TestPhotoReplayAfterPublish\|TestPhotoConcurrentSameKey)$' ./internal/api/`（修正前，`dt_test_t056r1a`） | 1 | `red-m1-l4.log` | M1：replay 409 `MODEL_VERSION_CONFLICT`；L4：4 個 object |
+| 綠：同上加 `TestPhotoStaleBaseAndAvailability`、`TestPhotoRefusals`、`TestAPhotoProposalEndToEnd`，`-race` | 0 | `green-m1-l4.log` | |
+| 紅：`go test -run 'TestSanitizeRefusesWhatTakesTooMuchMemory\|TestADecodeStaysWithinItsBound\|…' ./internal/proposals/photo/`（舊的 `photo.go` 加未 commit 的 stub） | 1 | `red-m2.log` | 14 種都沒有被 header 拒絕；16-bit RGBA PNG 配置 258.6 MiB；重新編碼沒有截斷 |
+| 綠：`go test -count=1 -v ./internal/proposals/photo/` | 0 | `green-m2.log` | |
+| 紅／綠：`go test -run TestPhoto ./internal/ai/review/` | 1／0 | `red-l1.log`、`green-l1.log` | 紅：metric period 與 4 種 attributes 的數字為 0 個 issue |
+| 量測（scratch 的複本，未 commit 的 probe） | 0 | `measure-*.log` | 見「量測」 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（contract 的 commit 之後） | 0 | `spec-check-contract.log` | `contracts-check.json` 的 `resolved_local_ref_occurrences` 870 → 871 |
+| 第一次 `verify.sh`（40f2d25） | gofmt 0、vet 0、**test-changed 1** | `exit-codes-first.txt`、`test-changed-first.log` | 我在 40f2d25 加的 1e400 案例寫錯（見 Mutation）；之後的步驟停止（沒有結果），83df7e1 修正 |
+| `gofmt -l cmd internal schemas scripts prompts` | 0（空） | `gofmt.log` | |
+| `go vet ./internal/proposals/... ./internal/ai/... ./internal/aievals/... ./internal/config/... ./cmd/ai-eval-live/ ./cmd/worker/ ./cmd/api/ ./internal/api/` | 0 | `vet.log` | |
+| `go test -count=1`（同上） | 0 | `test-changed.log` | 22 個 package ok（DB 測試在此 skip，由 integration-test 跑） |
+| `go test -race -count=1 -timeout 30m`（同上） | 0 | `race-changed.log` | 22 個 package ok，沒有 data race（`internal/proposals/photo` 在 race 下 146 s） |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | `backend-test.log` | gofmt、`go vet`、84 個 package ok、12 個沒有測試檔、0 FAIL |
+| `make architecture-check` | 0 | `architecture-check.log` | `PASS architecture: 96 packages, 26 rules, 16 build configurations`（多了 `internal/ai/photopipeline`） |
+| `make ai-eval` | 0 | `ai-eval.log` | fake corpus；`checks/ai-evals/fake-*.json` 沒有改變 |
+| `make integration-test`（新建的 `dt_test_t056r1b`） | 127 → **0** | `integration-test-first.log`、`integration-test.log` | 第一次是 `verify.sh` 的參數順序錯（`run.sh -db` 必須在最前，沒有執行任何測試）；修正後：`make db-test`（0001–0017 up／down／up 與全部 SQL 測試）＋ `make db-go-test`（`-race -p 1`、`GEMINUS_REQUIRE_DB_TESTS=1`）：38 個 package ok，沒有 FAIL 或 SKIP（含 `internal/api` 的照片測試） |
+| `npm ci --prefix apps/web --engine-strict=false` | 0 | `npm-ci.log` | |
+| `make frontend-test` | 0 | `frontend-test.log` | lint、typecheck、48 個檔案、1062 個測試 |
+| mutation（`scripts/mutate.py`；第一輪、第二輪、最終） | 0、0、0 | `mutants-run1.*`、`mutants-run2.*`、`mutants-final.*` | 最終 51／52 killed、1 等價 |
+| `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（本節寫完後） | 0 | `spec-check.log` | contracts、planning、docs、SQL inventory、reference math、decisions、TS contracts、hashes、DB tests、deploy 都 PASS；`checks/*-check.json` 沒有改變（不含官方完整 OpenAPI validator：NOT_RUN_UNAVAILABLE） |
+| `dropdb` `dt_test_t056r1a`、`dt_test_t056r1b`、`dt_test_t056r1m`；`SELECT count(*) FROM pg_database WHERE datname LIKE 'dt_test_t056r1%'` | 0、0、0；0 | — | 已刪除；沒有啟動或停止任何 cluster |
+
+### 沒有修的（延後）
+
+- **L2**（可重試的 judge 失敗讓 SAM 在每個 job attempt 重跑；segmenter 單獨失敗時 `attempt_failed` 的 audit 沒有測試）：沒有改程式。管線層的缺口由 `TestASegmenterFailureKeepsItsMetadata` 守住（`Result.Segmenter` 在失敗時仍在，generator 以它決定是否寫 `attempt_failed`），但經 worker 的 audit 測試仍沒有。文件的「最多約 USD 0.02」應為「每個 job attempt 至多一次 segmentation：可重試的失敗最多 3 次，約 USD 0.06」，留給 coordinator 決定是否接受（問題 2）。
+- **L3**（API 為 worker 一定拒絕的 domain 存照片）、**L5**（multipart `filename`／CTE、`InArea`、鎖 model 的並行、管線的框數邊界的測試缺口）：沒有改。
+- **I2、I4、I5、I6、I7**：沒有改（I5：這個 smoke 的花費記在 `live-spend.jsonl`，worker 的照片 proposal 記在 DB ledger，仍要手動合計；I6：照片路徑關閉時 replay 仍是 503，D-124 的設計）。
+
+### NOT RUN
+
+- 任何 live 呼叫：`make ai-smoke-photo-live` 本身（由 coordinator 在有 key 的 session 執行）、`make ai-smoke-live`、`make ai-eval-live`；SAM 3.1 對 demo 影像的實際回答、count 與計費的實際差。
+- `make e2e-test`（依指示；3100–3102 共用）；`make frontend-build`。
+- 整個 repository 的 `make backend-race`：只跑了改動的 package 的 `-race`（見上表）。
+- API 容器在 Railway 的記憶體上限與 `GOMEMLIMIT`（沒有設定，見上）；部署檔沒有改（另一個 agent 處理 `deploy/railway/` 等）。
+- S3 adapter 上的照片（只用 FS adapter）；多個 API process 之間的同 key 競爭（只有單一 process 的鎖；DB 測試是單一 process）。
+- Fuzz（`inspectJPEG` 適合 fuzz：任意 bytes 不 panic、`ErrEncoding` 時 `image/jpeg` 確實會解成較大的型別；沒有執行）。
+
+### 問題
+
+1. **Progressive JPEG 一律拒絕**：網頁存下的 JPEG 常是 progressive（例如 mozjpeg 的預設），使用者會看到 415 與「請選擇基線 JPEG」。要改為只在較小的像素數（例如 ≤ 2048²，量測約 60 MiB）接受 progressive 嗎？（多一條以像素數計的規則與測試）
+2. **L2 的花費說明**：可重試的 judge 失敗會讓 SAM 在每個 attempt 重跑（最多 3 次、約 USD 0.06）。接受並改文件，或保存 segmentation 的結果給重試沿用？
+3. **`GOMEMLIMIT`**：需要 API service 的記憶體上限才能決定值；請 owner 提供，或接受目前「兩個 slot、每個至多 80 MiB、GC 前約兩倍」的上限。
+4. **Smoke 的 kind**：spend record 多了 kind `smoke-photo`（D-114 (b) 的 record 格式之內，report 名稱 `live-smoke-photo-…`）。D-114 是否要補一句？（沒有改 D-114 的文字，只在 D-131 (g) 記錄）
+
+### Commits（`t056-r1`）
+
+| Commit | 內容 |
+|---|---|
+| 17ce21d | contract first：createImageProposal 的描述（key 先判斷、拒絕的種類、413）與自己的 415 範例；`contracts-check.json` |
+| 0b0f9ff | M1、L4、M2：`image.go`（key 先於 base、同 key 依序）、`photo.go`（header 檢查、截斷、`MaxDecodeBytes`）、HTTP 的對應、UI 的訊息、全部的測試 |
+| 76074c4 | L1：`review.Photo` 讀 metric 的 period 與 `domain_attributes` 的數字 |
+| 95375a5 | I1：`internal/ai/photopipeline`、`-smoke-photo`（`MainWith`、`PhotoRun`、`PhotoReport`）、`provider.Quote.Counted`、`make ai-smoke-photo-live`、測試 |
+| 40f2d25 | 第一輪 mutation 存活的 mutant 的測試；`attributeNumbers` 拿掉不可能成立的檢查 |
+| 83df7e1 | 修正 40f2d25 寫錯的 1e400 測試案例（自己的 base） |
+| （本節的 commit） | 本節、D-130 (b)(e)、D-131 (g)、D-132、SECURITY §6、AI_SPEC、`planning/tasks.json` 的 completion_evidence、證據 |

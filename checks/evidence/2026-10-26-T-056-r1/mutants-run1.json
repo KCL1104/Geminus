@@ -1,0 +1,609 @@
+[
+ {
+  "id": "K1 base checked before the key (the old order)",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoReplayAfterPublish (0.31s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/api\t2.271s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K2 the base checked for a used key too",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoReplayAfterPublish (0.26s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/api\t2.141s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K3 requests with one key do not wait for each other",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoConcurrentSameKey (0.29s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/api\t2.164s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K4 a replay decodes and stores the file again",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoIdempotency (0.27s)",
+   "--- FAIL: TestPhotoReplayAfterPublish (0.22s)",
+   "--- FAIL: TestPhotoConcurrentSameKey (0.27s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/api\t2.485s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K5 the lock table keeps released keys",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestImageKeysRunOneAfterTheOther (0.04s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals\t0.069s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K6 a request that gave up waiting stays counted",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestImageKeysRunOneAfterTheOther (0.04s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals\t0.065s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "K7 the lock never waits",
+  "file": "internal/proposals/image.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestImageKeysRunOneAfterTheOther (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals\t0.047s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P1 no header inspection",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (5.00s)",
+   "panic: test timed out after 10m0s",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t600.112s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P2 16-bit PNG accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (5.70s)",
+   "panic: test timed out after 10m0s",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t600.109s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P3 interlaced PNG accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "INVALID",
+  "exit": 1,
+  "failing": [
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo [build failed]",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P4 other SOF markers not refused",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.89s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.797s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P5 4 components accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.81s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.919s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P6 any precision accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.94s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t7.122s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P7 the Adobe transform not read",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.73s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.781s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P8 the RGB component IDs not read",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.88s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.898s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P9 a component in two scans accepted",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.95s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t7.304s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P10 the walk stops at the first scan",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.81s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.868s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P11 the re-encoding not cut at MaxBytes",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestADecodeStaysWithinItsBound (2.63s)",
+   "panic: runtime error: makeslice: cap out of range [recovered, repanicked]",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t5.468s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P12 three decode slots",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestADecodeStaysWithinItsBound (4.04s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.998s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P13 the header inspected after the slot",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.95s)",
+   "--- FAIL: TestAtMostTwoDecodesAtOnce (2.03s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t9.125s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P14 bytes that are no marker refused",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.98s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t7.064s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P15 a larger documented bound",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestADecodeStaysWithinItsBound (3.92s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.893s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "P16 the decode bound below the measured",
+  "file": "internal/proposals/photo/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestADecodeStaysWithinItsBound (4.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t6.821s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "H1 ErrEncoding mapped as an invalid image",
+  "file": "internal/proposals/image_http.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestRefusedPhoto (0.00s)",
+   "--- FAIL: TestRefusedFormatsAreTheContracts (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals\t0.059s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R1 domain_attributes not read",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.012s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R2 metric periods not read",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.014s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R3 the base's attribute numbers not known",
+  "file": "internal/ai/review/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "R4 the base's metric periods not known",
+  "file": "internal/ai/review/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "R5 calendars not read",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.009s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R6 an unreadable number taken",
+  "file": "internal/ai/review/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.014s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "R7 a non-finite number taken",
+  "file": "internal/ai/review/photo.go",
+  "result": "INVALID",
+  "exit": 1,
+  "failing": [
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/review [build failed]",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "G1 no photo rules",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestPhotoAnswersTheServerRefuses (0.04s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/generator\t0.227s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "G2 a turned frame taken",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestSegmentationsTheServerRefuses (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/generator\t0.231s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "G3 no box still asks the vision model",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestNoBoxAsksForInput (0.01s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/generator\t0.229s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "G4 the segmenter's metadata lost on its failure",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "G5 the vision call's metadata lost",
+  "file": "internal/ai/photopipeline/photopipeline.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoDemo (0.01s)",
+   "panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/proposals/generator\t0.114s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S1 the count not recorded",
+  "file": "internal/ai/provider/meta/meta.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestTheCountsMargin (0.04s)",
+   "--- FAIL: TestThePhotoSmokeOverHTTP (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider/meta\t0.802s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S2 the quote's count not kept",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsThePipeline (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.155s",
+   "--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.165s"
+  ]
+ },
+ {
+  "id": "S3 the judge not asked first",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeAsksTheJudgeFirst (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.154s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S4 the photo-path gate not asked",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestMainRefusesThePhotoSmokeWhileThePhotoPathIsOff (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.170s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S5 the day's remainder not checked",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeCapFitsTheDay (0.09s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.179s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S6 the run's line not closed",
+  "file": "internal/aievals/main.go",
+  "result": "INVALID",
+  "exit": 1,
+  "failing": [
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals [build failed]",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval [build failed]",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/ai/provider/meta [build failed]",
+   "FAIL\tgithub.com/kcl1104/geminus/cmd/ai-eval-live [build failed]",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S7 the text smoke's cap",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.156s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S8 the peak not kept",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsThePipeline (0.06s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.172s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S9 billed over reserved not observed",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsThePipeline (0.06s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.172s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S10 SAM's images not observed",
+  "file": "internal/aievals/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "S11 the record's kind is the text smoke's",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.05s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.159s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S12 the report named as the text smoke's",
+  "file": "internal/aievals/live.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeRunsThePipeline (0.05s)",
+   "--- FAIL: TestMainRefusesThePhotoSmokeWhileThePhotoPathIsOff (0.00s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.167s",
+   "--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.06s)",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S13 a failed pipeline passes",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestAFailedCountSendsNothing (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.160s",
+   "--- FAIL: TestThePhotoSmokeReportsAFailedCount (0.02s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.196s"
+  ]
+ },
+ {
+  "id": "S14 the frame not observed",
+  "file": "internal/aievals/photo.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeObserves (0.03s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.182s",
+   "FAIL"
+  ]
+ },
+ {
+  "id": "S15 the inputs not verified as the worker does",
+  "file": "internal/aievals/photo.go",
+  "result": "SURVIVED",
+  "exit": 0,
+  "failing": []
+ },
+ {
+  "id": "S16 the cap not held below the daily limit",
+  "file": "internal/aievals/main.go",
+  "result": "KILLED",
+  "exit": 1,
+  "failing": [
+   "--- FAIL: TestThePhotoSmokeCapFitsTheDay (0.09s)",
+   "FAIL",
+   "FAIL\tgithub.com/kcl1104/geminus/internal/config/aiapproval\t0.192s",
+   "FAIL"
+  ]
+ }
+]

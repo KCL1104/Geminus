@@ -1,0 +1,77 @@
+package photo
+
+// T-056 review round 1, M2 (a scratch probe, not committed): what one
+// Sanitize takes of memory and time for each measurement image: the peak of
+// the heap in use above the start (sampled every millisecond) and the bytes
+// allocated in all (TotalAlloc, an upper bound of the peak), and the
+// outcome. GOGC is the default (100).
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"sync/atomic"
+	"testing"
+	"time"
+)
+
+func TestR1Measure(t *testing.T) {
+	dir := os.Getenv("R1_IMGS")
+	if dir == "" {
+		t.Skip("R1_IMGS not set")
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	slices.Sort(names)
+	for _, name := range names {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		runtime.GC()
+		runtime.GC()
+		var base runtime.MemStats
+		runtime.ReadMemStats(&base)
+		var peak atomic.Uint64
+		peak.Store(base.HeapInuse)
+		done := make(chan struct{})
+		stopped := make(chan struct{})
+		go func() {
+			defer close(stopped)
+			var m runtime.MemStats
+			for {
+				runtime.ReadMemStats(&m)
+				if m.HeapInuse > peak.Load() {
+					peak.Store(m.HeapInuse)
+				}
+				select {
+				case <-done:
+					return
+				case <-time.After(time.Millisecond):
+				}
+			}
+		}()
+		start := time.Now()
+		im, err := Sanitize(context.Background(), data)
+		took := time.Since(start)
+		close(done)
+		<-stopped
+		var after runtime.MemStats
+		runtime.ReadMemStats(&after)
+		outcome := "accepted"
+		if err != nil {
+			outcome = err.Error()
+		}
+		t.Logf("%-22s in %8d B | %-60s | out %8d B | %6.0f ms | peak heap +%4d MiB | allocated %4d MiB",
+			name, len(data), outcome, len(im.Data), float64(took.Microseconds())/1000,
+			(peak.Load()-base.HeapInuse)>>20, (after.TotalAlloc-base.TotalAlloc)>>20)
+	}
+}

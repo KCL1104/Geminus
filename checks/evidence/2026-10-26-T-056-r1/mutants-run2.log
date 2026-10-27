@@ -1,0 +1,10 @@
+P3 interlaced PNG accepted KILLED ['--- FAIL: TestSanitizeRefusesWhatTakesTooMuchMemory (2.89s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/proposals/photo\t7.006s']
+R3 the base's attribute numbers not known KILLED ['--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.010s']
+R4 the base's metric periods not known KILLED ['--- FAIL: TestPhotoRefusesNumbersOutsideTheTypedMembers (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/review\t0.012s']
+R7 an out-of-range number taken SURVIVED []
+G4 the segmenter's metadata lost on its failure KILLED ['--- FAIL: TestASegmenterFailureKeepsItsMetadata (0.00s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/ai/photopipeline\t0.015s']
+S6 the run's line not closed KILLED ['--- FAIL: TestThePhotoSmokeRunsBehindTheWorkersGate (0.07s)', '--- FAIL: TestThePhotoSmokeReportsAFailedCount (0.02s)', 'FAIL']
+S10 SAM's images not observed KILLED ['--- FAIL: TestThePhotoSmokeObserves (0.06s)', 'FAIL', 'FAIL\tgithub.com/kcl1104/geminus/internal/aievals\t0.229s']
+S15 the inputs not verified as the worker does SURVIVED []
+6/8 killed; survived: ['R7 an out-of-range number taken', 'S15 the inputs not verified as the worker does']; invalid or not applied: []
+exit=0
