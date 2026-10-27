@@ -11,3 +11,6 @@ Exploration run (a): HEAD 138d863aae3cfc975c5c57440850076ed37ae930 (after git pu
 AI_SMOKE_PHOTO_CONCEPTS=rectangle,box,square,arrow,line,bar; other AI_* unset (AI_VISION_* none)
 make ai-smoke-photo-live 2026-10-27T02:15:37Z .. 2026-10-27T02:16:12Z, ai-eval-live exit 1, make exit 2; one run
 Run (b) NOT RUN (stopped after (a): judge AI_OUTPUT_TRUNCATED)
+
+Run (b), the coordinator's choice (i): HEAD 6b07d7b513172a32b48a70704cb796381badca26; AI_SMOKE_PHOTO_CONCEPTS unset, other AI_* unset
+make ai-smoke-photo-live 2026-10-27T02:17:57Z .. 2026-10-27T02:18:30Z, ai-eval-live exit 1, make exit 2; one run

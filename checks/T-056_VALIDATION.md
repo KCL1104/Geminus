@@ -730,3 +730,21 @@ Coordinator 對本節問題的處理：
 - 經 API／worker／DB 的照片 proposal、人工批准、Railway。
 
 `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check-explore.log`）。
+
+### (b) Pack 的詞彙（coordinator 選 (i)）
+
+Coordinator 看過 (a) 之後選 (i)：照原計畫以 pack 的 8 個概念跑一次（不設 `AI_SMOKE_PHOTO_CONCEPTS`，沒有其他改動、不重試、不改上限）。
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-photo-live`（02:17:59Z–02:18:30Z，HEAD 6b07d7b） | **1**（make 為 2） | run `01M5XJCVYRB05MV25ZJ5R6Q8V7`：status **failed**，code **`AI_OUTPUT_TRUNCATED`**（**再一次截斷**），server risk none；gates `pipeline_failed` **1**、其他 0；observations 全部 0；prompt template `photo-0.2.0` |
+
+- **Report**：`checks/ai-evals/live-smoke-photo-2026-10-27T021759Z-01M5XJCVYRB05MV25ZJ5R6Q8V7-muse-spark-1.3.json`（`smoke-photo-vocabulary.log`）。
+- **Spend record**：`open` kind `smoke-photo`、cap 1,000,000,000；`close` settled＝committed 63,224,750 nano-USD、result `gate_failed`。
+- **Segmenter**：8 個概念皆回答，`images_processed` 各 1，frame `1200x520`，latency 5,342 ms，**10 個框**：`rectangle` 6（4 × 0.10×0.19、0.142×0.231、0.158×0.231）、`arrow` 4（0.073–0.085 × 0.031–0.035）；`smt line`、`aoi machine`、`ict tester`、`fct tester`、`packing station`、`conveyor belt` 皆 0（與第一次 live 相同）。花費 20,000,000（USD 0.02），預留 60,000,000。
+- **Judge**：count_tokens **6,931**，預留 input 7,625，計費 input **6,727**（計費／count 0.971）；**output 8,192 ＝ `max_tokens`**，截斷，一個呼叫。預留 133,041,750，花費 43,224,750（6,727 × 1,250 + 8,192 × 4,250）。`served_models`：`muse-spark-1.3`、`sam-3.1`。
+- **花費**：**USD 0.06322475**；同時持有的最大值 153,041,750。今天（UTC 2026-10-27）的 record 合計：0.02 ＋ 0.05930225 ＋ 0.06322475 ＝ **USD 0.142527**。
+
+結論：框數由 30 降為 10、input 由 7,589 降為 6,727，judge 仍用滿 8,192 個 output token；截斷與框數無關，是照片 judge 的推理／回答本身超過預設的 `max_tokens`（D-121 (f) 的已知風險）。依 coordinator 的說明，`max_tokens` 的調整由 coordinator 以 reviewed change 進行；本 session 沒有改任何程式或上限。count 的 margin 兩次都足夠（計費 input 比 count 少約 3%）。
+
+`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本小節之後、commit 之前）：**exit 0**（`spec-check-vocabulary.log`）。

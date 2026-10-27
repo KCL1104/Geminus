@@ -1,0 +1,5 @@
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: smoke-photo run 01M5XJCVYRB05MV25ZJ5R6Q8V7 of sam-3.1 and muse-spark-1.3: status failed AI_OUTPUT_TRUNCATED, server risk none, the pack's concepts, 8 of 8 concepts answered, 10 boxes (smt line 0, aoi machine 0, ict tester 0, fct tester 0, packing station 0, conveyor belt 0, rectangle 6, arrow 4), SAM images processed [1 1 1 1 1 1 1 1], judge counted 6931 and billed 6727 input tokens (reserved for 7625), cost USD 0.06322475 (committed 0.06322475, cap 1.00), gates map[needs_input_kept_changes:0 pipeline_failed:1 ready_without_server_validation:0], observations map[billed_input_over_reserved:0 frame_not_the_image:0 images_processed_not_one:0 no_boxes:0 over_reservation:0], complete true; report /home/user/Geminus/checks/ai-evals/live-smoke-photo-2026-10-27T021759Z-01M5XJCVYRB05MV25ZJ5R6Q8V7-muse-spark-1.3.json
+ai-eval-live: exit 1
+make: *** [Makefile:155: ai-smoke-photo-live] Error 1
+exit 2
