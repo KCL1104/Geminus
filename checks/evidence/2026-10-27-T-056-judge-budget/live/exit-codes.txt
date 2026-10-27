@@ -1,0 +1,2 @@
+smoke exit 2 (REFUSED before any provider call: the .env line ended in CR; smoke-photo-refused-crlf.log)
+smoke exit 0

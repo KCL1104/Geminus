@@ -1,0 +1,4 @@
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: REFUSED (no provider call was made): the AI configuration is invalid: GEMINUS_MUSE_API_KEY:invalid
+ai-eval-live: exit 2
+make: *** [Makefile:155: ai-smoke-photo-live] Error 2

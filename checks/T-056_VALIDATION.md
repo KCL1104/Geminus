@@ -834,3 +834,34 @@ Low 延後（H-029）：
 | Mutants（`mutants-review-r1.txt`） | 6/6 killed | |
 
 M1–M3 由 coordinator 驗證；依 H-029 可以執行 live 的照片 smoke。
+
+## Live 執行：照片 smoke，judge 上限 32,000（2026-10-27，coordinator）
+
+- HEAD a30d488（審查 ACCEPT，Medium 修正後）。
+- 只把 `GEMINUS_MUSE_API_KEY` 載入這一個指令的環境（不在 argv、不印出）；`AI_VISION_*` 沒有設。
+- 只跑一次，沒有重試，沒有提高 cap。
+- 不記 prompt、回答文字、影像、框的座標或 key。
+- Evidence：`checks/evidence/2026-10-27-T-056-judge-budget/live/`。
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-photo-live` | 第一次 2 | **REFUSED，沒有任何 provider 呼叫**：`.env` 那一行以 CR 結尾（Windows 的行尾），key 被判為 invalid。移除行尾的 CR 後重跑（`smoke-photo-refused-crlf.log`） |
+| 同上（11:52:33Z–11:53:06Z） | **0** | run `01M5YK8XZ88D7PSECX9E7DWG0Y`：status **ready**、server risk **medium**、新的 process 步驟 4 個；gates 全部 0、observations 全部 0；`complete` true |
+
+- **Report**：`checks/ai-evals/live-smoke-photo-2026-10-27T115233Z-01M5YK8XZ88D7PSECX9E7DWG0Y-muse-spark-1.3.json`。
+- **Spend record**：`open`／`close`，settled＝committed 59,546,500 nano-USD，result `complete`。
+- **Segmenter（SAM 3.1）**：8 個概念都有回答，`images_processed` 各 1；10 個框（`rectangle` 6、`arrow` 4，其餘 0，與前兩次相同）；延遲 9,392 ms；花費 USD 0.02。
+- **Judge（Muse Spark）**：
+  - count_tokens 6,892，預留 input 7,582，計費 input 6,688（計費／count 0.970）。
+  - **output 7,338，其中 thinking 5,313**（`max_output_tokens` 32,000）；一個呼叫，延遲 21,446 ms。
+  - 預留 436,432,500，花費 39,546,500。
+  - `served_models`：`muse-spark-1.3`、`sam-3.1`。
+- **花費**：**USD 0.0595465**（cap 1.00）。今天（UTC 2026-10-27）的 record 合計：0.142527 ＋ 0.0595465 ＝ **USD 0.2020735**。
+
+**解讀。**
+- 這一次的 output（7,338）**低於** 8,192，所以單看這一次，舊的上限也可能不會截斷。前兩次則都用滿 8,192，可見推理長度每次差異很大。32,000 留有約 4 倍的空間。
+- 這次的速度：7,338 個 token 用了 21.4 s。
+- Meta 沒有以 400 拒收 `max_tokens` 32,000（審查 Low 的未決事項已確認）。
+- `output_config.effort` 仍然不送。
+
+**NOT RUN**：經 API／worker／DB 的照片 proposal、人工批准、Railway 上的照片流程（部署後確認）。
