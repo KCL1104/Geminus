@@ -452,3 +452,35 @@ Rehearsal 的替身新增 `REHEARSAL_NO_PUBLIC_URL`（一個沒有定義這個�
 - T4 必須只定義一次、只用 reference、帶 `--skip-deploys`，並且繼續跑完。
 - Red：拿掉 deployer 的修正時，T4 停在 live 的同一句錯誤（`public-url/rehearsal-red.log`，在另一個 worktree 跑，真的等滿 300 s）。
 - Green：`rehearsal: PASS`（`public-url/rehearsal-green.log`）。
+
+## 第四次 `--apply`（2026-10-27，coordinator）：`environment edit` 的修改全部沒有生效
+
+Owner 第三次核准 Auth0 的裝置登入。步驟 1–4 成功：`DATABASE_PUBLIC_URL` 已定義，TCP proxy 連通，四個 login 已建立。步驟 5 的 migrate 部署 **CRASHED**。
+
+Log（`railway logs`，URL 中的密碼已遮蔽）顯示容器執行的是 `ai-eval-live`（live AI 是關的，所以它拒絕執行，沒有任何 provider 呼叫），不是 `geminus-migrate`。Railway 以 RAILPACK 建置 Go，取了第一個 `cmd/`。
+
+唯讀查看 `railway environment config`（只看 build／deploy 的鍵，不看變數）：四個服務都是 `builder: RAILPACK`，**沒有 `configFile`**。
+
+**原因**（CLI v5.64.2，`src/commands/environment/edit.rs` 的 `get_edit_config`）：
+- stdin 不是終端機時，CLI 以 piped stdin 為 change set，**優先於** `--service-config` 參數。
+- stdin 是空的時候，它印出 `{"staged": false, "committed": false, "message": "No changes to apply"}`，並以 exit 0 結束。
+- Deployer 以子程序執行 CLI，stdin 不是終端機，而且只看 exit code。所以**每一次** `environment edit` 都被丟棄了：config-as-code 的設定，以及所有的 seal。
+- Deployer 卻回報了「sealed」。
+
+以變數清單唯讀確認，只看值是不是 null（sealed 時 CLI 回 null），不讀值：
+- migrate、api、worker、web 的 9 個 secret 全部 **NOT sealed**（`GEMINUS_*_DB_PASSWORD`、`OBJECT_STORAGE_S3_*`、`BFF_OIDC_CLIENT_SECRET`、`SESSION_KEYS`）。
+- 它們只在這個 Railway project 內可見（owner 的 project，沒有其他成員），沒有出現在 repo、log、報告或對話中。
+
+**修正：**
+- `env_edit()`：change set 以 JSON 經 stdin 送出（`{"services": {<service ID>: {...}}}`），回應必須是 `committed: true` 才算成功。
+- Config 檔的設定沒有 commit 時，以 `Failed` 停下。
+- Seal 沒有 commit 時，記入 `late`，讓 verification 失敗：web 的 client secret 照 L1 處理，產生與複製的 secret 也一樣；重跑會重新 seal。
+- 送出的 patch 與 `--service-config variables.X.isSealed true` 產生的完全相同（`ServiceInstance.variables[X] = {"isSealed": true}`，同一個 `environmentPatchCommit`），只是改從 stdin 送出。
+
+Rehearsal：
+- 替身照 CLI 5.64.2 處理 `environment edit`：piped stdin 是 change set，空的就是「No changes to apply」並 exit 0。
+- Run 1 新增檢查：四個服務的 config 檔都必須 commit。
+- Red：只拿掉 deployer 的修正時，sealed 與 config 檔的檢查失敗，A1 的 client secret 也沒有 sealed（`env-edit/rehearsal-red.log`）。
+- Green：`rehearsal: PASS`（`env-edit/rehearsal-green.log`）。
+
+**另外**：project 中原本就有的 `Geminus` 服務接了這個 repo 的 `claude/lucid-meitner-vq1awo` branch（RAILPACK）。它不是 deployer 建的，所以不會被動到；是否刪除由 owner 決定。

@@ -620,10 +620,8 @@ class Run:
         for s in SERVICES:
             if self.find_id(services, s) is None:
                 self.rw("add", "--service", s, "--json")
-        configs = []
-        for s in SERVICES:
-            configs += ["--service-config", s, "configFile", "/" + self.spec["services"][s]["config"]]
-        self.rw("environment", "edit", *self.env(), *configs, "--message", "T-039 deploy.sh: config-as-code files", "--json")
+        self.env_edit({s: {"configFile": "/" + self.spec["services"][s]["config"]} for s in SERVICES},
+                      "T-039 deploy.sh: config-as-code files", check=True)
         for s in SERVICES:
             dom = self.spec["services"][s].get("public_domain")
             if not dom:
@@ -1066,15 +1064,34 @@ class Run:
                              "(it seals it without reading it again), or seal it in Railway's UI (web → Variables → "
                              "BFF_OIDC_CLIENT_SECRET's 3-dot menu → Seal)")
 
+    def env_edit(self, changes: dict, message: str, check: bool) -> bool:
+        """`railway environment edit` with the changes ({service: its config's fields}) as JSON on stdin, keyed by
+        service ID. CLI 5.64.2 reads piped stdin before any --service-config flag (src/commands/environment/edit.rs,
+        get_edit_config) and, reading nothing, prints {"committed": false, "message": "No changes to apply"} with
+        exit 0: the fourth --apply found every edit dropped so. True only when Railway committed the changes."""
+        listing = self.rw("service", "list", *self.env(), "--json", quiet=True)
+        body = {}
+        for s, fields in changes.items():
+            sid = self.find_id(listing, s) or (f"<{s} id>" if self.dry else None)
+            if sid is None:
+                raise Failed(f"`railway environment edit`: the service {s} was not found")
+            body[sid] = fields
+        out = self.rw("environment", "edit", *self.env(), "--message", message, "--json", stdin=json.dumps({"services": body}),
+                      check=check)
+        done = self.dry or (self.code == 0 and isinstance(out, dict) and out.get("committed") is True)
+        if check and not done:
+            raise Failed(f"`railway environment edit` did not commit the changes ({message}): {out if isinstance(out, dict) else 'no JSON'}")
+        return done
+
     def seal_now(self, pairs: list, message: str) -> bool:
-        configs = []
+        changes: dict = {}
         for s, name in pairs:
-            configs += ["--service-config", s, f"variables.{name}.isSealed", "true"]
-        self.run(["railway", "environment", "edit", *self.env(), *configs, "--message", message, "--json"], check=False)
-        if self.code != 0:
+            changes.setdefault(s, {"variables": {}})["variables"][name] = {"isSealed": True}
+        done = self.env_edit(changes, message, check=False)
+        if not done:
             self.say(f"   note: the CLI did not seal {', '.join(n for _, n in pairs)}: seal it in Railway's UI (the service → Variables → "
                      "the variable's 3-dot menu → Seal)")
-        return self.code == 0
+        return done
 
     def fill(self, template: str, creds: dict, seed: dict) -> str:
         def sub(m):
@@ -1267,16 +1284,16 @@ class Run:
         if os.environ.get("GEMINUS_RAILWAY_SEAL", "on") == "off":
             self.say("   GEMINUS_RAILWAY_SEAL=off: the secrets stay unsealed (docs/runbooks/deploy.md §7.7)")
             return
-        configs = []
+        pairs = []
         for s in SERVICES:
             for name, e in self.spec["services"][s]["variables"].items():
                 # The Auth0 step seals the client secret as soon as it sets it (2b), whatever GEMINUS_RAILWAY_SEAL
                 # says: no other variable refers to it.
                 if e.get("secret") and e.get("source") not in ("owner", "auth0"):
-                    configs += ["--service-config", s, f"variables.{name}.isSealed", "true"]
-        self.run(["railway", "environment", "edit", *self.env(), *configs, "--message", "T-039 deploy.sh: seal", "--json"], check=False)
-        if self.code != 0:
-            self.say("   note: the CLI did not seal them; seal the generated and copied secrets in Railway's UI (variables.json: secret, not owner)")
+                    pairs.append((s, name))
+        if not self.seal_now(pairs, "T-039 deploy.sh: seal"):
+            self.late.append("the generated and copied secrets are not sealed: rerun deploy/railway/deploy.sh --apply (it seals them "
+                             "again), or seal them in Railway's UI (variables.json: secret, not owner)")
 
     # -- 5-7. deployments ---------------------------------------------------------
 

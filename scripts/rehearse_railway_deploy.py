@@ -104,7 +104,7 @@ import json, os, sys
 state_path = os.environ["REHEARSAL_STATE"]
 st = json.load(open(state_path)) if os.path.exists(state_path) else {"projects": [], "services": [], "buckets": [], "vars": {}, "domains": {}, "proxies": [], "calls": [], "deploys": []}
 a = sys.argv[1:]
-stdin = sys.stdin.read() if "--stdin" in a else None
+stdin = sys.stdin.read() if "--stdin" in a or a[:2] == ["environment", "edit"] else None
 st["calls"].append({"argv": a, "stdin": stdin is not None, "token": bool(os.environ.get("RAILWAY_API_TOKEN") or os.environ.get("RAILWAY_TOKEN"))})
 def opt(name):
     return a[a.index(name) + 1] if name in a else None
@@ -129,13 +129,25 @@ elif cmd in ("link", "status"):
 elif cmd == "environment" and a[1] == "list":
     out = {"environments": [{"id": "env_1", "name": "production"}]}
 elif cmd == "environment" and a[1] == "edit":
-    sc = [a[i + 1:i + 4] for i, x in enumerate(a) if x == "--service-config"]
-    if os.environ.get("REHEARSAL_SEAL_FAILS") and any(path == "variables.BFF_OIDC_CLIENT_SECRET.isSealed" for _, path, _ in sc):
-        fail("error: the stand-in refuses to seal BFF_OIDC_CLIENT_SECRET")
-    for svc, path, value in sc:
-        if path.endswith(".isSealed"):
-            st.setdefault("sealed", []).append([svc, path.split(".")[1]])
-    out = {"committed": True}
+    # CLI 5.64.2 (src/commands/environment/edit.rs): piped stdin is the change set, before any --service-config flag;
+    # an empty one is "No changes to apply", exit 0. Services are keyed by ID (or name).
+    if not (stdin or "").strip():
+        out = {"staged": False, "committed": False, "message": "No changes to apply"}
+    else:
+        services = json.loads(stdin)["services"]
+        by_id = {"svc_" + n: n for n in st["services"]}
+        for sid, inst in services.items():
+            svc = by_id.get(sid, sid)
+            if svc not in st["services"]:
+                fail(f"Service '{sid}' not found in environment")
+            for name, v in (inst.get("variables") or {}).items():
+                if v.get("isSealed"):
+                    if os.environ.get("REHEARSAL_SEAL_FAILS") and name == "BFF_OIDC_CLIENT_SECRET":
+                        fail("error: the stand-in refuses to seal BFF_OIDC_CLIENT_SECRET")
+                    st.setdefault("sealed", []).append([svc, name])
+            if inst.get("configFile"):
+                st.setdefault("config_files", {})[svc] = inst["configFile"]
+        out = {"committed": True}
 elif cmd == "service" and a[1] == "list":
     if os.environ.get("REHEARSAL_ECHO_TOKEN"):
         # A CLI that quotes the token in its error: the deployer must redact it.
@@ -703,7 +715,7 @@ def main() -> int:
         for s in [TOKEN, "tsec_REHEARSALSECRETACCESSKEY0123456789", "REHEARSALADMINPW"]:
             if s in flat:
                 failures.append(f"a secret appears in an argument or the output: {s[:6]}…")
-        stdin_sets = {(c["argv"][c["argv"].index("--service") + 1], c["argv"][2]) for c in st["calls"] if c["stdin"]}
+        stdin_sets = {(c["argv"][c["argv"].index("--service") + 1], c["argv"][2]) for c in st["calls"] if c["stdin"] and c["argv"][:2] == ["variable", "set"]}
         want_stdin = {("migrate", "GEMINUS_MIGRATOR_DB_PASSWORD"), ("api", "GEMINUS_API_DB_PASSWORD"), ("worker", "GEMINUS_WORKER_DB_PASSWORD"),
                       ("web", "SESSION_KEYS"), ("api", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"), ("worker", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY"),
                       ("api", "OBJECT_STORAGE_S3_ACCESS_KEY_ID"), ("worker", "OBJECT_STORAGE_S3_ACCESS_KEY_ID")}
@@ -711,6 +723,10 @@ def main() -> int:
             failures.append(f"secrets on stdin: {sorted(stdin_sets ^ want_stdin)} differ")
         if {tuple(x) for x in st.get("sealed", [])} != want_stdin:
             failures.append(f"sealed: {sorted({tuple(x) for x in st.get('sealed', [])} ^ want_stdin)} differ")
+        # Every environment edit is committed (CLI 5.64.2 drops --service-config with a piped stdin: the fourth --apply).
+        want_files = {s: f"/deploy/railway/{s}.railway.json" for s in ("migrate", "api", "worker", "web")}
+        if st.get("config_files") != want_files:
+            failures.append(f"config-as-code files: {st.get('config_files')}, want {want_files}")
         owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE",
                  "AI_POLICY_APPROVAL", "AI_MODEL", "AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL"}
         for svc, vs in st["vars"].items():
@@ -783,7 +799,7 @@ def main() -> int:
         for svc, name in (("api", "GEMINUS_API_DB_PASSWORD"), ("web", "SESSION_KEYS")):
             if st2["vars"][svc][name] != before[svc][name]:
                 failures.append(f"run 2 replaced {svc} {name}")
-        if any(c["stdin"] for c in st2["calls"][len(st["calls"]):]):
+        if any(c["stdin"] and c["argv"][:2] == ["variable", "set"] for c in st2["calls"][len(st["calls"]):]):
             failures.append("run 2 set a secret again (they are sealed and in use)")
 
         # Run 2b: the owner sealed them: nothing is reported unsealed.
@@ -1141,7 +1157,7 @@ def main() -> int:
         a0_shown.append(("A2 the same again", resB + f" ({len(tB['writes']) - len(writes)} writes to Auth0)"))
         if resB != "done" or tB["writes"] != writes:
             failures.append(f"A2 (a rerun) wrote to Auth0 {tB['writes'][len(writes):]}: {resB[:300]}")
-        if any("--reveal-secrets" in c["argv"] for c in a0_calls(fa)[callsA:]) or any(c["stdin"] for c in sB["calls"][len(sA["calls"]):]):
+        if any("--reveal-secrets" in c["argv"] for c in a0_calls(fa)[callsA:]) or any(c["stdin"] and c["argv"][:2] == ["variable", "set"] for c in sB["calls"][len(sA["calls"]):]):
             failures.append("A2: the rerun read the client secret again or set a secret on Railway")
         if "provision-tenant" in read(Path(fa["REHEARSAL_GO_LOG"]))[goA_len:] or tB["passwords"].get(A0_JUDGE) != pwA:
             failures.append("A2: the rerun seeded again or changed the judge's password")
