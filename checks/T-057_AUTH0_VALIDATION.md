@@ -271,3 +271,28 @@ Mutation 找到的問題與處理（都沒有放寬任何 assertion）：
 | 1112af2 | 被拒絕的成員的測試每次都用新的 subject（mutation 發現的污染） |
 | eb6f17a | A2 讓替身以另一個順序列出 grant types（mutation 發現的缺口） |
 | 最後一個 | 本報告、evidence、deploy runbook §7、Auth0 runbook §6、ADR-029 addendum、SECURITY §6 |
+
+## Coordinator 驗證（2026-10-27）
+
+`t057-auth0` 的六個 commit（fd404ad..da6cde6）cherry-pick 到主線；只有產生的 `checks/docs-check.json` 衝突（取分支的版本後以 `make spec-check` 重新產生，c285be8）。
+
+指令與結果（evidence：`checks/evidence/2026-10-27-T-057auth0-coordinator/`，`exit-codes.txt` 依執行順序；HEAD c285be8；go1.27.3；全部以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN` 執行；DB 測試在暫時的 cluster（`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450））：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `scripts/check_deploy.py` | 0 | |
+| `scripts/rehearse_railway_deploy.py` | 0 | `rehearsal: PASS`（替身；Railway 與 Auth0 本身 NOT RUN） |
+| `bash -n`、`deploy.sh --help`、`deploy.sh --dry-run` | 0、0、0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 83 個 package ok |
+| `make architecture-check` | 0 | 95 packages、26 rules |
+| `go test -race -count=1 -timeout 30m`（provision-tenant、tenant、audit、storage） | 0 | 19 個 package ok |
+| `make integration-test`（新的 dt_test_hkb10c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+
+NOT RUN：任何真實的 Auth0、Railway 或 AI 呼叫（`--apply`、真正的 `--install-auth0-cli`、裝置登入）；e2e。
+
+Coordinator 對本報告問題的處理：
+1. App 只開在 database connection（Google 等社群連線關閉）：接受。這是 H-035 (2)「只有 owner 與一個評審帳號能登入」的必要條件，不是擴大 H-034。
+2. 評審帳號的 email：預設 `judge@geminus-demo.invalid`；owner 要用其他 email 時在部署前告知。
+3. 成員只在建立 organization 時加入（不放寬 migration 0004）：接受，demo 是新的部署；新的兩個 audit 欄位是例行的實作，不另立 D 編號。
+4. 本步驟處理 Auth0 client secret、評審密碼與 Railway token，部署前做一輪獨立審查（H-029），進行中；ADR-029 的 addendum 維持 PROPOSED。

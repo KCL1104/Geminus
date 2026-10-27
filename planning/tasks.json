@@ -3886,7 +3886,16 @@
         "相關 proposed decisions 已由人類確認到所需 gate；agent 不自行批准。",
         "更新 contracts / docs / traceability，dependencies 與失敗處理可重現；沒有無關 P1 scope。"
       ],
-      "completion_evidence": []
+      "completion_evidence": [
+        {
+          "date": "2026-10-27",
+          "branch": "t057-web, t057-auth0",
+          "report": "checks/T-057_WEB_VALIDATION.md, checks/T-057_AUTH0_VALIDATION.md",
+          "summary": "部署準備：AI 請求欄位的資料提醒（H-035 (1)）；web 的 CSP（每個 request 的 nonce）與其他 security header（CI run 217 全綠）；部署腳本的 Auth0 步驟（H-034：pin 住並核對 checksum 的 Auth0 CLI 1.37.0、裝置登入、API 與 Regular Web App 的設定、關閉 sign-up、client secret 經 stdin 寫入 Railway 並 sealed、結束時登出）與評審帳號（H-035 (2)：只有 demo 組織的 editor）。只以替身 rehearsal 驗證；部署、影片與提交未完成。",
+          "reviewer": "web：coordinator 驗證（H-029）；Auth0 步驟：獨立審查進行中",
+          "decisions": "H-034、H-035、H-036；ADR-029 addendum PROPOSED"
+        }
+      ]
     }
   ]
 }

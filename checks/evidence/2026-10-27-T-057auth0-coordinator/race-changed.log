@@ -1,0 +1,25 @@
+ok  	github.com/kcl1104/geminus/cmd/provision-tenant	1.030s
+ok  	github.com/kcl1104/geminus/internal/tenant	1.044s
+?   	github.com/kcl1104/geminus/internal/tenant/internal/scope	[no test files]
+ok  	github.com/kcl1104/geminus/internal/tenant/me	1.161s
+ok  	github.com/kcl1104/geminus/internal/tenant/memberships	1.104s
+ok  	github.com/kcl1104/geminus/internal/tenant/workerscope	1.022s
+ok  	github.com/kcl1104/geminus/internal/audit	1.714s
+ok  	github.com/kcl1104/geminus/internal/storage/aispend	1.076s
+ok  	github.com/kcl1104/geminus/internal/storage/auditlog	1.038s
+ok  	github.com/kcl1104/geminus/internal/storage/datasets	2.369s
+?   	github.com/kcl1104/geminus/internal/storage/dbtest	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/idempotency	[no test files]
+?   	github.com/kcl1104/geminus/internal/storage/imports	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/jobs	1.067s
+ok  	github.com/kcl1104/geminus/internal/storage/memberships	1.020s
+ok  	github.com/kcl1104/geminus/internal/storage/migrations	1.091s
+ok  	github.com/kcl1104/geminus/internal/storage/models	1.019s
+ok  	github.com/kcl1104/geminus/internal/storage/objects	1.460s
+ok  	github.com/kcl1104/geminus/internal/storage/postgres	1.019s
+ok  	github.com/kcl1104/geminus/internal/storage/projects	1.023s
+ok  	github.com/kcl1104/geminus/internal/storage/proposals	1.019s
+ok  	github.com/kcl1104/geminus/internal/storage/provisioning	1.034s
+?   	github.com/kcl1104/geminus/internal/storage/runs	[no test files]
+ok  	github.com/kcl1104/geminus/internal/storage/scenarios	1.017s
+?   	github.com/kcl1104/geminus/internal/storage/snapshots	[no test files]
