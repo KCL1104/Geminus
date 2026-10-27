@@ -500,3 +500,32 @@ AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIV
 | 40f2d25 | 第一輪 mutation 存活的 mutant 的測試；`attributeNumbers` 拿掉不可能成立的檢查 |
 | 83df7e1 | 修正 40f2d25 寫錯的 1e400 測試案例（自己的 base） |
 | （本節的 commit） | 本節、D-130 (b)(e)、D-131 (g)、D-132、SECURITY §6、AI_SPEC、`planning/tasks.json` 的 completion_evidence、證據 |
+
+## Coordinator 驗證：review 第 1 輪修正（2026-10-27）
+
+`t056-r1` 的七個 commit（17ce21d..c5b101b）cherry-pick 到已整合 Auth0 步驟的主線，沒有衝突；之後在 D-114 記下 spend record 的第三種 kind `smoke-photo`（1abfa01）。
+
+指令與結果（evidence：`checks/evidence/2026-10-27-T-056r1-coordinator/`，`exit-codes.txt` 依執行順序；HEAD 1abfa01；go1.27.3、Node 22；DB 測試在暫時的 cluster（`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450））：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | 含 OpenAPI 的 key-first replay 與 415 |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 84 個 package ok |
+| `make architecture-check` | 0 | 96 packages、26 rules |
+| `make ai-eval` | 0 | fake provider |
+| `go test -race -count=1 -timeout 30m`（ai、proposals、api、aievals、cmd） | 0 | 22 個 package ok |
+| `make integration-test`（新的 dt_test_hkb11c，跑完刪除） | 0 | 38 個 package ok，沒有 FAIL 或 SKIP |
+| `npm ci`（apps/web、apps/web-e2e） | 0、0 | |
+| `make frontend-test` | 0 | 1062 個測試 |
+| `make frontend-build`、`npm audit --omit=dev` | 0、0 | 0 vulnerabilities |
+| `make e2e-test`（ports 空出後、以 flock） | 0 | 514 passed、32 skipped（只在 CI 比對的 screenshot） |
+
+NOT RUN：任何 live 呼叫（包括照片 smoke 本身）；完整的 `make backend-race`；S3 adapter；JPEG header scanner 的 fuzz。
+
+Coordinator 對本輪問題的處理：
+1. Progressive JPEG 一律拒絕：比賽期間維持（demo 圖片是產生的 PNG）；較小的 progressive JPEG 是否接受，比賽後再決定。
+2. L2（judge 可重試的失敗會讓 SAM 在每個 attempt 重跑，最多約 USD 0.06）：接受並記錄；快取 segmentation 比賽後再做。
+3. `GOMEMLIMIT`：部署時依 Railway 給 API service 的記憶體上限設為約 0.75 倍，由部署 session 決定並記錄。
+4. Spend record 的 `smoke-photo`：已記入 D-114（1abfa01）。
+
+結論：review 第 1 輪的 M1、M2 已修正並由 coordinator 驗證（L1、L4 一併修正）；依 H-029，T-056 可以進行第一次 SAM 3.1 的 live 呼叫：以有 key 的新 session 執行 `make ai-smoke-photo-live`，一張 demo 圖片、一次一個 proposal、上限 USD 1，只經 worker 的照片 pipeline，不用 curl。
