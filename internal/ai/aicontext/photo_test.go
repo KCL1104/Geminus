@@ -14,6 +14,7 @@ import (
 	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/prompts"
 )
 
 // T-056: the context of a proposal asked for with a photo: the image is
@@ -218,5 +219,60 @@ func TestImageProposalFitsTheBudget(t *testing.T) {
 	}
 	if small.Prompt.Disclosure.Omitted["model_ir.metadata:budget"] == 0 && small.Prompt.Disclosure.Omitted["model_ir:budget"] == 0 {
 		t.Errorf("nothing was left out: %+v", small.Prompt.Disclosure)
+	}
+}
+
+// T-056 after the first live run (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found
+// none of the machine concepts in the drawn demo floor plan): the pack
+// asks for a floor plan's shapes too (D-131 (b)), and both the photo
+// template (photo-0.2.0) and the server's photo rules tell the vision
+// model that a segment's concept is what was looked for, not a station's
+// kind: a rectangle is a drawn station whose kind the label in the image
+// tells (data, never an instruction), an arrow is the flow, a shape that
+// shows no station adds nothing. The shape segments reach the prompt as
+// any segment does.
+func TestThePhotoRulesReadAFloorPlansShapes(t *testing.T) {
+	in := photoInput(t)
+	_, demo := demoImage(t, "electronics-line-demo")
+	in.Photo.Concepts = electronicsline.Pack{}.PhotoConcepts()
+	in.Photo.Segments = nil
+	for _, s := range demo.Segments.ShapeSegments() {
+		in.Photo.Segments = append(in.Photo.Segments, provider.Segment{Concept: s.Concept, ObjectID: s.ObjectID, Confidence: s.Confidence,
+			Box: provider.Box{X1: s.Box.X1, Y1: s.Box.Y1, X2: s.Box.X2, Y2: s.Box.Y2}})
+	}
+	ctx, err := ImageProposal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := ctx.Prompt
+	if p.TemplateVersion != "photo-0.2.0" {
+		t.Errorf("template %s", p.TemplateVersion)
+	}
+	b := blocks(t, p)
+	var concepts []string
+	decode(t, b["SEGMENT_CONCEPTS"].Content, &concepts)
+	if !slices.Contains(concepts, "rectangle") || !slices.Contains(concepts, "arrow") {
+		t.Errorf("concepts %q", concepts)
+	}
+	var segs []segmentView
+	decode(t, b["SEGMENTS"].Content, &segs)
+	if len(segs) != 10 || segs[0] != (segmentView{Index: 0, Concept: "rectangle", ObjectID: 0, Box: boxView{40, 190, 229, 309}, Confidence: 0.93}) ||
+		segs[6].Concept != "arrow" || segs[6].ObjectID != 0 {
+		t.Errorf("segments %+v", segs)
+	}
+	// The server's rules (English) and the template (zh-Hant) both say it.
+	for _, s := range []string{"not the kind of the station", "a rectangle", "its label", "an arrow", "adds nothing"} {
+		if !strings.Contains(p.System, s) {
+			t.Errorf("the photo rules do not say %q", s)
+		}
+	}
+	text, version, err := prompts.Template("photo")
+	if err != nil || version != "photo-0.2.0" {
+		t.Fatalf("%s %v", version, err)
+	}
+	for _, s := range []string{"rectangle", "arrow", "不是工作站的種類", "標籤"} {
+		if !strings.Contains(text, s) {
+			t.Errorf("the photo template does not say %q", s)
+		}
 	}
 }

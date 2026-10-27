@@ -177,7 +177,7 @@ func TestThePhotoDemo(t *testing.T) {
 	if o.Status != review.Ready || o.ServerRisk == "" || o.PatchHash == "" || len(o.Assumptions) != 5 {
 		t.Fatalf("%+v %v", o.Status, o.Validation)
 	}
-	if g.meta == nil || g.meta.TemplateVersion != "photo-0.1.0" || g.photo == nil || g.photo.segmenter == nil || g.photo.segments != 10 ||
+	if g.meta == nil || g.meta.TemplateVersion != "photo-0.2.0" || g.photo == nil || g.photo.segmenter == nil || g.photo.segments != 10 ||
 		g.photo.segmenter.Concepts != 8 || g.photo.segmenter.ImageDigest != digest || g.photo.image.SHA256 != digest {
 		t.Errorf("metadata %+v %+v", g.meta, g.photo)
 	}
@@ -217,6 +217,90 @@ func TestThePhotoDemo(t *testing.T) {
 	am := photoAuditMeta(*g.meta, g.photo)
 	if am["segmenter_boxes"] != 10 || am["segmenter_concepts"] != 8 || am["image_content_hash"] != digest || am["segmenter"] != "fake" {
 		t.Errorf("audit %v", am)
+	}
+}
+
+// scriptShapes makes the fake segmenter answer list (contracttest's
+// ShapeSegments, or part of it), each concept in the image's frame.
+func (r *photoRig) scriptShapes(list []contracttest.PhotoSegment) {
+	by := map[string][]provider.Segment{}
+	for _, x := range list {
+		by[x.Concept] = append(by[x.Concept], segmentOf(x))
+	}
+	for c, segs := range by {
+		r.seg.Script(c, r.demo.Segments.Width, r.demo.Segments.Height, segs...)
+	}
+}
+
+// T-056 after the first live run (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found
+// none of the machine concepts in the drawn demo floor plan): the floor
+// plan as SAM may answer the pack's shape concepts, six rectangles (the
+// drawn stations) and four arrows (the conveyors), nothing for a machine.
+// The worker's path is unchanged: the vision model gets the image, the
+// pack's concepts and the shape boxes, and its answer (the demo's four
+// stations, typed by the labels it reads) passes the server's review and
+// the photo rules as they are: no more new steps than boxes, every number
+// the base's, no position; the risk is the server's. With three
+// rectangles and no arrow the same four stations are more steps than
+// boxes, and the server refuses them.
+func TestThePhotoDemoFromShapes(t *testing.T) {
+	r := newPhotoRig(t, "electronics-line-demo")
+	shapes := r.demo.Segments.ShapeSegments()
+	r.scriptShapes(shapes)
+	digest := r.demo.Segments.StoredDigest
+	r.vision.Script(provider.RoleModeler, digest, contracttest.PhotoAnswer(t, "electronics-line-demo", poolIDs(t, r.st)))
+	g, err := r.run(t, context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := g.outcome
+	if o.Status != review.Ready || o.ServerRisk == "" || o.PatchHash == "" || g.photo == nil || g.photo.segments != 10 {
+		t.Fatalf("%s %v", o.Status, o.Validation)
+	}
+	var asked []string
+	for _, c := range r.seg.Calls() {
+		asked = append(asked, c.Concept)
+	}
+	if !slices.Equal(asked, electronicsline.Pack{}.PhotoConcepts()) || !slices.Contains(asked, "rectangle") || !slices.Contains(asked, "arrow") {
+		t.Errorf("concepts asked %q", asked)
+	}
+	visReqs := r.vision.Requests()
+	if len(visReqs) != 1 || len(visReqs[0].Prompt.Images) != 1 || visReqs[0].Prompt.Images[0].Digest != digest ||
+		visReqs[0].Prompt.TemplateVersion != "photo-0.2.0" {
+		t.Fatalf("vision %d", len(visReqs))
+	}
+	user := visReqs[0].Prompt.User()
+	if !strings.Contains(user, `"concept":"rectangle"`) || !strings.Contains(user, `"concept":"arrow"`) || strings.Contains(user, `"concept":"smt line"`) {
+		t.Errorf("the vision prompt does not hold the shape boxes")
+	}
+	// The photo rules as they are, on the candidate: nothing to refuse; and
+	// one box fewer than new steps would be refused.
+	var base model.ModelIR
+	if err := model.Decode(r.st.version.IR, &base); err != nil {
+		t.Fatal(err)
+	}
+	if issues := review.Photo(&base, o.Candidate, len(shapes)); len(issues) != 0 {
+		t.Errorf("photo rules %+v", issues)
+	}
+	if len(review.Photo(&base, o.Candidate, 3)) == 0 {
+		t.Error("four new steps on three boxes pass")
+	}
+	if len(o.Candidate.Views.TwoD.Positions) != len(base.Views.TwoD.Positions) {
+		t.Errorf("positions %d, base %d", len(o.Candidate.Views.TwoD.Positions), len(base.Views.TwoD.Positions))
+	}
+
+	// Three rectangles, no arrow: the same answer is refused.
+	few := newPhotoRig(t, "electronics-line-demo")
+	few.scriptShapes(shapes[:3])
+	few.vision.Script(provider.RoleModeler, digest, contracttest.PhotoAnswer(t, "electronics-line-demo", poolIDs(t, few.st)))
+	g, err = few.run(t, context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if o := g.outcome; o.Status != review.Invalid || !slices.ContainsFunc(o.Validation.Issues, func(is model.ValidationIssue) bool {
+		return is.Code == review.OutputInvalid && is.Path == "/changes"
+	}) {
+		t.Errorf("three rectangles: %s %+v", o.Status, o.Validation)
 	}
 }
 

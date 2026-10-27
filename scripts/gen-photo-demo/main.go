@@ -39,9 +39,12 @@ import (
 )
 
 // concepts are the electronics line pack's photo concepts (its
-// PhotoConcepts; a test keeps them equal).
-var concepts = []string{"smt line", "aoi machine", "ict tester", "fct tester", "burn-in chamber", "packing station", "conveyor belt",
-	"workstation"}
+// PhotoConcepts; a test keeps them equal). The fake segmenter's answer
+// finds each drawn object by its machine or conveyor concept; the floor
+// plan's shapes ("rectangle", "arrow"), which SAM 3.1 may find instead
+// (T-056 after the first live run), are contracttest's ShapeSegments of the
+// same objects.
+var concepts = []string{"smt line", "aoi machine", "ict tester", "fct tester", "packing station", "conveyor belt", "rectangle", "arrow"}
 
 const (
 	width, height = 1200, 520
@@ -49,8 +52,8 @@ const (
 	conceptAOI    = 1
 	conceptICT    = 2
 	conceptFCT    = 3
-	conceptPack   = 5
-	conceptConv   = 6
+	conceptPack   = 4
+	conceptConv   = 5
 )
 
 // Box is a rectangle in pixels, its corners inclusive (provider.Box).

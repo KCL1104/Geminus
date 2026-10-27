@@ -9,15 +9,20 @@ import (
 	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 )
 
-// T-056 (H-033): the pack names what a segmenter looks for in a photo of
-// the line: a machine for each station of §2, the conveyor between them
-// and the workstation of a manual step; distinct concepts as T-055's
-// segmentation request takes them (at most 8 lowercase noun phrases of at
-// most 64 bytes), in a fixed order, and returned as a copy.
+// T-056 (H-033): the pack names what a segmenter looks for in a photo or
+// floor plan of the line: a machine of the stations of §2 and the conveyor
+// between them, for a photo; and, after the first live run
+// (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found none of the machine concepts
+// in the drawn demo floor plan), the shapes a drawn floor plan is made of,
+// a rectangle for a station and an arrow for the flow (§13; D-131 (b)).
+// Distinct concepts as T-055's segmentation request takes them (at most 8
+// lowercase noun phrases of at most 64 bytes: one SAM image each, so the
+// segmentation still costs at most 8 images), in a fixed order, and
+// returned as a copy.
 func TestPhotoConcepts(t *testing.T) {
 	var p domainpack.PhotoVocabulary = electronicsline.Pack{}
 	concepts := p.PhotoConcepts()
-	want := []string{"smt line", "aoi machine", "ict tester", "fct tester", "burn-in chamber", "packing station", "conveyor belt", "workstation"}
+	want := []string{"smt line", "aoi machine", "ict tester", "fct tester", "packing station", "conveyor belt", "rectangle", "arrow"}
 	if !slices.Equal(concepts, want) {
 		t.Fatalf("%q", concepts)
 	}

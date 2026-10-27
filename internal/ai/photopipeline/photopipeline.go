@@ -127,10 +127,10 @@ func (e *ReviewError) Unwrap() error { return e.Err }
 // noBoxes is the server's request for input when the segmenter found
 // nothing: the photo shows no station to propose.
 func noBoxes(outputLocale string) review.Outcome {
-	summary := "The segmenter found no machine, conveyor or workstation in the photo, so no station can be proposed from it."
+	summary := "The segmenter found no machine or conveyor, and no drawn station or arrow, in the image, so no station can be proposed from it."
 	question := "Which stations does the line have, in which order? Upload a clearer photo or floor plan of the line, or describe it in words."
 	if outputLocale == string(locale.TraditionalChinese) {
-		summary = "影像辨識在這張照片中找不到機台、輸送帶或工作站，無法從照片提出工作站。"
+		summary = "影像辨識在這張影像中找不到機台、輸送帶，也找不到畫出的工作站或箭頭，無法從影像提出工作站。"
 		question = "這條產線有哪些工作站、順序為何？請上傳更清楚的產線照片或平面圖，或以文字描述產線。"
 	}
 	return review.Outcome{Status: review.NeedsInput, Summary: summary, Assumptions: []string{}, Questions: []string{question}}

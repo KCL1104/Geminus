@@ -116,7 +116,8 @@ type EventIssue struct {
 
 // PhotoVocabulary is implemented by a pack whose lines can be read from a
 // photo or floor plan (T-056, H-033): the concepts a segmenter looks for,
-// the pack's machines, conveyors and workstations as short noun phrases
+// the pack's machines and conveyors, or the shapes of a drawn floor plan, as
+// short noun phrases
 // (T-055's provider.SegmentRequest: at most 8, each lowercase ASCII words
 // with single spaces or hyphens, one segmentation call each), in a fixed
 // order. Static pack data, never a tenant's; a pack without it takes no

@@ -175,7 +175,7 @@ func TestThePhotoSmokeRunsThePipeline(t *testing.T) {
 			t.Errorf("observations %v", r.Warnings)
 		}
 	}
-	if r.Template != "photo-0.1.0" || !slices.Equal(r.Served, []string{"muse-spark-1.3", "sam-3.1"}) || r.Image.Width != 1200 ||
+	if r.Template != "photo-0.2.0" || !slices.Equal(r.Served, []string{"muse-spark-1.3", "sam-3.1"}) || r.Image.Width != 1200 ||
 		r.Image.StoredSHA256 != d.Segments.StoredDigest || !r.Image.VerifiedAsJob || r.Base.Domain != "electronics_line" {
 		t.Errorf("header %+v", r)
 	}
@@ -452,6 +452,29 @@ func TestThePhotoSmokeTakesOtherConcepts(t *testing.T) {
 		if !bytes.Contains(data, []byte(want)) {
 			t.Errorf("the report lacks %s", want)
 		}
+	}
+}
+
+// The smoke with the pack's own concepts (D-131 (b) after the first live
+// run: the machines and conveyor of a photo, then a floor plan's rectangle
+// and arrow), on SAM answering the drawn floor plan's shapes only: still 8
+// SAM images (USD 0.02), the six rectangles and four arrows reach the
+// judge, and its answer is ready with the server's risk.
+func TestThePhotoSmokeFindsTheFloorPlansShapes(t *testing.T) {
+	j := &photoJudge{images: true}
+	s := shapesSAM(t)
+	r, run := photoSmoke(t, j, s, spend.NanoPerUSD)
+	samPrice, _ := spend.ImagePriceOf("sam-3.1")
+	muse, _ := spend.PriceOf("muse-spark-1.3")
+	if r.Status != "ready" || !r.Ok() || r.NewProcessSteps != 4 || r.ConceptsOverridden || r.Template != "photo-0.2.0" {
+		t.Fatalf("%+v", r)
+	}
+	if sg := r.Segmenter; sg.Concepts != 8 || sg.Calls != 8 || sg.Boxes != 10 || sg.BoxesByConcept["rectangle"] != 6 || sg.BoxesByConcept["arrow"] != 4 ||
+		sg.WithBoxes != 2 || sg.CostNanoUSD != 8*samPrice || len(sg.ByConcept) != 8 || sg.ByConcept[6].Concept != "rectangle" || sg.ByConcept[7].Concept != "arrow" {
+		t.Errorf("segmenter %+v", sg)
+	}
+	if r.Cost.NanoUSD != 8*samPrice+muse.Cost(spend.Tokens{Input: 6702, Output: 1100}) || r.Cost.NanoUSD != run.Spent() || r.Warnings[aievals.WarningNoBoxes] != 0 {
+		t.Errorf("cost %+v observations %v", r.Cost, r.Warnings)
 	}
 }
 

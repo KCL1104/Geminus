@@ -1,0 +1,18 @@
+--- FAIL: TestPhotoConcepts (0.00s)
+    photo_test.go:27: ["smt line" "aoi machine" "ict tester" "fct tester" "burn-in chamber" "packing station" "conveyor belt" "workstation"]
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.014s
+--- FAIL: TestThePhotoRulesReadAFloorPlansShapes (0.00s)
+    photo_test.go:245: ai context: invalid_input at /photo/segments/0
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/aicontext	0.021s
+--- FAIL: TestThePhotoDemoFromShapes (0.00s)
+    photo_test.go:258: needs_input <nil>
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/proposals/generator	0.021s
+--- FAIL: TestThePhotoSmokeFindsTheFloorPlansShapes (0.02s)
+    photo_test.go:470: &{Suite:T-056 live photo smoke (the photo pipeline once: segmenter, count_tokens, judge, server review; review round 1, I1) Kind:smoke-photo Provider:meta Model:muse-spark-1.3 SegmentationModel:sam-3.1 Served:[sam-3.1] Approval:H-029 Date:2026-10-27 RunID:01M5X00000000000000000PH0T Locale:en Template: ConceptsOverridden:false Image:{Path:testdata/photos/electronics-line-demo.png UploadBytes:14197 MediaType:image/png Width:1200 Height:520 StoredBytes:14197 StoredSHA256:sha256:6b284ed7efc0b15140808f1cf8922e91f7d9ef0276f6d0f16640f3725cbba605 VerifiedAsJob:true} Base:{Path:testdata/photos/bare-line.json Domain:electronics_line Hash:sha256:a2290b3eb2cd75613da34ecfb9bd73da07ba68116eb8a1de6948344114aacd0c} Price:{Source:https://dev.meta.ai/docs/pricing-rate-limits Retrieved:2026-10-26 ImageNanoUSD:2500000 InputPerMTok:1.25 OutputPerMTok:4.25} Status:needs_input Code: ProviderStatus:0 ProviderErrorType: Issues:[] ServerRisk: ProviderRisk: Risk: PatchHash: NewProcessSteps:0 Segmenter:{Asked:true Concepts:8 ConceptList:[smt line aoi machine ict tester fct tester burn-in chamber packing station conveyor belt workstation] ByConcept:[{Concept:smt line Answered:true Boxes:0 Sizes:[]} {Concept:aoi machine Answered:true Boxes:0 Sizes:[]} {Concept:ict tester Answered:true Boxes:0 Sizes:[]} {Concept:fct tester Answered:true Boxes:0 Sizes:[]} {Concept:burn-in chamber Answered:true Boxes:0 Sizes:[]} {Concept:packing station Answered:true Boxes:0 Sizes:[]} {Concept:conveyor belt Answered:true Boxes:0 Sizes:[]} {Concept:workstation Answered:true Boxes:0 Sizes:[]}] Calls:8 Answered:8 WithBoxes:0 Boxes:0 BoxesByConcept:map[] ImagesProcessed:[1 1 1 1 1 1 1 1] ImagesBilled:8 Frames:[] UnknownAttempts:0 Reservations:8 ReservedNanoUSD:60000000 CostNanoUSD:20000000 OverReservation:false LatencyMillis:0 ConceptCallCodes:[]} Judge:{Asked:false Quotes:0 QuotesFailed:0 Counted:0 ReservedInput:0 BilledInput:0 BilledOverCount:0 Output:0 Calls:0 Reservations:0 ReservedNanoUSD:0 CostNanoUSD:0 OverReservation:false LatencyMillis:0} Cost:{NanoUSD:20000000 USD:0.02 CommittedNanoUSD:20000000 PeakNanoUSD:25000000 CapUSD:1.00 CapNanoUSD:1000000000} Gates:map[needs_input_kept_changes:0 pipeline_failed:0 ready_without_server_validation:0] Warnings:map[billed_input_over_reserved:0 frame_not_the_image:0 images_processed_not_one:0 no_boxes:1 over_reservation:0] Complete:true NotRun:[the database, object storage, the job queue and the spend ledger (the worker's; make integration-test with the fakes) approval of the proposal: a person approves it through the API any image but the demo image, any other base model, zh-Hant output]}
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/aievals	0.035s
+FAIL
+exit 1

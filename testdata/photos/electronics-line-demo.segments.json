@@ -11,10 +11,10 @@
     "aoi machine",
     "ict tester",
     "fct tester",
-    "burn-in chamber",
     "packing station",
     "conveyor belt",
-    "workstation"
+    "rectangle",
+    "arrow"
   ],
   "segments": [
     {
