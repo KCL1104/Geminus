@@ -221,6 +221,11 @@
   margin: 0 0 var(--gm-space-md);
 }
 
+/* Each step's measures, under the key metrics: one click away (H-027). */
+.more {
+  margin: 0 0 var(--gm-space-md);
+}
+
 .facts {
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(0, 1fr);

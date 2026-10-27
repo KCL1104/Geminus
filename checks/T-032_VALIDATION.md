@@ -291,3 +291,30 @@ NOT RUN：截圖比對（只在 CI）；完整的 `make backend-race`；live AI�
 
 M1 修正並經 coordinator 驗證，依 H-029 的比賽模式，**T-032 的 hackathon 切片完成**；L1（R6、R3）、L2、L3、L5 與 Info 為比賽後的後續。
 
+
+## Live demo 之後：逐站指標收進 disclosure（2026-10-28，coordinator，owner 要求以 impeccable 做 polish）
+
+**原因**：live 網站的電子產線結果頁上，「Key metrics」表有好幾百列：pack 為每一站回報的指標（`blocking_ratio.ict`、`availability.pack_ship` 等，名稱是 server 的 key），其中很多兩邊都是 Unavailable。Marey 圖被推到頁面最下面。這違反 DESIGN.md 的 Simplicity 3（progressive disclosure），在投影時也看不出重點（PRODUCT.md 的會議投影情境）。
+
+**修改**（`apps/web/features/results/metrics-table.tsx`、`results.module.css`、兩個語言的 catalog、DESIGN.md「Simplifications in the app」）：
+- 主表只放有標籤的整線指標、資源與等待。
+- pack 的逐站指標（`label` 為 `{ data }` 的 run 列）放在主表下方一個預設關閉的 `<details>`：「Each step's measures (N)」／「各站的指標（N）」。裡面是同樣欄位的表格，加上自己的 caption；任一次執行有數值的排在前面，其餘依 server 的順序。
+- 數值、差異、status 與 reason 都不變，仍然是 server 的。
+
+**測試**：`tests/results-view.test.tsx` 的 pack ratio 案例新增四個檢查：該列在 `details` 中、`details` 預設關閉、summary 的文字、第一個表格不含它。
+- Red：舊的表格配新的測試，1 failed（`checks/evidence/2026-10-28-results-polish/red.log`）。
+- Green：26 passed。
+
+**指令與 exit code**（Node 24.21.0，照 `.nvmrc`）：
+
+| 指令 | exit |
+|---|---|
+| `npm --prefix apps/web run lint` | 0 |
+| `npm --prefix apps/web run typecheck` | 0 |
+| `npm --prefix apps/web run test:unit` | 0（48 files、1062 tests，加上新檢查之前） |
+
+結果頁不在 e2e 的截圖 baseline 裡（baseline 只有 home、projects、no-such-page、ui-gallery），所以 CI 的截圖比對不受影響。
+
+| `make e2e-test`（Node 24.21.0） | 0（514 passed；32 skipped 是截圖測試，照 README 只在 CI 的固定容器中執行，本機為 NOT RUN） |
+
+**NOT RUN**：截圖比對（CI）；部署後的實際畫面另記。

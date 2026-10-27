@@ -1,0 +1,9 @@
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/apps/web
+
+
+ Test Files  48 passed (48)
+      Tests  1062 passed (1062)
+   Start at  23:52:39
+   Duration  29.85s (tests 68%, import 21%, environment 8%, transform 2%)
+

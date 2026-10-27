@@ -1,0 +1,27 @@
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/apps/web
+
+ ❯ tests/results-view.test.tsx (26 tests | 1 failed) 6833ms
+   ❯ a pack's ratio metric (T-032 review round 1, L4) (1)
+     × is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept 230ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/results-view.test.tsx > a pack's ratio metric (T-032 review round 1, L4) > is a percentage with its difference in percentage points, in Traditional Chinese with no English unit, the server's values kept
+AssertionError: expected null not to be null
+ ❯ tests/results-view.test.tsx:568:40
+    566|     expect(row).toBeDefined();
+    567|     // A step's own measure is one click away, under the key metrics (…
+    568|     expect(row.closest("details")).not.toBeNull();
+       |                                        ^
+    569|     expect(el.querySelector("details")!.open).toBe(false);
+    570|     expect(text(el.querySelector("details > summary")!)).toBe(zhHant["…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 25 passed (26)
+   Start at  23:51:40
+   Duration  10.37s (tests 68%, import 18%, environment 10%, transform 5%)
+

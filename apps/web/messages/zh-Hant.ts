@@ -407,6 +407,8 @@ export const zhHant: Catalog = {
   "compare.absolute": "差值",
   "compare.relative": "差異（%）",
   "compare.group.run": "整條產線",
+  "compare.steps": "各站的指標（{count}）",
+  "compare.stepsCaption": "各站的指標，數值照伺服器提供；兩次執行都沒有數值的排在最後。",
   "compare.group.resources": "資源",
   "compare.group.queues": "等待",
   "compare.unavailable": "無資料",

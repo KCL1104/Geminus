@@ -564,6 +564,11 @@ describe("a pack's ratio metric (T-032 review round 1, L4)", () => {
     await waitFor(() => el.querySelector("table") !== null, "the results");
     const row = [...el.querySelectorAll("tbody tr")].find((r) => r.querySelector("th code")?.textContent === "scrap_rate")!;
     expect(row).toBeDefined();
+    // A step's own measure is one click away, under the key metrics (H-027): not in the first table.
+    expect(row.closest("details")).not.toBeNull();
+    expect(el.querySelector("details")!.open).toBe(false);
+    expect(text(el.querySelector("details > summary")!)).toBe(zhHant["compare.steps"].replace("{count}", "1"));
+    expect(el.querySelector("table")!.textContent).not.toContain("scrap_rate");
     expect(text(row.querySelector("th")!)).toBe("scrap_rate");
     expect(text(row)).not.toContain("ratio");
     expect([...row.querySelectorAll("data")].map((d) => d.getAttribute("value"))).toEqual(["0.04", "0.025", "-0.015", "-0.375"]);

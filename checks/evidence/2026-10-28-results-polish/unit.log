@@ -1,0 +1,13 @@
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/apps/web
+
+
+ Test Files  48 passed (48)
+      Tests  1062 passed (1062)
+   Start at  23:50:47
+   Duration  30.58s (tests 62%, import 21%, transform 10%, environment 7%)
+

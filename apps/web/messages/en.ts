@@ -420,6 +420,8 @@ export const en = {
   "compare.absolute": "Δ",
   "compare.relative": "Δ %",
   "compare.group.run": "Whole line",
+  "compare.steps": "Each step's measures ({count})",
+  "compare.stepsCaption": "Each step's measures, as the server gave them; those with no value in either run come last.",
   "compare.group.resources": "Resources",
   "compare.group.queues": "Waiting",
   "compare.unavailable": "Unavailable",

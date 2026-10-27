@@ -84,57 +84,93 @@ function Deltas({ row }: { row: MetricRow }) {
   );
 }
 
-export function MetricsTable({ rows }: { rows: MetricRow[] }) {
+function Head() {
   const { t } = useI18n();
   return (
-    <table className={styles.table}>
-      <caption>{t("compare.caption")}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{t("compare.metric")}</th>
-          <th scope="col" className={styles.num}>
-            <LineKey side="baseline" />
-            {t("compare.baseline")}
-          </th>
-          <th scope="col" className={`${styles.num} ${styles.scenarioCol}`}>
-            <LineKey side="scenario" />
-            {t("compare.scenario")}
-          </th>
-          <th scope="col" className={styles.num}>
-            {t("compare.absolute")}
-          </th>
-          <th scope="col" className={styles.num}>
-            {t("compare.relative")}
-          </th>
-        </tr>
-      </thead>
-      {groups.map((g) => {
-        const inGroup = rows.filter((r) => r.group === g);
-        if (inGroup.length === 0) return null;
-        return (
-          <tbody key={g}>
-            <tr>
-              <th scope="colgroup" colSpan={5} className={styles.group}>
-                {t(`compare.group.${g}`)}
-              </th>
-            </tr>
-            {inGroup.map((row) => (
-              <tr key={row.path} data-status={row.status}>
-                <th scope="row">
-                  <Label label={row.label} />
+    <thead>
+      <tr>
+        <th scope="col">{t("compare.metric")}</th>
+        <th scope="col" className={styles.num}>
+          <LineKey side="baseline" />
+          {t("compare.baseline")}
+        </th>
+        <th scope="col" className={`${styles.num} ${styles.scenarioCol}`}>
+          <LineKey side="scenario" />
+          {t("compare.scenario")}
+        </th>
+        <th scope="col" className={styles.num}>
+          {t("compare.absolute")}
+        </th>
+        <th scope="col" className={styles.num}>
+          {t("compare.relative")}
+        </th>
+      </tr>
+    </thead>
+  );
+}
+
+function Row({ row }: { row: MetricRow }) {
+  return (
+    <tr data-status={row.status}>
+      <th scope="row">
+        <Label label={row.label} />
+      </th>
+      <td className={styles.num}>
+        <Value value={row.baseline} unit={row.unit} ci={row.ci.baseline} />
+      </td>
+      <td className={`${styles.num} ${styles.scenarioCol}`}>
+        <Value value={row.scenario} unit={row.unit} ci={row.ci.scenario} />
+      </td>
+      <Deltas row={row} />
+    </tr>
+  );
+}
+
+/** A pack's own measure (its name is the server's key): one of each step's, kept one click away (DESIGN.md, Simplicity 3). */
+const isStepMeasure = (r: MetricRow) => r.group === "run" && "data" in r.label;
+
+export function MetricsTable({ rows }: { rows: MetricRow[] }) {
+  const { t } = useI18n();
+  const main = rows.filter((r) => !isStepMeasure(r));
+  // Those with a value in either run first; the order is otherwise the server's.
+  const steps = rows.filter(isStepMeasure);
+  const measured = [...steps.filter((r) => r.baseline !== null || r.scenario !== null), ...steps.filter((r) => r.baseline === null && r.scenario === null)];
+  return (
+    <>
+      <table className={styles.table}>
+        <caption>{t("compare.caption")}</caption>
+        <Head />
+        {groups.map((g) => {
+          const inGroup = main.filter((r) => r.group === g);
+          if (inGroup.length === 0) return null;
+          return (
+            <tbody key={g}>
+              <tr>
+                <th scope="colgroup" colSpan={5} className={styles.group}>
+                  {t(`compare.group.${g}`)}
                 </th>
-                <td className={styles.num}>
-                  <Value value={row.baseline} unit={row.unit} ci={row.ci.baseline} />
-                </td>
-                <td className={`${styles.num} ${styles.scenarioCol}`}>
-                  <Value value={row.scenario} unit={row.unit} ci={row.ci.scenario} />
-                </td>
-                <Deltas row={row} />
               </tr>
-            ))}
-          </tbody>
-        );
-      })}
-    </table>
+              {inGroup.map((row) => (
+                <Row key={row.path} row={row} />
+              ))}
+            </tbody>
+          );
+        })}
+      </table>
+      {measured.length > 0 && (
+        <details className={styles.more}>
+          <summary>{t("compare.steps", { count: String(measured.length) })}</summary>
+          <table className={styles.table}>
+            <caption>{t("compare.stepsCaption")}</caption>
+            <Head />
+            <tbody>
+              {measured.map((row) => (
+                <Row key={row.path} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </details>
+      )}
+    </>
   );
 }
