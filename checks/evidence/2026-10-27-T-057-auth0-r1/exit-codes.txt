@@ -1,0 +1,7 @@
+check-deploy exit 0
+rehearsal exit 0
+bash-n exit 0
+deploy-help exit 0
+py-compile exit 0
+spec-check exit 0
+deploy-dry-run exit 0 (go1.27.3 on PATH; the first try, without go on PATH, exited 1 at preflight: deploy-dry-run-no-go-on-path.log)

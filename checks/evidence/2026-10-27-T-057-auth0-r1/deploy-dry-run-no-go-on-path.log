@@ -1,0 +1,8 @@
+dry run: --apply will also need:
+  - input GEMINUS_AUTH0_ISSUER: the Auth0 issuer, https://<tenant>.<region>.auth0.com/ (with the final /)
+  - input GEMINUS_AUTH0_AUDIENCE: the Auth0 API Identifier
+  - input GEMINUS_SEED_OWNER_SUBJECT: the owner's Auth0 user_id (auth0|...), the demo organization's first owner
+  - input GEMINUS_RAILWAY_BUCKET_REGION: the bucket's region: sjc, iad, ams or sin (fixed once created)
+  - RAILWAY_TOKEN (a project token) or RAILWAY_API_TOKEN (an account or workspace token)
+deploy: FAIL: preflight:
+  - go is not installed (psql 15 or later: deploy/sql/create_logins.sql uses \getenv)

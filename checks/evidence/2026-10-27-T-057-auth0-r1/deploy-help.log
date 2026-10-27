@@ -1,0 +1,64 @@
+The hackathon deployment on Railway (T-039; H-031 Railway only; H-032 the
+coordinator applies it from a session that has the Railway token). The steps
+are deploy/railway/railway_deploy.py's (its docstring, docs/runbooks/deploy.md
+§7.7); this wrapper refuses a tracing shell, pins the CLI and runs it.
+
+  deploy/railway/deploy.sh --dry-run            check inputs, tools and files; print the plan; call nothing remote
+  deploy/railway/deploy.sh --apply              create or update the deployment
+  deploy/railway/deploy.sh --install-cli DIR    install the pinned Railway CLI 5.64.2 into DIR (Linux x86_64),
+                                                checking the release archive's SHA-256
+  deploy/railway/deploy.sh --install-auth0-cli DIR
+                                                install the pinned Auth0 CLI 1.37.0 into DIR (Linux x86_64),
+                                                checking the archive's SHA-256 (the release's checksums.txt)
+                                                and the binary's before anything is installed
+
+Token (exactly as the Railway CLI reads it; docs.railway.com/guides/cli,
+2026-10-26; the CLI's source at v5.64.2, src/config.rs): RAILWAY_TOKEN, a
+project token (the project and environment are the token's and must exist),
+or RAILWAY_API_TOKEN, an account or workspace token (the project is found by
+name or created). The token is read by the CLI from the environment only:
+never echoed, never an argument, never in a log, redacted if the CLI quotes
+it, and removed from the environment of every other program (psql, go).
+
+Inputs (not secret): GEMINUS_AUTH0_ISSUER (the tenant's domain,
+https://<tenant>.<region>.auth0.com/), GEMINUS_AUTH0_AUDIENCE (the API's
+identifier), GEMINUS_SEED_OWNER_SUBJECT, GEMINUS_RAILWAY_BUCKET_REGION (sjc,
+iad, ams or sin; fixed once created); optional GEMINUS_RAILWAY_PROJECT
+(geminus-demo), GEMINUS_RAILWAY_ENVIRONMENT (production),
+GEMINUS_RAILWAY_WORKSPACE, GEMINUS_SEED_ORG_NAME;
+GEMINUS_RAILWAY_SEAL=off only for the recovery of the runbook's §7.7;
+GEMINUS_KEEP_DB_PROXY=1 accepts a TCP proxy still open on Postgres at the end
+(without it, any open proxy, also one from before the run, is named with its
+removal command and the run exits 1).
+
+Auth0 (T-057, H-034): GEMINUS_AUTH0_SETUP=cli (default) sets Auth0 up with
+the pinned Auth0 CLI (--install-auth0-cli; its SHA-256 is checked before it
+is run): the owner approves its device sign-in in their own browser (the URL
+and code are shown), then the API, the Regular Web Application, sign-up off
+and the judge's account (H-035 (2)) are found or created; the client secret
+goes on stdin to web's BFF_OIDC_CLIENT_SECRET and is sealed; the CLI is
+signed out at the end. Optional: GEMINUS_AUTH0_CONNECTION
+(Username-Password-Authentication), GEMINUS_JUDGE_EMAIL
+(judge@geminus-demo.invalid), GEMINUS_JUDGE_RESET_PASSWORD=1 (a new password
+for an existing judge's account). The judge's new password is shown once, on
+stderr, at the end of the run: do not keep the run's stderr in a file.
+GEMINUS_AUTH0_SETUP=manual skips the step (the owner sets Auth0 up in its
+dashboard, docs/runbooks/auth0.md §6): then GEMINUS_AUTH0_CLIENT_ID is an
+input, the owner fills BFF_OIDC_CLIENT_SECRET, and GEMINUS_JUDGE_SUBJECT (the
+judge's user_id) makes the judge an editor of the demo organization.
+
+The owner fills in Railway's UI, never this script, and seals what is secret
+(H-036): BFF_OIDC_CLIENT_SECRET (web) with GEMINUS_AUTH0_SETUP=manual, and only to turn live AI on, the same
+AI_PROVIDER, AI_POLICY_APPROVAL, AI_MODEL and GEMINUS_AI_LIVE on the API and
+the worker, and for the photo path the same AI_VISION_PROVIDER,
+AI_VISION_POLICY_APPROVAL and AI_VISION_MODEL on both (the API holds no
+key: T-053 I5, D-124) and the worker's keys (GEMINUS_ANTHROPIC_API_KEY_A
+and _B, or the Meta key GEMINUS_MUSE_API_KEY).
+The CLI's variable listing returns unsealed values: the script drops the
+owner's on receipt and names the unsealed secrets. Live AI stays off until
+then (AI_PROVIDER=disabled).
+
+Needs: python3, git, psql 15 or later, go (cmd/provision-tenant), the pinned
+Railway CLI, the pinned Auth0 CLI (GEMINUS_AUTH0_SETUP=cli). Exit codes: 0 done, 1 a step failed or a TCP proxy is still open
+(the message says which), 2 usage or xtrace on, 128+N interrupted by signal N
+(SIGTERM, SIGHUP: this run's TCP proxy is removed first).

@@ -105,8 +105,10 @@ the run ends (whatever ends it), and nowhere else.
 repository's deployment files and prints the steps and commands.
 """
 import argparse
+import atexit
 import base64
 import enum
+import functools
 import hashlib
 import hmac
 import json
@@ -118,6 +120,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.error
@@ -168,11 +171,13 @@ JUDGE_ROLE = "editor"
 # The owner approves the sign-in within the device code's lifetime (Auth0's default is 900 s).
 A0_LOGIN_SECONDS = 1200
 # Fields of the CLI's JSON that hold a credential, dropped as the JSON is parsed (the deployer needs only
-# the application's client secret, from one call that asks for it); the token fields only when they hold
-# a value (an application's refresh_token is its settings object).
-A0_SECRET_FIELDS = frozenset({"client_secret", "signing_secret", "signing_keys", "encryption_key", "password", "configuration",
+# the application's client secret, from one call that asks for it); the value fields only when they hold
+# a value, not a settings object (an application's refresh_token, a database connection's
+# options.authentication_methods.password: go-auth0 v1.50.0 management/connection.go:643). A settings
+# object's own fields go through the same hook, so a credential inside one is still dropped.
+A0_SECRET_FIELDS = frozenset({"client_secret", "signing_secret", "signing_keys", "encryption_key", "configuration",
                               "customScripts", "private_key", "device_code", "secret"})
-A0_TOKEN_FIELDS = frozenset({"access_token", "refresh_token", "id_token"})
+A0_VALUE_FIELDS = frozenset({"access_token", "refresh_token", "id_token", "password"})
 JUDGE_SQL = ("SELECT m.organization_id || ' ' || m.role FROM twin.memberships m JOIN twin.users u ON u.id = m.user_id\n"
              "WHERE u.oidc_issuer = :'issuer' AND u.oidc_subject = :'subject' ORDER BY 1;\n")
 ORG_LIST = re.compile(r"org_[0-9A-Z]{26}(,org_[0-9A-Z]{26})*")
@@ -237,6 +242,26 @@ class Failed(Exception):
     """A step failed; the message says which and what to do."""
 
 
+class OutputLost(Exception):
+    """The run's stdout cannot be written (a closed pipe, a hung-up terminal: EPIPE, EIO): the run stops at
+    the next message outside a cleanup, the cleanups still run, and it exits EXIT_OUTPUT_LOST (review M2)."""
+
+
+EXIT_OUTPUT_LOST = 74  # EX_IOERR of sysexits.h
+
+
+def cleanup(method):
+    """A cleanup (signing out, removing the TCP proxy, listing the proxies): a lost stdout never stops it."""
+    @functools.wraps(method)
+    def run(self, *args, **kwargs):
+        self.cleaning += 1
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self.cleaning -= 1
+    return run
+
+
 class Seen(enum.Enum):
     """What a variable listing keeps of a value the deployer does not need."""
     SET = "set (value not kept)"
@@ -251,13 +276,18 @@ def exit_on_signal(signum, frame):
     a second signal is ignored while the cleanup removes the TCP proxy."""
     for s in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(s, signal.SIG_IGN)
-    print(f"deploy: interrupted ({signal.Signals(signum).name}): cleaning up, then exiting", flush=True)
+    try:
+        print(f"deploy: interrupted ({signal.Signals(signum).name}): cleaning up, then exiting", flush=True)
+    except OSError:  # a hung-up terminal (EIO) or a closed pipe: the cleanup runs regardless (M2)
+        pass
     raise SystemExit(128 + signum)
 
 
 class Run:
     def __init__(self, dry: bool):
         self.dry = dry
+        self.out_lost = False  # stdout could not be written (M2)
+        self.cleaning = 0  # inside a cleanup (the cleanup decorator)
         self.hidden = Hidden()  # secret values, as digests: never printed, never in argv
         for k in TOKENS:  # the CLI reads the token itself; an error that quotes it is redacted
             if os.environ.get(k):
@@ -289,7 +319,24 @@ class Run:
     # -- output and commands -------------------------------------------------
 
     def say(self, msg: str) -> None:
-        print(self.hidden.redact(msg), flush=True)
+        """Prints msg; once stdout cannot be written, prints nothing more (stdout
+        goes to /dev/null, so neither a child nor Python's exit flush meets the
+        broken stream) and raises OutputLost, except inside a cleanup."""
+        if not self.out_lost:
+            try:
+                print(self.hidden.redact(msg), flush=True)
+            except OSError:
+                self.out_lost = True
+                null = os.open(os.devnull, os.O_WRONLY)
+                os.dup2(null, sys.stdout.fileno())
+                os.close(null)
+        if self.out_lost and not self.cleaning:
+            raise OutputLost
+
+    @cleanup
+    def tell(self, msg: str) -> None:
+        """The run's last word: never raises."""
+        self.say(msg)
 
     def secret(self, value: str) -> None:
         """Registers value for redaction (as a digest; nothing is returned or kept)."""
@@ -506,12 +553,19 @@ class Run:
             return problems
         real = os.path.realpath(path)
         with open(real, "rb") as f:
-            digest = hashlib.sha256(f.read()).hexdigest()
-        if digest != AUTH0_CLI_SHA256:
+            image = f.read()
+        if hashlib.sha256(image).hexdigest() != AUTH0_CLI_SHA256:
             problems.append(f"the auth0 on PATH ({real}) is not the pinned Auth0 CLI {AUTH0_CLI_VERSION} (its SHA-256 is not "
                             f"{AUTH0_CLI_SHA256}) and was not run: install the pinned one with deploy/railway/deploy.sh --install-auth0-cli DIR")
         else:
-            self.a0_bin = real
+            # The bytes that were hashed, copied into a directory only this user can write, are what runs: the
+            # file on PATH may change after the check (review L2). Removed when the deployer exits.
+            private = tempfile.mkdtemp(prefix="geminus-auth0-cli-")
+            atexit.register(shutil.rmtree, private, True)
+            fd = os.open(os.path.join(private, "auth0"), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o700)
+            with os.fdopen(fd, "wb") as f:
+                f.write(image)
+            self.a0_bin = os.path.join(private, "auth0")
         return problems
 
     # -- 1-3. project, resources, variables -----------------------------------
@@ -620,7 +674,7 @@ class Run:
                     self.secret(v)
                     capture[k].append(v)
                     out[k] = Seen.SET
-                elif k in A0_SECRET_FIELDS or (k in A0_TOKEN_FIELDS and not isinstance(v, dict)):
+                elif k in A0_SECRET_FIELDS or (k in A0_VALUE_FIELDS and not isinstance(v, dict)):
                     out[k] = v if v in (None, "", [], {}) else Seen.SET
                 else:
                     out[k] = v
@@ -695,6 +749,7 @@ class Run:
             self.run(["auth0", "logout", t, *A0_FLAGS], env=self.a0_env(), check=False, executable=self.a0_bin)
         return self.a0_sessions() if left else left
 
+    @cleanup
     def a0_close(self) -> list:
         """Signs the CLI out and removes its home (also on a failure and on
         SIGTERM or SIGHUP: auth0() calls it from its handler); returns the
@@ -957,10 +1012,15 @@ class Run:
         """The client secret from `auth0 apps show --reveal-secrets` (only in this
         process: a0_receive puts it in a list of this call's own), only on stdin
         to `railway variable set BFF_OIDC_CLIENT_SECRET --stdin` on web, then
-        sealed. Read only when web lacks it or has another application's."""
+        sealed. Read only when web lacks it or has another application's; one
+        there but not sealed (Railway refused before) is sealed now (review L1)."""
         have = self.variables_of("web", plain={"BFF_OIDC_CLIENT_ID": re.compile(r"[A-Za-z0-9_-]{1,128}")})
         if not created and "BFF_OIDC_CLIENT_SECRET" in have and have.get("BFF_OIDC_CLIENT_ID") == client_id:
-            self.say("   web has this application's client secret already (not read again)")
+            if have["BFF_OIDC_CLIENT_SECRET"] is Seen.SEALED:
+                self.say("   web has this application's client secret already, sealed (not read again)")
+            else:
+                self.say("   web has this application's client secret already (not read again), not sealed: sealing it")
+                self.a0_seal_secret()
             return
         box = {"client_secret": []}
         try:
@@ -971,10 +1031,19 @@ class Run:
             self.set_from_stdin("web", "BFF_OIDC_CLIENT_SECRET", got[0] if got else "<the client secret>")
         finally:
             box["client_secret"].clear()
-        self.seal_now([("web", "BFF_OIDC_CLIENT_SECRET")], "T-057 deploy.sh: seal the Auth0 client secret")
-        self.say("   web's BFF_OIDC_CLIENT_SECRET: set from the Auth0 CLI on stdin and sealed (never printed, never in a file)")
+        self.say("   web's BFF_OIDC_CLIENT_SECRET: set from the Auth0 CLI on stdin (never printed, never in a file)")
+        self.a0_seal_secret()
 
-    def seal_now(self, pairs: list, message: str) -> None:
+    def a0_seal_secret(self) -> None:
+        """Seals web's client secret; a refusal fails the run at verification (L1), and a rerun seals it."""
+        if self.seal_now([("web", "BFF_OIDC_CLIENT_SECRET")], "T-057 deploy.sh: seal the Auth0 client secret"):
+            self.say("   web's BFF_OIDC_CLIENT_SECRET: sealed")
+        else:
+            self.late.append("web's BFF_OIDC_CLIENT_SECRET is set but Railway did not seal it: rerun deploy/railway/deploy.sh --apply "
+                             "(it seals it without reading it again), or seal it in Railway's UI (web → Variables → "
+                             "BFF_OIDC_CLIENT_SECRET's 3-dot menu → Seal)")
+
+    def seal_now(self, pairs: list, message: str) -> bool:
         configs = []
         for s, name in pairs:
             configs += ["--service-config", s, f"variables.{name}.isSealed", "true"]
@@ -982,6 +1051,7 @@ class Run:
         if self.code != 0:
             self.say(f"   note: the CLI did not seal {', '.join(n for _, n in pairs)}: seal it in Railway's UI (the service → Variables → "
                      "the variable's 3-dot menu → Seal)")
+        return self.code == 0
 
     def fill(self, template: str, creds: dict, seed: dict) -> str:
         def sub(m):
@@ -1068,6 +1138,7 @@ class Run:
             now = self.proxy_ids(self.rw("tcp-proxy", "list", "--service", self.spec["database"], *self.env(), "--json")) or []
             self.proxy_created = next((p for p in now if p not in before), None)
 
+    @cleanup
     def proxy_close(self) -> None:
         if not self.proxy_created:
             return
@@ -1077,6 +1148,7 @@ class Run:
             self.proxy_problems.append(f"could not remove this run's TCP proxy {self.proxy_created} (railway exit {self.code}): "
                                        f"remove it with `{self.proxy_delete_cmd(self.proxy_created)}`")
 
+    @cleanup
     def check_proxies(self) -> list:
         """Lists PostgreSQL's TCP proxies (M1); returns the proxy problems so far:
         a failed removal, a listing that failed, any proxy still open (unless
@@ -1408,6 +1480,8 @@ class Run:
                              "file); put it in the submission text now:\n"
                              f"  email:    {self.cfg['GEMINUS_JUDGE_EMAIL']}\n  password: {shown[-1]}\n\n")
             sys.stderr.flush()
+        except OSError:  # stderr is gone too: the password is lost (GEMINUS_JUDGE_RESET_PASSWORD=1 sets a new one)
+            self.out_lost = True
         finally:
             shown.clear()
 
@@ -1424,15 +1498,17 @@ def main() -> int:
     try:
         run.main()
     except Failed as e:
-        run.say(f"deploy: FAIL: {e}")
+        run.tell(f"deploy: FAIL: {e}")
         return 1
+    except OutputLost:  # the cleanups ran; nothing can be shown
+        return EXIT_OUTPUT_LOST
     except SystemExit as e:  # exit_on_signal: the cleanup ran
-        run.say(f"deploy: INTERRUPTED (exit {e.code}): rerun deploy/railway/deploy.sh --apply")
+        run.tell(f"deploy: INTERRUPTED (exit {e.code}): rerun deploy/railway/deploy.sh --apply")
         return int(e.code) if isinstance(e.code, int) else 1
     except KeyboardInterrupt:  # SIGINT: the cleanup ran too
-        run.say("deploy: INTERRUPTED (SIGINT): rerun deploy/railway/deploy.sh --apply")
+        run.tell("deploy: INTERRUPTED (SIGINT): rerun deploy/railway/deploy.sh --apply")
         return 130
-    return 0
+    return EXIT_OUTPUT_LOST if run.out_lost else 0
 
 
 if __name__ == "__main__":

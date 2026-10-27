@@ -126,6 +126,8 @@ elif cmd == "environment" and a[1] == "list":
     out = {"environments": [{"id": "env_1", "name": "production"}]}
 elif cmd == "environment" and a[1] == "edit":
     sc = [a[i + 1:i + 4] for i, x in enumerate(a) if x == "--service-config"]
+    if os.environ.get("REHEARSAL_SEAL_FAILS") and any(path == "variables.BFF_OIDC_CLIENT_SECRET.isSealed" for _, path, _ in sc):
+        fail("error: the stand-in refuses to seal BFF_OIDC_CLIENT_SECRET")
     for svc, path, value in sc:
         if path.endswith(".isSealed"):
             st.setdefault("sealed", []).append([svc, path.split(".")[1]])
@@ -240,6 +242,8 @@ elif "-Atc" in a:
     else:
         print("1")
 elif "deploy/sql/create_logins.sql" in a:
+    if os.environ.get("REHEARSAL_PAUSE_AT_LOGINS"):  # M2: the rehearsal closes the deployer's stdout meanwhile
+        time.sleep(1)
     sig = os.environ.get("REHEARSAL_SIGNAL_AT_LOGINS")
     if sig:
         # The operator's session ends (SIGTERM) or its terminal closes (SIGHUP) mid-run.
@@ -286,10 +290,10 @@ AUTH0 = r"""#!/usr/bin/env python3
 # shape. The CLI's session lives in $HOME/.config/auth0/config.json, as the real CLI keeps it without a
 # keyring (internal/config/config.go, internal/cli/login.go). The deployer gives the CLI a small
 # environment of its own, so this stand-in reads its settings (state, log, the scenario's knobs) from
-# auth0-rehearsal.json next to itself.
+# auth0-rehearsal.json in the rehearsal's bin directory (written in below: the deployer runs a copy, L2).
 import json, os, signal, sys, time
 a = sys.argv[1:]
-E = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "auth0-rehearsal.json")))
+E = json.load(open(os.path.join("__REHEARSAL_BIN__", "auth0-rehearsal.json")))
 state_path, log_path = E["REHEARSAL_A0_STATE"], E["REHEARSAL_A0_LOG"]
 st = json.load(open(state_path))
 flags = {"--agent-mode", "--no-input", "--no-color"}
@@ -312,7 +316,7 @@ stdin = sys.stdin.read() if "@-" in a else None
 home = os.environ.get("HOME", "")
 cfg_path = os.path.join(home, ".config", "auth0", "config.json")
 with open(log_path, "a") as f:
-    f.write(json.dumps({"argv": a, "key": key, "stdin": stdin is not None, "home": home,
+    f.write(json.dumps({"argv": a, "key": key, "stdin": stdin is not None, "home": home, "exe": os.path.abspath(__file__),
                         "tokens": sorted(k for k in os.environ if k.startswith("RAILWAY")),
                         "analytics": os.environ.get("AUTH0_CLI_ANALYTICS"), "dbus": os.environ.get("DBUS_SESSION_BUS_ADDRESS"),
                         "agent": not (flags - set(a))}) + "\n")
@@ -331,8 +335,10 @@ def opt(name):
 if flags - set(a):
     fail("the stand-in expects --agent-mode --no-input --no-color", "usage")
 skey = key + (" --reveal-secrets" if "--reveal-secrets" in a else "")
+if E.get("REHEARSAL_A0_PAUSE") == skey:  # M2: the rehearsal closes the deployer's stdout meanwhile
+    time.sleep(1)
 if E.get("REHEARSAL_A0_SIGNAL") == skey:
-    os.kill(os.getppid(), signal.SIGTERM)
+    os.kill(os.getppid(), getattr(signal, "SIG" + E.get("REHEARSAL_A0_SIG", "TERM")))
     time.sleep(3)
 if E.get("REHEARSAL_A0_FAIL") == skey:
     fail("API request failed: the stand-in refuses " + key)
@@ -473,7 +479,8 @@ def fresh_tenant() -> dict:
                   "client_secret": "DEFAULT-APP-CLIENT-SECRET-SENTINEL-19ee", "callbacks": []}],
         "connections": [{"id": "con_db", "name": A0_DB, "display_name": A0_DB, "strategy": "auth0",
                          "options": {"passwordPolicy": "good", "brute_force_protection": True, "disable_signup": False, "mfa": {"active": True},
-                                     "strategy_version": 2, "configuration": {}},
+                                     "strategy_version": 2, "configuration": {},
+                                     "authentication_methods": {"password": {"enabled": True}, "passkey": {"enabled": False}}},
                          "enabled_clients": ["defaultapp00000000000000000000001"]},
                         {"id": "con_google", "name": "google-oauth2", "display_name": "google-oauth2", "strategy": "google-oauth2",
                          "options": {"client_id": "", "client_secret": "GOOGLE-CONNECTION-SECRET-SENTINEL-3c1d", "scope": ["email", "profile"]},
@@ -570,7 +577,7 @@ def main() -> int:
         bindir = tmp / "bin"
         bindir.mkdir()
         for name, body in (("railway", RAILWAY), ("psql", PSQL), ("go", GO), ("auth0", AUTH0)):
-            (bindir / name).write_text(body)
+            (bindir / name).write_text(body.replace("__REHEARSAL_BIN__", str(bindir)))
             (bindir / name).chmod(0o755)
         a0_sha = hashlib.sha256((bindir / "auth0").read_bytes()).hexdigest()
         pinned_a0_sha = mod.AUTH0_CLI_SHA256
@@ -865,6 +872,29 @@ def main() -> int:
             if TOKEN in p.stdout + p.stderr:
                 failures.append(f"P6 SIG{label}: the token was printed")
 
+        # M2 (review round 1 of the Auth0 step): the deployer's stdout cannot be written. The rehearsal closes
+        # the pipe once the marker is printed (the stand-in pauses there, so the next write fails with EPIPE; a
+        # hung-up terminal's EIO is the same OSError); the cleanups must still run, and the run must end with
+        # its own exit code (74, or 128 + the signal), no traceback.
+        def lost(argv, env, marker):
+            with open(tmp / "lost-stderr", "w+") as errf:
+                p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=errf, text=True, env=env, cwd=ROOT)
+                seen = ""
+                for line in p.stdout:
+                    seen += line
+                    if marker in line:
+                        break
+                p.stdout.close()
+                p.wait(timeout=300)
+                errf.seek(0)
+                return p.returncode, seen, errf.read()
+        name = scenario("m2proxy", base)
+        env = dict(os.environ, REHEARSAL_PAUSE_AT_LOGINS="1", HTTPS_PROXY="http://127.0.0.1:9", https_proxy="http://127.0.0.1:9")
+        code, seen, err = lost([sys.executable, "-I", str(ROOT / "deploy/railway/railway_deploy.py"), "--apply"], env, "create_logins.sql")
+        shown.append((f"M2 stdout closed at the logins (exit {code}, proxies left: {state(name)['proxies']})", "stderr: " + (err[-300:] or "(empty)")))
+        if code != 74 or "Traceback" in err or state(name)["proxies"] or not state(name).get("proxy_deleted"):
+            failures.append(f"M2 (stdout closed with a proxy open): exit {code} (want 74), proxies {state(name)['proxies']}: {err[-400:]}")
+
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)
         _, out, res = apply(REHEARSAL_ECHO_TOKEN="1")
@@ -957,6 +987,8 @@ def main() -> int:
             if any(c["home"] != str(a0_home) or c["tokens"] or c["analytics"] != "false" or c["dbus"] != "disabled:" or not c["agent"]
                    for c in calls):
                 failures.append(f"{label}: an Auth0 CLI call ran with another home, the Railway token, analytics, a session bus or without agent mode")
+            if any(c["exe"] == str(bindir / "auth0") or not c["exe"].endswith("/auth0") for c in calls):
+                failures.append(f"{label}: the auth0 on PATH ran, not the private copy of the bytes whose SHA-256 was checked (L2)")
             if "signing the Auth0 CLI out" not in out:
                 failures.append(f"{label}: the sign-out is not reported")
 
@@ -1165,6 +1197,21 @@ def main() -> int:
             failures.append(f"A8 (sign-up not kept off) must fail: {res[:300]}")
         logged_out("A8", f, out)
 
+        # A15 (review L1): Railway refuses to seal the client secret: the run fails (not done) and says how
+        # to recover; the rerun seals it without reading it again.
+        f = a0_files("seal")
+        _, out, err, res = cli(f, REHEARSAL_SEAL_FAILS="1")
+        a0_shown.append(("A15.1 Railway refuses to seal the client secret", res))
+        if not res.startswith("FAIL") or "BFF_OIDC_CLIENT_SECRET is set but Railway did not seal it" not in res or "deploy: done" in out:
+            failures.append(f"A15 (the seal refused) must fail naming the recovery: {res[:300]}")
+        reveals = sum(c["key"] == "apps show" and "--reveal-secrets" in c["argv"] for c in a0_calls(f))
+        _, out, err, res = cli(f)
+        a0_shown.append(("A15.2 the rerun", res))
+        if res != "done" or ["web", "BFF_OIDC_CLIENT_SECRET"] not in rw_state(f).get("sealed", []) \
+                or sum(c["key"] == "apps show" and "--reveal-secrets" in c["argv"] for c in a0_calls(f)) != reveals:
+            failures.append(f"A15 (the rerun) must seal the client secret without reading it again: {res[:300]}")
+        logged_out("A15", f, out)
+
         # A9: the CLI quotes the judge's password in its error.
         f = a0_files("echo")
         runE, out, err, res = cli(f, REHEARSAL_A0_ECHO_STDIN="users create")
@@ -1251,6 +1298,24 @@ def main() -> int:
                 failures.append(f"A6 SIGTERM at {at}: the client secret reached Railway")
             logged_out(f"A6 SIGTERM at {at}", f, p.stdout)
 
+        # M2 in the Auth0 step: stdout closed (EPIPE), and closed then SIGHUP (the terminal hung up).
+        res_m2 = []
+        for tag, sig, want in (("epipe", None, 74), ("hup", "HUP", 129)):
+            f = a0_files("m2" + tag)
+            conf = dict(REHEARSAL_A0_PAUSE="connections list", **({"REHEARSAL_A0_SIGNAL": "connections list", "REHEARSAL_A0_SIG": sig} if sig else {}))
+            a0_conf(f, **conf)
+            env = {k: v for k, v in os.environ.items() if k != "GEMINUS_AUTH0_CLIENT_ID"}
+            env.update(f, GEMINUS_AUTH0_SETUP="cli", HTTPS_PROXY="http://127.0.0.1:9", https_proxy="http://127.0.0.1:9", **conf)
+            code, seen, err = lost([sys.executable, "-I", "-B", str(wrapper), str(ROOT / "deploy/railway/railway_deploy.py"), a0_sha],
+                                   env, "auth0 connections list")
+            res_m2.append((tag, code))
+            keys = [c["key"] for c in a0_calls(f)]
+            a0_shown.append((f"M2 {tag} in the Auth0 step (exit {code})", f"last calls: {keys[-3:]}; stderr: {err[-200:] or '(empty)'}"))
+            if code != want or "Traceback" in err:
+                failures.append(f"M2 {tag}: exit {code} (want {want}) or a traceback: {err[-400:]}")
+            if "logout" not in keys or a0_home.exists() or "connections update" in keys:
+                failures.append(f"M2 {tag}: the CLI was not signed out, its home is left, or the run went on writing: {keys[-4:]}")
+
         # I1: deploy.sh --install-auth0-cli with an archive that is not the pinned one: nothing installed, nothing in it run.
         dl = tmp / "dl"
         dl.mkdir()
@@ -1289,7 +1354,7 @@ def main() -> int:
         print(textwrap.indent(re.sub(r"(password: ).*", r"\1<the judge's password: here, on stderr, once>", errA), "A1 stderr | "))
         for label, text in a0_shown:
             print(textwrap.indent(text, f"{label} | "))
-        print(f"Auth0 step: A1 {len(writes)} writes to Auth0, A2 {len(tB['writes']) - len(writes)}; signals {res6a}")
+        print(f"Auth0 step: A1 {len(writes)} writes to Auth0, A2 {len(tB['writes']) - len(writes)}; signals {res6a}; stdout lost {res_m2}")
         print(f"signals {res6}; deploy.sh --help with bash -x, SHELLOPTS=xtrace, plain: exits {xt}")
     if failures:
         print("REHEARSAL FAILED:\n  - " + "\n  - ".join(failures))

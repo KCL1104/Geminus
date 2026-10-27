@@ -296,3 +296,68 @@ Coordinator 對本報告問題的處理：
 2. 評審帳號的 email：預設 `judge@geminus-demo.invalid`；owner 要用其他 email 時在部署前告知。
 3. 成員只在建立 organization 時加入（不放寬 migration 0004）：接受，demo 是新的部署；新的兩個 audit 欄位是例行的實作，不另立 D 編號。
 4. 本步驟處理 Auth0 client secret、評審密碼與 Railway token，部署前做一輪獨立審查（H-029），進行中；ADR-029 的 addendum 維持 PROPOSED。
+
+## Review round 1 fixes（2026-10-27，coordinator）
+
+審查報告：`checks/T-057_AUTH0_REVIEW_r1.md`（**依 coordinator 保存的結論重建**，原檔沒有保存）；CHANGES REQUESTED，M1、M2 與 L1–L6。依 H-029 修 M1、M2；L1、L2 的修法很小，一併修正；**L3–L6 延後**（Low）。全部以 `env -u RAILWAY_TOKEN -u RAILWAY_API_TOKEN`（以及不帶任何 AI key）執行；沒有呼叫 Railway、Auth0 tenant 或 AI；沒有 `--apply`。Evidence：`checks/evidence/2026-10-27-T-057-auth0-r1/`。
+
+### 修改
+
+- **M1**：`A0_SECRET_FIELDS` 移除 `password`，新的 `A0_VALUE_FIELDS`（原 `A0_TOKEN_FIELDS` 加 `password`）只在值**不是**物件時丟棄。所以 `options.authentication_methods.password`（`{"enabled": true}`）照常保留，帳號的密碼字串仍然丟棄。物件中的欄位經同一個 hook，物件內若有已知的 secret 欄位仍會被丟棄。替身 tenant 的 database connection 加上 `authentication_methods`（password、passkey）。
+- **M2**：stdout 寫不出去（任何 `OSError`：EPIPE、EIO）時，`say()` 記下 `out_lost`，把 stdout 的 fd 換成 `/dev/null`（child 與 Python 結束時的 flush 都不再碰到壞掉的 stream），並在下一個不在 cleanup 中的訊息處 raise `OutputLost`。Cleanup 包在 `@cleanup` 裡（`a0_close`、`proxy_close`、`check_proxies`），裡面的訊息不 raise。`exit_on_signal` 的訊息也容錯。最後的訊息走 `tell()`，不 raise。結束碼為 **74**（`EX_IOERR`）；signal 照舊 128+n；`reveal` 寫 stderr 失敗時不 traceback（密碼遺失，`GEMINUS_JUDGE_RESET_PASSWORD=1` 可重設）。
+- **L1**：`seal_now` 回傳成功與否。Client secret 沒有 sealed 時記入 `late`，所以 verification 失敗（不是 `done`），訊息寫明：重跑會 seal，或在 UI 手動 seal。重跑時 web 已有這個應用程式的 secret 但沒有 sealed 的話，不再讀 secret，直接 seal。
+- **L2**：preflight 讀 PATH 上的 `auth0` 一次並 hash。通過時，把**同一份 bytes** 寫進 `tempfile.mkdtemp`（0700）中的新檔（`O_EXCL`，0700），只執行該副本；deployer 結束時刪除（`atexit`）。替身的設定檔改由 rehearsal 寫入絕對路徑（因為執行的是副本），替身的 log 記下被執行的路徑。
+- Runbook §7.8：sign-up 列（M1）、client secret 列（L1）、登出列（M2）、CLI 的 pin（L2）。
+
+### Rehearsal 的新情境
+
+| 情境 | 檢查 |
+|---|---|
+| A1–A15 的 connection 帶 `authentication_methods.password`（M1） | 第一次：5 次寫入、設定與 H-034 相同；重跑：0 次寫入（`Auth0 step: A1 5 writes to Auth0, A2 0`） |
+| M2 stdout closed at the logins（TCP proxy 開著） | exit 74、沒有 traceback、proxy 已刪除 |
+| M2 epipe in the Auth0 step | exit 74、沒有 traceback、CLI 已登出且 home 已刪、pipe 關閉後沒有任何寫入（沒有 `connections update`） |
+| M2 hup in the Auth0 step（pipe 關閉後 SIGHUP） | exit 129，其餘同上 |
+| A15.1 Railway 拒絕 seal client secret（L1） | `FAIL: verification:`，訊息含復原步驟，沒有 `deploy: done` |
+| A15.2 重跑（L1） | `done`；`BFF_OIDC_CLIENT_SECRET` 已 sealed；沒有再呼叫 `apps show --reveal-secrets` |
+| 每個 Auth0 情境（L2） | 被執行的不是 PATH 上的 `auth0`（替身 log 的路徑） |
+
+Pipe 的關閉以 EPIPE 模擬。Hangup 的終端機回的是 EIO，同樣是 `OSError`，走同一條路徑；真正的 tty hangup NOT RUN。
+
+### Red → green（每個修正單獨拿掉，其他保留）
+
+| 拿掉 | rehearsal exit | 失敗的情境 |
+|---|---|---|
+| M1 | 1（`m1-red.log`） | A2、A3、A6、A8–A12、A14 停在「the options of … hold settings this script does not keep (custom database scripts …)」，正是審查描述的錯誤 |
+| M2 | 1（`m2-red.log`） | 三個 M2 情境皆為 exit 120 並有 `BrokenPipeError` traceback；proxy `tcp_1` 留著；CLI 沒有登出 |
+| L1 | 1（`l1-red.log`） | A15.1 為 `done`；A15.2 沒有 seal |
+| L2 | 1（`l2-red.log`） | A1、A10、A12、A13、A15 等：執行的是 PATH 上的 `auth0` |
+| 全部套上 | 0（`m1-green.log`、`m2-green.log`、`l1-green.log`、`l2-green.log`、`rehearsal.log`） | `rehearsal: PASS` |
+
+### 指令與 exit code（最後的程式碼；`exit-codes.txt`）
+
+| 指令 | exit |
+|---|---|
+| `python3 scripts/check_deploy.py` | 0 |
+| `python3 scripts/rehearse_railway_deploy.py` | 0（`rehearsal: PASS`） |
+| `bash -n deploy/railway/deploy.sh` | 0 |
+| `deploy.sh --help` | 0 |
+| `deploy.sh --dry-run`（go1.27.3 在 PATH 上） | 0（第一次 PATH 上沒有 `go`，preflight exit 1：`deploy-dry-run-no-go-on-path.log`） |
+| `python3 -m py_compile`（deployer、rehearsal） | 0 |
+| `make spec-check` | 0 |
+
+Go 沒有修改，所以沒有重跑 `make backend-test`（這次的 commit 只動 Python 與文件）。
+
+### 延後（Low，H-029）與部署時的處理
+
+- **L3**（補 rehearsal mutants V2–V7、V10、V12、V14 與 Go mutant GX2）：審查原文沒有保存，各 mutant 的定義無法重建；延後。
+- **L4**（評審密碼在背景 `--apply` 時會寫進輸出檔）：部署由 coordinator 在前景執行，密碼交給 owner 後不留存；延後。
+- **L5**（psql、`go run`、Railway CLI 會繼承 session 的 AI key）：部署時 coordinator 只把 `RAILWAY_TOKEN` 載入 `--apply` 的環境，AI key 不在其中；延後。
+- **L6**（報告與 runbook 說得過頭的兩處）：延後。
+
+### NOT RUN
+
+- 真實的 Auth0、Railway、AI 呼叫（`--apply`、`--install-auth0-cli`、裝置登入）。
+- 真正的 tty hangup（以 pipe 的 EPIPE 代替）。
+- L3–L6。
+
+注意：原本負責修正的 agent 在用量上限停止、工作遺失，所以這次的修正由 coordinator 自己完成並驗證（本節），**修正者與驗證者是同一人**，沒有另一個人檢查修正本身。依 H-029，M1、M2 修完並經 coordinator 驗證即可部署。
