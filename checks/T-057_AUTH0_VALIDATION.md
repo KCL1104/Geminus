@@ -526,3 +526,48 @@ Rehearsal：
 - 部署結束後執行 `railway logout`。
 
 project 中原本就有的 `Geminus` 服務（接了這個 repo 的 branch）沒有動到，是否刪除由 owner 決定。
+
+## 部署後確認：live AI 與完整流程（2026-10-27，coordinator，owner 授權）
+
+**Live AI**（owner 的決定）：
+- Railway CLI 以裝置登入，owner 核准。
+- worker 設 `GEMINUS_MUSE_API_KEY`：由 `.env` 經 shell builtin `printf` 傳入 stdin，不在任何程式的參數中，之後立刻 seal（以 stdin JSON，`committed: true`）。
+- api 與 worker 都設 `AI_PROVIDER=meta`、`AI_POLICY_APPROVAL=H-029`、`AI_MODEL=muse-spark-1.3`、`GEMINUS_AI_LIVE=on`。`AI_VISION_*` 不設，照片路徑跟 `AI_PROVIDER`。
+- 讀回確認：key 只在 worker 上而且 sealed，api 沒有 key。
+- 重新部署後，worker 的 log 有 `LIVE_AI_ON`、`PHOTO_PATH_ON`。
+
+**發現 1：demo 沒有內容。**
+- Seed 只建立 organization 與評審的 membership。評審登入後看到「No projects yet.」，介面也沒有建立 project 的入口。
+- 處理：以評審的 session，經網站自己的 BFF（`/api/v1`，同源、帶 `X-Geminus-Request: 1`，`Idempotency-Key`）建立 project「Demo electronics line (synthetic)」，並以範本 `electronics_line`／`electronics_assembly_test_line` 建立 model（version 1）。資料在資料庫中，重新部署不會消失。
+- 待辦：seed 或 runbook 要加上這一步。
+
+**發現 2：Meta 從 us-west2 回 404。**
+- 第一次跑完整流程時，文字提案與照片提案的第一個呼叫都得到 `provider_status=404`、`not_found_error`（`AI_REQUEST_REJECTED`，花費 0）。
+- 已確認：
+  - `.env` 的 key 在本機的 `/v1/models` 回 200，列出 `muse-spark-1.3`、`sam-3.1`。
+  - 無效的 key 是 401，不是 404。
+  - 從 Railway 的 web 容器不帶 key，三個端點都是 401，與本機相同，所以網路沒有被整個擋掉。為此暫時登錄了一把專用的 SSH key，測完已從 Railway 刪除並在本機銷毀。
+- 以真正的 key 從容器測 `/v1/models` 這一步，被 Claude Code 的自動權限檢查擋下，沒有執行。
+- Owner 選擇把 worker 搬到 `asia-southeast1-eqsg3a`（Singapore；environment patch，committed，讀回確認）。之後就正常了。
+- 原因推定為 Meta 依地區回應（未以 key 直接證實）。
+- 待辦：把 worker 的 region 寫進 deployer 的 patch。
+
+**完整流程**（Playwright 1.56.1，照 `apps/web-e2e` 的 lockfile 安裝；評審帳號；live 網站；腳本 `workflow.cjs.txt`，密碼只經環境變數，不在檔案中；log `workflow-singapore.log`；截圖在同一個資料夾）：
+
+| 步驟 | 結果 |
+|---|---|
+| 以評審帳號經 Auth0 登入 | 成功 |
+| 文字提案（scenario）：「Add a second ICT tester…」 | 約 50 s 後 **ready**：ICT testers 的 capacity 2 → 3。Server：**Low risk**，所有檢查通過；AI 自評 90% |
+| 批准 → 開啟 scenario → 執行 baseline 與 scenario | 兩者都 **Completed 5 of 5 replications** |
+| 比較 | 中位 lead time **469.51 min → 461.11 min（縮短 1.8%）**，並有 95% CI 與「有工件在結束時仍在線上」的提示 |
+| 照片提案（demo 平面圖） | SAM 找到 10 個框；judge 回答（output 15,418 tokens，在 32,000 的上限內）；**server 拒絕（`invalid`）**：6 個檢查失敗，新增的站沒有任何 source 能到達，另有一個 routing 機率無效 |
+
+花費（worker 的 log）：文字 USD 0.042401、SAM USD 0.02、照片 judge USD 0.08250775，合計約 **USD 0.145**。
+
+照片 judge 的 output 為 15,418 tokens，超過舊的 8,192：今天提高到 32,000 確實是必要的。
+
+**發現 3：照片提案在完整範本上被拒。**
+- 上午的照片 smoke 以空的 `bare-line` 為 base，結果是 ready。
+- 在已經有各站的範本上，AI 新增了沒有接進產線的站，server 照規則拒絕。這是安全檢查應有的行為，但 demo 的照片流程需要決定做法（owner／coordinator）。
+
+**NOT RUN**：照片提案的批准；以 owner 帳號登入；手機尺寸的畫面。

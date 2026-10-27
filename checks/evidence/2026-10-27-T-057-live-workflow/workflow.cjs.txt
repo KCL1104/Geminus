@@ -1,0 +1,111 @@
+// The demo's whole workflow on the live site, as the judge, with live AI:
+// A. text -> scenario proposal -> server's risk -> approve -> run baseline and scenario -> comparison;
+// B. photo -> proposal -> approve as version 2. Screenshots in shots/; the password from JUDGE_PASSWORD only.
+const { chromium } = require("/home/kuoba123/Geminus/apps/web-e2e/node_modules/@playwright/test");
+const WEB = "https://web-production-16041.up.railway.app";
+const MODEL = "/models/mdl_01M5YYWTXKA0AEKCP70A3H89DW";
+const PHOTO = "/home/kuoba123/Geminus/testdata/photos/electronics-line-demo.png";
+const OUT = __dirname + "/shots";
+const t0 = Date.now();
+const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s]`, ...a);
+
+async function shot(page, label) {
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.screenshot({ path: `${OUT}/${label}.png`, fullPage: true });
+  const text = await page.locator("main").innerText().catch(() => "");
+  log(`${label} ${new URL(page.url()).pathname}\n    ${text.replace(/\s+/g, " ").slice(0, 700)}`);
+}
+
+// Waits for the proposal page to leave "generating"; returns the status text found.
+async function proposalOutcome(page, label) {
+  const ends = ["Ready for your review.", "The AI needs more information", "Geminus refused the AI's answer", "The proposal could not be written."];
+  const deadline = Date.now() + 6 * 60_000;
+  while (Date.now() < deadline) {
+    const text = await page.locator("main").innerText().catch(() => "");
+    const found = ends.find((e) => text.includes(e));
+    if (found) { await shot(page, label); return found; }
+    await page.waitForTimeout(5000);
+  }
+  await shot(page, label + "-timeout");
+  return "timeout";
+}
+
+async function signIn(page) {
+  await page.goto(WEB + "/auth/login");
+  await page.waitForURL(/auth0\.com/, { timeout: 30000 });
+  const user = page.locator("input[name=username]");
+  await user.fill("judge@geminus-demo.invalid");
+  const pw = page.locator("input[name=password]");
+  if (!(await pw.isVisible().catch(() => false))) {
+    await user.press("Enter");
+    await pw.waitFor({ state: "visible", timeout: 30000 });
+  }
+  await pw.fill(process.env.JUDGE_PASSWORD);
+  await pw.press("Enter");
+  await page.waitForURL((u) => !u.hostname.endsWith("auth0.com"), { timeout: 45000 });
+  await page.getByRole("button", { name: "Sign out" }).waitFor({ timeout: 30000 });
+  log("signed in as the judge");
+}
+
+// The mode is a React Aria Select: its button, then the option in the listbox it opens.
+async function pickMode(page, label) {
+  await page.getByRole("button", { name: /The AI proposes/ }).click();
+  await page.getByRole("option", { name: label }).click();
+  await page.getByRole("button", { name: new RegExp(label) }).waitFor({ timeout: 5000 });
+}
+
+async function approve(page, name, outcome, label) {
+  const button = page.getByRole("button", { name });
+  await button.click(); // asks
+  await button.click(); // confirms
+  await page.getByRole("heading", { name: outcome }).waitFor({ timeout: 60000 });
+  await shot(page, label);
+}
+
+(async () => {
+  require("fs").mkdirSync(OUT, { recursive: true });
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  const result = {};
+  await signIn(page);
+
+  // A. Text, as a scenario.
+  if (!process.env.SKIP_A) {
+    await page.goto(WEB + MODEL);
+    await page.getByLabel("Describe the change").fill("Add a second ICT tester so the ICT step can test two boards at once, and see how the line's lead time changes.");
+    await pickMode(page, "A scenario to simulate");
+    await shot(page, "A1-ask");
+    await page.getByRole("button", { name: "Send to the AI" }).click();
+    await page.waitForURL(/\/proposals\//, { timeout: 60000 });
+    result.text = await proposalOutcome(page, "A2-proposal");
+    if (result.text === "Ready for your review.") {
+      await approve(page, "Approve and save the scenario", "Approved. Scenario saved.", "A3-approved");
+      await page.getByRole("link", { name: "Open the scenario" }).click();
+      await page.waitForURL(/\/scenarios\//, { timeout: 30000 });
+      await shot(page, "A4-scenario");
+      await page.getByRole("button", { name: "Run baseline and scenario" }).click();
+      await page.getByText(/Both runs completed\.|run failed|nothing to compare/).first().waitFor({ timeout: 10 * 60_000 });
+      await page.getByText("Key metrics").first().waitFor({ timeout: 60000 }).catch(() => {});
+      await shot(page, "A5-comparison");
+      result.runs = (await page.locator("main").innerText()).includes("Both runs completed.") ? "both completed" : "not completed";
+    }
+  }
+
+  // B. Photo, as a change to the model.
+  if (!process.env.SKIP_B) {
+    await page.goto(WEB + MODEL);
+    // "A change to the model" is the default
+    const chooser = page.waitForEvent("filechooser", { timeout: 10000 }).catch(() => null);
+    await page.getByRole("button", { name: "Propose from a photo…" }).click();
+    const fc = await chooser;
+    if (fc) await fc.setFiles(PHOTO); else await page.locator("input[type=file]").setInputFiles(PHOTO);
+    await page.waitForURL(/\/proposals\//, { timeout: 120000 });
+    result.photo = await proposalOutcome(page, "B1-photo-proposal");
+    if (result.photo === "Ready for your review.") {
+      await approve(page, /Approve and create version \d+/, /Approved\. Version \d+ created\./, "B2-approved");
+    }
+  }
+
+  log("RESULT", JSON.stringify(result));
+  await browser.close();
+})().catch((e) => { log("ERROR", e.message.split("\n")[0]); process.exit(1); });
