@@ -478,6 +478,23 @@ func TestThePhotoSmokeFindsTheFloorPlansShapes(t *testing.T) {
 	}
 }
 
+// A box SAM puts outside its own frame is counted for its concept but has
+// no size (the client refuses the answer: invalid); the whole frame is 1 by
+// 1.
+func TestABoxOutsideTheFrameHasNoSize(t *testing.T) {
+	seg := fake.NewSegmenter()
+	seg.Script("rectangle", 1200, 520, provider.Segment{ObjectID: 0, Confidence: 0.9, Box: provider.Box{X1: 1100, Y1: 10, X2: 1299, Y2: 59}},
+		provider.Segment{ObjectID: 1, Confidence: 0.9, Box: provider.Box{X1: 0, Y1: 0, X2: 1199, Y2: 519}})
+	r, _, err := photoSmokeWith(t, &photoJudge{images: true}, photoSAM{seg}, spend.NanoPerUSD, []string{"rectangle"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if by := r.Segmenter.ByConcept; r.Status != "invalid" || len(by) != 1 || by[0].Boxes != 2 ||
+		!slices.Equal(by[0].Sizes, []aievals.BoxSize{{Width: 1, Height: 1}}) {
+		t.Errorf("%s %+v", r.Status, by)
+	}
+}
+
 // Without an override the report says so and lists the pack's concepts; an
 // override the client would refuse is refused before any call.
 func TestThePhotoSmokesConceptsAreThePacksByDefault(t *testing.T) {
