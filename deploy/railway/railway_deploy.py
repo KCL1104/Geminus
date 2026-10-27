@@ -592,6 +592,14 @@ class Run:
     def resources(self) -> None:
         self.say("2. PostgreSQL, the bucket, the services, their config files, domains")
         services = self.rw("service", "list", *self.env(), "--json")
+        missing = [s for s in (self.spec["database"], *SERVICES) if self.find_id(services, s) is None]
+        if self.project_token and missing and not self.dry:
+            # CLI 5.64.2: `railway add` creates the service, then records it in this directory's link
+            # (src/commands/add.rs, Configs::link_service), which a project token has none of; `railway link`
+            # lists workspaces, which a project token cannot. So it would fail after creating each one.
+            raise Failed(f"a project token (RAILWAY_TOKEN) cannot create the missing {', '.join(missing)}: the Railway CLI creates "
+                         "each one and then fails (`Project not found. Run railway link`). Set RAILWAY_API_TOKEN (an account or "
+                         "workspace token) instead, with GEMINUS_RAILWAY_PROJECT=<the project's name>; nothing was created")
         if self.find_id(services, self.spec["database"]) is None:
             self.rw("add", "--database", "postgres", "--json")
         self.database_seen = True

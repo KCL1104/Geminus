@@ -895,6 +895,16 @@ def main() -> int:
         if code != 74 or "Traceback" in err or state(name)["proxies"] or not state(name).get("proxy_deleted"):
             failures.append(f"M2 (stdout closed with a proxy open): exit {code} (want 74), proxies {state(name)['proxies']}: {err[-400:]}")
 
+        # T1: a project token (RAILWAY_TOKEN) on a project without the services: CLI 5.64.2 would create each one
+        # and then fail to record it (no linked directory), so the run stops before any `railway add`.
+        name = scenario("t1", {"projects": ["geminus-demo"], "services": [], "buckets": [], "vars": {}, "domains": {}, "proxies": [],
+                               "calls": [], "deploys": []})
+        _, out, res = apply(RAILWAY_TOKEN=TOKEN, RAILWAY_API_TOKEN=None)
+        shown.append(("T1 a project token without the services", res))
+        if not res.startswith("FAIL: a project token") or "RAILWAY_API_TOKEN" not in res \
+                or any(c["argv"][:1] in (["add"], ["init"]) or c["argv"][:2] == ["bucket", "create"] for c in state(name)["calls"]):
+            failures.append(f"T1 (a project token, no services) must stop before creating anything: {res[:300]}")
+
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)
         _, out, res = apply(REHEARSAL_ECHO_TOKEN="1")

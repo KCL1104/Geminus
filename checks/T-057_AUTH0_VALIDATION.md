@@ -363,3 +363,30 @@ Go 沒有修改，所以沒有重跑 `make backend-test`（這次的 commit 只�
 注意：原本負責修正的 agent 在用量上限停止、工作遺失，所以這次的修正由 coordinator 自己完成並驗證（本節），**修正者與驗證者是同一人**，沒有另一個人檢查修正本身。依 H-029，M1、M2 修完並經 coordinator 驗證即可部署。
 
 CI（0bc6161，run 40495844724）：**spec-check 失敗**，其餘 5 個 job 成功。原因是 commit 漏了重新產生的 `checks/docs-check.json`：新增的 `T-057_AUTH0_REVIEW_r1.md` 讓 `markdown_files` 由 139 變成 140，CI 的「Committed check reports match a fresh run」因此失敗。這不是程式的失敗，下一個 commit 會帶上重新產生的檔案。
+
+## 第一次 `--apply`（2026-10-27，coordinator）：project token 無法建立服務
+
+Owner 授權部署；`.env` 的 `RAILWAY_TOKEN` 是 owner 確認過的 project token（owner 的既有 project，environment `production`）。環境只有 `RAILWAY_TOKEN`、`GEMINUS_AUTH0_ISSUER`、`GEMINUS_SEED_OWNER_SUBJECT`、`GEMINUS_AUTH0_AUDIENCE`、`GEMINUS_RAILWAY_BUCKET_REGION`，沒有任何 AI key。
+
+**經過：**
+1. Preflight 通過。`railway status` 成功。
+2. `railway add --database postgres` 以 exit 1 結束：「Project not found. Run `railway link`」。
+3. 腳本以 `FAIL` 結束，到 Auth0 步驟之前就停了。
+
+**原因**（CLI v5.64.2 的原始碼：`src/commands/add.rs`、`src/config.rs` 的 `get_linked_project`／`get_linked_project_mut`／`link_service`、`src/commands/link.rs`）：
+- 在 project token 下，`get_linked_project` 由 token 取得 project，所以 `status` 成功。
+- `add` 建立服務之後，`link_service` 要改本目錄在 `~/.railway/config.json` 的 link。這個目錄從來沒有被 link 過，所以回 `ProjectNotFound`。
+- `railway link` 要列出 workspace，project token 做不到。
+
+所以 **`Postgres` 服務已經建立了**（之後以 `railway status --json` 唯讀確認：project 中有 `Postgres` 和一個原本就有的 `Geminus`，後者不是腳本建的，不會被動到）。
+
+Rehearsal 的 Railway 替身沒有模擬這個行為，所以沒有抓到。
+
+**修正：**
+- `resources()`：在 project token 下，只要缺 database 或任何服務，就在任何 `add`、`bucket create` 之前停下，訊息說明原因，並要求改用 `RAILWAY_API_TOKEN` 加上 `GEMINUS_RAILWAY_PROJECT=<project 的名稱>`。
+- Rehearsal 新增 T1：project token、沒有服務的 project。必須在建立任何東西之前停下。
+  - Red：拿掉這個檢查時 T1 失敗，因為它一路建立服務（`project-token/rehearsal-red.log`）。
+  - Green：`rehearsal: PASS`（`project-token/rehearsal-green.log`）。
+- Runbook §7.7 的 Token 段落：project token 只適用於服務都已存在的 project。
+
+**下一步**：owner 建立 account 或 workspace token（`RAILWAY_API_TOKEN`）後，以 `GEMINUS_RAILWAY_PROJECT=<那個 project 的名稱>` 重跑 `--apply`。已經存在的 `Postgres` 會被找到並沿用，不會重建。
