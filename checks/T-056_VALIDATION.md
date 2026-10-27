@@ -666,3 +666,28 @@ AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIV
 | d03f618 | frame 外的框沒有尺寸（測試） |
 | 203e15e | mutation 的證據與 `verify.sh` |
 | （本節的 commit） | 本節、驗證的 log、D-131 (h) 的花費估計更正 |
+
+## Coordinator 驗證：SAM 概念調整（2026-10-27）
+
+`t056-concepts` 的八個 commit（1798fec..11cc4a9）cherry-pick 到主線（89bdfdb 之後），沒有衝突。
+
+指令與結果（evidence：`checks/evidence/2026-10-27-T-056concepts-coordinator/`，`exit-codes.txt` 依執行順序；HEAD e4adcfc；go1.27.3；DB 測試在暫時的 cluster（`/var/lib/postgresql/geminus-throwaway-hkb6`，port 55450，container 重啟後由 coordinator 重新啟動））：
+
+| 指令 | exit | 說明 |
+|---|---|---|
+| `make spec-check` | 0 | |
+| `make backend-test "GOFLAGS=-count=1 -timeout=30m"` | 0 | 84 個 package ok |
+| `make architecture-check` | 0 | 96 packages, 26 rules |
+| `make ai-eval` | 0 | fake provider |
+| `go run ./scripts/gen-photo-demo -check` | 0 | demo 的 fixture 可重現 |
+| `go test -race -count=1 -timeout 30m`（ai、aievals、domainpack、proposals、prompts、cmd） | 0 | 26 個 package ok |
+| `make integration-test`（新的 dt_test_hkb12c，跑完刪除） | 0 | 38 個 package ok，FAIL 或 SKIP 共 0 個 |
+
+NOT RUN：任何 live 呼叫（新的詞彙與 `photo-0.2.0` 尚未經 live model）；e2e 與前端（沒有改 UI）；完整的 `make backend-race`。
+
+Coordinator 對本節問題的處理：
+1. Arrow 的框計入步驟上限：維持 D-132 (a)（server 仍有上限）；只算站點概念的較嚴格規則比賽後再考慮。
+2. 真實照片上 `rectangle` 可能匹配很多東西：只用 demo 圖片（H-029、H-035）；超過 64 個框時 server 回 `invalid`，是安全的失敗。
+3. Burn-in 與手工站沒有自己的概念：demo 沒有這兩種；比賽後再考慮第 9 個概念（需改 D-123）。
+4. 提交的 fake 回答仍以機台概念找站：live 探索後，把 fixture 換成 SAM 實際回的形狀（後續）。
+5. 新的 prompt 版本 `photo-0.2.0`：下一步由有 key 的 session 先跑探索（`AI_SMOKE_PHOTO_CONCEPTS`），再以新詞彙跑一次 `make ai-smoke-photo-live`。
