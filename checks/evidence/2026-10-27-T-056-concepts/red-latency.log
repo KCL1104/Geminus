@@ -1,0 +1,17 @@
+=== RUN   TestASegmentationsLatencyIsReturned
+=== RUN   TestASegmentationsLatencyIsReturned/nothing_found
+    segment_test.go:291: latency 0s, want at least 15ms
+=== RUN   TestASegmentationsLatencyIsReturned/provider_error
+    segment_test.go:291: latency 0s, want at least 15ms
+=== RUN   TestASegmentationsLatencyIsReturned/answered
+    segment_test.go:291: latency 0s, want at least 30ms
+=== NAME  TestASegmentationsLatencyIsReturned
+    segment_test.go:303: timeout: latency 0 ms, ai provider: timeout
+--- FAIL: TestASegmentationsLatencyIsReturned (0.12s)
+    --- FAIL: TestASegmentationsLatencyIsReturned/nothing_found (0.02s)
+    --- FAIL: TestASegmentationsLatencyIsReturned/provider_error (0.02s)
+    --- FAIL: TestASegmentationsLatencyIsReturned/answered (0.03s)
+FAIL
+FAIL	github.com/kcl1104/geminus/internal/ai/provider	0.124s
+FAIL
+exit 1

@@ -256,6 +256,54 @@ func TestASegmentationTimesOut(t *testing.T) {
 	}
 }
 
+// The segmentation's latency is in the metadata it returns, whether it
+// ends with an answer, a provider's failure or a timeout (the first live
+// photo smoke, run 01M5XDJ3T0TTGE55K3A3JVK29N, reported latency_ms 0 for a
+// run of about 6 s: the deferred write went to a copy after the return
+// value had been taken).
+func TestASegmentationsLatencyIsReturned(t *testing.T) {
+	const pause = 15 * time.Millisecond
+	slowly := func(answer func(context.Context, SegmentCall) (SegmentAnswer, error)) *segBackend {
+		return &segBackend{respond: func(ctx context.Context, call SegmentCall) (SegmentAnswer, error) {
+			time.Sleep(pause)
+			return answer(ctx, call)
+		}}
+	}
+	failing := func(context.Context, SegmentCall) (SegmentAnswer, error) {
+		return SegmentAnswer{}, NewError(CodeRateLimited, 429, "meta")
+	}
+	for name, c := range map[string]struct {
+		b        *segBackend
+		concepts []string
+		least    time.Duration
+		code     Code
+	}{
+		"answered":       {slowly(found(64, 48, seg(0, 1, 1, 10, 10, 0.9))), []string{"machine", "conveyor belt"}, 2 * pause, ""},
+		"nothing found":  {slowly(found(0, 0)), []string{"rectangle"}, pause, ""},
+		"provider error": {slowly(failing), []string{"machine", "arrow"}, pause, CodeRateLimited},
+	} {
+		t.Run(name, func(t *testing.T) {
+			res, err := segClient(t, c.b).Segment(context.Background(), segRequest(t, c.concepts...))
+			if CodeOf(err) != c.code {
+				t.Fatalf("%v", err)
+			}
+			if got := time.Duration(res.Metadata.LatencyMillis) * time.Millisecond; got < c.least || got > 10*time.Second {
+				t.Errorf("latency %v, want at least %v", got, c.least)
+			}
+		})
+	}
+	// A timeout too.
+	stuck := &segBackend{respond: func(ctx context.Context, call SegmentCall) (SegmentAnswer, error) {
+		<-ctx.Done()
+		return SegmentAnswer{UnknownAttempts: 1}, NewError(CodeTimeout, 0, "meta").WithCause(ctx.Err())
+	}}
+	res, err := segClient(t, stuck, func(b *Budget) { b.Timeout, b.AttemptTimeout = 50*time.Millisecond, 50*time.Millisecond }).
+		Segment(context.Background(), segRequest(t, "machine"))
+	if CodeOf(err) != CodeTimeout || res.Metadata.LatencyMillis < 50 {
+		t.Errorf("timeout: latency %d ms, %v", res.Metadata.LatencyMillis, err)
+	}
+}
+
 // A billable segmenter is called only through a metered client: each
 // concept's call is reserved for at (1 + retries) images at the model's
 // image price, refused when the meter refuses, and settled at the images

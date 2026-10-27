@@ -264,7 +264,7 @@ func (c *SegmentClient) checkRequest(req SegmentRequest) bool {
 // Segment asks where each concept is in the image, one backend call per
 // concept, and returns the checked segments of all of them; any failure
 // fails the whole segmentation (what was spent is settled all the same).
-func (c *SegmentClient) Segment(ctx context.Context, req SegmentRequest) (Segmentation, error) {
+func (c *SegmentClient) Segment(ctx context.Context, req SegmentRequest) (out Segmentation, _ error) {
 	if err := ctx.Err(); err != nil {
 		return Segmentation{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -279,13 +279,17 @@ func (c *SegmentClient) Segment(ctx context.Context, req SegmentRequest) (Segmen
 	}
 	defer c.release(req.OrganizationID)
 
-	out := Segmentation{Metadata: SegmentMetadata{Provider: c.backend.Name(), Role: req.Role, ImageDigest: req.Image.Digest,
+	out = Segmentation{Metadata: SegmentMetadata{Provider: c.backend.Name(), Role: req.Role, ImageDigest: req.Image.Digest,
 		Concepts: len(req.Concepts)}}
 	meta := &out.Metadata
 	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
 	defer cancel()
 	start := time.Now()
-	defer func() { meta.LatencyMillis = time.Since(start).Milliseconds() }()
+	// out is the named result, so this write reaches what the caller gets:
+	// every return below has already copied out into it when the deferred
+	// call runs (the first live photo smoke reported 0 while the write
+	// went to a local after the copy).
+	defer func() { out.Metadata.LatencyMillis = time.Since(start).Milliseconds() }()
 	frame := [2]int{}
 	for i, k := range req.Concepts {
 		call := SegmentCall{Image: req.Image, Concept: k, Role: req.Role, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
