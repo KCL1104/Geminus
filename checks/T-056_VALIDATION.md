@@ -529,3 +529,37 @@ Coordinator 對本輪問題的處理：
 4. Spend record 的 `smoke-photo`：已記入 D-114（1abfa01）。
 
 結論：review 第 1 輪的 M1、M2 已修正並由 coordinator 驗證（L1、L4 一併修正）；依 H-029，T-056 可以進行第一次 SAM 3.1 的 live 呼叫：以有 key 的新 session 執行 `make ai-smoke-photo-live`，一張 demo 圖片、一次一個 proposal、上限 USD 1，只經 worker 的照片 pipeline，不用 curl。
+
+## Live 執行：照片（SAM 3.1＋Muse Spark）（2026-10-27）
+
+依 H-029、H-033、H-035 與 review 第 1 輪 I1，在 coordinator 驗證過的程式（HEAD 98a800a，branch `claude/lucid-meitner-vq1awo`）上，由有 key 的 session（T-055 live 的同一個）執行**一次**照片 smoke。證據在 `checks/evidence/2026-10-27-T-056-live/`（`environment.txt`、`smoke-photo.log`）。
+
+- **Key**：`GEMINUS_MUSE_API_KEY` 只檢查名稱；值、長度、前綴沒有印出、記錄或出現在 argv。`AI_VISION_*` 都沒有設（照片路徑跟隨 `AI_PROVIDER`）。沒有對 SAM 手動 curl，沒有經 API 送照片 proposal，沒有動 Railway。
+- **不記**：prompt、回答文字、框座標、影像 bytes、key（report 本身也不含這些）。
+
+### 指令與結果
+
+| 指令 | exit | 結果 |
+|---|---|---|
+| `AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-photo-live`（00:53:28Z–00:53:34Z） | **0** | run `01M5XDJ3T0TTGE55K3A3JVK29N`：status **needs_input**（server 自己回，D-131 (d)），server risk none；gates `needs_input_kept_changes` 0、`pipeline_failed` 0、`ready_without_server_validation` 0；observations `no_boxes` **1**（stderr 有 WARNING），其餘（`over_reservation`、`billed_input_over_reserved`、`frame_not_the_image`、`images_processed_not_one`）0；`complete` true |
+
+- **Report**：`checks/ai-evals/live-smoke-photo-2026-10-27T005328Z-01M5XDJ3T0TTGE55K3A3JVK29N-muse-spark-1.3.json`。
+- **Spend record**（`checks/ai-evals/live-spend.jsonl`）：`open` kind `smoke-photo`、model `muse-spark-1.3`、approval H-029、cap 1,000,000,000；`close` settled＝committed 20,000,000 nano-USD、result complete。
+- **影像與 base**：`testdata/photos/electronics-line-demo.png`（PNG 1200×520，14,197 bytes，以 worker 的方式驗證）；base `testdata/photos/bare-line.json`（electronics_line）。
+- **Segmenter（SAM 3.1）**：8 個 concept（`smt line`、`aoi machine`、`ict tester`、`fct tester`、`burn-in chamber`、`packing station`、`conveyor belt`、`workstation`），8 個呼叫，**8 個都有回答，0 個有框，框數 0**；每個 concept 的 `images_processed` 皆為 **1**（符合預期）；計費 8 張；unknown attempt 0；8 個預留共 60,000,000、花費 **20,000,000 nano-USD（USD 0.02）**；同時持有的最大值 25,000,000。**回答的 frame 沒有記錄**（`frames` 是空的：沒有任何結果，所以無從比對 1200×520；`frame_not_the_image` 0）。
+- **Judge（Muse Spark）**：**沒有呼叫**（`asked` false）：沒有任何框時 server 自己回 needs_input、不呼叫 vision model（D-131 (d)）。所以 count_tokens、預留、`usage.input_tokens` 與 count 的比較、judge 回答的 `model` 字串都**沒有資料**；`served_models` 只有 `sam-3.1`。
+- **花費**：總計 **USD 0.02**（cap 1.00）；今天（UTC 2026-10-27）的 record 只有這一筆。
+
+### 意外的結果
+
+1. **SAM 3.1 在 demo 圖片上找不到任何一個 concept**（`no_boxes`）。Demo 圖片是產生的平面圖（淺色底上的標字方框與箭頭：SMT、AOI、ICT 1／2、FCT、PACK），不是實物照片；SAM 的文字提示是找實物（機台、輸送帶），對畫出來的方框可能就是找不到。這是 §9 問題 9（8 個 concept 的措辭是否找得到東西）的第一個 live 答案：**在目前的 demo 圖片上找不到**。照片 proposal 的 judge 路徑因此在 live 從未走到。可能的下一步（owner／coordinator 決定，本 session 沒有做）：(a) 換一張更像實物的 synthetic demo 影像（例如 3D 渲染的產線）；(b) 改 concept 的措辭（例如 `box`、`rectangle`、`arrow`），但這會改 D-131 (b) 與 ELECTRONICS_LINE §13；(c) 平面圖跳過 SAM、只用 Muse Spark 讀圖（改 D-131 (a)）。不論哪一個都需要 reviewed change，之後再跑一次 smoke。
+2. **Segmenter 的 `latency_ms` 為 0**（run 實際約 6 s）：`provider.SegmentClient`（`internal/ai/provider/segment.go:288`）以 `defer` 寫 `meta.LatencyMillis`，但函式以 `return out, err` 回傳 `out` 的值（非具名回傳），回傳值在 defer 執行前已複製，所以回傳的 metadata 的延遲永遠是 0（影響 report 與 audit 的 segmenter 延遲；不影響花費或安全）。本 session 只記錄、沒有修。
+
+### NOT RUN
+
+- Judge 的 live 呼叫（count_tokens 與 Messages）、count 與計費 input 的比較（H-037 的未決事項）、judge 的 `model` 字串：因為沒有框，管線沒有走到。
+- SAM 回答的 frame 是否為 1200×520：沒有結果可比對。
+- 照片 proposal 經 API／worker／DB 的路徑、人工批准、Railway。
+- 第二次 run：依指示只跑一次。
+
+`make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check.log`）。

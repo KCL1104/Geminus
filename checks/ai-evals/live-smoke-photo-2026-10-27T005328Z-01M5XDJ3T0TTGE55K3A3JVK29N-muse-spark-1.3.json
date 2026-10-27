@@ -1,0 +1,105 @@
+{
+	"suite": "T-056 live photo smoke (the photo pipeline once: segmenter, count_tokens, judge, server review; review round 1, I1)",
+	"kind": "smoke-photo",
+	"provider": "meta",
+	"model": "muse-spark-1.3",
+	"segmentation_model": "sam-3.1",
+	"served_models": [
+		"sam-3.1"
+	],
+	"approval": "H-029",
+	"date": "2026-10-27",
+	"run_id": "01M5XDJ3T0TTGE55K3A3JVK29N",
+	"output_locale": "en",
+	"image": {
+		"path": "testdata/photos/electronics-line-demo.png",
+		"upload_bytes": 14197,
+		"media_type": "image/png",
+		"width": 1200,
+		"height": 520,
+		"stored_bytes": 14197,
+		"stored_sha256": "sha256:6b284ed7efc0b15140808f1cf8922e91f7d9ef0276f6d0f16640f3725cbba605",
+		"verified_as_the_worker_does": true
+	},
+	"base": {
+		"path": "testdata/photos/bare-line.json",
+		"domain": "electronics_line",
+		"ir_hash": "sha256:a2290b3eb2cd75613da34ecfb9bd73da07ba68116eb8a1de6948344114aacd0c"
+	},
+	"price": {
+		"source": "https://dev.meta.ai/docs/pricing-rate-limits",
+		"retrieved": "2026-10-26",
+		"segmentation_image_nano_usd": 2500000,
+		"judge_input_usd_per_mtok": "1.25",
+		"judge_output_usd_per_mtok": "4.25"
+	},
+	"status": "needs_input",
+	"segmenter": {
+		"asked": true,
+		"concepts": 8,
+		"calls": 8,
+		"concepts_answered": 8,
+		"concepts_with_boxes": 0,
+		"boxes": 0,
+		"boxes_by_concept": {},
+		"images_processed": [
+			1,
+			1,
+			1,
+			1,
+			1,
+			1,
+			1,
+			1
+		],
+		"images_billed": 8,
+		"frames": [],
+		"unknown_attempts": 0,
+		"reservations": 8,
+		"reserved_nano_usd": 60000000,
+		"cost_nano_usd": 20000000,
+		"over_reservation": false,
+		"latency_ms": 0
+	},
+	"judge": {
+		"asked": false,
+		"quotes": 0,
+		"quotes_failed": 0,
+		"counted_input_tokens": 0,
+		"reserved_input_tokens": 0,
+		"billed_input_tokens": 0,
+		"output_tokens": 0,
+		"calls": 0,
+		"reservations": 0,
+		"reserved_nano_usd": 0,
+		"cost_nano_usd": 0,
+		"over_reservation": false,
+		"latency_ms": 0
+	},
+	"cost": {
+		"nano_usd": 20000000,
+		"usd": "0.02",
+		"committed_nano_usd": 20000000,
+		"peak_held_nano_usd": 25000000,
+		"cap_usd": "1.00",
+		"cap_nano_usd": 1000000000
+	},
+	"gates": {
+		"needs_input_kept_changes": 0,
+		"pipeline_failed": 0,
+		"ready_without_server_validation": 0
+	},
+	"observations": {
+		"billed_input_over_reserved": 0,
+		"frame_not_the_image": 0,
+		"images_processed_not_one": 0,
+		"no_boxes": 1,
+		"over_reservation": 0
+	},
+	"complete": true,
+	"not_run": [
+		"the database, object storage, the job queue and the spend ledger (the worker's; make integration-test with the fakes)",
+		"approval of the proposal: a person approves it through the API",
+		"any image but the demo image, any other base model, zh-Hant output"
+	]
+}

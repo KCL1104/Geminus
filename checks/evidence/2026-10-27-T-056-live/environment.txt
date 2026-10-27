@@ -1,0 +1,8 @@
+HEAD 98a800a5a43d2bc36ea2fdd0f288ad2d0d6d58a7 (after git pull --rebase; coordinator verification 98a800a)
+branch claude/lucid-meitner-vq1awo
+go version go1.27.3 linux/amd64
+GOTOOLCHAIN=local
+GEMINUS_MUSE_API_KEY: present (name only; value never read out)
+AI_VISION_*: none set (checked by name)
+AI_EVAL_LIVE_MAX_USD: not set (default USD 1)
+make ai-smoke-photo-live 2026-10-27T00:53:04Z .. 2026-10-27T00:53:34Z, exit 0, one run

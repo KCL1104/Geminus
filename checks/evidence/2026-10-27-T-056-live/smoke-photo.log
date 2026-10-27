@@ -1,0 +1,4 @@
+go build -o bin/ai-eval-live ./cmd/ai-eval-live
+ai-eval-live: smoke-photo run 01M5XDJ3T0TTGE55K3A3JVK29N of sam-3.1 and muse-spark-1.3: status needs_input, server risk none, 8 of 8 concepts answered, 0 boxes, SAM images processed [1 1 1 1 1 1 1 1], judge counted 0 and billed 0 input tokens (reserved for 0), cost USD 0.02 (committed 0.02, cap 1.00), gates map[needs_input_kept_changes:0 pipeline_failed:0 ready_without_server_validation:0], observations map[billed_input_over_reserved:0 frame_not_the_image:0 images_processed_not_one:0 no_boxes:1 over_reservation:0], complete true; report /home/user/Geminus/checks/ai-evals/live-smoke-photo-2026-10-27T005328Z-01M5XDJ3T0TTGE55K3A3JVK29N-muse-spark-1.3.json
+ai-eval-live: WARNING: no_boxes (1): see the report; H-037 and the review's I1 ask for it to be reported
+exit 0
