@@ -1,0 +1,6 @@
+[   4s] signed in as the judge
+[   5s] patch ops: 26 on flows, metadata, nodes, resources, views
+[   5s] no patch, no publish (the latest version is the bare line already)
+[  98s] photo proposal: Ready for your review. 
+    Proposed change to Bare line (synthetic) From the AI, asked Oct 28, 2026, 12:32 AM, on version 2. Version 2 is the model's latest. Asked for with a photo (PNG, 1200 × 520 pixels). Back to the model Ready for your review. Approving it creates version 3 of the model. The AI's summary Add AOI, ICT with 2 testers, FCT and Pack stations in left-to-right order between SMT and Shipped, replacing direct SMT to Shipped flow. Risk and checks Checked by Geminus Medium risk Version 2 with these changes passes every check. What the AI said Medium risk Its confidence: 80% The AI's own estimate; it does not lower the risk. Counted as medium risk, the higher of the two. Changes to version 2 Removed Connection from SMT line to Shipped Added Step AOI station (node_01m5z38npb4cw2vg391jdnaem8) (Process) Service time: Triangular: 0.9, 1, 1.4, in minutes Units of AOI machine (resource_01m5z38npbny7gj6mq3bd1ap
+[  99s] approved: Approved. Version 3 created.

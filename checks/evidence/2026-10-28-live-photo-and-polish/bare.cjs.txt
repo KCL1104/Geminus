@@ -1,0 +1,100 @@
+// The photo demo's base: a model whose latest version is the bare line (testdata/photos/bare-line.json, the
+// photo smoke's base), made through the site's own API as the judge: create from the template, patch the
+// draft to the bare line (If-Match), publish. Then the photo proposal on it, approved as the next version.
+const fs = require("fs");
+const { chromium } = require("/home/kuoba123/Geminus/apps/web-e2e/node_modules/@playwright/test");
+const WEB = "https://web-production-16041.up.railway.app";
+const ORG = "org_01M5YVAC4M672YFJYDNBR9W9QR";
+const PRJ = "prj_01M5YYWTNM53M5B23TRS30SQM2";
+const PHOTO = "/home/kuoba123/Geminus/testdata/photos/electronics-line-demo.png";
+const BARE = JSON.parse(fs.readFileSync("/home/kuoba123/Geminus/testdata/photos/bare-line.json", "utf8"));
+const OUT = __dirname + "/shots";
+const t0 = Date.now();
+const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s]`, ...a);
+
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  await page.goto(WEB + "/auth/login");
+  await page.waitForURL(/auth0\.com/, { timeout: 30000 });
+  const user = page.locator("input[name=username]");
+  await user.fill("judge@geminus-demo.invalid");
+  const pw = page.locator("input[name=password]");
+  if (!(await pw.isVisible().catch(() => false))) { await user.press("Enter"); await pw.waitFor({ state: "visible", timeout: 30000 }); }
+  await pw.fill(process.env.JUDGE_PASSWORD);
+  await pw.press("Enter");
+  await page.waitForURL((u) => !u.hostname.endsWith("auth0.com"), { timeout: 45000 });
+  await page.getByRole("button", { name: "Sign out" }).waitFor({ timeout: 30000 });
+  log("signed in as the judge");
+
+  const api = (method, path, body, extra = {}) => page.evaluate(async ([method, path, body, org, extra]) => {
+    const headers = { "X-Organization-ID": org, "X-Geminus-Request": "1", ...extra };
+    if (body !== null) headers["Content-Type"] = headers["Content-Type"] || "application/json";
+    if (method === "POST") headers["Idempotency-Key"] = "live-e2e-" + crypto.randomUUID();
+    const r = await fetch("/api/v1" + path, { method, credentials: "same-origin", headers, body: body === null ? undefined : JSON.stringify(body) });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  }, [method, path, body, ORG, extra]);
+
+  // Reuses the model made by the first try (its draft is still the template's, revision 1) when it exists.
+  let id = process.env.MODEL_ID, v1;
+  if (!id) {
+    const m = await api("POST", `/projects/${PRJ}/models`, { name: "Floor plan demo (bare line)", domain: "electronics_line", template: "electronics_assembly_test_line" });
+    log("create model", m.status, m.body && m.body.id);
+    id = m.body.id;
+  }
+  const d = await api("GET", `/models/${id}/draft`, null);
+  v1 = d.body.base_version_id;
+  const ir = d.body.ir;
+  const keep = new Set(["schema_version", "model_id", "domain"]);
+  // The server's identity of each top-level array's elements (internal/model/patch/policy.go).
+  const identity = { nodes: "id", flows: "id", resources: "id", entity_types: "id", metrics: "id", constraints: "node_id", calendars: "id" };
+  const ops = [];
+  for (const k of new Set([...Object.keys(ir), ...Object.keys(BARE)])) {
+    if (keep.has(k) || JSON.stringify(ir[k]) === JSON.stringify(BARE[k])) continue;
+    if (identity[k] && Array.isArray(ir[k]) && ir[k].length) {
+      // D-020: an element changes one by one, each after a test of its identity.
+      const key = identity[k];
+      for (let i = ir[k].length - 1; i >= 0; i--) ops.push({ op: "test", path: `/${k}/${i}/${key}`, value: ir[k][i][key] }, { op: "remove", path: `/${k}/${i}` });
+      if (k in BARE) for (const e of BARE[k]) ops.push({ op: "add", path: `/${k}/-`, value: e });
+      else ops.push({ op: "remove", path: "/" + k });
+    } else if (!(k in BARE)) ops.push({ op: "remove", path: "/" + k });
+    else if (!(k in ir)) ops.push({ op: "add", path: "/" + k, value: BARE[k] });
+    else ops.push({ op: "replace", path: "/" + k, value: BARE[k] });
+  }
+  log("patch ops:", ops.length, "on", [...new Set(ops.map((o) => o.path.split("/")[1]))].join(", "));
+  if (ops.length === 0 || process.env.SKIP_PATCH) log("no patch, no publish (the latest version is the bare line already)");
+  else {
+  const p = await api("PATCH", `/models/${id}/draft`, ops, { "Content-Type": "application/json-patch+json", "If-Match": `"draft-revision-${d.body.revision}"` });
+  log("patch draft", p.status, p.status === 200 ? "revision " + p.body.revision : JSON.stringify(p.body).slice(0, 600));
+  if (p.status !== 200) throw new Error("the draft was not changed: stopping before any AI call");
+  const v = await api("POST", `/models/${id}/versions`, { expected_base_version_id: v1, comment: "The bare line, the photo demo's base." }, { "If-Match": `"draft-revision-${p.body.revision}"` });
+  log("publish", v.status, v.status === 201 ? "version " + v.body.version : JSON.stringify(v.body).slice(0, 600));
+  if (v.status !== 201) throw new Error("no version was published: stopping before any AI call");
+  }
+  if (process.env.NO_PHOTO) { await browser.close(); return; }
+  await page.goto(WEB + "/models/" + id);
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.screenshot({ path: `${OUT}/C1-bare-model.png`, fullPage: true });
+  const chooser = page.waitForEvent("filechooser", { timeout: 10000 });
+  await page.getByRole("button", { name: "Propose from a photo…" }).click();
+  await (await chooser).setFiles(PHOTO);
+  await page.waitForURL(/\/proposals\//, { timeout: 120000 });
+  const ends = ["Ready for your review.", "The AI needs more information", "Geminus refused the AI's answer", "The proposal could not be written."];
+  let found = "timeout";
+  for (const deadline = Date.now() + 6 * 60_000; Date.now() < deadline; await page.waitForTimeout(5000)) {
+    const text = await page.locator("main").innerText().catch(() => "");
+    found = ends.find((e) => text.includes(e)) || "timeout";
+    if (found !== "timeout") break;
+  }
+  await page.screenshot({ path: `${OUT}/C2-photo-proposal.png`, fullPage: true });
+  log("photo proposal:", found, "\n    " + (await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 900));
+  if (found === "Ready for your review.") {
+    const approve = page.getByRole("button", { name: /Approve and create version \d+/ });
+    await approve.click();
+    await approve.click();
+    await page.getByRole("heading", { name: /Approved\. Version \d+ created\./ }).waitFor({ timeout: 60000 });
+    await page.screenshot({ path: `${OUT}/C3-approved.png`, fullPage: true });
+    log("approved:", (await page.getByRole("heading", { name: /Approved\./ }).innerText()));
+  }
+  await browser.close();
+})().catch((e) => { log("ERROR", e.message.split("\n")[0]); process.exit(1); });

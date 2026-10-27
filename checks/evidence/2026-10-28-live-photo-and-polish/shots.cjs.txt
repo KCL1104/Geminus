@@ -1,0 +1,41 @@
+// Screenshots of the polished pages on the live site, as the judge: the results page at 1400 and 390 px,
+// and the bare-line model's latest version (after the approved photo proposal).
+const { chromium } = require("/home/kuoba123/Geminus/apps/web-e2e/node_modules/@playwright/test");
+const fs = require("fs");
+const WEB = "https://web-production-16041.up.railway.app";
+const RESULTS = fs.readFileSync(__dirname + "/results-url.txt", "utf8").trim();
+(async () => {
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(WEB + "/auth/login");
+  await page.waitForURL(/auth0\.com/);
+  const user = page.locator("input[name=username]");
+  await user.fill("judge@geminus-demo.invalid");
+  const pw = page.locator("input[name=password]");
+  if (!(await pw.isVisible().catch(() => false))) { await user.press("Enter"); await pw.waitFor({ state: "visible" }); }
+  await pw.fill(process.env.JUDGE_PASSWORD);
+  await pw.press("Enter");
+  await page.waitForURL((u) => !u.hostname.endsWith("auth0.com"), { timeout: 45000 });
+  await page.getByRole("button", { name: "Sign out" }).waitFor();
+  await page.goto(WEB + RESULTS.replace("/results", ""));
+  await page.waitForLoadState("networkidle");
+  // The results page's address carries the two runs; it is reached by running them from the scenario.
+  await page.getByRole("button", { name: "Run baseline and scenario" }).click();
+  await page.waitForURL(/\/results\?/, { timeout: 60000 });
+  await page.getByText("Both runs completed.").waitFor({ timeout: 60000 });
+  await page.waitForLoadState("networkidle");
+  await page.waitForTimeout(3000);
+  console.log("results page:", (await page.locator("main").innerText()).replace(/\s+/g, " ").slice(0, 500));
+  console.log("rows in the first table:", await page.locator("table").first().locator("tbody tr").count(), "| disclosures:", JSON.stringify(await page.locator("details > summary").allInnerTexts()));
+  await page.screenshot({ path: __dirname + "/shots/D1-results-desktop.png", fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: __dirname + "/shots/D2-results-phone.png", fullPage: true });
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto(WEB + "/models/mdl_01M5Z03CX94C22T9DX9P2YXE4X");
+  await page.getByText(/Latest version \d+/).waitFor();
+  await page.waitForLoadState("networkidle");
+  await page.screenshot({ path: __dirname + "/shots/D3-photo-model-v3.png", fullPage: true });
+  await browser.close();
+})().catch((e) => { console.error("ERROR", e.message.split("\n")[0]); process.exit(1); });

@@ -571,3 +571,42 @@ project 中原本就有的 `Geminus` 服務（接了這個 repo 的 branch）沒
 - 在已經有各站的範本上，AI 新增了沒有接進產線的站，server 照規則拒絕。這是安全檢查應有的行為，但 demo 的照片流程需要決定做法（owner／coordinator）。
 
 **NOT RUN**：照片提案的批准；以 owner 帳號登入；手機尺寸的畫面。
+
+## 部署後確認（二）：照片流程、audit 修正、結果頁 polish、Meta 的 404（2026-10-28，coordinator）
+
+證據：`checks/evidence/2026-10-28-live-photo-and-polish/`（腳本 `bare.cjs.txt`、`shots.cjs.txt`，密碼只經環境變數；各次 log；截圖）。
+
+**照片 demo 的 base**：
+- 在 demo project 建立一個模型，再經網站的 API 把它的 draft patch 成 `testdata/photos/bare-line.json`。照 D-020 的規則，每個陣列元素先 `test` 它在 `internal/model/patch/policy.go` 中的識別欄位：`constraints` 用 `node_id`，其餘用 `id`。之後發佈成 version 2。
+- 第一次嘗試 patch 被拒（422 `PATCH_TEST_REQUIRED`），而**腳本沒有停下**，照樣在範本版本上跑了照片提案（被 server 拒絕，約 USD 0.1）。之後腳本改為 patch 或發佈失敗就停止，不再呼叫 AI。
+
+**照片提案在空產線上：audit 的錯誤**：
+- 照片提案寫 audit 時超過欄位上限（`more than 32 fields`），job 重試了 3 次，約 USD 0.19。
+- 修正見 `checks/T-056_VALIDATION.md` 的「Live：成功的照片提案寫 audit 時超過欄位上限」（79938df）。
+
+**部署**：fa057f5（audit 修正與結果頁的 disclosure）以 `railway up` 部署 api、worker、web，三者都 SUCCESS。沒有重跑 `--apply`，避免 owner 再核准一次 Auth0。
+
+**Meta 的 404 與出口 IP**：
+- 部署之後，Singapore 的 worker 又得到 404（文字與 SAM 都是，花費 0）。
+- 只重新部署 worker，換一個執行個體之後，就恢復正常了。
+- 所以 Meta 是否接受，和 worker 這一次的出口位置有關，不只是 region。這是 demo 的風險（見下方的待決事項）。
+
+**修正後的 live 結果**：
+
+| 步驟 | 結果 |
+|---|---|
+| 文字提案（scenario） | ready，批准之後模擬 5 of 5 完成，比較的數字與前一次相同（469.51 → 461.11 min，同一個 seed） |
+| 照片提案，在空產線 version 2 上 | **ready**：AI 依序加入 AOI、ICT（2 台測試機）、FCT、Pack，並改接 SMT 之後的連線。Server：**Medium risk**，所有檢查通過；AI 自評 80%。批准之後成為 **version 3** |
+| 結果頁（polish 之後） | 主表 27 列；「Each step's measures (110)」預設關閉；Marey 圖緊接在表格下方。另有 390 px 的截圖 |
+
+**發現（交給 owner／之後處理）**：
+1. **出口 IP**：Meta 對部分 Railway 出口回 404。可行的方向：
+   - owner 查看 Meta dashboard 上這把 key 有沒有網路或地區的限制；
+   - 改用 Railway 的固定出口 IP；
+   - demo 前先以一個文字提案確認，404 時重新部署 worker。
+2. **結果頁的網址**：結果頁的網址帶著兩次執行的 id（`?baseline=…&scenario=…`），只有在按下 Run 之後才會到達；scenario 頁面沒有連到既有結果的連結。離開之後只能重跑，或用瀏覽器的上一頁。
+3. **AI 加的站的位置**：照片（或任何 AI）加入的站沒有 2D 位置，被排到右邊，而原本的 `Shipped` 留在原位，所以 version 3 的畫布上「出貨」出現在產線中間。
+4. **AI 的文字**：「What the AI assumed」會出現 prompt 內部的區塊名稱（`CURRENT_MODEL_IR`、`USER_INTENT`、`CONTEXT_OMISSIONS`）。這是 AI 寫的內容，要改 prompt。
+5. **（Low）重試會重複花錢**：AI 回答之後才發生的失敗（例如 audit），job 重試時會重新呼叫 AI。
+
+**花費**（2026-10-27／28 的 live，依 worker 的 log）：文字提案 3 次約 USD 0.13、照片 judge 與 SAM 約 USD 0.75（含 audit 錯誤造成的重試）。都在 organization 每日 USD 5 的上限內。精確數字以資料庫的 spend ledger 為準。
