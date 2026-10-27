@@ -1,0 +1,3 @@
+check-deploy exit 0
+bash-n exit 0
+rehearsal (green) exit 0; rehearsal without the change exit 1

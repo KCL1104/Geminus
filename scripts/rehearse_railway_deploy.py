@@ -120,6 +120,10 @@ if cmd == "list":
     out = [{"id": "prj_1", "name": n} for n in st["projects"]]
 elif cmd == "init":
     st["projects"].append(opt("--name"))
+elif cmd == "whoami":
+    if not os.environ.get("REHEARSAL_SIGNED_IN"):
+        fail("Unauthorized. Please login with `railway login`")
+    out = {"name": "Rehearsal Owner", "email": "owner@example.invalid"}
 elif cmd in ("link", "status"):
     out = {"project": {"id": "prj_1"}, "environment": {"id": "env_1", "name": "production"}}
 elif cmd == "environment" and a[1] == "list":
@@ -904,6 +908,20 @@ def main() -> int:
         if not res.startswith("FAIL: a project token") or "RAILWAY_API_TOKEN" not in res \
                 or any(c["argv"][:1] in (["add"], ["init"]) or c["argv"][:2] == ["bucket", "create"] for c in state(name)["calls"]):
             failures.append(f"T1 (a project token, no services) must stop before creating anything: {res[:300]}")
+
+        # T2: no token, the CLI signed in (`railway login --browserless`): it stands for an account token.
+        name = scenario("t2", base)
+        _, out, res = apply(RAILWAY_TOKEN=None, RAILWAY_API_TOKEN=None, REHEARSAL_SIGNED_IN="1")
+        shown.append(("T2 no token, the CLI signed in", res.splitlines()[0]))
+        if not out.count("the Railway CLI is signed in") == 1 or "missing RAILWAY_TOKEN" in res \
+                or not any(c["argv"][:1] == ["link"] for c in state(name)["calls"]):
+            failures.append(f"T2 (signed in, no token) must run as with an account token: {res[:300]}")
+        # T3: no token and not signed in: refused before anything else is called.
+        name = scenario("t3", base)
+        _, out, res = apply(RAILWAY_TOKEN=None, RAILWAY_API_TOKEN=None, REHEARSAL_SIGNED_IN=None)
+        shown.append(("T3 no token, not signed in", res.splitlines()[0]))
+        if "or the Railway CLI signed in" not in res or {c["argv"][0] for c in state(name)["calls"][len(base["calls"]):]} != {"--version", "whoami"}:
+            failures.append(f"T3 (no token, not signed in) must stop in the preflight: {res[:300]}")
 
         # E1: the CLI quotes the token in an error (L2): redacted.
         scenario("e1", base)

@@ -475,8 +475,9 @@ class Run:
         mode = self.cfg["GEMINUS_AUTH0_SETUP"]
         inputs = dict(INPUTS, **({} if self.auth0_cli else MANUAL_INPUTS))
         problems, absent = [], [f"input {k}: {why}" for k, why in inputs.items() if not self.cfg[k]]
-        if not (os.environ.get("RAILWAY_TOKEN") or os.environ.get("RAILWAY_API_TOKEN")):
-            absent.append("RAILWAY_TOKEN (a project token) or RAILWAY_API_TOKEN (an account or workspace token)")
+        if not (os.environ.get("RAILWAY_TOKEN") or os.environ.get("RAILWAY_API_TOKEN")) and not self.signed_in():
+            absent.append("RAILWAY_TOKEN (a project token) or RAILWAY_API_TOKEN (an account or workspace token), or the "
+                          "Railway CLI signed in (`railway login --browserless`, the owner's approval in their browser)")
         if absent and not self.dry:
             problems += ["missing " + a for a in absent]
         elif absent:
@@ -567,6 +568,17 @@ class Run:
                 f.write(image)
             self.a0_bin = os.path.join(private, "auth0")
         return problems
+
+    def signed_in(self) -> bool:
+        """No token in the environment: the CLI's own session (`railway login`,
+        kept in ~/.railway by the CLI, never read here) stands for an account
+        token. `railway whoami --json` tells (src/commands/whoami.rs at v5.64.2)."""
+        if self.dry:
+            return False
+        self.run(["railway", "whoami", "--json"], check=False, quiet=True)
+        if self.code == 0:
+            self.say("   the Railway CLI is signed in (its own session; no token in the environment): an account's rights")
+        return self.code == 0
 
     # -- 1-3. project, resources, variables -----------------------------------
 

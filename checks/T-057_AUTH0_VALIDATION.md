@@ -390,3 +390,23 @@ Rehearsal 的 Railway 替身沒有模擬這個行為，所以沒有抓到。
 - Runbook §7.7 的 Token 段落：project token 只適用於服務都已存在的 project。
 
 **下一步**：owner 建立 account 或 workspace token（`RAILWAY_API_TOKEN`）後，以 `GEMINUS_RAILWAY_PROJECT=<那個 project 的名稱>` 重跑 `--apply`。已經存在的 `Postgres` 會被找到並沿用，不會重建。
+
+### 沒有 token 時改用 CLI 的裝置登入（2026-10-27）
+
+Owner 當時碰不到電腦，無法把 account token 寫進 `.env`；token 也不經對話傳遞。所以改用 Railway CLI 的裝置登入：
+1. Coordinator 執行 `railway login --browserless`。
+2. Owner 在手機打開 CLI 印出的網址並核准，核准前先核對代碼。
+3. 登入成功（`whoami` 列出 owner 的 workspace）。Session 只存在 CLI 自己的 `~/.railway`，腳本不讀。
+
+Deployer 的 preflight 改為：沒有 `RAILWAY_TOKEN`、`RAILWAY_API_TOKEN` 時，以 `railway whoami --json` 確認 CLI 已登入。已登入就視同 account token；沒有登入就在 preflight 停下。
+
+Rehearsal 新增兩個情境：
+- **T2**：沒有 token、已登入 → `done`，並且走 `link` 的路徑。
+- **T3**：沒有 token、沒有登入 → preflight 停下，除了 `--version` 與 `whoami` 之外不呼叫任何東西。
+
+Red／green（evidence 在 `session/`）：
+- Red：拿掉這個修改時 T2、T3 失敗（`rehearsal-red.log`）。
+- Green：`rehearsal: PASS`（`rehearsal-green.log`）。
+- `check_deploy.py`、`bash -n` 都是 exit 0。
+
+Runbook §7.7 的 Token 段落已更新。部署完成後執行 `railway logout`。
