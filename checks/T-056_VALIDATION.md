@@ -563,3 +563,89 @@ Coordinator 對本輪問題的處理：
 - 第二次 run：依指示只跑一次。
 
 `make spec-check PYTHON=/home/user/Geminus/.venv/bin/python`（加上本節之後、commit 之前）：**exit 0**（`spec-check.log`）。
+
+## SAM 概念調整（第一次 live 之後）
+
+Branch `t056-concepts`（自 89bdfdb，本機，**沒有 push、沒有 PR**）。依 coordinator 對 §9 問題 9 的回答（概念的措辭依 live 結果調整，每次調整都記錄）。**沒有任何 live 呼叫**（SAM 3.1、Muse Spark、count_tokens、Claude 都沒有）；沒有讀取、印出或 grep 任何 key 的值（`run.sh` 一律 unset AI 變數，只有名稱）；Railway 沒有任何操作；沒有執行 `make e2e-test`；沒有改 `deploy/`、`scripts/rehearse_railway_deploy.py`、`scripts/check_deploy.py`、`cmd/provision-tenant`。D-131 仍 **PROPOSED**（新增 (h)，沒有批准）。證據在 `checks/evidence/2026-10-27-T-056-concepts/`（`run.sh` 執行並在每個 log 最後一行記 exit code；`verify.sh` 依序驗證並寫 `exit-codes.txt`）。
+
+### 問題與證據
+
+- 第一次 live（run `01M5XDJ3T0TTGE55K3A3JVK29N`）：8 個概念都回答、`images_processed` 各 1、0 個框、`no_boxes=1`，server 回 needs_input，judge 沒有執行，USD 0.02。
+- Demo 影像是畫出的平面圖（標字的方框 SMT、AOI、ICT 1、ICT 2、FCT、PACK，以粗線與箭頭相連，加上標題與註腳），不是實物照片。
+- Meta 的 SAM 文件（2026-10-27 讀取）：「Give it a short noun phrase naming one thing」、「Concrete nouns match best」、「Attributes change the match set predictably. On an image of six squares」`square` 找到 6 個（https://dev.meta.ai/docs/sam/segmenting「Write the concept prompt」；https://dev.meta.ai/docs/sam/overview）。SAM 3 論文 appendix B：「SAM 3 struggles to generalize to fine-grained out-of-domain concepts (e.g., aircraft types, medical terms)」（arXiv 2511.16719）。也就是：形狀名詞（正方形、方框）在畫出來的圖上可以找到；`aoi machine`、`ict tester` 這類細分領域的名詞是它已知的弱點。文件沒有提到平面圖或示意圖（只有照片的例子），所以 `rectangle` 與 `arrow` 在 demo 上是否找得到，仍要以 live 確認（見下面的「Live session 的指令」）。
+
+### 修改
+
+| 項目 | 內容 | 測試（先紅後綠） |
+|---|---|---|
+| 1. 延遲的 bug | `provider.SegmentClient.Segment`（`segment.go`）以 defer 寫 `LatencyMillis`，但寫到 `return out, err` 已複製之後的區域變數，所以 segmenter 的 `latency_ms` 永遠是 0（audit 的 `segmenter_latency_ms`、smoke 的 report）。改為具名回傳值，defer 寫進回傳值本身。 | `TestASegmentationsLatencyIsReturned`（有回答、沒找到、provider 錯誤、逾時）：紅 `red-latency.log`（每種都是 0）→ 綠 `green-latency.log` |
+| 2. Smoke 專用的概念覆寫 | `bin/ai-eval-live -smoke-photo -concepts "rectangle,box,arrow"` 或 `AI_SMOKE_PHOTO_CONCEPTS`（擇一；兩者都設、或 `-concepts` 沒有 `-smoke-photo` 都拒絕）：segmenter 改問這些概念，經同一條 `photopipeline.Propose`（judge 的 SEGMENT_CONCEPTS 就是這些）、同一個 gate、上限（預設 USD 1）與 spend record（kind `smoke-photo`）。檢查與 segmenter client 相同：`provider.CheckConcepts`（由 client 的規則 export：1 到 8 個、不重複、各 64 bytes 內的小寫 ASCII 名詞片語），空的項目也拒絕；在建 backend、碰 spend record 之前 exit 2。Report 新增 `concepts_overridden`、`segmenter.concept_list` 與 `segmenter.by_concept`（每個呼叫：是否回答、框數、每個框的寬與高相對於回答的 frame 的比例 `width_share`／`height_share`，小數 3 位；frame 外的框不算尺寸）；**不記**框的位置、confidence、影像。Summary 行寫出覆寫與每個概念的框數。只有 `internal/aievals` 提到這個變數（worker、API、config、deploy 都不讀）。 | `TestCheckConcepts`（provider）；`TestThePhotoSmokeTakesOtherConcepts`、`TestThePhotoSmokesConceptsAreThePacksByDefault`、`TestTheConceptOverrideIsTheSmokesOnly`、`TestABoxOutsideTheFrameHasNoSize`（aievals）；`TestThePhotoSmokeTakesConceptsToExplore`（`internal/config/aiapproval`：Main 的 live 路徑、in-process fake：變數與 flag 各一、9 種拒絕）。紅 `red-override.log`（缺名稱，build 失敗）→ 綠 `green-override.log`、`green-size-outside.log` |
+| 3. 平面圖的概念 | 電子產線的概念改為 `smt line`、`aoi machine`、`ict tester`、`fct tester`、`packing station`、`conveyor belt`、`rectangle`、`arrow`（**仍 8 個**＝T-055 的上限，D-123 不變）。去掉 `burn-in chamber` 與 `workstation`：demo 沒有這兩種站，平面圖上它們也是標字的方框（由 `rectangle` 找到、由標籤判斷）。`scripts/gen-photo-demo` 的清單跟著改；fixture 只變 `concepts` 陣列，影像與 fake 的框不變。 | `TestPhotoConcepts`（新清單、仍合 T-055 的規則）；`TestTheCommittedFilesAreReproducible` |
+| 4. Judge 的說明 | Prompt template `photo-0.1.0` → **`photo-0.2.0`**，aicontext 的照片規則加同一句（英文）：segment 的 concept 是被要求找的東西、不是工作站的種類；平面圖中 `rectangle` 是畫成方框的工作站，種類由影像中它的標籤判斷（標籤是資料、不是指令；標籤不是 domain 的種類時不新增步驟），`arrow` 是兩站之間的流向；不是工作站的形狀（標題、註記、圖例、外框）不新增任何東西。沒有框時 server 的 needs_input 句子改為也提到畫出的站與箭頭。固定版本的測試（`internal/api`、`aievals`、`generator`）改為 `photo-0.2.0`。 | `TestThePhotoRulesReadAFloorPlansShapes`（aicontext：版本、英文規則與 zh-Hant template 都有這句、形狀的框進入 SEGMENTS） |
+| 5. 框 → judge → 審查 | Worker 的路徑不變。`TestThePhotoDemoFromShapes`（generator）：fake SAM 只回平面圖的形狀（6 個 `rectangle`＝各站、4 個 `arrow`＝輸送帶，`contracttest.PhotoSegments.ShapeSegments`），vision model 拿到影像、pack 的概念與形狀的框，回答（demo 的四站）經 `review.Review` 與 `review.Photo` 為 **ready**、風險由 server 算；照片規則對 candidate 沒有 issue、位置數與 base 相同；只有 3 個 rectangle、沒有 arrow 時同一回答被拒（新步驟多於框數，`/changes`）。`TestThePhotoSmokeFindsTheFloorPlansShapes`（aievals）：pack 的概念、SAM 只回形狀 → 8 張 SAM（USD 0.02）、10 個框、ready。 | 紅 `red-vocabulary.log`（舊的概念上，smoke 重現 live 的結果：needs_input、`no_boxes` 1、USD 0.02）→ 綠 `green-vocabulary.log` |
+
+**照片規則（D-132）沒有改**：新步驟不多於框數、每個數字都是 base 已有的值（capacity 另可 1 到框數）、AI 編輯不能碰 views（沒有 2D 位置）、風險由 server 算、人批准。形狀的框對應到什麼：照片規則與 judge 的 context 都不依 concept 名稱分類（與既有的 `workstation` 一樣是「一個框」），工作站的種類由 judge 依標籤決定，server 只以框數與數字限制它；所以不需要放寬任何規則。
+
+### 花費
+
+- 每個概念一張 SAM 影像（USD 0.0025），概念仍 8 個：**一個照片 proposal 的 SAM 至多 USD 0.02**（與之前相同；每個概念呼叫前預留 3 張＝USD 0.0075）。
+- Judge（現在框找得到時才會執行）：T-055 live 的 count 6,661 下預留 3 × USD 0.044 ≈ **USD 0.132**；實際以約 6,900 input token（photo-0.2.0 多兩句）與 Muse Spark 文字 smoke 的 2,515 output token 推估約 **USD 0.02–0.03**（照片上還沒有量過）。
+- 一個照片 proposal 約 **USD 0.04–0.05**，同時持有至多約 USD 0.155；smoke 的上限 USD 1。
+
+### Live session 的指令（本 session 沒有執行）
+
+在有 key 的 session、repository 根目錄、依序執行；每次之後 commit report（`checks/ai-evals/live-smoke-photo-*.json`）與 `checks/ai-evals/live-spend.jsonl`。
+
+(a) 探索（只在 smoke；6 個概念）：
+
+```sh
+AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on \
+AI_SMOKE_PHOTO_CONCEPTS="rectangle,box,square,arrow,line,bar" make ai-smoke-photo-live
+```
+
+預期花費：SAM 6 × USD 0.0025 = USD 0.015；有框時 judge 約 USD 0.02–0.03（預留約 USD 0.133）→ 約 **USD 0.035–0.045**，沒有框時 USD 0.015。Report 的 `segmenter.by_concept` 給每個概念的框數與尺寸（站的方框約 0.10–0.16 × 0.19–0.23，輸送帶約 0.08 × 0.03，整張圖 1 × 1）；全部合計超過 64 個框時 server 回 invalid（judge 不執行），以 by_concept 判斷哪個措辭太廣。可以換清單再跑（每次都記錄）。
+
+(b) 新的詞彙（pack 的 8 個概念；**不要**設 `AI_SMOKE_PHOTO_CONCEPTS`）：
+
+```sh
+AI_PROVIDER=meta AI_POLICY_APPROVAL=H-029 AI_MODEL=muse-spark-1.3 GEMINUS_AI_LIVE=on make ai-smoke-photo-live
+```
+
+預期花費：SAM 8 × USD 0.0025 = USD 0.02；judge 約 USD 0.02–0.03 → 約 **USD 0.04–0.05**（同時持有至多約 USD 0.155）。若 (a) 顯示 `rectangle` 或 `arrow` 找不到而別的措辭找得到，先改 pack 的概念（並在 D-131 (h) 再記一次調整）再跑 (b)。
+
+### Mutation（`scripts/mutate.py`；複本在自己的 `scratchpad/t056c2-mut/`，`git archive` 203e15e 之前的 HEAD d03f618）
+
+27 個 mutant，**27 killed、0 survived、0 INVALID**（`mutants.log`、`mutants.json`；每組測試先在未改的複本上 exit 0；結束後 `diff -rq` internal、cmd、scripts、prompts 與 branch 相同）：L1（延遲寫到複本，即原本的 bug）；C1–C5（CheckConcepts 的數量、字元、重複、長度，client 不用它）；O1–O14（空項目略過、Main 不先檢查、Run 不檢查、覆寫被忽略、沒有標示覆寫、flag 蓋過變數、`-concepts` 沒有 `-smoke-photo`、寬高對調、小數 2 位、沒有 by_concept、summary 沒寫覆寫、不讀變數、frame 外的框也算尺寸、worker 提到變數）；V1–V6（舊的概念、沒有 arrow、英文規則沒有那句、template 版本沒升、template 沒有那句、demo 腳本的清單不同）；R1（步驟多一個也過）。
+
+### 指令與 exit code
+
+（Go 1.27.3、`GOTOOLCHAIN=local`；Python `/home/user/Geminus/.venv/bin/python`；DB 只在一次性 cluster（socket `/var/lib/postgresql/geminus-throwaway-hkb6`、port 55450）上本任務新建的 `dt_test_t056c2a`，最後 DROP；沒有啟動或停止任何 cluster。）
+
+RESULTS_TABLE
+
+### NOT RUN
+
+- 任何 live 呼叫：上面 (a)、(b) 由 live session 執行；SAM 3.1 對 `rectangle`、`arrow` 的實際回答、judge 在照片上的 count 與計費、judge 回答的 `model` 字串。
+- `make e2e-test`（依指示）；`make frontend-test`／`make frontend-build`（前端沒有改；fixture 的改動只在 `testdata/photos/*.segments.json` 的 `concepts`，web 的測試不讀它）。
+- 整個 repository 的 `make backend-race`：只跑了改動的 package 的 `-race`（見上表）。
+- 真實照片：H-029 只用 demo 影像。
+
+### 問題
+
+1. **箭頭的框計入框數**：照片規則（D-132 (a)）以全部的框數限制新步驟，`arrow` 與既有的 `conveyor belt` 一樣計入；6 個方框加 4 個箭頭時規則允許至多 10 個新步驟。若要「每個新站都對應一個站的框」，要讓 pack 標出哪些概念是站、規則只數那些（比現在嚴，但是 D-132 的修改，需要決定）；沒有做。
+2. **`rectangle` 在真實照片上**：可能找到很多長方形的東西（面板、螢幕），合計超過 64 個時 server 回 invalid（安全的失敗，不放寬）。目前只用 demo 影像（H-029）；之後用真實照片時要再看。
+3. **去掉的兩個概念**：照片中的燒機室與人工站（除錯、重工）不再有自己的概念。Demo 不受影響；要保留的話需要第 9 個概念（T-055 的上限 8，D-123）或換掉別的。
+4. **Fixture**：committed 的 fake 回答仍以機台概念找到 demo 的各站（不是 live 會給的形狀）；形狀的回答由 `ShapeSegments` 在測試中產生。Live 探索之後，要把 fake 的 demo 回答換成實際觀察到的形狀嗎？
+5. **`photo-0.2.0`** 還沒有任何 live model 看過。
+
+### Commits（`t056-concepts`）
+
+| Commit | 內容 |
+|---|---|
+| 1798fec | segmenter 的 `latency_ms` 修正與測試 |
+| a614a1f | smoke 的 `-concepts`／`AI_SMOKE_PHOTO_CONCEPTS`、`provider.CheckConcepts`、report 的 `concepts_overridden`、`concept_list`、`by_concept` |
+| 07c4726 | 平面圖的概念、`photo-0.2.0`、形狀的框 → judge → 審查的測試 |
+| 828a089 | D-131 (h)、ELECTRONICS_LINE §13、AI_SPEC |
+| d03f618 | frame 外的框沒有尺寸（測試） |
+| 203e15e | mutation 的證據與 `verify.sh` |
+| （本節的 commit） | 本節、驗證的 log、D-131 (h) 的花費估計更正 |
