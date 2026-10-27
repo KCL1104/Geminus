@@ -1,0 +1,41 @@
+=== RUN   TestThePhotoSmokeTakesOtherConcepts
+--- PASS: TestThePhotoSmokeTakesOtherConcepts (0.05s)
+=== RUN   TestThePhotoSmokesConceptsAreThePacksByDefault
+--- PASS: TestThePhotoSmokesConceptsAreThePacksByDefault (0.17s)
+=== RUN   TestTheConceptOverrideIsTheSmokesOnly
+--- PASS: TestTheConceptOverrideIsTheSmokesOnly (0.01s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/aievals	0.251s
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/the_variable
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/the_flag
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/nine
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/an_empty_item
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/a_semicolon
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/a_repeat
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/capitals
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/a_trailing_comma
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/too_long
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/a_prompt_token
+=== RUN   TestThePhotoSmokeTakesConceptsToExplore/both_the_flag_and_it
+--- PASS: TestThePhotoSmokeTakesConceptsToExplore (0.08s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/the_variable (0.05s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/the_flag (0.02s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/nine (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/an_empty_item (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/a_semicolon (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/a_repeat (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/capitals (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/a_trailing_comma (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/too_long (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/a_prompt_token (0.00s)
+    --- PASS: TestThePhotoSmokeTakesConceptsToExplore/both_the_flag_and_it (0.00s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/config/aiapproval	0.101s
+=== RUN   TestASegmentationRequestIsChecked
+--- PASS: TestASegmentationRequestIsChecked (0.00s)
+=== RUN   TestCheckConcepts
+--- PASS: TestCheckConcepts (0.02s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/ai/provider	0.035s
+exit 0

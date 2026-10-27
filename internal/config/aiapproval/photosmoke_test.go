@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -101,6 +102,13 @@ type photoMain struct {
 
 func runPhotoMain(t *testing.T, env map[string]string, dir string, judge *smokeJudge) photoMain {
 	t.Helper()
+	return runPhotoMainWith(t, env, dir, judge, smokeSegmenter(t))
+}
+
+// runPhotoMainWith is runPhotoMain with the segmenter seg and more
+// arguments.
+func runPhotoMainWith(t *testing.T, env map[string]string, dir string, judge *smokeJudge, seg provider.BillableSegmenter, args ...string) photoMain {
+	t.Helper()
 	root := contracttest.Root(t)
 	r := photoMain{judge: judge}
 	b := aievals.Backends{
@@ -108,11 +116,12 @@ func runPhotoMain(t *testing.T, env map[string]string, dir string, judge *smokeJ
 		Photo: func(v config.AIVision) (provider.Billable, provider.BillableSegmenter, error) {
 			r.built++
 			r.asked = v
-			return judge, smokeSegmenter(t), nil
+			return judge, seg, nil
 		},
 	}
 	var out, errb bytes.Buffer
-	r.code = aievals.MainWith(context.Background(), []string{"-root", root, "-dir", dir, "-smoke-photo"}, func(k string) string { return env[k] }, &out, &errb, b)
+	r.code = aievals.MainWith(context.Background(), append([]string{"-root", root, "-dir", dir, "-smoke-photo"}, args...), func(k string) string { return env[k] },
+		&out, &errb, b)
 	r.stdout, r.stderr = out.String(), errb.String()
 	return r
 }
@@ -255,5 +264,120 @@ func TestThePhotoSmokeReportsAFailedCount(t *testing.T) {
 	}
 	if !strings.Contains(r.stdout, "status failed AI_UNAVAILABLE") || !strings.Contains(r.stderr, "WARNING: the photo smoke failed with AI_UNAVAILABLE: the provider answered 500") {
 		t.Errorf("stdout %q stderr %q", r.stdout, r.stderr)
+	}
+}
+
+// shapeSegmenter answers the demo floor plan's shapes (contracttest's
+// ShapeSegments: "rectangle" and "arrow"), nothing for any other concept.
+func shapeSegmenter(t *testing.T) smokeSAM {
+	d := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	by := map[string][]provider.Segment{}
+	for _, x := range d.Segments.ShapeSegments() {
+		by[x.Concept] = append(by[x.Concept], provider.Segment{ObjectID: x.ObjectID, Confidence: x.Confidence,
+			Box: provider.Box{X1: x.Box.X1, Y1: x.Box.Y1, X2: x.Box.X2, Y2: x.Box.Y2}})
+	}
+	seg := fake.NewSegmenter()
+	for c, segs := range by {
+		seg.Script(c, d.Segments.Width, d.Segments.Height, segs...)
+	}
+	return smokeSAM{seg}
+}
+
+// T-056 after the first live run: the photo smoke asks SAM for other
+// concepts with -concepts or AI_SMOKE_PHOTO_CONCEPTS (a comma-separated
+// list; the photo smoke only, never the worker), each checked as the
+// segmenter client checks the pack's (at most 8 distinct lowercase noun
+// phrases of at most 64 bytes) before any backend is built or the record
+// is touched; behind the same gate, under the same cap, recorded in the
+// same spend record (kind smoke-photo), the override and the list in the
+// report and the summary.
+func TestThePhotoSmokeTakesConceptsToExplore(t *testing.T) {
+	samPrice, _ := spend.ImagePriceOf("sam-3.1")
+	muse, _ := spend.PriceOf("muse-spark-1.3")
+	for name, c := range map[string]struct {
+		env  string
+		args []string
+		want []string
+	}{
+		"the variable": {env: "rectangle, arrow", want: []string{"rectangle", "arrow"}},
+		"the flag":     {args: []string{"-concepts", "rectangle,box,arrow"}, want: []string{"rectangle", "box", "arrow"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := emptyRecord(t)
+			env := h029Env()
+			if c.env != "" {
+				env["AI_SMOKE_PHOTO_CONCEPTS"] = c.env
+			}
+			seg := shapeSegmenter(t)
+			r := runPhotoMainWith(t, env, dir, &smokeJudge{t: t}, seg, c.args...)
+			if r.code != aievals.ExitOK || r.built != 1 || r.judge.calls.Load() != 1 {
+				t.Fatalf("exit %d built %d calls %d: %s %s", r.code, r.built, r.judge.calls.Load(), r.stdout, r.stderr)
+			}
+			var asked []string
+			for _, call := range seg.Calls() {
+				asked = append(asked, call.Concept)
+			}
+			reports, _ := filepath.Glob(filepath.Join(dir, "live-smoke-photo-*-muse-spark-1.3.json"))
+			if len(reports) != 1 {
+				t.Fatalf("reports %v", reports)
+			}
+			data, _ := os.ReadFile(reports[0])
+			var rep aievals.PhotoReport
+			if err := json.Unmarshal(data, &rep); err != nil {
+				t.Fatal(err)
+			}
+			cost := int64(len(c.want))*samPrice + muse.Cost(spend.Tokens{Input: 6702, Output: 1100})
+			if !slices.Equal(asked, c.want) || !rep.ConceptsOverridden || !slices.Equal(rep.Segmenter.ConceptList, c.want) || rep.Status != "ready" ||
+				rep.Segmenter.Boxes != 10 || rep.Cost.NanoUSD != cost || rep.Cost.CapNanoUSD != spend.NanoPerUSD {
+				t.Errorf("asked %q, report %+v", asked, rep)
+			}
+			lines := recordLines(t, dir)
+			if len(lines) != 2 || lines[0]["kind"] != "smoke-photo" || lines[0]["cap_nano_usd"] != float64(spend.NanoPerUSD) ||
+				lines[1]["result"] != "complete" || lines[1]["settled_nano_usd"] != float64(cost) {
+				t.Errorf("the spend record: %v", lines)
+			}
+			if !strings.Contains(r.stdout, "concepts overridden "+strings.Join(c.want, ",")) || !strings.Contains(r.stdout, "rectangle 6") ||
+				!strings.Contains(r.stdout, "arrow 4") {
+				t.Errorf("summary %q", r.stdout)
+			}
+		})
+	}
+	// Refused before any backend is built, the record untouched, no report.
+	for name, c := range map[string]struct {
+		env  string
+		args []string
+		want string
+	}{
+		"nine":                 {env: "a,b,c,d,e,f,g,h,i", want: "AI_SMOKE_PHOTO_CONCEPTS"},
+		"capitals":             {args: []string{"-concepts", "Rectangle"}, want: "-concepts"},
+		"an empty item":        {env: "rectangle,,arrow", want: "AI_SMOKE_PHOTO_CONCEPTS"},
+		"a trailing comma":     {args: []string{"-concepts", "rectangle,"}, want: "-concepts"},
+		"a semicolon":          {env: "rectangle;arrow", want: "AI_SMOKE_PHOTO_CONCEPTS"},
+		"a repeat":             {args: []string{"-concepts", "arrow,arrow"}, want: "-concepts"},
+		"too long":             {env: strings.Repeat("a", 65), want: "AI_SMOKE_PHOTO_CONCEPTS"},
+		"a prompt token":       {args: []string{"-concepts", "<|box|>"}, want: "-concepts"},
+		"both the flag and it": {env: "rectangle", args: []string{"-concepts", "rectangle"}, want: "either -concepts or AI_SMOKE_PHOTO_CONCEPTS"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := emptyRecord(t)
+			before, _ := os.ReadFile(filepath.Join(dir, recordName))
+			env := h029Env()
+			if c.env != "" {
+				env["AI_SMOKE_PHOTO_CONCEPTS"] = c.env
+			}
+			j := &smokeJudge{t: t}
+			seg := shapeSegmenter(t)
+			r := runPhotoMainWith(t, env, dir, j, seg, c.args...)
+			if r.code != aievals.ExitRefused || r.built != 0 || len(seg.Calls()) != 0 || j.quotes.Load() != 0 ||
+				!strings.Contains(r.stderr, "REFUSED (no provider call was made)") || !strings.Contains(r.stderr, c.want) {
+				t.Errorf("exit %d built %d: %s", r.code, r.built, r.stderr)
+			}
+			if after, _ := os.ReadFile(filepath.Join(dir, recordName)); !bytes.Equal(before, after) {
+				t.Error("a refused run changed the record")
+			}
+			if reports, _ := filepath.Glob(filepath.Join(dir, "live-*.json")); len(reports) != 0 {
+				t.Errorf("reports %v", reports)
+			}
+		})
 	}
 }

@@ -147,6 +147,8 @@ ai-smoke-live:
 # (internal/ai/photopipeline: SAM 3.1 per concept, count_tokens, Muse Spark, the server's review) on
 # testdata/photos/electronics-line-demo.png with testdata/photos/bare-line.json, behind the worker's photo-path gate, the
 # same spend record, a USD 1 cap by default; report checks/ai-evals/live-smoke-photo-<UTC start>-<run ID>-<model>.json.
+# AI_SMOKE_PHOTO_CONCEPTS="rectangle,arrow" (or bin/ai-eval-live -concepts) asks SAM for those concepts instead of the
+# pack's, to explore their wording (at most 8; one SAM image each); the worker never reads it.
 ai-smoke-photo-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live

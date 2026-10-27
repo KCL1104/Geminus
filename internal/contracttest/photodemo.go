@@ -53,6 +53,26 @@ func (s PhotoSegments) ByConcept() map[string][]PhotoSegment {
 	return out
 }
 
+// ShapeSegments are the file's objects as a segmenter asked for the floor
+// plan's shapes (T-056 after the first live run: SAM 3.1 found none of the
+// machine concepts in the drawn plan) would find them: each drawn station a
+// "rectangle", each conveyor an "arrow", in the file's order, numbered
+// from 0 within each concept. Synthetic like the file: what SAM 3.1 finds
+// live is the photo smoke's to report.
+func (s PhotoSegments) ShapeSegments() []PhotoSegment {
+	var rects, arrows []PhotoSegment
+	for _, x := range s.Segments {
+		if x.Concept == "conveyor belt" {
+			x.Concept, x.ObjectID = "arrow", len(arrows)
+			arrows = append(arrows, x)
+		} else {
+			x.Concept, x.ObjectID = "rectangle", len(rects)
+			rects = append(rects, x)
+		}
+	}
+	return append(rects, arrows...)
+}
+
 // PhotoDemo is one demo image: the PNG as uploaded and its segments file.
 type PhotoDemo struct {
 	Image    []byte

@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"regexp"
 	"slices"
@@ -248,17 +249,33 @@ func (c *SegmentClient) checkRequest(req SegmentRequest) bool {
 	if c.meter != nil && !req.Attribution.complete() {
 		return false
 	}
-	if len(req.Concepts) == 0 || len(req.Concepts) > MaxSegmentConcepts {
-		return false
+	return CheckConcepts(req.Concepts) == nil
+}
+
+// CheckConcepts reports what is wrong with a segmentation request's
+// concepts, by the client's rule: 1 to MaxSegmentConcepts distinct
+// concepts, each a short noun phrase (lowercase ASCII words and digits,
+// single spaces or hyphens between them, at most MaxSegmentConceptBytes).
+// The client refuses a request whose concepts it reports; the photo smoke
+// checks an override of the pack's concepts with it before anything is
+// built (T-056 after the first live run).
+func CheckConcepts(concepts []string) error {
+	if len(concepts) == 0 || len(concepts) > MaxSegmentConcepts {
+		return fmt.Errorf("ai provider: %d concepts; a segmentation takes 1 to %d", len(concepts), MaxSegmentConcepts)
 	}
 	seen := map[string]bool{}
-	for _, k := range req.Concepts {
-		if len(k) > MaxSegmentConceptBytes || !concept.MatchString(k) || seen[k] {
-			return false
+	for i, k := range concepts {
+		switch {
+		case len(k) > MaxSegmentConceptBytes:
+			return fmt.Errorf("ai provider: concept %d is longer than %d bytes", i+1, MaxSegmentConceptBytes)
+		case !concept.MatchString(k):
+			return fmt.Errorf("ai provider: concept %d is not a short noun phrase of lowercase ASCII words (one concept, no list or punctuation)", i+1)
+		case seen[k]:
+			return fmt.Errorf("ai provider: concept %d repeats an earlier one", i+1)
 		}
 		seen[k] = true
 	}
-	return true
+	return nil
 }
 
 // Segment asks where each concept is in the image, one backend call per

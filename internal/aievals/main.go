@@ -108,6 +108,8 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	dir := fs.String("dir", "", "where the report goes (default <root>/checks/ai-evals)")
 	only := fs.String("cases", "", "comma-separated case IDs to run (default: every modeler case)")
 	locale := fs.String("locale", "en", "the output locale of every case (en or zh-Hant)")
+	concepts := fs.String("concepts", "", "with -smoke-photo: comma-separated concepts SAM is asked for instead of the pack's, to explore their wording (also "+
+		conceptsVar+"); at most 8, each a short lowercase noun phrase")
 	if err := fs.Parse(args); err != nil {
 		return ExitRefused
 	}
@@ -120,6 +122,9 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	}
 	if *smokePhoto && (*smoke || *only != "") {
 		return refuse("-smoke-photo runs alone, without -smoke or -cases")
+	}
+	if *concepts != "" && !*smokePhoto {
+		return refuse("-concepts is the photo smoke's (-smoke-photo)")
 	}
 	ai, err := config.LoadAI(getenv)
 	if err != nil {
@@ -138,7 +143,7 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 		return refuse("the AI configuration is invalid: %s", strings.Join(codes, ", "))
 	}
 	if *smokePhoto {
-		return photoSmoke(ctx, ai, *root, *dir, *locale, getenv, stdout, stderr, b.Photo, refuse)
+		return photoSmoke(ctx, ai, *root, *dir, *locale, *concepts, getenv, stdout, stderr, b.Photo, refuse)
 	}
 	newBackend := b.Text
 	if !ai.LiveEnabled() {
@@ -347,6 +352,29 @@ func capOf(getenv func(string) string, def int64) (int64, error) {
 	return spend.ParseUSD(raw)
 }
 
+// conceptsVar is the photo smoke's override of the pack's concepts, as -concepts
+// (T-056 after the first live run). Nothing else reads it: not the worker,
+// the API or config.
+const conceptsVar = "AI_SMOKE_PHOTO_CONCEPTS"
+
+// parseConcepts reads a comma-separated list of concepts (each item
+// trimmed of spaces at its ends) and checks it as the segmenter client
+// checks a request's (provider.CheckConcepts); an empty item is refused.
+func parseConcepts(raw string) ([]string, error) {
+	var out []string
+	for item := range strings.SplitSeq(raw, ",") {
+		item = strings.TrimSpace(item)
+		if item == "" {
+			return nil, errors.New("an empty concept (a comma at an end or two in a row)")
+		}
+		out = append(out, item)
+	}
+	if err := provider.CheckConcepts(out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // photoSmoke is MainWith -smoke-photo (T-056 review round 1, I1: the first
 // live SAM 3.1 call goes through the worker's photo pipeline, never a
 // hand-made request). It refuses, before building any backend, unless the
@@ -361,7 +389,15 @@ func capOf(getenv func(string) string, def int64) (int64, error) {
 // and the segmenter (factory) metered by the cap, checks that the judge
 // takes images, opens the run's line in the spend record, runs the
 // pipeline once, writes the report and closes the line with what it cost.
-func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc string, getenv func(string) string, stdout, stderr io.Writer,
+//
+// flagConcepts (-concepts) or AI_SMOKE_PHOTO_CONCEPTS, one of them, is a
+// comma-separated list of concepts SAM is asked for instead of the pack's
+// (T-056 after the first live run, to explore their wording live through
+// the worker's pipeline, never by hand), checked as the segmenter client
+// checks the pack's before anything is built; the same gate, cap and
+// spend record, the override and the list in the report. Only this smoke
+// reads the variable: the worker's concepts are always its pack's.
+func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc, flagConcepts string, getenv func(string) string, stdout, stderr io.Writer,
 	factory PhotoFactory, refuse func(string, ...any) int) int {
 	v := ai.Vision
 	if !v.LiveEnabled() {
@@ -378,6 +414,20 @@ func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc string, getenv
 		return refuse("the photo path's approval names no segmentation model")
 	case factory == nil:
 		return refuse("this build has no photo backends")
+	}
+	var override []string
+	switch envConcepts := getenv(conceptsVar); {
+	case flagConcepts != "" && envConcepts != "":
+		return refuse("set either -concepts or %s, not both", conceptsVar)
+	case flagConcepts != "" || envConcepts != "":
+		source, raw := "-concepts", flagConcepts
+		if raw == "" {
+			source, raw = conceptsVar, envConcepts
+		}
+		var err error
+		if override, err = parseConcepts(raw); err != nil {
+			return refuse("%s: %v", source, err)
+		}
 	}
 	capNano, err := capOf(getenv, DefaultPhotoSmokeCap)
 	if err != nil {
@@ -435,7 +485,7 @@ func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc string, getenv
 		fmt.Fprintf(stderr, "ai-eval-live: the spend record could not be closed (%v): its open line counts at the run's whole cap until it is\n", err)
 	}
 	report, runErr := run.Run(ctx, PhotoConfig{Packs: reg, Root: root, Locale: loc, Provider: string(v.Provider), Approval: approval, Model: v.Model,
-		SegmentationModel: v.SegmentationModel, CapNanoUSD: capNano, RunID: runID, Now: func() time.Time { return start }}, in)
+		SegmentationModel: v.SegmentationModel, CapNanoUSD: capNano, RunID: runID, Concepts: override, Now: func() time.Time { return start }}, in)
 	if runErr != nil {
 		fmt.Fprintf(stdout, "ai-eval-live: %s run %s of %s stopped: cost USD %s (committed %s)\n", PhotoSmokeKind, runID, v.Model,
 			spend.FormatUSD(run.Spent()), spend.FormatUSD(run.Committed()))
@@ -451,10 +501,18 @@ func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc string, getenv
 		if r.Code != "" {
 			status += " " + r.Code
 		}
-		return fmt.Sprintf("ai-eval-live: %s run %s of %s and %s: status %s, server risk %s, %d of %d concepts answered, %d boxes, SAM images processed %v, "+
+		concepts := "the pack's concepts"
+		if r.ConceptsOverridden {
+			concepts = "concepts overridden " + strings.Join(r.Segmenter.ConceptList, ",")
+		}
+		var by []string
+		for _, c := range r.Segmenter.ByConcept {
+			by = append(by, fmt.Sprintf("%s %d", c.Concept, c.Boxes))
+		}
+		return fmt.Sprintf("ai-eval-live: %s run %s of %s and %s: status %s, server risk %s, %s, %d of %d concepts answered, %d boxes (%s), SAM images processed %v, "+
 			"judge counted %d and billed %d input tokens (reserved for %d), cost USD %s (committed %s, cap %s), gates %v, observations %v, complete %v",
-			PhotoSmokeKind, runID, r.SegmentationModel, r.Model, status, or(r.ServerRisk, "none"),
-			r.Segmenter.Answered, r.Segmenter.Concepts, r.Segmenter.Boxes, r.Segmenter.ImagesProcessed, r.Judge.Counted, r.Judge.BilledInput,
+			PhotoSmokeKind, runID, r.SegmentationModel, r.Model, status, or(r.ServerRisk, "none"), concepts,
+			r.Segmenter.Answered, r.Segmenter.Concepts, r.Segmenter.Boxes, strings.Join(by, ", "), r.Segmenter.ImagesProcessed, r.Judge.Counted, r.Judge.BilledInput,
 			r.Judge.ReservedInput, spend.FormatUSD(run.Spent()), spend.FormatUSD(run.Committed()), r.Cost.CapUSD, r.Gates, r.Warnings, r.Complete)
 	}
 	providerError := func() {

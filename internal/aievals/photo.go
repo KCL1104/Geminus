@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -47,6 +48,14 @@ import (
 // counted, what SAM said it processed, the judge's count against the input
 // tokens it was billed, the reservations and the cost: never a prompt, an
 // answer's text, a box, the image's bytes or a key.
+//
+// After the first live run (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found none
+// of the pack's concepts in the drawn floor plan), a run may ask for
+// concepts of its own (PhotoConfig.Concepts: the smoke's -concepts or
+// AI_SMOKE_PHOTO_CONCEPTS) to explore their wording through this same
+// pipeline, cap and spend record; the report then says so, names them,
+// and gives for each concept the boxes SAM found and each box's size as a
+// share of the frame (never where it is).
 
 // The photo smoke's inputs, under the repository root.
 const (
@@ -135,8 +144,48 @@ type conceptCall struct {
 	imagesProcessed int
 	width, height   int
 	objects         int
+	sizes           []BoxSize
 	code            string
 	unknownAttempts int
+}
+
+// ConceptBoxes is what SAM answered for one concept, as the report keeps
+// it (T-056 after the first live run, to compare the wording of concepts):
+// whether it answered, how many boxes, and each box's size as a share of
+// the answer's frame. Never where a box is, its confidence or the image.
+type ConceptBoxes struct {
+	Concept  string    `json:"concept"`
+	Answered bool      `json:"answered"`
+	Boxes    int       `json:"boxes"`
+	Sizes    []BoxSize `json:"sizes"`
+}
+
+// BoxSize is a box's width and height over its frame's, to 3 places (a
+// station of the demo floor plan: 0.158 by 0.231; the whole frame: 1 by
+// 1).
+type BoxSize struct {
+	Width  float64 `json:"width_share"`
+	Height float64 `json:"height_share"`
+}
+
+// sizesOf is the sizes of an answer's boxes that lie in its frame, in the
+// answer's order; a box outside it (the client refuses the answer) has
+// none.
+func sizesOf(a provider.SegmentAnswer) []BoxSize {
+	out := []BoxSize{}
+	w, h := a.Width, a.Height
+	if w <= 0 || h <= 0 {
+		return out
+	}
+	share := func(n, of int) float64 { return math.Round(float64(n)/float64(of)*1000) / 1000 }
+	for _, s := range a.Segments {
+		b := s.Box
+		if b.X1 < 0 || b.Y1 < 0 || b.X1 > b.X2 || b.Y1 > b.Y2 || b.X2 >= w || b.Y2 >= h {
+			continue
+		}
+		out = append(out, BoxSize{Width: share(b.X2-b.X1+1, w), Height: share(b.Y2-b.Y1+1, h)})
+	}
+	return out
 }
 
 // segmentProbe is the segmentation backend as the run sees it.
@@ -149,7 +198,7 @@ type segmentProbe struct {
 func (s *segmentProbe) SegmentOne(ctx context.Context, call provider.SegmentCall) (provider.SegmentAnswer, error) {
 	ans, err := s.BillableSegmenter.SegmentOne(ctx, call)
 	c := conceptCall{concept: call.Concept, answered: ans.Answered, imagesProcessed: ans.ImagesProcessed, width: ans.Width, height: ans.Height,
-		objects: len(ans.Segments), unknownAttempts: ans.UnknownAttempts}
+		objects: len(ans.Segments), sizes: sizesOf(ans), unknownAttempts: ans.UnknownAttempts}
 	if err != nil {
 		c.code = codeOf(err)
 	}
@@ -231,13 +280,20 @@ type PhotoConfig struct {
 	CapNanoUSD                                   int64
 	// RunID is the run's ID in the spend record.
 	RunID string
+	// Concepts, when not nil, are what the segmenter is asked for instead
+	// of the pack's (the smoke's -concepts or AI_SMOKE_PHOTO_CONCEPTS: T-056
+	// after the first live run, to explore the wording live through this
+	// pipeline): checked as the segmenter client checks the pack's
+	// (provider.CheckConcepts) before any call, and named in the report. The
+	// worker never takes them: its concepts are always its pack's.
+	Concepts []string
 	// Now dates the report; time.Now when nil.
 	Now func() time.Time
 }
 
 // PhotoReport is a photo smoke's record
-// (checks/ai-evals/live-smoke-photo-*.json): no prompt, answer text, box,
-// image byte or key.
+// (checks/ai-evals/live-smoke-photo-*.json): no prompt, answer text, box
+// (only its size as a share of the frame), image byte or key.
 type PhotoReport struct {
 	Suite             string `json:"suite"`
 	Kind              string `json:"kind"`
@@ -252,7 +308,11 @@ type PhotoReport struct {
 	RunID    string   `json:"run_id,omitzero"`
 	Locale   string   `json:"output_locale"`
 	Template string   `json:"prompt_template_version,omitzero"`
-	Image    struct {
+	// ConceptsOverridden: the segmenter was asked for the run's own
+	// concepts (PhotoConfig.Concepts), not the pack's; Segmenter.ConceptList
+	// names them.
+	ConceptsOverridden bool `json:"concepts_overridden"`
+	Image              struct {
 		Path          string `json:"path"`
 		UploadBytes   int    `json:"upload_bytes"`
 		MediaType     string `json:"media_type"`
@@ -288,8 +348,12 @@ type PhotoReport struct {
 	PatchHash         string   `json:"patch_hash,omitzero"`
 	NewProcessSteps   int      `json:"new_process_steps,omitzero"`
 	Segmenter         struct {
-		Asked            bool           `json:"asked"`
-		Concepts         int            `json:"concepts"`
+		Asked    bool `json:"asked"`
+		Concepts int  `json:"concepts"`
+		// ConceptList is the concepts asked for, in order; ByConcept what
+		// each call answered (boxes and their sizes as shares of the frame).
+		ConceptList      []string       `json:"concept_list"`
+		ByConcept        []ConceptBoxes `json:"by_concept"`
 		Calls            int            `json:"calls"`
 		Answered         int            `json:"concepts_answered"`
 		WithBoxes        int            `json:"concepts_with_boxes"`
@@ -444,6 +508,14 @@ func (r *PhotoRun) Run(ctx context.Context, cfg PhotoConfig, in *PhotoInputs) (*
 			"any image but the demo image, any other base model, zh-Hant output",
 		}}
 	rep.Segmenter.BoxesByConcept = map[string]int{}
+	concepts := in.concepts
+	if cfg.Concepts != nil {
+		if err := provider.CheckConcepts(cfg.Concepts); err != nil {
+			return nil, fmt.Errorf("aievals: the concepts to ask for: %w", err)
+		}
+		concepts, rep.ConceptsOverridden = slices.Clone(cfg.Concepts), true
+	}
+	rep.Segmenter.ConceptList, rep.Segmenter.ByConcept = slices.Clone(concepts), []ConceptBoxes{}
 	rep.Cost.CapNanoUSD, rep.Cost.CapUSD = cfg.CapNanoUSD, spend.FormatUSD(cfg.CapNanoUSD)
 	rep.Price.Source, rep.Price.Retrieved = spend.PriceSource, spend.PriceRetrieved
 	if source, retrieved, ok := spend.SourceOf(cfg.Model); ok {
@@ -453,7 +525,7 @@ func (r *PhotoRun) Run(ctx context.Context, cfg PhotoConfig, in *PhotoInputs) (*
 		rep.Price.InputPerMTok, rep.Price.OutputPerMTok = perMTok(p, spend.Tokens{Input: 1_000_000}), perMTok(p, spend.Tokens{Output: 1_000_000})
 	}
 	rep.Price.ImageNanoUSD, _ = spend.ImagePriceOf(cfg.SegmentationModel)
-	img, ir, concepts := in.image, in.ir, in.concepts
+	img, ir := in.image, in.ir
 	rep.Image.Path, rep.Image.UploadBytes, rep.Image.MediaType, rep.Image.Width, rep.Image.Height = PhotoImage, in.upload, img.MediaType, img.Width, img.Height
 	rep.Image.StoredBytes, rep.Image.StoredSHA256, rep.Image.VerifiedAsJob = in.stored.Size(), in.stored.SHA256, true
 	rep.Base.Path, rep.Base.Domain, rep.Base.Hash = PhotoBase, ir.Domain, hashing.Sum(in.baseIR)
@@ -577,6 +649,7 @@ func (r *PhotoRun) finish(rep *PhotoReport) {
 	frames := map[string]bool{}
 	for _, c := range r.seg.calls {
 		rep.Segmenter.Calls++
+		rep.Segmenter.ByConcept = append(rep.Segmenter.ByConcept, ConceptBoxes{Concept: c.concept, Answered: c.answered, Boxes: c.objects, Sizes: c.sizes})
 		rep.Segmenter.UnknownAttempts += c.unknownAttempts
 		if c.code != "" {
 			rep.Segmenter.ConceptCallCodes = append(rep.Segmenter.ConceptCallCodes, c.code)

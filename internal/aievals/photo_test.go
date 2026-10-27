@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,6 +40,8 @@ type photoJudge struct {
 	quotes    atomic.Int32
 	failQuote *provider.Error
 	images    bool
+	mu        sync.Mutex
+	prompts   []provider.Prompt
 }
 
 func (j *photoJudge) Name() string        { return "meta" }
@@ -57,6 +60,9 @@ var answerText func(pool map[string][]string) []byte
 
 func (j *photoJudge) Complete(_ context.Context, req provider.Request) (provider.Response, error) {
 	j.calls.Add(1)
+	j.mu.Lock()
+	j.prompts = append(j.prompts, req.Prompt)
+	j.mu.Unlock()
 	var pool map[string][]string
 	for _, b := range req.Prompt.Blocks {
 		if b.Name == "ID_ALLOCATION_POOL" {
@@ -101,6 +107,17 @@ func demoSAM(t *testing.T) photoSAM {
 
 func photoSmoke(t *testing.T, j *photoJudge, s provider.BillableSegmenter, capNano int64) (*aievals.PhotoReport, *aievals.PhotoRun) {
 	t.Helper()
+	r, run, err := photoSmokeWith(t, j, s, capNano, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r, run
+}
+
+// photoSmokeWith is photoSmoke asking the segmenter for concepts instead of
+// the pack's (nil: the pack's).
+func photoSmokeWith(t *testing.T, j *photoJudge, s provider.BillableSegmenter, capNano int64, concepts []string) (*aievals.PhotoReport, *aievals.PhotoRun, error) {
+	t.Helper()
 	answerText = func(pool map[string][]string) []byte {
 		return contracttest.PhotoAnswer(t, "electronics-line-demo", pool)
 	}
@@ -118,12 +135,9 @@ func photoSmoke(t *testing.T, j *photoJudge, s provider.BillableSegmenter, capNa
 		t.Fatal(err)
 	}
 	r, err := run.Run(context.Background(), aievals.PhotoConfig{Packs: reg, Root: root, Locale: "en", Provider: "meta", Approval: "H-029",
-		Model: "muse-spark-1.3", SegmentationModel: "sam-3.1", CapNanoUSD: capNano, RunID: "01M5X00000000000000000PH0T",
+		Model: "muse-spark-1.3", SegmentationModel: "sam-3.1", CapNanoUSD: capNano, RunID: "01M5X00000000000000000PH0T", Concepts: concepts,
 		Now: func() time.Time { return time.Date(2026, 10, 27, 1, 0, 0, 0, time.UTC) }}, in)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return r, run
+	return r, run, err
 }
 
 // The demo, as the worker runs it: 8 concepts, each reserved for at 3 SAM
@@ -344,5 +358,160 @@ func TestMainRefusesThePhotoSmokeWhileThePhotoPathIsOff(t *testing.T) {
 	}
 	if strconv.Itoa(int(aievals.DefaultPhotoSmokeCap/spend.NanoPerUSD)) != "1" {
 		t.Errorf("the photo smoke's default cap is USD %s", spend.FormatUSD(aievals.DefaultPhotoSmokeCap))
+	}
+}
+
+// shapesSAM is photoSAM scripted with the demo floor plan's shapes, as SAM
+// might answer the floor plan concepts (contracttest's ShapeSegments: the
+// six drawn stations as "rectangle", the four conveyors as "arrow"),
+// nothing for any other concept.
+func shapesSAM(t *testing.T) photoSAM {
+	t.Helper()
+	d := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	by := map[string][]provider.Segment{}
+	for _, x := range d.Segments.ShapeSegments() {
+		by[x.Concept] = append(by[x.Concept], provider.Segment{ObjectID: x.ObjectID, Confidence: x.Confidence,
+			Box: provider.Box{X1: x.Box.X1, Y1: x.Box.Y1, X2: x.Box.X2, Y2: x.Box.Y2}})
+	}
+	seg := fake.NewSegmenter()
+	for c, segs := range by {
+		seg.Script(c, d.Segments.Width, d.Segments.Height, segs...)
+	}
+	return photoSAM{seg}
+}
+
+// T-056 after the first live run (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found
+// none of the pack's 8 concepts in the drawn floor plan): the smoke can ask
+// SAM for other concepts, to explore their wording live through the
+// pipeline the worker runs, never by hand. The same pipeline, cap and
+// meter: one SAM image a concept; the judge sees the concepts asked for and
+// the boxes; the server's review and photo rules decide. The report says
+// the concepts were overridden, which, and for each concept how many boxes
+// SAM found and their sizes as shares of the frame: never where a box is,
+// nor the image.
+func TestThePhotoSmokeTakesOtherConcepts(t *testing.T) {
+	j := &photoJudge{images: true}
+	s := shapesSAM(t)
+	concepts := []string{"rectangle", "box", "arrow"}
+	r, run, err := photoSmokeWith(t, j, s, spend.NanoPerUSD, concepts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	samPrice, _ := spend.ImagePriceOf("sam-3.1")
+	muse, _ := spend.PriceOf("muse-spark-1.3")
+	if r.Status != "ready" || !r.Ok() || r.NewProcessSteps != 4 || r.ServerRisk == "" || !r.ConceptsOverridden ||
+		!slices.Equal(r.Segmenter.ConceptList, concepts) {
+		t.Fatalf("%+v", r)
+	}
+	var asked []string
+	for _, c := range s.Calls() {
+		asked = append(asked, c.Concept)
+	}
+	if !slices.Equal(asked, concepts) || r.Segmenter.Concepts != 3 || r.Segmenter.Calls != 3 || r.Segmenter.Boxes != 10 ||
+		r.Segmenter.BoxesByConcept["rectangle"] != 6 || r.Segmenter.BoxesByConcept["arrow"] != 4 || r.Segmenter.WithBoxes != 2 ||
+		r.Segmenter.CostNanoUSD != 3*samPrice || r.Segmenter.ReservedNanoUSD != 3*3*samPrice {
+		t.Errorf("segmenter %+v (asked %q)", r.Segmenter, asked)
+	}
+	if r.Cost.NanoUSD != 3*samPrice+muse.Cost(spend.Tokens{Input: 6702, Output: 1100}) || r.Cost.NanoUSD != run.Spent() {
+		t.Errorf("cost %+v", r.Cost)
+	}
+	// Per concept, in the order asked: the boxes and their sizes as shares
+	// of the frame (SMT's 190 x 120 of 1200 x 520; a conveyor's 100 x 16).
+	by := r.Segmenter.ByConcept
+	if len(by) != 3 || by[0].Concept != "rectangle" || by[0].Boxes != 6 || len(by[0].Sizes) != 6 || by[1].Concept != "box" ||
+		by[1].Boxes != 0 || len(by[1].Sizes) != 0 || !by[1].Answered || by[2].Concept != "arrow" || by[2].Boxes != 4 || len(by[2].Sizes) != 4 {
+		t.Fatalf("by concept %+v", by)
+	}
+	if by[0].Sizes[0] != (aievals.BoxSize{Width: 0.158, Height: 0.231}) || by[2].Sizes[0] != (aievals.BoxSize{Width: 0.083, Height: 0.031}) {
+		t.Errorf("sizes %+v %+v", by[0].Sizes, by[2].Sizes)
+	}
+	// The judge was asked with those concepts and the shape boxes.
+	j.mu.Lock()
+	prompts := j.prompts
+	j.mu.Unlock()
+	if len(prompts) != 1 {
+		t.Fatalf("%d judge calls", len(prompts))
+	}
+	user := prompts[0].User()
+	if !strings.Contains(user, `["rectangle","box","arrow"]`) || !strings.Contains(user, `"concept":"rectangle"`) || !strings.Contains(user, `"concept":"arrow"`) ||
+		strings.Contains(user, `"concept":"smt line"`) {
+		t.Errorf("the judge's prompt does not hold the concepts asked for and their boxes")
+	}
+	// What the report keeps: no box's place, no image.
+	data, err := r.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, _ := os.ReadFile(filepath.Join(contracttest.Root(t), aievals.PhotoImage))
+	for _, leak := range []string{`"x1"`, `"y1"`, `"x2"`, `"y2"`, `"confidence"`, base64.StdEncoding.EncodeToString(stored)[:64], "SEGMENTS"} {
+		if bytes.Contains(data, []byte(leak)) {
+			t.Errorf("the report holds %q", leak)
+		}
+	}
+	for _, want := range []string{`"concepts_overridden": true`, `"concept_list": [`, `"by_concept": [`, `"width_share": 0.158`} {
+		if !bytes.Contains(data, []byte(want)) {
+			t.Errorf("the report lacks %s", want)
+		}
+	}
+}
+
+// Without an override the report says so and lists the pack's concepts; an
+// override the client would refuse is refused before any call.
+func TestThePhotoSmokesConceptsAreThePacksByDefault(t *testing.T) {
+	r, _ := photoSmoke(t, &photoJudge{images: true}, demoSAM(t), spend.NanoPerUSD)
+	d := contracttest.LoadPhotoDemo(t, "electronics-line-demo")
+	if r.ConceptsOverridden || !slices.Equal(r.Segmenter.ConceptList, d.Segments.Concepts) || len(r.Segmenter.ByConcept) != len(d.Segments.Concepts) {
+		t.Errorf("%v %q %d", r.ConceptsOverridden, r.Segmenter.ConceptList, len(r.Segmenter.ByConcept))
+	}
+	for _, bad := range [][]string{{}, {"Rectangle"}, {"rectangle", "rectangle"}, {"rectangle, arrow"}, {"a", "b", "c", "d", "e", "f", "g", "h", "i"}} {
+		j, s := &photoJudge{images: true}, shapesSAM(t)
+		r, run, err := photoSmokeWith(t, j, s, spend.NanoPerUSD, bad)
+		if err == nil || r != nil || len(s.Calls()) != 0 || j.quotes.Load() != 0 || run.Committed() != 0 {
+			t.Errorf("%q: %v %+v", bad, err, r)
+		}
+	}
+}
+
+// The override is the photo smoke's alone: -concepts without -smoke-photo is
+// refused before the configuration is read, and no code but the smoke's
+// (internal/aievals) reads AI_SMOKE_PHOTO_CONCEPTS: not the worker, the
+// API, config or a deployment file.
+func TestTheConceptOverrideIsTheSmokesOnly(t *testing.T) {
+	for _, args := range [][]string{{"-concepts", "rectangle"}, {"-smoke", "-concepts", "rectangle"}} {
+		var out, errb bytes.Buffer
+		read := 0
+		code := aievals.MainWith(context.Background(), args, func(string) string { read++; return "" }, &out, &errb, aievals.Backends{})
+		if code != aievals.ExitRefused || read != 0 || !strings.Contains(errb.String(), "-concepts is the photo smoke's (-smoke-photo)") {
+			t.Errorf("%q: exit %d, %d variables read: %s", args, code, read, errb.String())
+		}
+	}
+	root := contracttest.Root(t)
+	var readers []string
+	for _, top := range []string{"cmd", "internal", "deploy", "scripts", "apps/web/lib", "apps/web/app"} {
+		err := filepath.WalkDir(filepath.Join(root, top), func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() || strings.HasSuffix(path, "_test.go") || strings.Contains(path, "node_modules") {
+				return err
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			if bytes.Contains(data, []byte("AI_SMOKE_PHOTO_CONCEPTS")) {
+				rel, _ := filepath.Rel(root, path)
+				readers = append(readers, filepath.ToSlash(rel))
+			}
+			return nil
+		})
+		if err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+	}
+	if !slices.Contains(readers, "internal/aievals/main.go") {
+		t.Errorf("the smoke does not name AI_SMOKE_PHOTO_CONCEPTS: %q", readers)
+	}
+	for _, r := range readers {
+		if !strings.HasPrefix(r, "internal/aievals/") {
+			t.Errorf("AI_SMOKE_PHOTO_CONCEPTS is named in %s", r)
+		}
 	}
 }
