@@ -32,7 +32,7 @@ func TestTheH029Record(t *testing.T) {
 		SegmentationModel: "sam-3.1",
 		DataPolicy: aiapproval.DataPolicy{
 			Inputs: aiapproval.InputsSyntheticDemoImagesAndUserText,
-			Roles:  []string{"modeler", "scenario"},
+			Roles:  []string{"modeler", "scenario", "analyst"}, // H-038
 		},
 		MonthlyBudgetUSD: 100,
 		Credentials:      []string{"meta"},
@@ -59,7 +59,8 @@ func TestTheH029Record(t *testing.T) {
 		!a.AllowsImages() || a.MonthlyBudgetUSD() != 100 || !slices.Equal(a.Credentials(), []string{"meta"}) {
 		t.Fatalf("H-029 yields %+v %v", a, ok)
 	}
-	if !a.AllowsRole("modeler") || !a.AllowsRole("scenario") || a.AllowsRole("importer") || a.AllowsRole("analyst") {
+	// H-038: the analyst too; the importer never.
+	if !a.AllowsRole("modeler") || !a.AllowsRole("scenario") || !a.AllowsRole("analyst") || a.AllowsRole("importer") {
 		t.Error("roles")
 	}
 	// H-018 covers no image and no segmentation model.

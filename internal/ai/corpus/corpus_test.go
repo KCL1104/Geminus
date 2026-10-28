@@ -174,7 +174,7 @@ func TestFakeProviderEval(t *testing.T) {
 			"golden_edit patch correctness and the >=90% target (needs a live provider: T-038)",
 			"server validation, risk floors and needs_input/invalid states of proposals (T-025)",
 			"database effects: unapproved mutation=0, invalid patch committed=0 (T-025, T-026, T-038)",
-			"analyst output checks: evidence paths, deltas, prose numbers, certainty (T-030)",
+			"analyst output checks: run by TestAnalystEval (checks/ai-evals/fake-analyst.json, T-030)",
 			"mapper confidence and evidence quality (T-027)",
 			"live provider eval (make ai-eval-live)",
 		},

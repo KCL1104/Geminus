@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/analyses/analyzer"
 	"github.com/kcl1104/geminus/internal/api"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/ids"
@@ -136,11 +137,10 @@ func TestRunRefusesToStartWithoutHandlers(t *testing.T) {
 }
 
 // This build runs simulation jobs (T-023), import profiling (T-016),
-// import validation (T-017) and AI proposals (T-025); nothing else yet
-// (analyses are T-030's).
+// import validation (T-017), AI proposals (T-025) and analyses (T-030).
 func TestTheBuildRunsSimulations(t *testing.T) {
 	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
-	if err != nil || len(hs) != 4 || hs[jobs.Simulation] == nil {
+	if err != nil || len(hs) != 5 || hs[jobs.Simulation] == nil {
 		t.Fatalf("%v %v", hs, err)
 	}
 	if _, ok := hs[jobs.ImportProfile].(*profiler.Handler); !ok {
@@ -151,6 +151,9 @@ func TestTheBuildRunsSimulations(t *testing.T) {
 	}
 	if _, ok := hs[jobs.ModelProposal].(*generator.Handler); !ok {
 		t.Errorf("the model_proposal handler is a %T", hs[jobs.ModelProposal])
+	}
+	if _, ok := hs[jobs.Analysis].(*analyzer.Handler); !ok {
+		t.Errorf("the analysis handler is a %T", hs[jobs.Analysis])
 	}
 }
 

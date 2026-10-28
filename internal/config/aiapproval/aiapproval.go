@@ -109,11 +109,12 @@ const (
 )
 
 // liveRoles are the prompt roles a data policy may let live AI serve
-// (PROPOSED D-112): the proposal roles, whose context is the model and the
-// user's intent. The importer sends sample rows of uploaded files and the
-// analyst results computed from bound datasets, which H-018's policy does
-// not cover; their jobs are not built yet (T-027, T-030).
-var liveRoles = []string{"modeler", "scenario"}
+// (D-112, approved by H-038, 2026-10-28): the proposal roles, whose context
+// is the model and the user's intent, and the analyst (T-030), whose
+// context is the model and the results the simulation computed. The
+// importer sends sample rows of uploaded files, which no recorded policy
+// covers; its job is not built yet (T-027).
+var liveRoles = []string{"modeler", "scenario", "analyst"}
 
 // DataPolicy is what the provider may receive and what may be kept of it.
 type DataPolicy struct {
@@ -310,8 +311,10 @@ var h018 = Record{
 // The owner has confirmed no dashboard spend limit for the Meta team (H-033
 // mentions the hackathon's USD 150 credit for 10 days); none is recorded,
 // and the Meta rules do not ask for one (PROPOSED D-122). Roles: the
-// proposal roles; T-056 adds the photo path's role, if it is another one,
-// in a reviewed change of this record.
+// proposal roles, and the analyst since H-038 (2026-10-28, 「批准 analyst
+// 走 live (Recommended)」: D-112 approved, the analyst's results of
+// synthetic demo data may be sent; the importer stays off), live only on
+// T-030's independently reviewed code (H-029 (4)).
 var h029 = Record{
 	ID:                "H-029",
 	Provider:          "meta",
@@ -319,7 +322,7 @@ var h029 = Record{
 	SegmentationModel: "sam-3.1",
 	DataPolicy: DataPolicy{
 		Inputs: InputsSyntheticDemoImagesAndUserText,
-		Roles:  []string{"modeler", "scenario"},
+		Roles:  []string{"modeler", "scenario", "analyst"},
 	},
 	MonthlyBudgetUSD: 100,
 	Credentials:      []string{"meta"},

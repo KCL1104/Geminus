@@ -52,6 +52,9 @@ func analysisInput(t *testing.T) AnalysisInput {
 // metrics may be cited, run IDs and hashes never reach the provider.
 func TestAnalysisContext(t *testing.T) {
 	in := analysisInput(t)
+	yield := 0.97
+	in.Scenario.Result.Metrics.Domain = map[string]simulation.MetricSummary{"first_pass_yield": {Status: simulation.Available, Mean: &yield, P50: &yield, P95: &yield,
+		SampleCount: 1, Population: simulation.PopulationReplication, Unit: "ratio"}}
 	a, err := Analysis(in)
 	if err != nil {
 		t.Fatal(err)
@@ -71,6 +74,10 @@ func TestAnalysisContext(t *testing.T) {
 	}
 	if !slices.Contains(a.Allowed, MetricRef{"scenario", "/metrics/throughput"}) || !slices.Contains(a.Allowed, MetricRef{"scenario", "/metrics/resources/server"}) {
 		t.Errorf("allowed %+v", a.Allowed)
+	}
+	// T-030: a pack's metrics (D-058) can be cited too.
+	if !slices.Contains(a.Allowed, MetricRef{"scenario", "/metrics/domain/first_pass_yield"}) {
+		t.Errorf("a domain metric cannot be cited: %+v", a.Allowed)
 	}
 	if slices.Contains(a.Allowed, MetricRef{"scenario", "/metrics/dora/change_lead_time"}) {
 		t.Error("an unavailable DORA metric may be cited")

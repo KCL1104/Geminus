@@ -9,6 +9,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/kcl1104/geminus/internal/analyses"
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/httpapi"
@@ -117,6 +118,9 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.
 	approval.Register(mux, log, v, db, &approval.Service{DB: db, Packs: served, Objects: o.objects})
+	// An analysis of completed runs (T-030): queued for the worker, under
+	// the same AI availability as proposals.
+	analyses.Register(mux, log, v, db, &analyses.Service{DB: db, AI: o.ai})
 	// A person's scenarios, and the reads of both kinds (T-028): the patch
 	// is checked as an AI scenario's approval checks it, the dataset
 	// snapshots read again from the object storage given; nothing is run.

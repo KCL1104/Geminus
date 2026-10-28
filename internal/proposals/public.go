@@ -220,6 +220,12 @@ var errorCodes = map[string]string{
 	"AI_IMAGE_UNSUPPORTED": "AI_PROVIDER_NOT_CONFIGURED",
 }
 
+// FailureError is failureError for the other AI jobs' resources (T-030's
+// analyses), so the code table above is the only one.
+func FailureError(failure []byte, requestID string) (*ErrorEnvelope, error) {
+	return failureError(failure, requestID)
+}
+
 // failureError shows a stored job failure as the contract's error. A code
 // the table does not name (AI_REFUSED, AI_OUTPUT_TRUNCATED,
 // AI_REQUEST_REJECTED, AI_INVALID_REQUEST, PROPOSAL_INPUT_INVALID,

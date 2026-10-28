@@ -222,6 +222,15 @@ var catalogue = map[string]spec{
 		"server_risk_level": risks, "provider_risk_claim": oneOf("low", "medium", "high", ""), "risk_level": risks})},
 	"proposal.attempt_failed": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, map[string]field{"attempt": {shape: count},
 		"code": {shape: code}, "retryable": {shape: flag}})},
+	// T-030: an analysis of completed runs, asked for by a person and
+	// written by its job; IDs, counts and codes, never the question or what
+	// the provider wrote.
+	"analysis.create": {User, []string{"ai_analysis"}, map[string]field{"run_id": idOf("sim"), "baseline_run_id": idOf("sim"),
+		"output_locale": locales, "question": {shape: flag}}},
+	"analysis.generate": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+		"deltas": {shape: count}, "conclusions": {shape: count}, "experiments": {shape: count}})},
+	"analysis.attempt_failed": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+		"code": {shape: code}, "retryable": {shape: flag}, "issues": {shape: count}})},
 	"simulation.complete":  {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}, "result_digest": {shape: hash}, "events": {shape: count}}},
 	"simulation.cancelled": {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}}},
 	// The job loop and its reaper (D-091 (b)): an attempt that ended

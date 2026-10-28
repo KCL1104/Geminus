@@ -75,7 +75,7 @@ func availableMetrics(m simulation.Metrics) (refs []string, unavailable int) {
 	for _, group := range []struct {
 		name string
 		m    map[string]simulation.MetricSummary
-	}{{"dora", m.DORA}, {"additional_metrics", m.AdditionalMetrics}} {
+	}{{"dora", m.DORA}, {"additional_metrics", m.AdditionalMetrics}, {"domain", m.Domain}} { // T-030: the pack's metrics (D-058) too
 		for k, s := range group.m {
 			summary("/metrics/"+group.name+"/"+escapeToken(k), s)
 		}

@@ -90,6 +90,11 @@ IDS = {
     "ASR_A1": ("asr", "A", 1), "ASR_A2": ("asr", "A", 2),
     # T-056 (proposal_images.sql): proposals asked for with a photo.
     "AIP_A31": ("aip", "A", 31), "AIP_A32": ("aip", "A", 32), "AIP_A33": ("aip", "A", 33), "AIP_A34": ("aip", "A", 34),
+    # T-030 (analysis_jobs.sql): analyses that follow their analysis jobs.
+    "ANA_A2": ("ana", "A", 2), "ANA_A3": ("ana", "A", 3), "ANA_A4": ("ana", "A", 4), "ANA_A5": ("ana", "A", 5),
+    "ANA_A6": ("ana", "A", 6), "ANA_A7": ("ana", "A", 7),
+    "JOB_A71": ("job", "A", 71), "JOB_A72": ("job", "A", 72), "JOB_A73": ("job", "A", 73), "JOB_A74": ("job", "A", 74),
+    "JOB_A75": ("job", "A", 75), "JOB_A76": ("job", "A", 76), "JOB_A77": ("job", "A", 77),
 }
 
 

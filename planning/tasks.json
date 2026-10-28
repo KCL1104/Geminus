@@ -1941,7 +1941,7 @@
       "id": "T-030",
       "title": "Grounded AI simulation analyst",
       "priority": "P0",
-      "status": "not_started",
+      "status": "in_progress",
       "owner_role": "AI / Full-stack",
       "planning_window": "Week 9–12",
       "depends_on": [

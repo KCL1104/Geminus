@@ -32,6 +32,7 @@ var appLayers = []string{
 	"./internal/proposals/...",   // AI proposal service and its job handler (T-025)
 	"./internal/scenarios/...",   // scenario service: a person's scenarios, reads of both kinds (T-028)
 	"./internal/comparisons/...", // baseline/scenario comparison service and HTTP adapter (T-029)
+	"./internal/analyses/...",    // simulation analysis service and its job handler (T-030)
 	"./internal/packs/...",       // the packs a deployment serves (T-023 review L2)
 	"./internal/worker/...",      // the job loop and its handler interface (T-019, ADR-024)
 	"./internal/storage/...",
@@ -316,8 +317,8 @@ var rules = []rule{
 		name:    "job-handlers-only-in-the-worker",
 		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
 		applies: []string{"./..."},
-		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/..."},
-		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/..."}, // T-023, T-016, T-017, T-025
+		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/..."},
+		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/..."}, // T-023, T-016, T-017, T-025, T-030
 	},
 	{
 		// T-026: a person decides a proposal, through the API's routes and

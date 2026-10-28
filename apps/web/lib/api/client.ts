@@ -6,6 +6,9 @@
 // getMe (D-045), which selects no organization: it is how the UI learns the
 // organizations to choose from, and the BFF and API authenticate it.
 import type {
+  AnalysisAccepted,
+  AnalysisRecord,
+  AnalysisRequest,
   Approval,
   Approve,
   Comparison,
@@ -398,6 +401,27 @@ export function createApiClient(cfg: ClientConfig) {
         idempotencyKey: key,
         signal: opts.signal,
       });
+    },
+    /**
+     * Asks the AI to explain a completed run beside a completed baseline
+     * (T-030): it is queued (202) and written by a job; reuse `key` to retry.
+     */
+    async createAnalysis(runId: string, body: AnalysisRequest, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<AnalysisAccepted>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<AnalysisAccepted>({
+        method: "POST",
+        path: `/simulations/${runId}/analyses`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** An analysis as its job left it: generating, completed with the AI's text, or failed. */
+    async getAnalysis(analysisId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<AnalysisRecord>> {
+      if (!isID("ana", analysisId)) return notFound("The analysis");
+      return call<AnalysisRecord>({ method: "GET", path: `/analyses/${analysisId}`, signal: opts.signal });
     },
     /** One page of the model's runs, oldest first (up to 100). */
     async listSimulations(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {

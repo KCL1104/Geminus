@@ -226,6 +226,48 @@
   margin: 0 0 var(--gm-space-md);
 }
 
+/* The AI's explanation (T-030): the form, then its text in lists, each
+   claim's evidence under it in Label size. */
+.ask {
+  display: grid;
+  justify-items: start;
+  gap: var(--gm-space-md);
+  max-width: 720px;
+}
+
+.analysis {
+  max-width: 720px;
+}
+
+.explained {
+  display: grid;
+  gap: var(--gm-space-sm);
+  margin: 0 0 var(--gm-space-md);
+}
+
+.kind {
+  display: inline-block;
+  padding: 0 var(--gm-space-xs);
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-sm);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.evidence,
+.reasonText {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--gm-space-sm);
+  color: var(--gm-color-ink-2);
+}
+
+.evidence {
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
 .facts {
   display: grid;
   grid-template-columns: minmax(120px, auto) minmax(0, 1fr);

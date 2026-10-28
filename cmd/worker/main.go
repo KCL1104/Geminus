@@ -41,6 +41,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/ai/provider/meta"
 	"github.com/kcl1104/geminus/internal/ai/spend"
+	"github.com/kcl1104/geminus/internal/analyses/analyzer"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/import/profiler"
@@ -153,8 +154,13 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	// T-030: analyses of completed runs, on the same checked client.
+	analyses, err := analyzer.New(analyzer.Config{Provider: client, Budget: budget, Packs: served, Actor: d.worker.ID, Log: d.log})
+	if err != nil {
+		return nil, err
+	}
 	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ImportValidate: validate,
-		jobs.ModelProposal: proposals}, nil
+		jobs.ModelProposal: proposals, jobs.Analysis: analyses}, nil
 }
 
 // aiClient is the checked provider client of the configured mode (T-024,

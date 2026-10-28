@@ -10,6 +10,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
 import { formatValue } from "./format";
 import type { ResultsData } from "./load";
+import { Analysis } from "./analysis";
 import { MareyChart } from "./marey-chart";
 import { keyMetrics, leadTimeSummary } from "./metrics";
 import { MetricsTable } from "./metrics-table";
@@ -53,7 +54,8 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
   );
 }
 
-export function ResultsView({ data }: { data: ResultsData }) {
+/** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
+export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: { id: string | null; onChange: (id: string | null) => void } }) {
   const i18n = useI18n();
   const { t } = i18n;
   const { comparison, version, baseline, scenario } = data;
@@ -94,6 +96,7 @@ export function ResultsView({ data }: { data: ResultsData }) {
           <MetricsTable rows={rows} />
         </div>
       </section>
+      {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}

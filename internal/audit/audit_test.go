@@ -35,6 +35,7 @@ var (
 	sim    = ids.New("sim")
 	imp    = ids.New("imp")
 	aip    = ids.New("aip")
+	ana    = ids.New("ana")
 	job    = ids.New("job")
 	prj    = ids.New("prj")
 	worker = "worker-0.pod_a:1"
@@ -101,6 +102,11 @@ func valid() []audit.Event {
 		w("proposal.attempt_failed", "ai_proposal", aip, map[string]any{"provider": "", "role": "", "prompt_template_version": "",
 			"schema": "", "output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0),
 			"attempt": 2, "code": "AI_RATE_LIMITED", "retryable": true}),
+		// T-030: an analysis asked for beside a baseline, written, and refused as ungrounded.
+		u("analysis.create", "ai_analysis", ana, map[string]any{"run_id": ids.New("sim"), "baseline_run_id": ids.New("sim"),
+			"output_locale": "zh-Hant", "question": true}),
+		w("analysis.generate", "ai_analysis", ana, with(provider(), "attempt", 1, "deltas", 3, "conclusions", 2, "experiments", 1)),
+		w("analysis.attempt_failed", "ai_analysis", ana, with(provider(), "attempt", 1, "code", "ANALYSIS_UNGROUNDED", "retryable", false, "issues", 2)),
 		u("proposal.conflict", "ai_proposal", aip, map[string]any{"mode": "scenario", "model_id": mdl, "base_version_id": mv, "latest_version_id": mv2}),
 		u("proposal.approve", "ai_proposal", aip, map[string]any{"mode": "edit", "model_id": mdl, "base_version_id": mv, "patch_hash": hash("e"),
 			"server_risk_level": "high", "risk_level": "high", "new_version_id": mv2, "version": 3, "draft_out_of_date": false}),

@@ -13,7 +13,8 @@ import styles from "./results.module.css";
 
 const groups: readonly MetricGroup[] = ["run", "resources", "queues"];
 
-function Label({ label }: { label: MetricLabel }) {
+/** A metric's name as the table writes it (the analysis names its evidence the same way). */
+export function MetricName({ label }: { label: MetricLabel }) {
   const { t } = useI18n();
   if ("key" in label) return <>{t(label.key, label.params)}</>;
   // A pack's own metric: its key and unit as the server gave them (data, not catalog text).
@@ -113,7 +114,7 @@ function Row({ row }: { row: MetricRow }) {
   return (
     <tr data-status={row.status}>
       <th scope="row">
-        <Label label={row.label} />
+        <MetricName label={row.label} />
       </th>
       <td className={styles.num}>
         <Value value={row.baseline} unit={row.unit} ci={row.ci.baseline} />

@@ -6,12 +6,12 @@
 // a fake behind its fetch; no value the API did not send is shown; no axe
 // violation in any state (WCAG 2.2 A/AA without layout: contrast and target
 // size are the browser checks').
-import { act, Suspense } from "react";
+import { act, Suspense, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApiClient } from "../lib/api/client";
 import { ApiProvider } from "../lib/api/provider";
 import { type Auth, AuthProvider } from "../lib/auth/session";
-import type { Comparison, Run, TraceArtifact } from "../lib/contracts";
+import type { AnalysisRecord, Comparison, Run, TraceArtifact } from "../lib/contracts";
 import type { Locale } from "../lib/i18n/locale";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
@@ -307,6 +307,108 @@ describe("the model page's scenarios (the way back to a scenario and its results
     expect(failed.querySelector('[role="alert"]')).not.toBeNull();
     await press(button(failed, en.retry));
     await waitFor(() => failed.querySelector("li a") !== null, "the retried list");
+  });
+});
+
+describe("the AI explanation of the results (T-030)", () => {
+  const ANA = "ana_01M4YDQK00TA0000000000T030";
+  const lead = boardComparison.metrics.find((m) => m.metric_path === "/metrics/lead_time_minutes/p50")!;
+  const record = (over: Partial<AnalysisRecord>): AnalysisRecord => ({
+    id: ANA, organization_id: ORG, run_id: SCENARIO_RUN, baseline_run_id: BASELINE_RUN, status: "generating", analysis: null,
+    created_at: "2026-10-28T09:00:00Z", error: null, ...over,
+  });
+  const explained = record({
+    status: "completed",
+    analysis: {
+      baseline: { summary: "One ICT fixture held boards back." },
+      scenario: { summary: "A second ICT fixture shortened the lead time." },
+      delta: [{ metric_path: lead.metric_path, absolute_delta: lead.absolute_delta, relative_delta: lead.relative_delta, reason: "Less waiting before ICT." }],
+      bottleneck: [{ statement: "ICT was the busiest station.", kind: "observation", evidence: [
+        { run: "baseline", metric_path: "/metrics/resources/ict_fixture" }, { run: "scenario", metric_path: "/metrics/no_such_row" }] }],
+      assumptions: ["Test times stay as modeled."],
+      uncertainty: ["5 replications leave some spread."],
+      suggested_next_experiments: [{ name: "Faster AOI", hypothesis: "AOI may become the next constraint.", requires_confirmation: true }],
+    },
+  });
+  const completedRuns = { ...scenarioAnswers, [`GET ${v1}/simulations/${BASELINE_RUN}`]: json(200, boardBaselineRun()),
+    [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun()), ...resultAnswers() };
+
+  async function page(api: ReturnType<typeof fakeApi>, initial: string | null, auth: Auth = editor, locale: Locale = "en") {
+    const { RunResults } = await import("../features/results/run-results");
+    const seen: (string | null)[] = [];
+    function WithAnalysis() {
+      const [id, setId] = useState(initial);
+      return <RunResults scenarioId={boardScenario.id} baselineId={BASELINE_RUN} scenarioRunId={SCENARIO_RUN} pollMs={25}
+        analysis={{ id, onChange: (next) => { seen.push(next); setId(next); } }} />;
+    }
+    const el = await mount(
+      <AuthProvider value={auth}>
+        <ApiProvider client={api.client}>
+          <WithAnalysis />
+        </ApiProvider>
+      </AuthProvider>,
+      locale,
+    );
+    await settle();
+    await waitFor(() => el.querySelector("table") !== null, "the results");
+    return { el, seen };
+  }
+  const section = (el: Element) => el.querySelector('section[aria-labelledby="analysis-heading"]');
+
+  it("lets an editor ask, with a question, then follows the analysis to the AI's text beside the server's figures", async () => {
+    const api = fakeApi({ ...completedRuns, [`POST ${v1}/simulations/${SCENARIO_RUN}/analyses`]: json(202, { id: ANA, status: "generating" }),
+      [`GET ${v1}/analyses/${ANA}`]: [json(200, record({})), json(200, explained)] });
+    const { el, seen } = await page(api, null);
+    const s = section(el)!;
+    expect(s.querySelector("h2")?.textContent).toBe(en["analysis.title"]);
+    const field = [...s.querySelectorAll("label")].find((l) => text(l) === en["analysis.question"])!;
+    const input = document.getElementById(field.htmlFor) as HTMLTextAreaElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "  Why is it shorter?  ");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(await violations()).toEqual([]);
+    await press(button(s, en["analysis.ask"]));
+    await waitFor(() => seen.length > 0, "the analysis in the address");
+    const post = api.calls.find((c) => c.method === "POST")!;
+    expect(post.body).toEqual({ baseline_run_id: BASELINE_RUN, output_locale: "en", question: "Why is it shorter?" });
+    expect(post.key).toMatch(/^[\x21-\x7e]{8,128}$/);
+    expect(seen).toEqual([ANA]);
+    await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
+    const done = section(el)!;
+    // The figure is the server's comparison's, written as the table writes it, its exact value in <data>.
+    const figure = done.querySelector(`data[value="${lead.absolute_delta}"]`);
+    expect(figure).not.toBeNull();
+    expect(text(done)).toContain("Less waiting before ICT.");
+    expect(text(done)).toContain(en["analysis.kind.observation"]);
+    // Evidence is named as the metrics table names it; a path no row has stays a path.
+    expect(text(done)).toContain(`${en["analysis.evidence"]}`);
+    expect([...done.querySelectorAll("code")].map((c) => c.textContent)).toContain("/metrics/no_such_row");
+    expect(text(done)).toContain(en["analysis.nextNote"]);
+    expect(outcome(el)).toContain(en["analysis.done"]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("says an ungrounded answer was not kept, shows nothing of it, and lets an editor ask again", async () => {
+    const failed = record({ status: "failed", error: { error: { code: "INTERNAL_ERROR", message: "the AI answer is not grounded in the results (ANALYSIS_DELTA_MISMATCH at /delta/0/absolute_delta)",
+      request_id: REQ, details: [{ path: "", reason: "x", code: "ANALYSIS_UNGROUNDED" }] } } });
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, failed) });
+    const { el, seen } = await page(api, ANA);
+    await waitFor(() => text(section(el)!).includes(en["analysis.ungrounded"]), "the refusal");
+    expect(section(el)!.querySelector('[role="alert"]')).toBeNull();
+    await press(button(section(el)!, en["analysis.again"]));
+    expect(seen).toEqual([null]);
+    await waitFor(() => button(section(el)!, en["analysis.ask"]) !== undefined, "the form again");
+  });
+
+  it("shows a viewer an analysis in the address and nothing to ask with; and nothing without one", async () => {
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, explained) });
+    const { el } = await page(api, ANA, viewer, "zh-Hant");
+    await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
+    expect(section(el)!.querySelector("h2")?.textContent).toBe(zhHant["analysis.title"]);
+    expect(button(section(el)!, zhHant["analysis.again"])).toBeUndefined();
+    const none = await page(fakeApi(completedRuns), null, viewer);
+    expect(section(none.el)).toBeNull();
   });
 });
 

@@ -408,7 +408,7 @@ func TestReviewEval(t *testing.T) {
 			"golden_edit correctness of a model's own answers and the >=90% target (the answers here are hand-written; needs a live provider: T-038)",
 			"the dataset binding stage (unit-tested in internal/proposals/generator) and database effects: ready content immutable, unapproved mutation=0 (make integration-test; T-026 approval)",
 			"MOD-047 secrets in the answer: the review does not scan answer text; the context never holds them (T-024 gate secrets_sent)",
-			"analyst output checks (T-030), mapper suggestions (T-027)",
+			"mapper suggestions (T-027); the analyst output checks are TestAnalystEval's (T-030)",
 			"live provider eval (make ai-eval-live)",
 		},
 	}

@@ -1,0 +1,20 @@
+{
+	"suite": "T-030 fake-provider analyst suite (hand-written grounded and unsafe answers through internal/ai/analyst)",
+	"provider": "fake (deterministic answers written here)",
+	"live_provider": "NOT RUN (make ai-smoke-live on the deployment; T-030 live check)",
+	"cases": {
+		"analyst": 10
+	},
+	"checks_passed": {
+		"grounded_answer_kept": 10,
+		"unsafe_answer_refused_for_its_flaw": 10
+	},
+	"zero_tolerance_gates": {
+		"reference_refused": 0,
+		"unsafe_answer_kept": 0
+	},
+	"not_run": [
+		"a model's own answers (the answers here are hand-written; a live provider: T-038)",
+		"database effects: an ungrounded answer fails the analysis and stores nothing (make integration-test, internal/api TestAnUngroundedAnalysisFails)"
+	]
+}

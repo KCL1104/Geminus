@@ -1454,6 +1454,19 @@
       "proposal": "API 以與 worker 相同的檢查（liveGate）只依 AI_PROVIDER、AI_POLICY_APPROVAL、AI_MODEL、GEMINUS_AI_LIVE 判斷：開關 off 時照常啟動、proposal 回 503（AI_POLICY_NOT_APPROVED 或 AI_PROVIDER_NOT_CONFIGURED）；開關 on 而設定不符時拒絕啟動；環境中出現任何 AI key 變數（internal/config/apiai.go 的 apiKeyVars，非空值）就拒絕啟動（key_forbidden，只寫變數名稱）。API 與 worker 的四個設定在 variables.json 宣告相同、由 owner 設相同的值。選項 B：API 照舊讀 key（secret 多放一處）；選項 C：API 一律接受、由 worker 失敗（使用者要等 job 失敗才知道）。照片路徑的設定已加入（T-056 的 follow-up，2026-10-26 coordinator 決定，同樣 proposed）：API 也讀 AI_VISION_PROVIDER、AI_VISION_POLICY_APPROVAL、AI_VISION_MODEL（不讀 key），以 worker 的同一段判斷（internal/config 的 decide）決定是否接受照片；照片路徑關閉時 createImageProposal 在讀 body 前回 503（AI_PROVIDER_NOT_CONFIGURED 或 AI_POLICY_NOT_APPROVED，details[0].code 為 AI_IMAGE_UNSUPPORTED），文字 proposal 不受影響；三個設定在 api 與 worker 宣告相同。建議 A，已實作。",
       "approved_by": null,
       "approved_at": null
+    },
+    {
+      "id": "D-133",
+      "title": "analyst 回答的審查、analysis 的生命週期與畫面（T-030）",
+      "status": "proposed",
+      "owner_role": "AI / Product",
+      "gate": "T-030 驗收前",
+      "resolves": [],
+      "source_gap": "AI_SPEC §9 與 D-090 (a) 沒有定：evidence 引用 summary 或統計值、delta 怎樣算相等、prose 的確定性與 ID、ungrounded 的失敗方式、analysis 的 DB 生命週期與畫面。",
+      "source_pages": "N/A（T-030 實作；AI_SPEC §9、D-010、D-026、D-090、H-038；checks/T-030_VALIDATION.md）",
+      "proposal": "(a) evidence：同角色的 ALLOWED_METRIC_REFERENCES 或其下有值的統計值；delta 用與 comparison 完全相同的統計值 path，各一次；domain 指標可引用。(b) delta 依回答的小數位數四捨五入後等於 comparison（含正負號），null 對 null；存 comparison 的值。(c) prose 的數字以 CheckProse 檢查；含 server ID 即拒絕；主張不得含承諾結果的詞；少於 2 次 replication 必須有 uncertainty。(d) 任一不符：ANALYSIS_UNGROUNDED，不重試，analysis 隨 job failed、不存內容；API 為 INTERNAL_ERROR、details[0].code 為 ANALYSIS_UNGROUNDED。(e) migration 0018：output_locale；generating 開始、request 不變、只隨 job 完成或失敗、之後不可改；API 不能結束 analysis job。(f) 兩個 run 都 completed（否則 409 RESULT_NOT_READY）、同 model、不同 run；question 選填非空白；audit 不記問題。(g) 結果頁的 AI 解讀區塊、analysis ID 在網址、數字用 server 值、實驗沒有執行按鈕。建議全部採用，已實作。",
+      "approved_by": null,
+      "approved_at": null
     }
   ],
   "human_decisions": [

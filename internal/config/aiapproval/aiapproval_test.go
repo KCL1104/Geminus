@@ -238,7 +238,7 @@ func TestGapReasons(t *testing.T) {
 		"raw text in logs":         {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
 		"no role":                  {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
 		"importer role":            {func(r *aiapproval.Record) { r.DataPolicy.Roles = append(r.DataPolicy.Roles, "importer") }, aiapproval.ReasonPolicyUnsupported},
-		"analyst role":             {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"analyst"} }, aiapproval.ReasonPolicyUnsupported},
+		"an unknown role":          {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"critic"} }, aiapproval.ReasonPolicyUnsupported},
 		"no budget":                {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = 0 }, aiapproval.ReasonBudgetMissing},
 		"negative budget":          {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = -100 }, aiapproval.ReasonBudgetMissing},
 		"spend limits unconfirmed": {func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} }, aiapproval.ReasonSpendLimitsUnconfirmed},

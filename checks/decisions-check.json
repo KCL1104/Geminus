@@ -2,7 +2,7 @@
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
     "approved": 92,
-    "proposed": 13,
+    "proposed": 14,
     "rejected": 0,
     "superseded": 0
   },
@@ -49,13 +49,11 @@
   "tasks_by_status": {
     "blocked": 0,
     "done": 35,
-    "in_progress": 4,
-    "not_started": 18,
+    "in_progress": 5,
+    "not_started": 17,
     "review": 0
   },
-  "ready_tasks": [
-    "T-030"
-  ],
+  "ready_tasks": [],
   "next_after_review": [],
   "gates": {
     "D-001": {
@@ -910,6 +908,11 @@
     "D-124": {
       "status": "proposed",
       "gate": "T-055 live 前",
+      "gates_tasks": []
+    },
+    "D-133": {
+      "status": "proposed",
+      "gate": "T-030 驗收前",
       "gates_tasks": []
     }
   },
