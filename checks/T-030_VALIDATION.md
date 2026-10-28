@@ -201,3 +201,42 @@ Reviewer（獨立 subagent，只讀，沒有 shell）：**High 0**、Medium 2、
 | 修正後第 2 次 | **保留**：AI 指出加第 3 台 ICT tester 沒有提高產出（463.4 → 463.6），因為主要限制在 SMT 之前（SMT 前的 buffer 平均等候約 230 分鐘、平均佇列約 118）；ICT 前的等候 −31.6%、ICT tester 使用率 −5.3 pp、FCT 前的等候 +42.6%；每個 bottleneck 都附兩次執行的 evidence；假設與不確定性寫出 1 天、5 次 replication |
 
 兩次中一次被拒（樣本只有 2，不代表比例）。**畫面上看到的問題**（下一步）：AI 的文字照抄完整精度的數字與欄位名稱（`497.4225096419336 minute`、`wait_mean_minutes`）；「What changed」中 `/metrics/lead_time_minutes/mean` 與兩個 domain metric（`scheduled_utilization.ict`、`blocking_ratio.ict`）以 path 顯示，沒有名稱。
+
+## 8. AI 說明的可讀性（2026-10-28，§7 看到的問題）
+
+### 改動
+
+- **Prompt `analyst-0.3.3`**（`prompts/analyst/system.md`）：prose 寫給不看 JSON 的人讀：指標用一般說法加 node／resource 的名稱，不寫 metric path、欄位名、指標 key 或 ID（path 只放在 evidence 與 delta）；數字四捨五入到 1 位小數（100 以上可寫整數），比率寫成帶 % 的百分比；只寫供應資料中有的數，不自行計算差、倍數或比例，比率的差不寫成「百分點」，百分位寫 p50、p95。這些規則對應 server 的核對（`internal/ai/locale` 的 `matches`）：寫出的小數位數內四捨五入相等即通過，帶 % 的數與 100 倍的值比；不帶 % 的「5.3 百分點」與「第 95 百分位」的 95 不會通過，AI 自己算的差也不會。範例用中性的 `<緩衝區名稱>`、`<資源名稱>`，generic prompt 不含 domain 詞彙（`TestNoDomainVocabulary`；第一版用了 SMT／ICT 的例子，被這個測試擋下後改掉）。
+- **前端的指標名稱**（`apps/web/features/results/metrics.ts`、`metrics-table.tsx`）：pack 的指標以 catalog 已有的 `domain.<domain>.metric.<名稱>`（D-117 (h)）命名，站的指標加站的 node 名稱（`metric.atStation`：en「{metric}: {name}」、zh-Hant「{metric}：{name}」；key 在第一個 `.` 分開，D-117 (d)）；catalog 沒有的 key 照舊以 `<code>` 顯示 key 與單位。結果表多一列可選的「Lead time, mean」（`/metrics/lead_time_minutes/mean`，comparison 有才列），AI 的「What changed」與 evidence 因而有名稱與分鐘單位。
+
+### 獨立 review（H-029）與修正
+
+Reviewer 跑了 `tsc`、eslint、vitest（results-metrics 14／14、i18n 18／18）與 `go test`（aicontext、analyst、locale），並以 `CheckProse` 的副本實測句子；e2e NOT RUN。High 0。
+
+| # | 發現 | 處理 |
+|---|---|---|
+| M1 | 比率的 absolute_delta 只能寫成「下降 5.4%」才通過核對（「5.4 個百分點」不帶 %，被拒），讀者會當成相對變化，與表格的「−5.4 pp」「−9.1%」不一致 | **修正**（prompt）：比率的變化只寫兩個 run 的值或 relative_delta，不寫它的 absolute_delta |
+| M2 | Prompt 要 AI 寫 node／resource 名稱，名稱中的數字（「Station 7」「Line 2」）被當成數字核對，整個分析被拒（`ANALYSIS_NUMBER_UNVERIFIED`）；範本的名稱沒有數字，使用者建的線會有 | **修正**：`aicontext.AnalysisPrompt.Names`（MODEL_SUMMARY 顯示的名稱）經 analyzer 傳給 `analyst.Input.Names`；核對 prose 前把同時有數字與字母的名稱換成空白（長的先，「Station 13」先於「Station 1」）；只有數字的名稱不換（否則該數到處都會通過）。`TestNamesWithDigits`；三個 mutation（不換、不限字母、不排序）皆 KILLED |
+| M3 | Server 的 locale instruction（每個 prompt 的 server rules）仍要求「單位照抄、數字用供應值的單位」，與新的 prose 規則矛盾 | **修正**：structured 欄位照抄單位；prose 的數字可四捨五入、比率可寫成帶 % 的百分比、單位以輸出語言寫。Server rules 版本 `context-rules-3`（也影響提案的 prompt：提案的 prose 核對是同一個 `matches`，四捨五入與 % 原本就通過）；ADR-027 已同步 |
+| L1 | prose 欄位清單漏了 delta 的 reason 與 experiment 的 name（兩者都核對、都顯示） | **修正**：「所有 prose 欄位（…）」 |
+| L2 | 「95th percentile」的 95 也被拒 | **修正**：prompt 加上英文的例子 |
+| L3 | 「What changed」引用表格沒有的統計（`queue_length_mean`、`wait_p95_minutes`、`domain/<key>/p95`）時仍顯示 path | **延後**：AI 多引用表格的列；需要時以「統計＋名稱」做 fallback |
+| L4 | `MetricName` 的新分支沒有 render 測試 | **修正**：`tests/metric-name.test.tsx`（en、zh-Hant、catalog 沒有的 key） |
+| L5 | `dora`、`additional_metrics` 的 key 若與 pack 的指標同名，會被冠上 pack 的名稱 | **修正**：只在 `domain` 群組命名；測試 |
+| L6 | `isStepMeasure` 上方的註解過時 | **修正** |
+
+另外：提案的 review（`internal/ai/review`）對名稱中的數字原本就另有處理（`nameNumbers` 把 base 名稱中的數算作供應值），本次未改。
+
+### 命令與結果（修正後，2026-10-28，本機 WSL2；Go 1.27.3、Node 24.21.0；disposable PostgreSQL 16 `dt_test_t030`，重建）
+
+| 命令 | 結果 |
+|---|---|
+| `make backend-test` | exit 0：**85 個 package ok** |
+| `make architecture-check` | exit 0 |
+| `make ai-eval` | exit 0（fake provider 的 context、review、analyst 檢查） |
+| `make spec-check` | exit 0 |
+| `make frontend-test` | exit 0：lint、typecheck、**1088 個 unit test 通過** |
+| `make integration-test` | exit 0：**38 個 package ok** |
+| Mutation（名稱不換、不限字母、不排序） | 皆 KILLED |
+
+`make backend-race`、`make e2e-test` NOT RUN。Live（`analyst-0.3.3`、`context-rules-3` 部署後再問一次）尚未執行：NOT RUN。

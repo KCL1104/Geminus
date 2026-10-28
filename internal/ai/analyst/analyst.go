@@ -16,7 +16,8 @@
 //     (compare.Resolve);
 //   - every number in the prose is one of the supplied values
 //     (locale.CheckProse: Arabic numbers rounded as written, percentages;
-//     number words and other digits are unverifiable);
+//     number words and other digits are unverifiable); the digits of a
+//     model name the prose quotes ("Line 2") are the name's, not numbers;
 //   - each conclusion has evidence and is an observation or an inference;
 //     each experiment needs a person to choose it;
 //   - no claim promises an outcome (AI_SPEC §9: a simulation result is not
@@ -35,6 +36,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/locale"
@@ -83,6 +85,7 @@ type Input struct {
 	Output   provider.AnalysisOutput
 	Allowed  []aicontext.MetricRef // the context's ALLOWED_METRIC_REFERENCES
 	Supplied []float64             // every number the context supplied
+	Names    []string              // the model's names as the context showed them
 	Scenario *simulation.Result
 	// Baseline and Comparison are both nil without a baseline run.
 	Baseline   *simulation.Result
@@ -189,12 +192,29 @@ func (c *checker) add(code, path string) { c.issues = append(c.issues, Issue{Cod
 
 // prose checks text a person reads: its numbers, and that it names no server ID.
 func (c *checker) prose(path, text string) {
-	if len(locale.CheckProse(text, c.in.Supplied)) > 0 {
+	if len(locale.CheckProse(c.withoutNames(text), c.in.Supplied)) > 0 {
 		c.add(NumberUnverified, path)
 	}
 	if serverID.MatchString(text) {
 		c.add(ServerID, path)
 	}
+}
+
+// withoutNames blanks the model names that hold a digit and a letter, the
+// longest first ("Line 12" before "Line 1"). A name that is only digits
+// stays: blanking it would let that number through anywhere.
+func (c *checker) withoutNames(text string) string {
+	var names []string
+	for _, n := range c.in.Names {
+		if strings.ContainsFunc(n, unicode.IsDigit) && strings.ContainsFunc(n, unicode.IsLetter) {
+			names = append(names, n)
+		}
+	}
+	slices.SortFunc(names, func(a, b string) int { return len(b) - len(a) })
+	for _, n := range names {
+		text = strings.ReplaceAll(text, n, " ")
+	}
+	return text
 }
 
 // claim checks a statement about the results: prose that promises nothing.

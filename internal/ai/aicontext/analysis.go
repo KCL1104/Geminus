@@ -53,6 +53,9 @@ type AnalysisPrompt struct {
 	Context  provider.AnalysisContext
 	Allowed  []MetricRef
 	Supplied []float64
+	// Names are the model's names as MODEL_SUMMARY shows them: prose may
+	// quote them, and a digit in one ("Line 2") is not a number.
+	Names []string
 }
 
 func escapeToken(s string) string {
@@ -259,7 +262,11 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 	summary := map[string]any{"domain": z.text(ir.Domain), "name": z.textBound(ir.Name, maxNameRunes), "time_unit": string(ir.TimeUnit),
 		"entities": entities}
 	// The model's own quantities count as supplied; array indices do not.
+	var names []string
 	for _, e := range entities {
+		if s, ok := e["name"].(string); ok && s != "" {
+			names = append(names, s)
+		}
 		for _, k := range []string{"capacity", "probability"} {
 			switch v := e[k].(type) {
 			case int:
@@ -361,5 +368,5 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 	slices.Sort(supplied)
 	supplied = slices.Compact(supplied)
 	return AnalysisPrompt{Context: provider.AnalysisContext{OrganizationID: in.Scope.OrganizationID, Prompt: p},
-		Allowed: allowed, Supplied: supplied}, nil
+		Allowed: allowed, Supplied: supplied, Names: names}, nil
 }

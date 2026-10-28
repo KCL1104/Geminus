@@ -507,11 +507,13 @@ export const en = {
   "metric.throughput": "Completed work items (mean per replication)",
   "metric.leadTimeMedian": "Lead time, median",
   "metric.leadTimeP95": "Lead time, 95th percentile",
+  "metric.leadTimeMean": "Lead time, mean",
   "metric.leadTimeReplicationMean": "Lead time, mean of replication means",
   "metric.failures": "Failures (mean per replication)",
   "metric.rework": "Rework (mean per replication)",
   "metric.utilization": "Utilization: {name}",
   "metric.wait": "Mean wait: {name}",
+  "metric.atStation": "{metric}: {name}",
 
   "marey.title": "Work items through the steps",
   "marey.baseline": "Baseline, dashed",

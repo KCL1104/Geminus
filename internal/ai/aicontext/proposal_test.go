@@ -154,7 +154,7 @@ func TestProposalContext(t *testing.T) {
 	// vocabulary and the locale; none of the request's data.
 	for _, w := range []string{"prompt_template_version: modeler-0.2.0", "ID_ALLOCATION_POOL", "CONTEXT_OMISSIONS", "untrusted_data",
 		"Synthetic software_delivery line", "Test station", "Rule software_delivery one.", locale.English.Instruction(), "proposal-output.schema.json",
-		"Server rules (context-rules-2)", "never name a block (CURRENT_MODEL_IR, ENTITY_INDEX, USER_INTENT"} {
+		"Server rules (context-rules-3)", "never name a block (CURRENT_MODEL_IR, ENTITY_INDEX, USER_INTENT"} {
 		if !strings.Contains(p.System, w) {
 			t.Errorf("system rules lack %q", w)
 		}

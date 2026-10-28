@@ -488,11 +488,13 @@ export const zhHant: Catalog = {
   "metric.throughput": "完成的工作項目（每次重複的平均）",
   "metric.leadTimeMedian": "前置時間，中位數",
   "metric.leadTimeP95": "前置時間，第 95 百分位數",
+  "metric.leadTimeMean": "前置時間，平均",
   "metric.leadTimeReplicationMean": "前置時間，各次重複平均的平均",
   "metric.failures": "失敗（每次重複的平均）",
   "metric.rework": "重工（每次重複的平均）",
   "metric.utilization": "使用率：{name}",
   "metric.wait": "平均等待：{name}",
+  "metric.atStation": "{metric}：{name}",
 
   "marey.title": "工作項目通過各步驟",
   "marey.baseline": "基準，虛線",

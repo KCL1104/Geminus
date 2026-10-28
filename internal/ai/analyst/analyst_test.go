@@ -266,3 +266,27 @@ func TestUngroundedAnswersAreRefused(t *testing.T) {
 		})
 	}
 }
+
+// Review of analyst-0.3.3 (M2): prose names the model's nodes and
+// resources, and a digit in a name ("Station 13") is the name's, not a
+// number; a name that is only digits blanks nothing.
+func TestNamesWithDigits(t *testing.T) {
+	check := func(names []string, summary string) []string {
+		in := fixture(t)
+		out := grounded()
+		out.Scenario.Summary = summary
+		in.Output, in.Names = out, names
+		_, issues := analyst.Check(in)
+		return codes(issues)
+	}
+	names := []string{"Station 1", "Station 13", "3"}
+	if got := check(names, "Station 13 waits 40 minutes, Station 1 waits 32."); len(got) > 0 {
+		t.Errorf("names with digits: %v", got)
+	}
+	if got := check(nil, "Station 13 waits 40 minutes."); !slices.Contains(got, analyst.NumberUnverified+" /scenario/summary") {
+		t.Errorf("without the model's names: %v", got)
+	}
+	if got := check(names, "Station 13 waits 3 minutes."); !slices.Contains(got, analyst.NumberUnverified+" /scenario/summary") {
+		t.Errorf("a name of digits let its number through: %v", got)
+	}
+}

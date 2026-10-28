@@ -17,6 +17,10 @@ const groups: readonly MetricGroup[] = ["run", "resources", "queues"];
 export function MetricName({ label }: { label: MetricLabel }) {
   const { t } = useI18n();
   if ("key" in label) return <>{t(label.key, label.params)}</>;
+  if (label.name) {
+    const metric = t(label.name.key);
+    return <>{label.name.station === null ? metric : t("metric.atStation", { metric, name: label.name.station })}</>;
+  }
   // A pack's own metric: its key and unit as the server gave them (data, not catalog text).
   return (
     <>
@@ -127,7 +131,7 @@ function Row({ row }: { row: MetricRow }) {
   );
 }
 
-/** A pack's own measure (its name is the server's key): one of each step's, kept one click away (DESIGN.md, Simplicity 3). */
+/** A pack's own measure (named from the catalog, else by the server's key): one of each step's, kept one click away (DESIGN.md, Simplicity 3). */
 const isStepMeasure = (r: MetricRow) => r.group === "run" && "data" in r.label;
 
 export function MetricsTable({ rows }: { rows: MetricRow[] }) {

@@ -4,11 +4,15 @@
 // metric the comparison does not have is shown as missing (no value),
 // never filled in; resources and queues are the ones the comparison lists.
 import type { MessageKey } from "../../lib/i18n/translate";
+import { en } from "../../messages/en";
 import type { Comparison, ComparisonMetric, ComparisonReason, MetricSummary, ModelIR, Result as SimulationResult } from "../../lib/contracts";
 import type { MetricUnit } from "./format";
 
 export type MetricGroup = "run" | "resources" | "queues";
-export type MetricLabel = { key: MessageKey; params?: Record<string, string> } | { data: string; unit: string | null };
+/** A pack's own metric is its key (data); `name` is the catalog's name for it, at its station when it has one (D-117 (h)). */
+export type MetricLabel =
+  | { key: MessageKey; params?: Record<string, string> }
+  | { data: string; unit: string | null; name?: { key: MessageKey; station: string | null } };
 export type Interval = { lower: number; upper: number };
 export type MetricRow = {
   path: string;
@@ -42,6 +46,7 @@ const fixed: readonly Fixed[] = [
   { path: "/metrics/throughput/mean", key: "metric.throughput" },
   { path: "/metrics/lead_time_minutes/p50", key: "metric.leadTimeMedian" },
   { path: "/metrics/lead_time_minutes/p95", key: "metric.leadTimeP95" },
+  { path: "/metrics/lead_time_minutes/mean", key: "metric.leadTimeMean", optional: true },
   { path: "/metrics/additional_metrics/replication_mean_lead_time_minutes/mean", key: "metric.leadTimeReplicationMean", optional: true },
   { path: "/metrics/failure_count/mean", key: "metric.failures" },
   { path: "/metrics/rework_count/mean", key: "metric.rework" },
@@ -86,6 +91,16 @@ function row(metric: ComparisonMetric | undefined, path: string, group: MetricGr
   };
 }
 
+/** A pack metric's catalog name: a line metric's key is its name, a station's `<name>.<first test's node ID>` (D-117 (d)). */
+function packName(ir: ModelIR | null, key: string, nodeName: Map<string, string>): { key: MessageKey; station: string | null } | undefined {
+  const dot = key.indexOf(".");
+  const name = dot < 0 ? key : key.slice(0, dot);
+  const k = `domain.${ir?.domain}.metric.${name}`;
+  if (ir === null || !Object.hasOwn(en, k)) return undefined;
+  const station = dot < 0 ? null : key.slice(dot + 1);
+  return { key: k as MessageKey, station: station === null ? null : (nodeName.get(station) ?? station) };
+}
+
 /** The rows to show, in order: the run level, then resources, then queues (each in the server's order). */
 export function keyMetrics(comparison: Comparison, ir: ModelIR | null, results: Results): MetricRow[] {
   const byPath = new Map(comparison.metrics.map((m) => [m.metric_path, m]));
@@ -114,7 +129,7 @@ export function keyMetrics(comparison: Comparison, ir: ModelIR | null, results: 
     } else if ((group === "dora" || group === "domain" || group === "additional_metrics") && stat === "mean" && keys.length === 4) {
       const s = summary(m.metric_path);
       const unit = unitOf(s);
-      run.push(row(m, m.metric_path, "run", { data: key, unit: unit === "number" ? (s?.unit ?? null) : null }, unit, results));
+      run.push(row(m, m.metric_path, "run", { data: key, unit: unit === "number" ? (s?.unit ?? null) : null, name: group === "domain" ? packName(ir, key, nodeName) : undefined }, unit, results));
     }
   }
   return [...run, ...resources, ...queues];

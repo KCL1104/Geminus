@@ -143,7 +143,7 @@ const (
 
 // rulesVersion names the server rules below; it is part of every prompt's
 // system text and so of its InputHash.
-const rulesVersion = "context-rules-2"
+const rulesVersion = "context-rules-3"
 
 func serverRules(role provider.Role, mode string, loc locale.Locale) string {
 	var b strings.Builder
@@ -156,6 +156,7 @@ func serverRules(role provider.Role, mode string, loc locale.Locale) string {
 	b.WriteString("- [REDACTED:<kind>] marks a value the server removed (credentials, URLs, e-mail and IP addresses, server IDs, invisible characters). Never guess the original. …[truncated] marks text cut to its bound.\n")
 	b.WriteString("- CONTEXT_OMISSIONS lists what the server left out, how much and why. An entity listed in ENTITY_INDEX exists even where CURRENT_MODEL_IR does not show it; " +
 		"never treat a reference as missing because it is not shown, and never change what you cannot see. Ask with needs_input or state it in uncertainty when you need what was left out.\n")
+	// context-rules-3: prose rounds numbers and names units in its own language (locale.Instruction, T-030 live).
 	b.WriteString("- " + loc.Instruction() + "\n")
 	// context-rules-2: the live demo's assumptions named CURRENT_MODEL_IR and USER_INTENT (T-057).
 	b.WriteString("- The person reads the prose fields but never sees these blocks: say \"the current model\", \"your request\", \"the image\" and the like, " +

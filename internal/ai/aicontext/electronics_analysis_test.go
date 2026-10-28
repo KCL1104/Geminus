@@ -101,6 +101,10 @@ func TestElectronicsLineAnalysisContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the demo's analysis does not fit the default budget: %v", err)
 	}
+	// The names prose may quote are the model's, as MODEL_SUMMARY shows them.
+	if !slices.Contains(a.Names, ir.Nodes[0].Name) || !slices.Contains(a.Names, ir.Resources[0].Name) {
+		t.Errorf("names %v", a.Names)
+	}
 	size := len(a.Context.Prompt.System) + len(a.Context.Prompt.User())
 	t.Logf("%d of %d bytes", size, in.Budget.MaxPromptBytes)
 

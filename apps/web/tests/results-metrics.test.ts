@@ -28,6 +28,7 @@ describe("the key metrics of a comparison", () => {
       ["run", "/metrics/throughput/mean"],
       ["run", "/metrics/lead_time_minutes/p50"],
       ["run", "/metrics/lead_time_minutes/p95"],
+      ["run", "/metrics/lead_time_minutes/mean"],
       ["run", "/metrics/additional_metrics/replication_mean_lead_time_minutes/mean"],
       ["run", "/metrics/failure_count/mean"],
       ["run", "/metrics/rework_count/mean"],
@@ -54,6 +55,7 @@ describe("the key metrics of a comparison", () => {
       { key: "metric.throughput" },
       { key: "metric.leadTimeMedian" },
       { key: "metric.leadTimeP95" },
+      { key: "metric.leadTimeMean" },
       { key: "metric.leadTimeReplicationMean" },
       { key: "metric.failures" },
       { key: "metric.rework" },
@@ -66,7 +68,7 @@ describe("the key metrics of a comparison", () => {
       { key: "metric.wait", params: { name: "ICT buffer" } },
       { key: "metric.wait", params: { name: "SMT" } },
     ]);
-    expect(rows.map((r) => r.unit)).toEqual(["count", "minute", "minute", "minute", "count", "count", "ratio", "ratio", "ratio", "ratio", "minute", "minute", "minute", "minute"]);
+    expect(rows.map((r) => r.unit)).toEqual(["count", "minute", "minute", "minute", "minute", "count", "count", "ratio", "ratio", "ratio", "ratio", "minute", "minute", "minute", "minute"]);
   });
 
   it("show each run's own 95% interval of a mean where its Result has one (no paired CI, SIMULATION_SPEC §7)", () => {
@@ -126,6 +128,28 @@ describe("the key metrics of a comparison", () => {
     expect([scrap.baseline, scrap.scenario, scrap.absolute, scrap.relative]).toEqual([0.04, 0.025, -0.015, -0.375]);
     const fpy = rs.find((r) => r.path === "/metrics/domain/fpy_input.ict/mean")!;
     expect([fpy.label, fpy.unit]).toEqual([{ data: "fpy_input.ict", unit: null }, "ratio"]);
+  });
+
+  // Live on 2026-10-28 the AI explanation's "What changed" and the step
+  // measures showed keys such as scheduled_utilization.ict: a pack metric
+  // the catalog names (D-117 (h)) is named, at its station's name.
+  it("name a pack metric from the catalog, at the station's name, and keep the key of one the catalog does not have", () => {
+    const golden = fixture("valid-comparison.json") as Comparison;
+    const base = fixture("valid-result.json") as SimulationResult;
+    const at = (path: string) => ({ metric_path: path, baseline: 0.9, scenario: 0.95, absolute_delta: 0.05, relative_delta: 0.05555555555555555, status: "available" as const, reason: null });
+    const metrics = [...golden.metrics, at("/metrics/domain/scrap_rate/mean"), at("/metrics/domain/blocking_ratio.ict/mean"), at("/metrics/domain/blocking_ratio.gone/mean"), at("/metrics/domain/made_up.ict/mean"), at("/metrics/additional_metrics/scrap_rate/mean")];
+    const line = { domain: "electronics_line", nodes: [{ id: "ict", name: "ICT station 1" }], resources: [] } as unknown as ModelIR;
+    const label = (m: ModelIR | null, path: string) => keyMetrics({ ...golden, metrics }, m, { baseline: base, scenario: null }).find((r) => r.path === path)!.label;
+    expect(label(line, "/metrics/domain/scrap_rate/mean")).toEqual({ data: "scrap_rate", unit: null, name: { key: "domain.electronics_line.metric.scrap_rate", station: null } });
+    expect(label(line, "/metrics/domain/blocking_ratio.ict/mean")).toEqual({ data: "blocking_ratio.ict", unit: null, name: { key: "domain.electronics_line.metric.blocking_ratio", station: "ICT station 1" } });
+    // A station the model does not name keeps its node ID.
+    expect(label(line, "/metrics/domain/blocking_ratio.gone/mean")).toMatchObject({ name: { station: "gone" } });
+    expect(label(line, "/metrics/domain/made_up.ict/mean")).toEqual({ data: "made_up.ict", unit: null });
+    expect(label({ ...line, domain: "software_delivery" }, "/metrics/domain/scrap_rate/mean")).toEqual({ data: "scrap_rate", unit: null });
+    // A generic group's metric is not the pack's, whatever its key (review L5).
+    expect(label(line, "/metrics/additional_metrics/scrap_rate/mean")).toEqual({ data: "scrap_rate", unit: null });
+    const t = i18nFor("zh-Hant").t;
+    expect(t("metric.atStation", { metric: t("domain.electronics_line.metric.blocking_ratio"), name: "ICT station 1" })).toBe("阻塞比例：ICT station 1");
   });
 
   it("keep the side-by-side values of runs that are not comparable, with no delta", () => {

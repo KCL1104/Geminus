@@ -56,10 +56,13 @@ func Parse(s string) (Locale, error) {
 	return "", &Error{Path: "/output_locale"}
 }
 
+// T-030 (2026-10-28): the prose of the live demo's analysis copied units
+// and full precision ("497.4225096419336 minute"); prose may round and
+// name the unit in its own language, structured fields still copy both.
 const keepUntranslated = " Never translate, transliterate or reformat IDs, JSON Patch paths, JSON Pointers, schema member names, " +
-	"enum values, reason or error codes, metric paths or units: copy them exactly as supplied. Write every number with " +
-	"Arabic numerals (0-9) and the unit of the supplied value, never as number words (write 47, not forty-seven or 四十七), " +
-	"and only numbers that appear in the supplied data."
+	"enum values, reason or error codes, metric paths or units in structured fields: copy them exactly as supplied. In prose, write every number with " +
+	"Arabic numerals (0-9), never as number words (write 47, not forty-seven or 四十七), and only numbers that appear in the supplied data, " +
+	"rounded to the decimals you write or, for a ratio, as a percentage with %; name its unit in the prose's language."
 
 // Instruction is the fixed provider instruction for l. An unknown value
 // gets the default's: the instruction never carries client text.

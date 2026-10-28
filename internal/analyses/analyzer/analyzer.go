@@ -369,7 +369,7 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 		}
 		return provider.AnalysisOutput{}, &meta, 0, providerFailure(err)
 	}
-	out, issues := analyst.Check(analyst.Input{Output: res.Output, Allowed: ap.Allowed, Supplied: ap.Supplied,
+	out, issues := analyst.Check(analyst.Input{Output: res.Output, Allowed: ap.Allowed, Supplied: ap.Supplied, Names: ap.Names,
 		Scenario: scen, Baseline: base, Comparison: comparison})
 	if len(issues) > 0 {
 		// The first issue's code and path are the server's own words.
