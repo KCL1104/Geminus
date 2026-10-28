@@ -1,0 +1,14 @@
+[   4s] signed in as the judge
+[   8s] results page: https://web-production-16041.up.railway.app/scenarios/scn_01M5Z37J45XCPE8V0TP2ZCB8EF/results?baseline=sim_01M5Z3K5EGJ9CJJ5G2E24P9XKM&scenario=sim_01M5Z3K5R8QFY4A53QF19RSF8J
+[  20s] analysis: The AI's explanation was not kept. url: /scenarios/scn_01M5Z37J45XCPE8V0TP2ZCB8EF/results?baseline=sim_01M5Z3K5EGJ9CJJ5G2E24P9XKM&scenario=sim_01M5Z3K5R8QFY4A53QF19RSF8J&analysis=ana_01M60Y08PG67165AC1RFYR8KR9
+[  20s] analysis text:
+    AI explanation
+    The AI's explanation was not kept.
+    The request was not accepted
+    The upload or request is too large.
+    / the results are too large for the AI context budget
+    Details
+    Ask again
+[  23s] results 3D: canvas 1 unavailable: 0
+[  23s] scenario 200 model mdl_01M5YYWTXKA0AEKCP70A3H89DW
+[  53s] ERROR locator.click: Timeout 30000ms exceeded.

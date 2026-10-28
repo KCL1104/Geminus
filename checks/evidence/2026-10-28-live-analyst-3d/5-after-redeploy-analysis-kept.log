@@ -1,0 +1,47 @@
+[   4s] signed in as the judge
+[   8s] results page: https://web-production-16041.up.railway.app/scenarios/scn_01M5Z37J45XCPE8V0TP2ZCB8EF/results?baseline=sim_01M5Z3K5EGJ9CJJ5G2E24P9XKM&scenario=sim_01M5Z3K5R8QFY4A53QF19RSF8J
+[  61s] analysis: The AI's explanation is ready. url: /scenarios/scn_01M5Z37J45XCPE8V0TP2ZCB8EF/results?baseline=sim_01M5Z3K5EGJ9CJJ5G2E24P9XKM&scenario=sim_01M5Z3K5R8QFY4A53QF19RSF8J&analysis=ana_01M611FR1SAWVFFJ5T1W4TMB5Z
+[  61s] analysis text:
+    AI explanation
+    The AI's explanation is ready.
+    Written by the AI from these results. The figures beside its words are the server's; the numbers in its words were checked against the results.
+    With ICT tester capacity changed to 3, mean throughput was 463.6 count and entity mean lead time 497.4225096419336 minute over 5 replications. Buffer before SMT remained high at wait_mean_minutes 230.4067223192494 and queue_length_mean 117.76998114351852. ICT tester utilization_mean fell to 0.5352498950617284, and buffer before ICT wait improved to 5.758091280384382 minute from 8.41934129860325 minute.
+    Baseline: The current model with 2 ICT testers produced mean throughput 463.4 count in 1440 minute horizon over 5 replications, with entity mean lead time 503.6223115522952 minute. The buffer before SMT showed wait_mean_minutes 231.10088863849813 and queue_length_mean 118.11224370370371, far above downstream queues. ICT tester utilization_mean was 0.5884390648148148.
+    What changed
+    Completed work items (mean per replication) +0.2 (0%)
+    /metrics/lead_time_minutes/mean -6.2 (-1.2%)
+    Mean wait: Buffer before SMT -0.694 min (-0.3%)
+    Mean wait: Buffer before ICT -2.66 min (-31.6%)
+    Mean wait: Buffer before ICT retest -3.7 min (-38.6%)
+    Mean wait: Buffer before FCT +2.79 min (+42.6%)
+    Utilization: ICT testers -5.3 pp (-9%)
+    scheduled_utilization.ict -10.5 pp (-12.2%)
+    blocking_ratio.ict +13 pp (+347.4%)
+    Failures (mean per replication) 0 (0%)
+    Why
+    Observed The buffer before SMT shows very high waiting and queue length in 2 runs, while mean throughput is almost unchanged between runs.
+    Evidence:
+    Mean wait: Buffer before SMT · baseline
+    Mean wait: Buffer before SMT · scenario
+    Completed work items (mean per replication) · baseline
+    Completed work items (mean per replication) · scenario
+    Observed Buffers before ICT and before ICT retest show lower waiting in the scenario, while ICT tester utilization is lower and buffer before FCT waiting is higher.
+    Evidence:
+    Mean wait: Buffer before ICT · baseline
+    Mean wait: Buffer before ICT · scenario
+    Mean wait: Buffer before ICT retest · baseline
+    Mean wait: Buffer before ICT retest · scenario
+    Mean wait: Buffer before FCT · baseline
+    Mean wait: Buffer before FCT · scenario
+    Utilization: ICT testers · baseline
+    Utilization: ICT testers · scenario
+    Inferred Added ICT capacity did not increase system output in the simulated period because the dominant constraint appears at or before SMT, not at ICT.
+    Evidence:
+    Mean wait: Buffer before SMT · scenario
+    Completed work items (mean per replication) · scenario
+    Utilization: SMT line · scenario
+    What the AI assumed
+    The scenario changes ICT tester capacity from 2 to 3 while other resources and routings in the current model are unchanged.
+    The comparison uses 1440 minute horizon with 0 minute warmup and 5 replications for 2 runs.
+    Template parameters are synthet
+[  61s] page errors: none

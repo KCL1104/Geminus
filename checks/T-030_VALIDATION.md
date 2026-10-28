@@ -189,3 +189,15 @@ Reviewer（獨立 subagent，只讀，沒有 shell）：**High 0**、Medium 2、
 | Mutation（comparison 修剪、results 修剪、省略數量） | 皆 KILLED |
 
 `make backend-race` 與 `make frontend-test` 本輪沒有重跑（沒有前端與並行的改動）：NOT RUN。
+
+### Live 確認（8602c4b 部署後，2026-10-28，評審帳號，Meta `muse-spark-1.3`）
+
+部署 8602c4b（owner 授權）：18 個 migration、api／worker／web SUCCESS、健康檢查與登入導向都正常、沒有開著的 TCP proxy；worker 有 `AI_MAX_PROMPT_BYTES=262144`。證據：`checks/evidence/2026-10-28-live-analyst-3d/`（腳本 `check-0028.cjs.txt`，密碼只經環境變數；各次 log；截圖 `D1-analysis.png`）。
+
+| 次 | 結果 |
+|---|---|
+| 修正前（a383141） | `context_too_large`，沒有呼叫 provider |
+| 修正後第 1 次 | provider 回答（35,879 input、6,790 output tokens，USD 0.0737），server **拒絕**：`ANALYSIS_NUMBER_UNVERIFIED` at `/bottleneck/0/statement`（AI 在文字中寫了一個無法對應供應值的數字；回答不保存，所以無法得知是哪個數字）；畫面顯示「沒有保留」與「再問一次」 |
+| 修正後第 2 次 | **保留**：AI 指出加第 3 台 ICT tester 沒有提高產出（463.4 → 463.6），因為主要限制在 SMT 之前（SMT 前的 buffer 平均等候約 230 分鐘、平均佇列約 118）；ICT 前的等候 −31.6%、ICT tester 使用率 −5.3 pp、FCT 前的等候 +42.6%；每個 bottleneck 都附兩次執行的 evidence；假設與不確定性寫出 1 天、5 次 replication |
+
+兩次中一次被拒（樣本只有 2，不代表比例）。**畫面上看到的問題**（下一步）：AI 的文字照抄完整精度的數字與欄位名稱（`497.4225096419336 minute`、`wait_mean_minutes`）；「What changed」中 `/metrics/lead_time_minutes/mean` 與兩個 domain metric（`scheduled_utilization.ict`、`blocking_ratio.ict`）以 path 顯示，沒有名稱。

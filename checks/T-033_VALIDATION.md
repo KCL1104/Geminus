@@ -76,3 +76,9 @@ Reviewer（獨立 subagent，只讀 03decf6 與 9e2d781 的 3D 部分，沒有 s
 | Mutation V1–V4（每次移動的門檻、吃掉快捷鍵、不跟主題、取消不結束拖曳） | 皆 KILLED |
 | `make e2e-test`（修正前，9e2d781） | exit 0：**515 passed**、32 skipped（截圖，只在 CI 跑），16.9 分鐘 |
 | `make e2e-test`（修正後，c3b3a3b） | exit 0：**515 passed**、32 skipped，16.7 分鐘；`the editor's 3D view` 在 WebGL 分支比對到畫面改變 |
+
+## 7. Live 確認（2026-10-28，評審帳號）
+
+部署 a383141 與 8602c4b 後各以 Playwright（Chromium，SwiftShader WebGL）確認：結果頁打開 3D 區塊有 canvas、沒有「無法執行」；模型頁切到 3D：canvas 的名稱是「3D view of the line: 41 steps」，切回 2D；沒有 page error。截圖 `checks/evidence/2026-10-28-live-analyst-3d/D2-results-3d.png`（scenario 的忙碌工作站為琥珀色、SMT 前的佇列升高）與 `D3-model-3d.png`。
+
+已知：場景在框中偏小、偏下（相機的初始取景），留給 UI 打磨。
