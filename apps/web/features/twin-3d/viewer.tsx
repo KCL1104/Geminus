@@ -33,6 +33,8 @@ type Props = {
   results?: Result | null;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  /** Playback (T-034): the sampled items at each step at the time shown, and whose run they are. */
+  occupancy?: { counts: Readonly<Record<string, number>>; run: "baseline" | "scenario" } | null;
   loadView?: LoadView;
 };
 
@@ -56,7 +58,7 @@ const KEY_ORBIT = 10;
 /** A press that moves less than this far from where it went down is a click (review r1 M2). */
 const CLICK_SLOP = 4;
 
-export function Twin3D({ ir, results, selected, onSelect, loadView = loadPlayCanvas }: Props) {
+export function Twin3D({ ir, results, selected, onSelect, occupancy = null, loadView = loadPlayCanvas }: Props) {
   const { t } = useI18n();
   const hintId = useId();
   const wrap = useRef<HTMLDivElement>(null);
@@ -120,6 +122,9 @@ export function Twin3D({ ir, results, selected, onSelect, loadView = loadPlayCan
   useEffect(() => {
     view.current?.setSelected(selected);
   }, [selected, state]);
+  useEffect(() => {
+    view.current?.setOccupancy(occupancy?.counts ?? null, occupancy?.run ?? "scenario");
+  }, [occupancy, scene, state]);
 
   if (state === "failed") return <Callout tone="info">{t("twin3d.unavailable")}</Callout>;
 

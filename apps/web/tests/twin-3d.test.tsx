@@ -92,6 +92,7 @@ function fakeView(hit: string | null = "burn_in") {
     setScene: (sc) => calls.push(`scene:${sc.nodes.length}`),
     setPalette: () => calls.push("palette"),
     setSelected: (id) => calls.push(`selected:${id}`),
+    setOccupancy: (counts, run) => calls.push(`occupancy:${run}:${JSON.stringify(counts)}`),
     stepAt: (x, y) => (calls.push(`at:${x},${y}`), hit),
     orbit: (a, b) => calls.push(`orbit:${a},${b}`),
     zoom: (f) => calls.push(`zoom:${f.toFixed(2)}`),

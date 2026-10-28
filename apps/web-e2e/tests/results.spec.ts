@@ -83,6 +83,68 @@ for (const locale of locales) {
   });
 }
 
+// T-034: the 3D playback of the sampled traces, on the same steps as 2D.
+test.describe("the results page's 3D playback", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("plays and scrubs the scenario, switches to the baseline, and says what is sampled", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await open(page, "/ui-gallery/results", "en");
+    const panel = page.locator("details").filter({ has: page.locator("summary", { hasText: en["twin3d.results"] }) });
+    await panel.locator("summary").click();
+    await expect(page.getByText(en["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
+    const scene = panel.getByRole("img", { name: /^3D view of the line: \d+ steps$/ });
+    const unavailable = page.getByText(en["twin3d.unavailable"]);
+    await expect(scene.or(unavailable)).toBeVisible();
+    const slider = panel.getByRole("slider", { name: en["playback.time"] });
+    await expect(slider).toHaveAttribute("aria-valuetext", "0 hours of 10 hours");
+    await expect(panel.getByText("Sampled trace of replication 1: about 1 in 8 work items.", { exact: false })).toBeVisible();
+    // The slider is a labelled range that the keys reach (Tab from Play) and move.
+    await panel.getByRole("button", { name: en["playback.play"] }).focus();
+    await page.keyboard.press("Tab");
+    await expect(slider).toBeFocused();
+    expect(await focusIsVisible(page)).toBe(true);
+    await page.keyboard.press("End");
+    await expect(slider).toHaveAttribute("aria-valuetext", "10 hours of 10 hours");
+    await page.keyboard.press("Home");
+    const before = (await scene.isVisible()) ? await scene.screenshot() : null;
+    await slider.fill("500");
+    await expect(slider).toHaveAttribute("aria-valuetext", "5 hours of 10 hours");
+    await expect(panel.getByText(/sampled work items? in the line at this time\./)).toBeVisible();
+    // Half way the columns stand on the steps: the picture changed.
+    if (before) expect((await scene.screenshot()).equals(before)).toBe(false);
+    await panel.getByRole("button", { name: en["playback.play"] }).click();
+    await expect(slider).not.toHaveAttribute("aria-valuetext", "5 hours of 10 hours");
+    await panel.getByRole("button", { name: en["playback.pause"] }).click();
+    const baseline = panel.getByRole("radio", { name: en["compare.baseline"] });
+    await baseline.click();
+    await expect(baseline).toBeChecked();
+    // The time stays: the same moment of the other run.
+    await expect(slider).not.toHaveAttribute("aria-valuetext", "0 hours of 10 hours");
+    expect(await violations(page)).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
+  for (const locale of locales) {
+    test(`${locale} at 390px: the controls wrap inside the page, with no violation`, async ({ page }) => {
+      await page.setViewportSize({ width: 390, height: 844 });
+      const t = catalogs[locale];
+      await open(page, "/ui-gallery/results", locale);
+      const panel = page.locator("details").filter({ has: page.locator("summary", { hasText: t["twin3d.results"] }) });
+      await panel.locator("summary").click();
+      await expect(page.getByText(t["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
+      const slider = panel.getByRole("slider", { name: t["playback.time"] });
+      await expect(slider).toBeVisible();
+      await expect(panel.getByRole("button", { name: t["playback.play"] })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      const box = (await slider.boundingBox())!;
+      expect(box.x >= 0 && box.x + box.width <= 390).toBe(true);
+      expect(await violations(page)).toEqual([]);
+    });
+  }
+});
+
 test("the running runs cancel from the keyboard, with a visible focus", async ({ page }) => {
   await open(page, "/ui-gallery/results?state=running", "en");
   await expect(page.getByRole("progressbar")).toHaveCount(2);

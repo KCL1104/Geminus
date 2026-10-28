@@ -59,3 +59,36 @@
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
 }
+
+/* Playback (T-034): the run, Play and the time slider on one row that wraps. */
+.playback {
+  display: grid;
+  gap: var(--gm-space-xs);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-sm);
+}
+
+.time {
+  display: flex;
+  flex: 1 1 16rem;
+  align-items: center;
+  gap: var(--gm-space-sm);
+  min-width: 0;
+  font-size: var(--gm-font-size-label);
+}
+
+.time input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--gm-color-ink);
+}
+
+.clock {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

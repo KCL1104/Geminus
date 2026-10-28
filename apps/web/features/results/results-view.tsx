@@ -14,7 +14,7 @@ import { Analysis } from "./analysis";
 import { MareyChart } from "./marey-chart";
 import { keyMetrics, leadTimeSummary } from "./metrics";
 import { MetricsTable } from "./metrics-table";
-import { Twin3D } from "../twin-3d/viewer";
+import { Playback } from "../twin-3d/playback/playback";
 import styles from "./results.module.css";
 
 const secondsPer: Readonly<Record<Duration["unit"], number>> = { millisecond: 0.001, second: 1, minute: 60, hour: 3600, day: 86400 };
@@ -57,17 +57,17 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
 
 /** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
 /**
- * The line in 3D with the scenario run's utilization and queues (T-033),
- * one click away (H-027); PlayCanvas loads only when it is opened.
+ * The line in 3D with a run's utilization and queues (T-033) and the
+ * playback of its sampled trace (T-034), one click away (H-027);
+ * PlayCanvas loads only when it is opened.
  */
 function LineIn3D({ data }: { data: ResultsData }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<string | null>(null);
   return (
     <details className={styles.more} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>{t("twin3d.results")}</summary>
-      {open && <Twin3D ir={data.version.ir} results={data.scenario.result} selected={selected} onSelect={setSelected} />}
+      {open && <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />}
     </details>
   );
 }
@@ -114,7 +114,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
         </div>
       </section>
       {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
-      {analysis && <LineIn3D data={data} />}
+      <LineIn3D data={data} />
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}

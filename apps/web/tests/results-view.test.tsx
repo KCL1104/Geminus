@@ -487,7 +487,7 @@ describe("the runs, from queued to the results", () => {
     expect(text(el)).toContain(en["marey.baseline"]);
     expect(text(el)).toContain(en["marey.scenario"]);
     expect(text(el)).toContain("Sampled trace of replication 1: about 1 in 8 work items.");
-    expect(el.querySelector("details summary")?.textContent).toBe(en["marey.table"]);
+    expect([...el.querySelectorAll("details summary")].map((s) => s.textContent)).toContain(en["marey.table"]);
     expect(text(el)).toContain(en["compare.warning.CENSORED_ENTITIES"]);
     // Run settings, as frozen in the runs.
     expect(text(el)).toContain("Version 3");

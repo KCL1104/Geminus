@@ -16,6 +16,8 @@ export type View = {
   /** Redraws in another theme's tokens (the page's theme changed while the view was open). */
   setPalette(palette: Palette): void;
   setSelected(id: string | null): void;
+  /** Playback (T-034): a column on each node, as tall as the sampled items there, in the run's colour; null removes them. */
+  setOccupancy(counts: Readonly<Record<string, number>> | null, run: "baseline" | "scenario"): void;
   /** The step at a point of the canvas (CSS pixels from its top left), or null. */
   stepAt(x: number, y: number): string | null;
   orbit(dYaw: number, dPitch: number): void;
@@ -27,6 +29,10 @@ export type View = {
 };
 
 const MIN_PITCH = 10;
+/** A column's height per item at its node, and its cap (a crowded queue stays on screen). */
+const ITEM_RISE = 0.4;
+const COLUMN_MAX = 5;
+const COLUMN_WIDTH = 0.5;
 const MAX_PITCH = 85;
 
 export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette): View {
@@ -62,12 +68,12 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   // between Rule and Control Edge: Rule alone vanishes on the white sheet.
   let idle = new pc.Color();
   let busy = new pc.Color();
-  let tones = { ink: idle, baseline: idle, queue: idle };
+  let tones = { ink: idle, baseline: idle, scenario: idle, queue: idle };
   const line = new pc.Color();
   const applyPalette = (p: Palette) => {
     idle = color(p.edge);
     busy = color(p.busy);
-    tones = { ink: color(p.ink), baseline: color(p.baseline), queue: new pc.Color().lerp(color(p.rule), idle, 0.5) };
+    tones = { ink: color(p.ink), baseline: color(p.baseline), scenario: color(p.scenario), queue: new pc.Color().lerp(color(p.rule), idle, 0.5) };
     line.copy(color(p.baseline));
     if (camera.camera) camera.camera.clearColor = color(p.sheet);
     app.scene.ambientLight = color(p.rule);
@@ -88,6 +94,8 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   let scene: Scene = { nodes: [], edges: [], center: [0, 0, 0], radius: 5 };
   let selected: string | null = null;
   const objects = new Map<string, PlayCanvas.Entity>();
+  const columns = new Map<string, PlayCanvas.Entity>();
+  let occupancy: { counts: Readonly<Record<string, number>>; run: "baseline" | "scenario" } | null = null;
   const ends: [PlayCanvas.Vec3, PlayCanvas.Vec3][] = [];
 
   // The orbit: yaw and pitch in degrees about the target, at a distance.
@@ -111,12 +119,37 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     place();
   };
 
+  // One column per node, made once per scene and only resized: an update costs a few scale changes.
+  const stack = () => {
+    for (const n of scene.nodes) {
+      const count = occupancy?.counts[n.id] ?? 0;
+      let c = columns.get(n.id);
+      if (count === 0) {
+        if (c) c.enabled = false;
+        continue;
+      }
+      if (!c) {
+        c = new pc.Entity(`${n.id}:items`);
+        c.addComponent("render", { type: "box" });
+        app.root.addChild(c);
+        columns.set(n.id, c);
+      }
+      const h = Math.min(COLUMN_MAX, count * ITEM_RISE);
+      c.enabled = true;
+      c.setLocalScale(COLUMN_WIDTH, h, COLUMN_WIDTH);
+      c.setPosition(n.position[0], n.position[1] + n.size[1] / 2 + h / 2, n.position[2]);
+      const mi = c.render?.meshInstances[0];
+      if (mi && occupancy) mi.material = material(tones[occupancy.run]);
+    }
+  };
+
   const paint = () => {
     for (const n of scene.nodes) {
       const e = objects.get(n.id);
       const mi = e?.render?.meshInstances[0];
       if (mi) mi.material = material(tone(n, n.id === selected));
     }
+    stack();
   };
 
   app.on("update", () => {
@@ -127,8 +160,9 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   const view: View = {
     setScene(next) {
       const first = scene.nodes.length === 0;
-      for (const e of objects.values()) e.destroy();
+      for (const e of [...objects.values(), ...columns.values()]) e.destroy();
       objects.clear();
+      columns.clear();
       scene = next;
       for (const n of next.nodes) {
         // A draft may repeat an ID; the first stands, as in the layout (review r1).
@@ -153,6 +187,10 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     setSelected(id) {
       selected = id;
       paint();
+    },
+    setOccupancy(counts, run) {
+      occupancy = counts && { counts, run };
+      stack();
     },
     stepAt(x, y) {
       const cam = camera.camera;
