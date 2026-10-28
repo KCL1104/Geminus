@@ -21,6 +21,10 @@ import (
 // ID is the IR domain value this pack serves.
 const ID = "electronics_line"
 
+// Name is the domain as people call it; the UI's catalogs have it as
+// domain.electronics_line.name in both languages (a test keeps them equal).
+const Name = "Electronics assembly and test line"
+
 // DomainMismatch is the issue code for an IR of another domain (REQ-003:
 // fail closed); every pack has it.
 const DomainMismatch = "DOMAIN_MISMATCH"
@@ -114,7 +118,7 @@ func (Pack) ComputeMetrics(*simulation.Result) map[string]simulation.MetricSumma
 func (p Pack) PromptContext() domainpack.PromptContext {
 	return domainpack.PromptContext{
 		Domain:    ID,
-		Summary:   "Electronics assembly and test line: boards flow through SMT, AOI, ICT, FCT, burn-in and packing, with test failures, debug, retest and scrap; stations compete for machines and people on shift calendars, with finite buffers, breakdowns, batches and changeovers.",
+		Summary:   Name + ": boards flow through SMT, AOI, ICT, FCT, burn-in and packing, with test failures, debug, retest and scrap; stations compete for machines and people on shift calendars, with finite buffers, breakdowns, batches and changeovers.",
 		Nodes:     p.NodeCatalog(),
 		Resources: p.ResourceCatalog(),
 		Rules: []string{

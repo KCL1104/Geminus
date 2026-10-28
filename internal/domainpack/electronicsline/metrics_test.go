@@ -646,7 +646,7 @@ func TestCataloguesHaveUILabels(t *testing.T) {
 		return out
 	}
 	en, zh := read("en.ts"), read("zh-Hant.ts")
-	want := map[string]string{}
+	want := map[string]string{"domain.electronics_line.name": electronicsline.Name}
 	for _, n := range pack.NodeCatalog() {
 		want["domain.electronics_line.node."+n.Kind] = n.Label
 	}

@@ -71,4 +71,14 @@
 
 CI 的截圖 baseline（`/`、`/projects`、`/no-such-page`、`/ui-gallery`，TEST-033）不含這三頁；`/ui-gallery` 有 TextField，其說明改放在一個 `<p>`（外觀應相同）。本機不能比對（只在 CI 的固定 image）：push 後看 CI。
 
-沒有改動 Go、API、schema 或 migration：`make backend-test`、`make integration-test` 本輪 NOT RUN。Live（部署後）NOT RUN：待部署。
+### CI（66d4d48）與修正
+
+`66d4d48` 的 CI：spec-check、frontend、browser checks（含截圖比對）、db＋integration、containers 通過；**backend 失敗**：`TestCataloguesHaveUILabels`（`internal/domainpack/electronicsline`）要求 UI 的每個 `domain.electronics_line.*` 標籤都是 pack 自己的，新增的 `domain.electronics_line.name` 不是。原本以「沒有改 Go」為由沒跑 `make backend-test`，判斷錯誤：Go 測試也讀前端的 catalog。
+
+修正：pack 加上 `Name`（"Electronics assembly and test line"），prompt 的 summary 改由它組成（位元組不變，`aicontext` 的 prompt 雜湊測試通過）；測試要求 UI 的名稱等於 `Name`。
+
+| 命令 | 結果 |
+|---|---|
+| `make backend-test` | exit 0：**85 個 package ok** |
+
+`make backend-race`、`make integration-test` NOT RUN（Go 只加一個常數，CI 會跑）。前兩次 push（`14bb5f2`、`007ff57`）的 CI 失敗是 spec-check：新增驗證文件後沒有更新 `checks/docs-check.json`；`66d4d48` 已更新且 spec-check 通過。Live（部署後）NOT RUN：待部署。
