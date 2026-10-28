@@ -1,0 +1,61 @@
+/* The read-only 3D view (T-033, DESIGN.md: one palette across every
+   projection): the stage on Timetable White under a Control Edge top rule,
+   a hover label as a small raised chip, the hint in Label size. */
+.twin {
+  display: grid;
+  gap: var(--gm-space-sm);
+}
+
+.stage {
+  position: relative;
+  height: 520px;
+  overflow: hidden;
+  border-top: 1px solid var(--gm-color-edge);
+  background: var(--gm-color-sheet);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.canvas:focus-visible {
+  outline: 2px solid var(--gm-color-ink);
+  outline-offset: -2px;
+}
+
+.tip {
+  position: absolute;
+  padding: 0 var(--gm-space-xs);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+}
+
+.selected {
+  margin-right: var(--gm-space-sm);
+  color: var(--gm-color-ink);
+}
+
+.hint {
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}

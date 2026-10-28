@@ -1,0 +1,38 @@
+/* DESIGN.md Segmented Controls, the 2D / 3D group's size: 30 px items with
+   8 px sides and 12 px type. */
+.group {
+  display: inline-flex;
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-md);
+  overflow: hidden;
+}
+
+.item {
+  min-height: 30px;
+  padding: 0 var(--gm-space-md);
+  border: 0;
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink);
+  font: inherit;
+  font-size: var(--gm-font-size-label);
+  cursor: pointer;
+}
+
+.item + .item {
+  border-left: 1px solid var(--gm-color-edge);
+}
+
+.item[data-hovered]:not([data-selected]) {
+  background: var(--gm-color-hover);
+}
+
+.item[data-selected] {
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.item[data-focus-visible] {
+  outline: 2px solid var(--gm-color-ink);
+  outline-offset: 2px;
+}

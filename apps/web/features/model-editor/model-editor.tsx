@@ -33,6 +33,8 @@ import { IssueList } from "./issue-list";
 import { locateIssues, type StepIssue, worst } from "./issues";
 import { applyPatch, type Op, reapplyPatch } from "./patch";
 import { Properties } from "./properties";
+import { Segmented } from "../../ui/segmented";
+import { Twin3D } from "../twin-3d/viewer";
 
 const WIDE = "(min-width: 721px)";
 const subscribeWide = (cb: () => void) => {
@@ -100,6 +102,8 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
   const node = working.nodes.find((n) => n.id === selected) ?? null;
 
   const [outcome, setOutcome] = useState<string | null>(null);
+  // The canvas's projection (T-033): the 2D editor, or the read-only 3D view of the same steps.
+  const [view, setView] = useState<"2d" | "3d">("2d");
   const [refused, setRefused] = useState<StepIssue[]>([]);
   const [publishProblem, setPublishProblem] = useState<Problem | null>(null);
   const [reloadProblem, setReloadProblem] = useState<Problem | null>(null);
@@ -318,15 +322,24 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
       <div className={styles.stage}>
         <div className={styles.column}>
           <div className={styles.toolbar}>
-            {editable && (
+            {/* 3D is a read-only projection (T-033): no step is added or fitted there. */}
+            {editable && view === "2d" && (
               <div ref={addRef}>
                 <ActionMenu label={t("editor.addStep")} items={addable.map((type) => ({ id: type, label: t(`editor.type.${type}`) }))} onAction={(id) => add(id as (typeof nodeTypes)[number])} />
               </div>
             )}
-            <Button variant="quiet" onPress={() => void flow.fitView({ padding: 0.1 })}>
-              {t("editor.fit")}
-            </Button>
+            {view === "2d" && (
+              <Button variant="quiet" onPress={() => void flow.fitView({ padding: 0.1 })}>
+                {t("editor.fit")}
+              </Button>
+            )}
+            <div className={styles.views}>
+              <Segmented label={t("editor.view")} items={[{ id: "2d", label: t("editor.view.2d") }, { id: "3d", label: t("editor.view.3d") }]} value={view} onChange={setView} />
+            </div>
           </div>
+          {view === "3d" ? (
+            <Twin3D ir={working} selected={selected} onSelect={(id) => store.select(id)} />
+          ) : (
           <div ref={canvasRef}>
             <Canvas
               ir={working}
@@ -343,6 +356,7 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
               onDelete={(id) => setDialog({ kind: "delete", id })}
             />
           </div>
+          )}
           <IssueList
             issues={draftIssues}
             revision={remote.revision}

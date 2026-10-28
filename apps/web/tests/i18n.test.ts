@@ -44,7 +44,7 @@ describe("catalogs", () => {
 
   it("translate everything except names that are the same in both", () => {
     const same = keys.filter((k) => JSON.stringify(zhHant[k]) === JSON.stringify(en[k]));
-    expect(same.sort()).toEqual(["app.name", "home.title", "locale.en", "locale.zh-Hant"]);
+    expect(same.sort()).toEqual(["app.name", "editor.view.2d", "editor.view.3d", "home.title", "locale.en", "locale.zh-Hant"]);
   });
 
   it("cover every error code, validation code and problem kind", () => {

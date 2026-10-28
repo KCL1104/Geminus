@@ -68,6 +68,11 @@
   background: var(--gm-color-sheet);
 }
 
+/* The 2D / 3D group ends the tool bar (DESIGN.md: top right). */
+.views {
+  margin-left: auto;
+}
+
 .panel {
   min-width: 0;
   padding: var(--gm-space-section);
