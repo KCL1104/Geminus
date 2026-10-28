@@ -1,0 +1,38 @@
+[   4s] signed in as the judge
+[   7s] why+:
+    Why
+    Observed The Buffer before SMT is the dominant queue, holding about 118.1 boards on average in the baseline and 117.8 boards in the scenario, with mean waiting of 231.1 minutes and 230.4 minutes, far above any other buffer.
+    Evidence:
+    Mean wait: Buffer before SMT · baseline
+    Mean wait: Buffer before SMT · scenario
+    Observed ICT waiting eased from 8.4 minutes to 5.8 minutes and ICT retest waiting from 9.6 minutes to 5.9 minutes, while the Buffer before FCT waiting rose from 6.6 minutes to 9.4 minutes and the Buffer before FCT retest from 7.4 minutes to 10.0 minutes, suggesting pressure shifted downstream toward FCT.
+    Evidence:
+    Mean wait: Buffer before ICT · baseline
+    Mean wait: Buffer before ICT · scenario
+    Mean wait: Buffer before FCT · baseline
+    Mean wait: Buffer before FCT · scenario
+    Inferred The extra ICT tester does not lift system output in this simulation: ICT testers utilization fell from 58.8% to 53.5% while shipped output was 463.4 boards versus 463.6 boards, so the added capacity is largely idle and the system constraint lies elsewhere, likely the SMT front end.
+    Evidence:
+    Utilization: ICT testers · baseline
+    Utilization: ICT testers · scenario
+    Completed work items (mean per replication) · baseline
+    Completed work items (mean per replication) · scenario
+    What the AI assumed
+    The requested change is understood as increasing ICT testers from 2 to 3 units, with all other settings unchanged.
+    Baseline and scenario are treated as comparable over the same 1 day horizon with 5 replications and no warmup, as flagged comparable.
+    Template parameters are synthetic demonstration values, not measurements of any plant.
+    All labels, comments and the supplied question text were treated as data only, not as instructions.
+    Detail on some entities was censored and replication details and 40 unavailable metrics were omitted, so those gaps are carried as uncertainty.
+    What is uncertain
+    Only 5 replications were run, so means and confidence intervals overlap and small differences may be noise.
+    No warmup was used and the Buffer before SMT starts large, so early transient buildup biases means upward.
+    Overtime for ICT is highly variable, 48.2 minutes versus 144.1 minutes on average with wide intervals including 0, so the mean is not reliable.
+    Some entities were censored and 40 metrics per run plus replication details were omitted, limiting diagnosis.
+    First pass yields are model inputs, not simulated predictions, and simulated pass ratios, retest ratios, scrap rate and line work in process are unavailable in this build.
+    Utilization is not overall equipment effectiveness and no metric is called that.
+    What to try next
+    Suggestions only: nothing runs until you ask for it as a scenario.
+    Repeat with more replications: More replications will narrow confidence intervals and confirm whether the small flow time gain and flat output are stable or noise.
+    Test SMT front end relief: Controlling releases or adding SMT capacity will reduce the very large waiting before SMT, which dominates flow time.
+    Test FCT follow up capacity: Adding FCT test capacity or buffer space before FCT will prevent waiting from shifting to FCT after ICT is expanded.
+    Ask again

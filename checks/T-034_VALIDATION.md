@@ -62,4 +62,20 @@ Reviewer 跑了三個 vitest 檔（17 個測試）、eslint、`tsc`，並在 Chr
 | `make frontend-test` | exit 0：lint、typecheck、**1100 個 unit test 通過** |
 | `make e2e-test` | exit 0：**518 passed**（T-033 時為 515：新增播放的 1280 px 測試與 en、zh-Hant 390 px 兩個），32 skipped（截圖，只在 CI 的固定 image 比對），16.9 分鐘 |
 
-沒有改動 Go、API、schema 或 migration：`make backend-test`、`make integration-test` 本輪 NOT RUN。Live（部署後在 Railway 上播放）NOT RUN：待部署。
+沒有改動 Go、API、schema 或 migration：`make backend-test`、`make integration-test` 本輪 NOT RUN。Live 見第 6 節。
+
+## 6. Live 確認（14bb5f2 部署後，2026-10-29，評審帳號）
+
+部署與證據同 `checks/T-030_VALIDATION.md` §8 的 live 確認（`checks/evidence/2026-10-29-live-t030-t034/`，`1-check.log`、截圖 `D2*`）。示範產線（41 個步驟，24 小時，5 個 replication）的結果頁：
+
+| 項目 | 結果 |
+|---|---|
+| 3D 開啟 | canvas 1、沒有「cannot run」；兩個執行都有軌跡，所以出現 Baseline／Scenario 的選擇，預設 Scenario |
+| 起點 | 「0 hours of 24 hours」、0 個項目 |
+| 播放 3 秒後暫停 | 「3.3 hours of 24 hours」（30 秒走完 24 小時；含點擊的時間） |
+| 滑桿到一半 | 「12 hours of 24 hours」、scenario 41 個項目，各步驟上有欄位（`D2b-results-3d-half.png`） |
+| 切換到 Baseline | 時間不變（12 hours）、radio checked、42 個項目（`D2c-results-3d-baseline.png`） |
+| 提示 | 「Sampled trace of replication 1: about 1 in 8 work items.」 |
+| 頁面錯誤 | 無 |
+
+畫面上看到的問題：產線在 3D 畫面中偏小，上方大片空白（鏡頭距離固定）。屬 UI 收尾，下一個切片處理。

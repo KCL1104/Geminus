@@ -1,0 +1,50 @@
+// Live checks after the a383141 deploy, as the judge: the AI explanation on the results page (T-030), the 3D
+// view on the results page and the model page (T-033), and a text proposal's assumptions (context-rules-2).
+const fs = require("fs");
+const { chromium } = require("/home/kuoba123/Geminus/apps/web-e2e/node_modules/@playwright/test");
+const WEB = "https://web-production-16041.up.railway.app";
+const ORG = "org_01M5YVAC4M672YFJYDNBR9W9QR";
+const RESULTS = fs.readFileSync(__dirname + "/results-url.txt", "utf8").trim();
+const OUT = __dirname + "/shots-0034";
+const t0 = Date.now();
+const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s]`, ...a);
+const only = (process.env.ONLY || "analysis,3d,proposal").split(",");
+
+async function until(page, scope, ends, ms) {
+  for (const deadline = Date.now() + ms; Date.now() < deadline; await page.waitForTimeout(3000)) {
+    const text = await scope.innerText().catch(() => "");
+    const hit = ends.find((e) => text.includes(e));
+    if (hit) return hit;
+  }
+  return "timeout";
+}
+
+(async () => {
+  const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(WEB + "/auth/login");
+  await page.waitForURL(/auth0\.com/, { timeout: 30000 });
+  const user = page.locator("input[name=username]");
+  await user.fill("judge@geminus-demo.invalid");
+  const pw = page.locator("input[name=password]");
+  if (!(await pw.isVisible().catch(() => false))) { await user.press("Enter"); await pw.waitFor({ state: "visible", timeout: 30000 }); }
+  await pw.fill(process.env.JUDGE_PASSWORD);
+  await pw.press("Enter");
+  await page.waitForURL((u) => !u.hostname.endsWith("auth0.com"), { timeout: 45000 });
+  await page.getByRole("button", { name: "Sign out" }).waitFor({ timeout: 30000 });
+  log("signed in as the judge");
+
+  const api = (method, path) => page.evaluate(async ([method, path, org]) => {
+    const r = await fetch("/api/v1" + path, { method, credentials: "same-origin", headers: { "X-Organization-ID": org, "X-Geminus-Request": "1" } });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  }, [method, path, ORG]);
+
+  await page.goto(WEB + "/scenarios/scn_01M5Z37J45XCPE8V0TP2ZCB8EF/results?baseline=sim_01M5Z3K5EGJ9CJJ5G2E24P9XKM&scenario=sim_01M5Z3K5R8QFY4A53QF19RSF8J&analysis=ana_01M61N92YDE1X7D9NKEWTC87NG");
+  const section = page.locator("section[aria-labelledby=analysis-heading]");
+  await section.getByText("The AI's explanation is ready.").waitFor({ timeout: 60000 });
+  const t = await section.innerText();
+  log("why+:\n    " + t.slice(t.indexOf("Why")).replace(/\n+/g, "\n    "));
+  await browser.close();
+})().catch((e) => { log("ERROR", e.message.split("\n")[0]); process.exit(1); });

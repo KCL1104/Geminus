@@ -1,0 +1,126 @@
+// Live checks after the a383141 deploy, as the judge: the AI explanation on the results page (T-030), the 3D
+// view on the results page and the model page (T-033), and a text proposal's assumptions (context-rules-2).
+const fs = require("fs");
+const { chromium } = require("/home/kuoba123/Geminus/apps/web-e2e/node_modules/@playwright/test");
+const WEB = "https://web-production-16041.up.railway.app";
+const ORG = "org_01M5YVAC4M672YFJYDNBR9W9QR";
+const RESULTS = fs.readFileSync(__dirname + "/results-url.txt", "utf8").trim();
+const OUT = __dirname + "/shots-0034";
+const t0 = Date.now();
+const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s]`, ...a);
+const only = (process.env.ONLY || "analysis,3d,proposal").split(",");
+
+async function until(page, scope, ends, ms) {
+  for (const deadline = Date.now() + ms; Date.now() < deadline; await page.waitForTimeout(3000)) {
+    const text = await scope.innerText().catch(() => "");
+    const hit = ends.find((e) => text.includes(e));
+    if (hit) return hit;
+  }
+  return "timeout";
+}
+
+(async () => {
+  const browser = await chromium.launch({ args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto(WEB + "/auth/login");
+  await page.waitForURL(/auth0\.com/, { timeout: 30000 });
+  const user = page.locator("input[name=username]");
+  await user.fill("judge@geminus-demo.invalid");
+  const pw = page.locator("input[name=password]");
+  if (!(await pw.isVisible().catch(() => false))) { await user.press("Enter"); await pw.waitFor({ state: "visible", timeout: 30000 }); }
+  await pw.fill(process.env.JUDGE_PASSWORD);
+  await pw.press("Enter");
+  await page.waitForURL((u) => !u.hostname.endsWith("auth0.com"), { timeout: 45000 });
+  await page.getByRole("button", { name: "Sign out" }).waitFor({ timeout: 30000 });
+  log("signed in as the judge");
+
+  const api = (method, path) => page.evaluate(async ([method, path, org]) => {
+    const r = await fetch("/api/v1" + path, { method, credentials: "same-origin", headers: { "X-Organization-ID": org, "X-Geminus-Request": "1" } });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  }, [method, path, ORG]);
+
+  await page.goto(WEB + RESULTS.replace(/\/results$/, ""));
+  const link = page.locator('a[href*="/results?baseline="]').first();
+  await link.waitFor({ timeout: 60000 });
+  await page.goto(WEB + (await link.getAttribute("href")));
+  await page.getByRole("heading", { name: "AI explanation" }).waitFor({ timeout: 60000 });
+  log("results page:", page.url());
+
+  if (only.includes("analysis")) {
+    const section = page.locator("section[aria-labelledby=analysis-heading]");
+    await section.getByRole("button", { name: "Explain these results" }).click();
+    const end = await until(page, section, ["The AI's explanation is ready.", "The AI's explanation was not kept.", "Try again"], 4 * 60_000);
+    await page.screenshot({ path: `${OUT}/D1-analysis.png`, fullPage: true });
+    log("analysis:", end, "url:", page.url().replace(WEB, ""));
+    log("analysis text:\n    " + (await section.innerText()).replace(/\n+/g, "\n    ").slice(0, 3000));
+  }
+
+  if (only.includes("3d")) {
+    const title = "See the line in 3D and play back its runs";
+    await page.getByText(title).click();
+    const panel = page.locator("details", { has: page.getByText(title) });
+    const canvas = panel.locator("canvas").first();
+    await canvas.waitFor({ timeout: 60000 }).catch(() => {});
+    await page.waitForFunction(() => !document.body.innerText.includes("Loading the 3D view…"), null, { timeout: 60000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    await canvas.scrollIntoViewIfNeeded().catch(() => {});
+    await page.screenshot({ path: `${OUT}/D2-results-3d.png`, fullPage: false });
+    log("results 3D: canvas", await panel.locator("canvas").count(), "unavailable:", await page.getByText("The 3D view cannot run").count());
+    const slider = panel.getByRole("slider", { name: "Time in the run" });
+    if (await slider.count()) {
+      const vt = async () => slider.getAttribute("aria-valuetext");
+      log("playback start:", await vt(), "|", (await panel.innerText()).match(/\d+ sampled work items? in the line[^.]*\./)?.[0]);
+      await panel.getByRole("button", { name: "Play" }).click();
+      await page.waitForTimeout(3000);
+      await panel.getByRole("button", { name: "Pause" }).click();
+      log("after 3 s of play:", await vt());
+      await slider.fill("500");
+      await page.waitForTimeout(800);
+      await page.screenshot({ path: `${OUT}/D2b-results-3d-half.png`, fullPage: false });
+      log("at half (scenario):", await vt(), "|", (await panel.innerText()).match(/\d+ sampled work items? in the line[^.]*\./)?.[0]);
+      const base = panel.getByRole("radio", { name: "Baseline" });
+      if (await base.count()) {
+        await base.click();
+        await page.waitForTimeout(800);
+        await page.screenshot({ path: `${OUT}/D2c-results-3d-baseline.png`, fullPage: false });
+        log("at half (baseline):", await vt(), "checked:", await base.isChecked(), "|", (await panel.innerText()).match(/\d+ sampled work items? in the line[^.]*\./)?.[0]);
+      } else log("no run choice (one trace)");
+      log("playback hints:\n    " + (await panel.locator("p").allInnerTexts()).join("\n    "));
+    } else log("NO SLIDER; panel text:", (await panel.innerText()).slice(0, 600));
+
+    const scn = RESULTS.split("/")[2];
+    const s = await api("GET", `/scenarios/${scn}`);
+    const modelId = s.body && (s.body.model_id || (s.body.scenario && s.body.scenario.model_id));
+    log("scenario", s.status, "model", modelId);
+    if (modelId) {
+      await page.goto(WEB + "/models/" + modelId);
+      await page.getByRole("radio", { name: "3D" }).click();
+      await page.locator("canvas").first().waitFor({ timeout: 60000 }).catch(() => {});
+      await page.waitForFunction(() => !document.body.innerText.includes("Loading the 3D view…"), null, { timeout: 60000 }).catch(() => {});
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: `${OUT}/D3-model-3d.png`, fullPage: false });
+      log("model 3D: canvas", await page.locator("canvas").count(), "unavailable:", await page.getByText("The 3D view cannot run").count(),
+        "label:", await page.locator("canvas[role=img]").getAttribute("aria-label").catch(() => null));
+      await page.getByRole("radio", { name: "2D" }).click();
+      process.env.MODEL_ID = modelId;
+    }
+  }
+
+  if (only.includes("proposal") && process.env.MODEL_ID) {
+    await page.goto(WEB + "/models/" + process.env.MODEL_ID);
+    await page.getByLabel("Describe the change").fill("Add a buffer queue between ICT and FCT so FCT is not starved when ICT finishes a batch.");
+    await page.getByRole("radio", { name: "A change to the model" }).check().catch(() => {});
+    await page.getByRole("button", { name: "Send to the AI" }).click();
+    await page.waitForURL(/\/proposals\//, { timeout: 120000 });
+    const end = await until(page, page.locator("main"), ["Ready for your review.", "The AI needs more information", "Geminus refused the AI's answer", "The proposal could not be written."], 6 * 60_000);
+    await page.screenshot({ path: `${OUT}/D4-text-proposal.png`, fullPage: true });
+    log("text proposal:", end, page.url().replace(WEB, ""));
+    const main = await page.locator("main").innerText();
+    const at = main.indexOf("What the AI assumed");
+    log("assumptions:\n    " + (at < 0 ? "(no section)" : main.slice(at, at + 1200).replace(/\n+/g, "\n    ")));
+  }
+  log("page errors:", errors.length ? errors : "none");
+  await browser.close();
+})().catch((e) => { log("ERROR", e.message.split("\n")[0]); process.exit(1); });

@@ -239,4 +239,18 @@ Reviewer 跑了 `tsc`、eslint、vitest（results-metrics 14／14、i18n 18／18
 | `make integration-test` | exit 0：**38 個 package ok** |
 | Mutation（名稱不換、不限字母、不排序） | 皆 KILLED |
 
-`make backend-race`、`make e2e-test` NOT RUN。Live（`analyst-0.3.3`、`context-rules-3` 部署後再問一次）尚未執行：NOT RUN。
+`make backend-race`、`make e2e-test` NOT RUN。
+
+### Live 確認（14bb5f2 部署後，2026-10-29，評審帳號，Meta）
+
+部署 14bb5f2（含 b69be91；owner 授權）：18 個 migration、api／worker／web SUCCESS、健康檢查與登入導向正常、沒有開著的 TCP proxy；部署後已登出 Railway。證據：`checks/evidence/2026-10-29-live-t030-t034/`（腳本 `check-0034.cjs.txt`、`why-0034.cjs.txt`，密碼只經環境變數；`1-check.log`、`2-analysis-why.log`；截圖 `D1-analysis.png`）。
+
+| 項目 | 結果 |
+|---|---|
+| 同一組執行再問一次（`analyst-0.3.3`） | **第 1 次就保留**（`ana_01M61N92YDE1X7D9NKEWTC87NG`，約 50 秒） |
+| 數字 | 文字中的數字都到 1 位小數或整數（「497.4 minutes」「463.6 boards」），比例寫成 %（「58.8% to 53.5%」）；沒有完整精度的數字 |
+| 名稱 | 用畫面上的名稱（「Buffer before SMT」「ICT testers」）；沒有 metric path、欄位名稱或 ID |
+| 比例的變化 | 寫兩次執行的值（「fell from 85.8% to 75.3%」），沒有把 absolute_delta 寫成 % |
+| 「What changed」的列名 | `Lead time, mean`、`Scheduled utilization: ICT`、`Blocked ratio: ICT` 都有名稱，沒有 path |
+
+樣本只有 1 次，不代表拒絕率。仍看得到的小問題：假設裡出現統計用語「censored」（指 context 省略的資料），不影響數字的正確性。
