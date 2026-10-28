@@ -18,8 +18,8 @@
 // is reserved for in the spend ledger before it is made and settled after
 // (internal/storage/aispend). The photo path's clients (T-055: the judge
 // and the SAM 3.1 segmenter, of AI_VISION_PROVIDER) are built and checked
-// at start, for T-056's handler. Analyses (T-030) are not built yet; their
-// jobs stay queued.
+// at start, for T-056's handler. Analyses (T-030) run on the same checked
+// client as proposals.
 package main
 
 import (

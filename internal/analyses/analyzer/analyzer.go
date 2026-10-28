@@ -35,6 +35,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/analyst"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/audit"
+	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/results/compare"
@@ -107,6 +108,9 @@ const (
 	// a value or number the server did not supply (never retried: a retry
 	// would ask the provider again and pay again).
 	Ungrounded = "ANALYSIS_UNGROUNDED"
+	// NotComparable: the server does not compare the two runs (D-088): no
+	// provider call is made (T-030 review r1 M4).
+	NotComparable = "ANALYSIS_NOT_COMPARABLE"
 	// OutputUnstorable: the database refused the checked analysis.
 	OutputUnstorable = "ANALYSIS_OUTPUT_UNSTORABLE"
 )
@@ -292,13 +296,6 @@ func result(data []byte) (*simulation.Result, error) {
 	return &r, nil
 }
 
-// input is what the comparison reads of a run: its frozen input and result.
-func input(r *runs.Run, res *simulation.Result) compare.Run {
-	return compare.Run{ID: r.ID, ModelVersionID: r.ModelVersionID, EngineVersion: r.EngineVersion, DatasetManifestHash: r.DatasetManifestHash,
-		ModelHash: r.ModelHash, EffectiveModelHash: r.EffectiveModelHash, ConfigHash: r.ConfigHash,
-		ScenarioPatch: r.ScenarioPatch, Config: r.Config, Result: res}
-}
-
 // analyze builds the context, asks the provider and checks the answer,
 // outside any transaction. It returns the analysis to store and the call's
 // metadata, or the failure and, after a call, its metadata and the number
@@ -339,10 +336,14 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 		if base, err = result(st.results[st.baseline.ID]); err != nil {
 			return provider.AnalysisOutput{}, nil, 0, err
 		}
-		c, err := compare.Compare(input(st.baseline, base), input(st.scenario, scen))
+		c, err := compare.Compare(comparisons.Input(*st.baseline, base), comparisons.Input(*st.scenario, scen))
 		if err != nil {
 			h.cfg.Log.ErrorContext(ctx, "comparing an analysis's runs failed", "organization_id", org, "analysis_id", st.analysis.ID, "error", err.Error())
 			return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the analysis's runs cannot be compared", false)
+		}
+		if !c.Comparable {
+			// The API refuses such a pair; a job that has one stops before the paid call.
+			return provider.AnalysisOutput{}, nil, 0, failure(NotComparable, "the server does not compare the analysis's runs ("+strings.Join(c.IncomparableReasons, ", ")+")", false)
 		}
 		comparison = &c
 		if in.Comparison, err = c.JSON(); err != nil {

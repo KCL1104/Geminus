@@ -401,6 +401,31 @@ describe("the AI explanation of the results (T-030)", () => {
     await waitFor(() => button(section(el)!, en["analysis.ask"]) !== undefined, "the form again");
   });
 
+  it("does not show an analysis of other runs under this page's results (review r1 M2)", async () => {
+    const other = { ...explained, run_id: "sim_01M4YDQK00FGZZWH0PP15XPN99" };
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, other) });
+    const { el, seen } = await page(api, ANA);
+    await waitFor(() => text(section(el)!).includes(en["analysis.otherRuns"]), "the refusal");
+    expect(text(section(el)!)).not.toContain("A second ICT fixture");
+    await press(button(section(el)!, en["analysis.ask"]));
+    expect(seen).toEqual([null]);
+  });
+
+  it("keeps the line in 3D closed, and loads it only when opened (T-033)", async () => {
+    const api = fakeApi(completedRuns);
+    const { el } = await page(api, null, viewer);
+    const details = [...el.querySelectorAll("details")].find((d) => text(d.querySelector("summary")!) === en["twin3d.results"])!;
+    expect(details.open).toBe(false);
+    expect(details.querySelector("canvas, [role=img]")).toBeNull();
+    await act(async () => {
+      details.open = true;
+      details.dispatchEvent(new Event("toggle"));
+    });
+    // No WebGL here: the view says so, and the rest of the page stays.
+    await waitFor(() => text(details).includes(en["twin3d.unavailable"]), "the 3D view's answer");
+    expect(el.querySelector("table")).not.toBeNull();
+  });
+
   it("shows a viewer an analysis in the address and nothing to ask with; and nothing without one", async () => {
     const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, explained) });
     const { el } = await page(api, ANA, viewer, "zh-Hant");

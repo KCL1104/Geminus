@@ -47,7 +47,8 @@ export function Analysis({ baseline, scenario, rows, analysisId, onAnalysis, pol
       {analysisId === null ? (
         <AskForm baseline={baseline} scenario={scenario} onAnalysis={onAnalysis} />
       ) : (
-        <Followed key={analysisId} id={analysisId} rows={rows} pollMs={pollMs} onAgain={canEdit(role) ? () => onAnalysis(null) : null} />
+        <Followed key={analysisId} id={analysisId} runs={{ run: scenario.id, baseline: baseline.id }} rows={rows} pollMs={pollMs}
+          onAgain={canEdit(role) ? () => onAnalysis(null) : null} />
       )}
     </section>
   );
@@ -93,7 +94,14 @@ function failureProblem(r: AnalysisRecord): Problem | null {
   return problemFromResponse(status, new Headers(), r.error);
 }
 
-function Followed({ id, rows, pollMs, onAgain }: { id: string; rows: MetricRow[]; pollMs: number; onAgain: (() => void) | null }) {
+function Followed({ id, runs, rows, pollMs, onAgain }: {
+  id: string;
+  /** This page's runs: an analysis of others (an old or edited address) is not shown here (T-030 review r1 M2). */
+  runs: { run: string; baseline: string };
+  rows: MetricRow[];
+  pollMs: number;
+  onAgain: (() => void) | null;
+}) {
   const api = useApi();
   const { t } = useI18n();
   const [record, setRecord] = useState<AnalysisRecord | null>(null);
@@ -108,20 +116,29 @@ function Followed({ id, rows, pollMs, onAgain }: { id: string; rows: MetricRow[]
       if (!r.ok) return setProblem(r.problem);
       setProblem(null);
       setRecord(r.data);
-      if (r.data.status === "generating") timer = setTimeout(() => void poll(), pollMs);
+      const ours = r.data.run_id === runs.run && r.data.baseline_run_id === runs.baseline;
+      if (ours && r.data.status === "generating") timer = setTimeout(() => void poll(), pollMs);
     };
     void poll();
     return () => {
       ctl.abort();
       clearTimeout(timer);
     };
-  }, [api, id, pollMs, attempt]);
+  }, [api, id, runs.run, runs.baseline, pollMs, attempt]);
 
   if (problem) {
     return (
       <>
         <ProblemView problem={problem} headingLevel={3} />
         <Button onPress={() => setAttempt((n) => n + 1)}>{t("retry")}</Button>
+      </>
+    );
+  }
+  if (record !== null && (record.run_id !== runs.run || record.baseline_run_id !== runs.baseline)) {
+    return (
+      <>
+        <p>{t("analysis.otherRuns")}</p>
+        {onAgain && <Button onPress={onAgain}>{t("analysis.ask")}</Button>}
       </>
     );
   }

@@ -4,7 +4,7 @@
 // in one sentence, the key metrics, the Marey chart of the sampled traces
 // and the settings both runs were frozen with (DESIGN.md The Provenance
 // Always Rule). Presentational: everything comes from ResultsData.
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import type { Duration, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
@@ -14,6 +14,7 @@ import { Analysis } from "./analysis";
 import { MareyChart } from "./marey-chart";
 import { keyMetrics, leadTimeSummary } from "./metrics";
 import { MetricsTable } from "./metrics-table";
+import { Twin3D } from "../twin-3d/viewer";
 import styles from "./results.module.css";
 
 const secondsPer: Readonly<Record<Duration["unit"], number>> = { millisecond: 0.001, second: 1, minute: 60, hour: 3600, day: 86400 };
@@ -55,6 +56,22 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
 }
 
 /** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
+/**
+ * The line in 3D with the scenario run's utilization and queues (T-033),
+ * one click away (H-027); PlayCanvas loads only when it is opened.
+ */
+function LineIn3D({ data }: { data: ResultsData }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  return (
+    <details className={styles.more} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>{t("twin3d.results")}</summary>
+      {open && <Twin3D ir={data.version.ir} results={data.scenario.result} selected={selected} onSelect={setSelected} />}
+    </details>
+  );
+}
+
 export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: { id: string | null; onChange: (id: string | null) => void } }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -97,6 +114,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
         </div>
       </section>
       {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
+      {analysis && <LineIn3D data={data} />}
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}

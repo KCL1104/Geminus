@@ -40,6 +40,12 @@ OpenAPI、schema 不變（兩個 operation 與 `AnalysisRequest`、`AnalysisAcce
 
 已知上限（程式中的 `ponytail:` 註解）：承諾結果的詞表是固定的，主張中出現「not guaranteed」也會被拒絕；不確定與假設的欄位不檢查（那裡本來就會出現這些詞）。
 
+**已知限制**（review r1 M1 指出，記錄而非修正）：
+- 文字說的方向（「上升」「下降」）不核對；只有 structured delta 的正負號核對。「前置時間增加 8 分鐘」在實際減少 8 分鐘時會通過。
+- 文字的數字對整批供應值（兩次結果、comparison、設定、容量與機率的所有數字）以寫出的位數比對；供應值越多，越容易碰巧對上。
+- 冒號後的數字（`3:97`）視為時間或比例，不核對。
+- 因此畫面的說明改為「它提到的數字與指標都會對照結果檢查」，不說「每一項說法」。
+
 ### 2.2 Job（`internal/analyses/analyzer`）
 
 - 在 lease 下讀 analysis（必須 generating）、兩次執行（必須 completed）與它們的 Result、分析那次執行的版本 IR。
@@ -65,7 +71,7 @@ OpenAPI、schema 不變（兩個 operation 與 `AnalysisRequest`、`AnalysisAcce
 
 | 測試 | 內容 |
 |---|---|
-| `internal/ai/analyst`（4 個 test，含 27 個拒絕的子測試） | grounded 的回答保留且存 comparison 的值、不共用記憶體；沒有 baseline；每一種捏造都被拒絕且 path 正確；不確定與假設欄位的疑問詞不被拒絕 |
+| `internal/ai/analyst`（4 個 test，含 28 個拒絕的子測試） | grounded 的回答保留且存 comparison 的值、不共用記憶體；沒有 baseline；每一種捏造都被拒絕且 path 正確；不確定與假設欄位的疑問詞不被拒絕 |
 | `internal/ai/aicontext` | domain 指標可引用；system text 含 `context-rules-2` |
 | `internal/ai/corpus` `TestAnalystEval` | 10 個情況：grounded 回答 10／10 保留，unsafe 回答 10／10 因該情況的缺陷被拒絕；gate `reference_refused`、`unsafe_answer_kept` 皆 0 |
 | `db/tests/analysis_jobs.sql` | 0018 的每一條規則（建立、request 不變、各狀態內容、隨 job 完成、隨 job 失敗與取消、完成與失敗後不可改、其他 role） |
@@ -99,8 +105,34 @@ OpenAPI、schema 不變（兩個 operation 與 `AnalysisRequest`、`AnalysisAcce
 
 - **Live**：analyst 在 Meta 上的實際回答、通過審查的比例與花費，等獨立 review 後部署再驗證（H-029 (4)）。
 - **`make e2e-test`**：結果頁的 UI gallery 不含 AI 解讀，瀏覽器檢查沒有涵蓋這個區塊；元件以 vitest + axe 測。
-- **Race**：見第 5 節。
+## 5. 獨立 review 第 1 輪（H-029）與修正
 
-## 5. 命令與結果
+Reviewer（獨立 subagent，只讀 commit 448357f 的程式，沒有 shell）：**High 0**、Medium 4、Low 7。
 
-（填入於第 6 節之前，見下。）
+| # | 發現 | 處理 |
+|---|---|---|
+| M1 | 文字的核對比文件與畫面說的弱：方向不核對；數字對整批供應值；`.97` 與冒號後的數字不核對 | **修正**：`.97` 視為數字（`locale.Numbers`，`TestLeadingDotNumbers`）；方向、整批比對、冒號後的數字記為已知限制（§2.1、D-133 (h)、AI_SPEC §9）；畫面說明改寫 |
+| M2 | 網址中的 analysis 若屬於別的執行，仍會顯示在本頁的結果下 | **修正**：`run_id`、`baseline_run_id` 與本頁不符時不顯示、停止輪詢，editor 可重新要求；測試 |
+| M3 | 驗證紀錄沒有貼命令與結果；子測試數量寫錯；AI_SPEC 仍說 analyst 檢查 NOT RUN | **修正**：本節與第 6 節；28 個；AI_SPEC §9、§10 |
+| M4 | 不可比較的一對（不同 seed、版本、patch）仍會付費分析並存為 completed | **修正**：API 以 `compare.Compare` 先判斷，不可比較即 422 `/baseline_run_id`、不排 job；job 在呼叫前以 `ANALYSIS_NOT_COMPARABLE` 失敗；整合測試（另一個 seed 的 baseline） |
+| L | migration 的「已有 analysis 就停」在 FORCE RLS 下看不到任何列 | **修正**：照 0005、0011 先 `NO FORCE ROW LEVEL SECURITY`；對應的 SQL 測試延後 |
+| L | relative delta 的容許差是絕對的（寫 0 可代表 ±40%） | **修正**：relative 至少以 2 位小數比對；兩個子測試 |
+| L | `cmd/worker` 的文件說 analysis 還沒做 | **修正** |
+| L | client contract 測試沒有 createAnalysis、getAnalysis | **修正**：`tests/api.test.ts` |
+| L | `analysis.ungrounded` 只說「數字或指標」 | **修正**：「數字、指標或保證」 |
+| L | 輪詢沒有上限；一次讀取失敗就停到按重試 | 延後 |
+| L | Anthropic 的 live 部署沒有 analyst role，API 仍回 202、job 才失敗 | 延後（demo 部署是 Meta，H-029 有 analyst） |
+
+## 6. 命令與結果（2026-10-28，本機 WSL2；Go 1.27.3、Node 24.21.0；disposable PostgreSQL 16，trust，port 54329）
+
+| 命令 | 結果 |
+|---|---|
+| `make spec-check`（含 `render_db_tests.py --check`） | exit 0 |
+| `make backend-test` | exit 0：go vet、**85 個 package ok** |
+| `make backend-race` | exit 0：**85 個 package ok**，沒有 data race |
+| `make integration-test`（`make db-test` 的 SQL suites 含 `analysis_jobs.sql` 與 0018 的 up／down／up，加 `db-go-test` 的 `-race` Go DB 測試） | exit 0：**38 個 package ok**；`internal/api` 的 `TestAnalysisClosedLoop`、`TestAnUngroundedAnalysisFails`、`TestAnalysisRefusals`（含不可比較的 baseline）通過 |
+| `make ai-eval` | exit 0：`checks/ai-evals/fake-analyst.json`：grounded 10／10 保留、unsafe 10／10 因各自的缺陷被拒絕；gate `reference_refused` 0、`unsafe_answer_kept` 0；context 與 review 兩個 suite 照舊通過 |
+| `make frontend-test` | exit 0：eslint、tsc、vitest **49 files、1080 tests passed** |
+| Mutation A1–A8、DM1–DM3 | 見第 3 節，各以 `go test`／`make db-test` 確認 KILLED |
+
+第一次整合測試（review 前）`TestAnUngroundedAnalysisFails` 失敗：之後加入的「少於 2 次 replication 必須寫出不確定性」使測試的捏造回答多一個 issue（2 而非 1）；測試回答補上不確定性，只留下捏造數字一個缺陷。

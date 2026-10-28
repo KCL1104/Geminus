@@ -145,6 +145,41 @@ test.describe("the editor with a mouse", () => {
   });
 });
 
+// T-033: the read-only 3D view of the same steps, by the same IDs and the same selection.
+test.describe("the editor's 3D view", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  test("shows the line read-only, shares the selection with 2D, and goes back to 2D", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await open(page, preview(), "en");
+    await node(page, "burn_in").click();
+    await expect(panelHeading(page)).toHaveText("Burn-in");
+    await page.getByRole("radio", { name: "3D" }).click();
+    // No authoring in 3D: no Add step, no fit; the 2D canvas is gone.
+    await expect(page.getByRole("button", { name: "Add step" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Show all steps" })).toHaveCount(0);
+    await expect(page.locator(".react-flow")).toHaveCount(0);
+    // WebGL in this browser or not, the view answers: the scene, or why it cannot run.
+    const scene = page.getByRole("img", { name: /^3D view of the line: \d+ steps$/ });
+    const unavailable = page.getByText("The 3D view cannot run in this browser.", { exact: false });
+    await expect(scene.or(unavailable)).toBeVisible({ timeout: 30_000 });
+    if (await scene.isVisible()) {
+      await expect(page.getByText("Loading the 3D view…")).toHaveCount(0, { timeout: 30_000 });
+      // The selection made in 2D is the 3D view's too; Escape on the scene clears it for both.
+      await expect(page.getByText("Selected: Burn-in.")).toBeVisible();
+      await scene.focus();
+      await page.keyboard.press("ArrowLeft");
+      await page.keyboard.press("Escape");
+      await expect(panelHeading(page)).toHaveText("Properties");
+    }
+    expect(await violations(page)).toEqual([]);
+    await page.getByRole("radio", { name: "2D" }).click();
+    await expect(node(page, "burn_in")).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe("saving against the server's revision", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 

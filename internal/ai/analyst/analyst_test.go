@@ -196,6 +196,8 @@ func TestUngroundedAnswersAreRefused(t *testing.T) {
 		}, analyst.DeltaUnknown + " /delta/0/metric_path"},
 		{"the wrong direction", func(o *provider.AnalysisOutput) { o.Delta[0].AbsoluteDelta = ptr(8) }, analyst.DeltaMismatch + " /delta/0/absolute_delta"},
 		{"a wrong rounding", func(o *provider.AnalysisOutput) { o.Delta[1].RelativeDelta = ptr(0.26) }, analyst.DeltaMismatch + " /delta/1/relative_delta"},
+		{"a relative delta rounded to nothing (review r1)", func(o *provider.AnalysisOutput) { o.Delta[0].RelativeDelta = ptr(0) }, analyst.DeltaMismatch + " /delta/0/relative_delta"},
+		{"a relative delta to one decimal", func(o *provider.AnalysisOutput) { o.Delta[2].RelativeDelta = ptr(-0.3) }, analyst.DeltaMismatch + " /delta/2/relative_delta"},
 		{"a value where the comparison has none", func(o *provider.AnalysisOutput) {
 			o.Delta = append(o.Delta, provider.AnalysisDelta{MetricPath: "/metrics/dora/change_lead_time/p50", AbsoluteDelta: ptr(0), RelativeDelta: nil})
 		}, analyst.DeltaMismatch + " /delta/3/absolute_delta"},

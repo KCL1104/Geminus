@@ -19,15 +19,18 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
+	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/proposals"
+	"github.com/kcl1104/geminus/internal/results/compare"
 	store "github.com/kcl1104/geminus/internal/storage/analyses"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
@@ -207,9 +210,37 @@ func prepare(ctx context.Context, tx tenant.Tx, m tenant.Membership, runID strin
 			return store.Analysis{}, &RequestError{Issues: []model.ValidationIssue{
 				model.NewIssue(validate.ConstraintFailed, BaselineParam, "the baseline is a run of another model", model.SeverityError)}}
 		}
+		// The server establishes comparability first (AI_SPEC §9; T-030
+		// review r1 M4): runs it would not compare are not explained as if
+		// it had, and nothing is paid for.
+		c, err := comparison(ctx, tx, m.OrganizationID, base, run)
+		if err != nil {
+			return store.Analysis{}, err
+		}
+		if !c.Comparable {
+			return store.Analysis{}, &RequestError{Issues: []model.ValidationIssue{model.NewIssue(validate.ConstraintFailed, BaselineParam,
+				"the server does not compare these runs ("+strings.Join(c.IncomparableReasons, ", ")+")", model.SeverityError)}}
+		}
 		a.BaselineRunID = &base.ID
 	}
 	return a, nil
+}
+
+// comparison is the server's comparison of the two completed runs.
+func comparison(ctx context.Context, tx tenant.Tx, org string, base, scen runs.Run) (compare.Comparison, error) {
+	var in [2]compare.Run
+	for i, r := range []runs.Run{base, scen} {
+		stored, err := runs.GetResult(ctx, tx, org, r.ID)
+		if err != nil {
+			return compare.Comparison{}, fmt.Errorf("analyses: completed run %s: %w", r.ID, err)
+		}
+		res, err := comparisons.DecodeResult(stored.Result)
+		if err != nil {
+			return compare.Comparison{}, err
+		}
+		in[i] = comparisons.Input(r, res)
+	}
+	return compare.Compare(in[0], in[1])
 }
 
 // completed returns run id if the organization has it and it completed.

@@ -26,9 +26,19 @@ type Props = {
   onSelect: (id: string | null) => void;
 };
 
+// The tokens as #rrggbb, the one form PlayCanvas parses: the built CSS
+// writes #ffffff as #fff, which it would read as blue. The browser's 2D
+// context normalizes any CSS colour it is given.
 function palette(el: Element): Palette {
   const css = getComputedStyle(el);
-  const v = (name: string) => css.getPropertyValue(`--gm-color-${name}`).trim();
+  const v = (name: string) => {
+    const raw = css.getPropertyValue(`--gm-color-${name}`).trim();
+    // A fresh context per token, so a value it cannot read leaves its default, not the last token.
+    const ctx = document.createElement("canvas").getContext("2d");
+    if (!ctx) return raw;
+    ctx.fillStyle = raw;
+    return String(ctx.fillStyle);
+  };
   return { sheet: v("sheet"), ink: v("ink"), edge: v("edge"), rule: v("rule"), baseline: v("baseline"), scenario: v("scenario"), busy: v("warning-edge") };
 }
 

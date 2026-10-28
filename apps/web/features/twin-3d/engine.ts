@@ -59,14 +59,15 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   };
   const idle = color(palette.edge);
   const busy = color(palette.busy);
-  const tones = { ink: color(palette.ink), baseline: color(palette.baseline), rule: color(palette.rule) };
+  // A queue between Rule and Control Edge: Rule alone vanishes on the white sheet.
+  const tones = { ink: color(palette.ink), baseline: color(palette.baseline), queue: new pc.Color().lerp(color(palette.rule), idle, 0.5) };
   // A step's colour: Graphite Ink when selected; with results, a process
   // from Control Edge (idle) toward the busy colour (fully used); else by kind.
   const tone = (n: SceneNode, selected: boolean): PlayCanvas.Color => {
     if (selected) return tones.ink;
     if (n.utilization !== null) return new pc.Color().lerp(idle, busy, n.utilization);
     if (n.type === "source" || n.type === "sink") return tones.baseline;
-    if (n.type === "queue") return tones.rule;
+    if (n.type === "queue") return tones.queue;
     return idle;
   };
 
@@ -77,7 +78,8 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   const ends: [PlayCanvas.Vec3, PlayCanvas.Vec3][] = [];
 
   // The orbit: yaw and pitch in degrees about the target, at a distance.
-  const orbit = { yaw: -35, pitch: 40, distance: 10, target: new pc.Vec3() };
+  // It starts facing the line (yaw 0), which runs left to right as in 2D.
+  const orbit = { yaw: 0, pitch: 40, distance: 10, target: new pc.Vec3() };
   const place = () => {
     const yaw = (orbit.yaw * Math.PI) / 180;
     const pitch = (orbit.pitch * Math.PI) / 180;
@@ -89,9 +91,9 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     camera.lookAt(orbit.target);
   };
   const reset = () => {
-    orbit.yaw = -35;
+    orbit.yaw = 0;
     orbit.pitch = 40;
-    orbit.distance = scene.radius * 2.2;
+    orbit.distance = scene.radius * 1.9;
     orbit.target.set(...scene.center);
     place();
   };

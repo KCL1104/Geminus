@@ -116,11 +116,11 @@ func (s *Service) Compare(ctx context.Context, sc tenant.Scope, baselineID, scen
 			if err != nil {
 				return err
 			}
-			res, err := decodeResult(stored.Result)
+			res, err := DecodeResult(stored.Result)
 			if err != nil {
 				return fmt.Errorf("run %s: %w", r.ID, err)
 			}
-			inputs[i] = input(r, res)
+			inputs[i] = Input(r, res)
 		}
 		return nil
 	})
@@ -135,16 +135,17 @@ func (s *Service) Compare(ctx context.Context, sc tenant.Scope, baselineID, scen
 	return c.JSON()
 }
 
-// input is what the comparison reads of a run: its frozen input and result.
-func input(r store.Run, res *simulation.Result) compare.Run {
+// Input is what the comparison reads of a run: its frozen input and result
+// (T-030's analyses build theirs the same way).
+func Input(r store.Run, res *simulation.Result) compare.Run {
 	return compare.Run{ID: r.ID, ModelVersionID: r.ModelVersionID, EngineVersion: r.EngineVersion, DatasetManifestHash: r.DatasetManifestHash,
 		ModelHash: r.ModelHash, EffectiveModelHash: r.EffectiveModelHash, ConfigHash: r.ConfigHash,
 		ScenarioPatch: r.ScenarioPatch, Config: r.Config, Result: res}
 }
 
-// decodeResult decodes a stored Result strictly (no unknown or duplicate
+// DecodeResult decodes a stored Result strictly (no unknown or duplicate
 // member): one that does not decode is a server fault, never compared.
-func decodeResult(data []byte) (*simulation.Result, error) {
+func DecodeResult(data []byte) (*simulation.Result, error) {
 	var res simulation.Result
 	if err := model.Decode(data, &res); err != nil {
 		return nil, fmt.Errorf("%w: the stored result does not decode: %v", compare.ErrInconsistent, err)

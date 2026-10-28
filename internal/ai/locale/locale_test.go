@@ -189,3 +189,17 @@ func TestCheckProse(t *testing.T) {
 		t.Errorf("nothing supplied: %+v", f)
 	}
 }
+
+// T-030 review M1: a number that starts with its decimal point is a number.
+func TestLeadingDotNumbers(t *testing.T) {
+	nums, _ := Numbers("yield fell to .97, then .5% of v1.97 and node.97")
+	if len(nums) != 2 || nums[0].Value != 0.97 || nums[0].Decimals != 2 || nums[1].Value != 0.5 || !nums[1].Percent {
+		t.Fatalf("%+v", nums)
+	}
+	if got := CheckProse("yield fell to .91", []float64{0.97}); len(got) != 1 {
+		t.Errorf("an unsupplied .91 passed: %+v", got)
+	}
+	if got := CheckProse("yield fell to .97", []float64{0.97}); len(got) != 0 {
+		t.Errorf("a supplied .97 was refused: %+v", got)
+	}
+}

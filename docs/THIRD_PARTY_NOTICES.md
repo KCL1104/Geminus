@@ -344,6 +344,40 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+## PlayCanvas (the read-only 3D view, T-033)
+
+The 3D view (`apps/web/features/twin-3d/`) draws with the PlayCanvas engine, `playcanvas` 2.23.2 (2026-10-09), pinned in `apps/web/package.json` and `package-lock.json` with two type-declaration packages (3 lock entries, none with an install script; versions, dates and the choice in [ADR-011](adr/ADR-011-toolchain-bootstrap.md), the engine itself by [ADR-008](adr/ADR-008-playcanvas-visualization.md)). The engine is bundled into a chunk the browser downloads only when a person opens the 3D view, where the minifier may drop its license comment, so the notice is recorded here.
+
+| Package | Version | License | Copyright |
+|---|---|---|---|
+| playcanvas | 2.23.2 | MIT | Copyright (c) 2011-2026 PlayCanvas Ltd. |
+| @types/webxr (type declarations only; nothing reaches the bundle) | 0.5.24 | MIT | Copyright (c) Microsoft Corporation |
+| @webgpu/types (type declarations only; nothing reaches the bundle) | 0.1.74 | BSD-3-Clause | Copyright 2022 WebGPU Developers |
+
+The MIT license, as `playcanvas` ships it:
+
+```text
+Copyright (c) 2011-2026 PlayCanvas Ltd.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
 ## AWS Signature Version 4 test suite (test data, T-039)
 
 `testdata/sigv4/` holds 15 request vectors of the AWS Signature Version 4 test suite (`aws4_testsuite`), unmodified, as botocore mirrors it (`tests/unit/auth/aws4_testsuite`, branch `develop`, fetched 2026-10-26; each file's SHA-256 is in `testdata/sigv4/SOURCE.txt`). Only `internal/storage/objects/sigv4_test.go` reads them, to check the S3 adapter's own signer (no SDK is linked); they are not part of any binary or image. License: Apache License 2.0 (<https://www.apache.org/licenses/LICENSE-2.0>). botocore's NOTICE:

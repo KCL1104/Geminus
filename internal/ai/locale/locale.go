@@ -135,6 +135,13 @@ func Numbers(text string) ([]Number, []Finding) {
 			sign, raw = raw[:1], raw[1:]
 		}
 		before, _ := utf8.DecodeLastRuneInString(text[:start])
+		// T-030 review M1: ".97" is the number 0.97 when the dot starts it
+		// (after a space or the start), not a part of an identifier or path.
+		if start > 0 && before == '.' && sign == "" {
+			if prev, _ := utf8.DecodeLastRuneInString(text[:start-1]); start == 1 || !identifierRune(prev) {
+				start, raw, before = start-1, "0."+raw, ' '
+			}
+		}
 		switch {
 		case start > 0 && sign != "" && asciiDigit(before):
 			// A range or difference, "1-5": the second number has no sign.

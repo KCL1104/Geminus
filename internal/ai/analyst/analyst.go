@@ -128,10 +128,12 @@ func Check(in Input) (provider.AnalysisOutput, []Issue) {
 			continue
 		}
 		seen[d.MetricPath] = true
-		if !rounded(d.AbsoluteDelta, m.AbsoluteDelta) {
+		if !rounded(d.AbsoluteDelta, m.AbsoluteDelta, 0) {
 			c.add(DeltaMismatch, at+"/absolute_delta")
 		}
-		if !rounded(d.RelativeDelta, m.RelativeDelta) {
+		// A relative delta is a fraction: at least two decimals (a
+		// percentage point), so a written 0 or 1 cannot stand for 40%.
+		if !rounded(d.RelativeDelta, m.RelativeDelta, 2) {
 			c.add(DeltaMismatch, at+"/relative_delta")
 		}
 		deltas[i].AbsoluteDelta, deltas[i].RelativeDelta = clone(m.AbsoluteDelta), clone(m.RelativeDelta)
@@ -248,9 +250,9 @@ func (c *checker) cited(e provider.Evidence, r *simulation.Result) bool {
 	return false
 }
 
-// rounded: stated is actual rounded to the decimals stated shows (the
-// sign included), or both are null.
-func rounded(stated, actual *float64) bool {
+// rounded: stated is actual rounded to the decimals stated shows, at
+// least least (the sign included), or both are null.
+func rounded(stated, actual *float64, least int) bool {
 	if stated == nil || actual == nil {
 		return stated == nil && actual == nil
 	}
@@ -259,6 +261,7 @@ func rounded(stated, actual *float64) bool {
 	if i := strings.IndexByte(s, '.'); i >= 0 {
 		decimals = len(s) - i - 1
 	}
+	decimals = max(decimals, least)
 	tol := 0.5*math.Pow(10, -float64(decimals)) + 1e-9*math.Max(1, math.Abs(*actual))
 	return math.Abs(*stated-*actual) <= tol
 }

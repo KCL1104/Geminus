@@ -142,7 +142,7 @@ func TestInput(t *testing.T) {
 		Config: simulation.RunConfig{Horizon: simulation.Duration{Value: 2, Unit: model.Day}, Warmup: simulation.Duration{Value: 1, Unit: model.Hour},
 			Replications: 3, Seed: 11, TraceLevel: simulation.TraceSampled}, Status: store.Completed}
 	res := &simulation.Result{RunID: r.ID}
-	got := input(r, res)
+	got := Input(r, res)
 	want := compare.Run{ID: r.ID, ModelVersionID: r.ModelVersionID, EngineVersion: r.EngineVersion, DatasetManifestHash: r.DatasetManifestHash,
 		ModelHash: r.ModelHash, EffectiveModelHash: r.EffectiveModelHash, ConfigHash: r.ConfigHash,
 		ScenarioPatch: r.ScenarioPatch, Config: r.Config, Result: res}
@@ -161,12 +161,12 @@ func TestDecodeResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := decodeResult(data)
+	r, err := DecodeResult(data)
 	if err != nil || r.RunID != "sim_01M4YDQK00FGZZWH0PP15XPNFA" {
 		t.Fatalf("%+v %v", r, err)
 	}
 	for _, bad := range []string{`{}x`, `[]`, `{"run_id":"x","extra":1}`, string(data[:len(data)-3])} {
-		if _, err := decodeResult([]byte(bad)); !errors.Is(err, compare.ErrInconsistent) {
+		if _, err := DecodeResult([]byte(bad)); !errors.Is(err, compare.ErrInconsistent) {
 			t.Errorf("%.40q: %v", bad, err)
 		}
 	}

@@ -368,7 +368,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 16 }, ok));
+    const f = fakeFetch(...Array.from({ length: 18 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -406,6 +406,10 @@ describe("model writes and versions (T-013)", () => {
     record("listSimulations");
     // A page of up to 100 runs after the cursor (T-057 review r1 L6).
     expect(Object.fromEntries(f.calls[seen.listSimulations!]!.url.searchParams)).toEqual({ cursor: "next", limit: "100" });
+    await client.createAnalysis(SCENARIO_RUN, { baseline_run_id: BASELINE_RUN, output_locale: "en" }, "key-contract-4");
+    record("createAnalysis");
+    await client.getAnalysis("ana_01M4YDQK00TA0000000000T030");
+    record("getAnalysis");
     // An ID of another kind is refused before any request.
     const before = f.calls.length;
     expect((await client.listSimulations(PROJECT)).ok).toBe(false);
@@ -415,7 +419,7 @@ describe("model writes and versions (T-013)", () => {
       const call = f.calls[i]!;
       // The BFF's /api prefix in front of the contract's /v1 path (ADR-018).
       expect(call.url.pathname.startsWith("/api/v1/")).toBe(true);
-      const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv|scn)_[0-9A-Z]{26}/g, "/{id}");
+      const template = call.url.pathname.slice("/api".length).replace(/\/(prj|mdl|mv|scn|sim|ana)_[0-9A-Z]{26}/g, "/{id}");
       expect([id, call.init.method, template]).toEqual([id, op?.method, op?.path]);
       // The tenant selector goes with every operation in an organization, and only with those (D-045).
       const selector = (call.init.headers as Record<string, string>)["X-Organization-ID"];

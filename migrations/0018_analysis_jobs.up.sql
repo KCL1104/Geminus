@@ -30,6 +30,10 @@
 BEGIN;
 SET LOCAL ROLE twin_owner;
 
+-- FORCE ROW LEVEL SECURITY hides every row from the owner too; look
+-- without it, inside this transaction only (as 0005 and 0011 do; T-030
+-- review r1).
+ALTER TABLE twin.ai_analyses NO FORCE ROW LEVEL SECURITY;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM twin.ai_analyses) THEN
@@ -37,6 +41,7 @@ BEGIN
       USING ERRCODE = '55000';
   END IF;
 END $$;
+ALTER TABLE twin.ai_analyses FORCE ROW LEVEL SECURITY;
 
 ALTER TABLE twin.ai_analyses
   ADD COLUMN output_locale text NOT NULL DEFAULT 'en' CONSTRAINT ai_analyses_output_locale CHECK (output_locale IN ('en', 'zh-Hant')),

@@ -168,7 +168,7 @@ func TestAnUngroundedAnalysisFails(t *testing.T) {
 	_, base, scen := e.completedPair(t, "ana-bad")
 	invented, err := json.Marshal(provider.AnalysisOutput{
 		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "Throughput rose by 4242.5."},
-		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{},
+		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
 		SuggestedNextExperiments: []provider.Experiment{}})
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +200,10 @@ func TestAnUngroundedAnalysisFails(t *testing.T) {
 func TestAnalysisRefusals(t *testing.T) {
 	e := setupRuns(t, api.WithAI(proposals.Available))
 	editor, viewer := e.a.Members[tenant.Editor], e.a.Members[tenant.Viewer]
-	_, _, scen := e.completedPair(t, "ana-ref")
+	mv, _, scen := e.completedPair(t, "ana-ref")
+	// A baseline the server does not compare with it (another seed): refused before anything is paid for (review r1 M4).
+	otherSeed := e.queued(t, editor.Subject, e.a.ID, "ana-ref-seed", congested(t, mv, "baseline seed 2", "[]", 2, 1, 0, "none"))
+	drain(t, e.loop(t, runner.Config{}, nil), time.Minute)
 	_, otherBase, _ := e.completedPair(t, "ana-ref-other") // another model's
 	_, mv2 := e.version(t, e.a, golden(t, "congested-queue.json"), nil)
 	queuedRun := e.queued(t, editor.Subject, e.a.ID, "ana-ref-queued", congested(t, mv2, "queued", "[]", 1, 1, 0, "none"))
@@ -216,6 +219,7 @@ func TestAnalysisRefusals(t *testing.T) {
 		{"a run not completed", editor.Subject, queuedRun, `{}`, 409, "RESULT_NOT_READY", "id"},
 		{"a baseline not completed", editor.Subject, scen, `{"baseline_run_id":"` + queuedRun + `"}`, 409, "RESULT_NOT_READY", "/baseline_run_id"},
 		{"a baseline of another model", editor.Subject, scen, `{"baseline_run_id":"` + otherBase + `"}`, 422, "REQUEST_VALIDATION_FAILED", ""},
+		{"a baseline the server does not compare", editor.Subject, scen, `{"baseline_run_id":"` + otherSeed + `"}`, 422, "REQUEST_VALIDATION_FAILED", ""},
 		{"the same run", editor.Subject, scen, `{"baseline_run_id":"` + scen + `"}`, 422, "REQUEST_VALIDATION_FAILED", ""},
 		{"white space", editor.Subject, scen, `{"question":"   "}`, 422, "REQUEST_VALIDATION_FAILED", ""},
 		{"a language the contract lacks", editor.Subject, scen, `{"output_locale":"fr"}`, 422, "REQUEST_VALIDATION_FAILED", ""},
