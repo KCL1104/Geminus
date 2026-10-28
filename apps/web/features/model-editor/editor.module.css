@@ -189,6 +189,15 @@
   border-top: 1px solid var(--gm-color-rule);
 }
 
+/* The 3D view in the editor's frame: its hint lines keep the frame's inset, like the problems under it. */
+.twin3d p {
+  padding: 0 var(--gm-space-gutter);
+}
+
+.twin3d {
+  padding-bottom: var(--gm-space-md);
+}
+
 .issues {
   padding: var(--gm-space-gutter);
   border-top: 1px solid var(--gm-color-edge);

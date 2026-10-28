@@ -13,7 +13,7 @@ import type { ResultsData } from "./load";
 import { Analysis } from "./analysis";
 import { MareyChart } from "./marey-chart";
 import { keyMetrics, leadTimeSummary } from "./metrics";
-import { MetricsTable } from "./metrics-table";
+import { MetricsTable, withNodes } from "./metrics-table";
 import { Playback } from "../twin-3d/playback/playback";
 import styles from "./results.module.css";
 
@@ -78,14 +78,24 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
   const { comparison, version, baseline, scenario } = data;
   const rows = keyMetrics(comparison, version.ir, { baseline: baseline.result, scenario: scenario.result });
   const lead = leadTimeSummary(comparison, rows);
+  // DESIGN.md Words around it: the scenario value in green at 600.
   const leadText = (() => {
     if (lead === null) return null;
     const b = formatValue(i18n, lead.baseline, "minute");
     const s = formatValue(i18n, lead.scenario, "minute");
     const percent = i18n.number(Math.abs(lead.relative), { style: "percent", maximumFractionDigits: 1 });
     if (lead.relative === 0) return t("compare.summary.same", { baseline: b });
-    return t(lead.relative < 0 ? "compare.summary.shorter" : "compare.summary.longer", { baseline: b, scenario: s, percent });
+    const text = t(lead.relative < 0 ? "compare.summary.shorter" : "compare.summary.longer", { baseline: b, scenario: "\u0000scenario\u0000", percent });
+    return withNodes(text, {
+      scenario: (
+        <data value={String(lead.scenario)} className={styles.pairScenario}>
+          {s}
+        </data>
+      ),
+    });
   })();
+  const { replications: br } = baseline.run.config;
+  const caption = br === scenario.run.config.replications ? t("compare.summary.caption", { count: br }) : t("compare.summary.captionMixed");
 
   return (
     <>
@@ -106,7 +116,12 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
       ))}
       <section className={styles.section}>
         <h2 id="metrics-heading">{t("compare.title")}</h2>
-        {leadText && <p className={styles.summary}>{leadText}</p>}
+        {leadText && (
+          <>
+            <p className={`${styles.summary} ${styles.lead}`}>{leadText}</p>
+            <p className={styles.summaryCaption}>{caption}</p>
+          </>
+        )}
         {/* On a phone the table keeps its figures whole and scrolls in its
             own region, reachable from the keyboard; the page does not scroll sideways. */}
         <div role="region" aria-labelledby="metrics-heading" tabIndex={0} className={styles.scroll}>

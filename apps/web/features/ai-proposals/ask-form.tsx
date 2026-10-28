@@ -10,9 +10,10 @@
 // the page loaded (409) keeps the words, and the model is read again only
 // when the person asks. For a domain whose pack reads photos the actions
 // also offer a photo of the line (T-056, PhotoForm), blocked for the same
-// reason. One line under the field says that what is typed or uploaded goes
-// to an AI service, so only synthetic data belongs there (T-057, H-035 (1));
-// the field and the photo button name it as their description.
+// reason. The line under the field also says that what is typed or uploaded
+// goes to an AI service, so only synthetic data belongs there (T-057, H-035
+// (1)); the field and the photo button name it as their description. What to
+// make, its hint and the buttons share one row (H-039: the editor starts higher).
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -86,6 +87,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
       <h2 id={headingId}>{t("ask.title")}</h2>
       <TextField
         multiline
+        rows={2}
         label={t("ask.intent")}
         description={t("ask.intentHint", { version: String(latest.version) })}
         notice={{ id: noticeId, text: t("ask.dataNotice") }}
@@ -109,8 +111,6 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           onChange={(id) => setMode(id === "scenario" ? "scenario" : "edit")}
         />
         <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
-      </div>
-      <div className={styles.actions}>
         <Button blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>

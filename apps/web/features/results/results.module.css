@@ -12,6 +12,24 @@
   line-height: var(--gm-line-height-title);
 }
 
+/* The median lead time sentence sits on its caption. */
+.lead {
+  margin-bottom: var(--gm-space-xs);
+}
+
+.pairScenario {
+  color: var(--gm-color-scenario);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* What the summary's figures are, in Label size. */
+.summaryCaption {
+  margin: 0 0 var(--gm-space-md);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
 .table {
   width: 100%;
   margin: 0 0 var(--gm-space-md);
@@ -31,6 +49,45 @@
 
 .scroll > .table {
   min-width: 600px;
+}
+
+/* A phone (H-039): each metric's name takes a line, its two runs the next
+   and Δ and Δ % the one after, under the same heads laid out the same way
+   (Metric, then two by two), so Δ is on screen without scrolling and no
+   figure is cut. The table states its roles (metrics-table.tsx). */
+@media (max-width: 720px) {
+  .scroll > .table {
+    min-width: 0;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table caption {
+    display: block;
+  }
+
+  .table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .table thead th:first-child,
+  .table tbody th[scope="row"],
+  .table .group {
+    grid-column: 1 / -1;
+  }
+
+  .table thead th:first-child,
+  .table tbody th[scope="row"],
+  .table tbody td.num {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .table td[colspan="2"] {
+    grid-column: span 2;
+  }
 }
 
 .table caption {

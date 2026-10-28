@@ -185,38 +185,42 @@ function Explained({ analysis, rows }: { analysis: AnalysisOutput; rows: MetricR
   return (
     <div className={styles.analysis}>
       <p className={styles.note}>{t("analysis.provenance")}</p>
-      <p className={styles.summary}>{analysis.scenario.summary}</p>
-      {analysis.baseline && <p>{t("analysis.baseline", { summary: analysis.baseline.summary })}</p>}
-      {analysis.delta.length > 0 && (
-        <>
-          <h3>{t("analysis.changed")}</h3>
-          <ul className={styles.explained}>
-            {analysis.delta.map((d) => {
-              const row = byPath.get(d.metric_path);
-              return (
-                <li key={d.metric_path}>
-                  <strong>{row ? <MetricName label={row.label} /> : <code>{d.metric_path}</code>}</strong>
-                  {d.absolute_delta !== null && (
-                    <>
-                      {" "}
-                      <data value={d.absolute_delta} className={styles.delta}>
-                        {formatAbsolute(i18n, d.absolute_delta, row?.unit ?? "number")}
-                      </data>
-                    </>
-                  )}
-                  {d.relative_delta !== null && (
-                    <>
-                      {" "}
-                      (<data value={d.relative_delta}>{formatRelative(i18n, d.relative_delta)}</data>)
-                    </>
-                  )}
-                  {d.reason && <span className={styles.reasonText}>{d.reason}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        </>
-      )}
+      {/* The summaries and what changed say again what the table shows: one click away (H-039). */}
+      <details className={styles.details}>
+        <summary>{t("analysis.summaries")}</summary>
+        <p className={styles.summary}>{analysis.scenario.summary}</p>
+        {analysis.baseline && <p>{t("analysis.baseline", { summary: analysis.baseline.summary })}</p>}
+        {analysis.delta.length > 0 && (
+          <>
+            <h3>{t("analysis.changed")}</h3>
+            <ul className={styles.explained}>
+              {analysis.delta.map((d) => {
+                const row = byPath.get(d.metric_path);
+                return (
+                  <li key={d.metric_path}>
+                    <strong>{row ? <MetricName label={row.label} /> : <code>{d.metric_path}</code>}</strong>
+                    {d.absolute_delta !== null && (
+                      <>
+                        {" "}
+                        <data value={d.absolute_delta} className={styles.delta}>
+                          {formatAbsolute(i18n, d.absolute_delta, row?.unit ?? "number")}
+                        </data>
+                      </>
+                    )}
+                    {d.relative_delta !== null && (
+                      <>
+                        {" "}
+                        (<data value={d.relative_delta}>{formatRelative(i18n, d.relative_delta)}</data>)
+                      </>
+                    )}
+                    {d.reason && <span className={styles.reasonText}>{d.reason}</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </details>
       {analysis.bottleneck.length > 0 && (
         <>
           <h3>{t("analysis.why")}</h3>

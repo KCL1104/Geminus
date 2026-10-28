@@ -381,6 +381,12 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(figure).not.toBeNull();
     expect(text(done)).toContain("Less waiting before ICT.");
     expect(text(done)).toContain(en["analysis.kind.observation"]);
+    // The summaries and what changed repeat the table: one click away; why, the assumptions and what next stay open (H-039).
+    const summaries = [...done.querySelectorAll("details")].find((d) => text(d.querySelector("summary")!) === en["analysis.summaries"])!;
+    expect(summaries.open).toBe(false);
+    expect(summaries.contains(figure)).toBe(true);
+    expect(text(summaries.querySelector("h3")!)).toBe(en["analysis.changed"]);
+    expect(text(summaries)).not.toContain(en["analysis.kind.observation"]);
     // Evidence is named as the metrics table names it; a path no row has stays a path.
     expect(text(done)).toContain(`${en["analysis.evidence"]}`);
     expect([...done.querySelectorAll("code")].map((c) => c.textContent)).toContain("/metrics/no_such_row");
@@ -467,13 +473,19 @@ describe("the runs, from queued to the results", () => {
     now.s = boardScenarioRun();
     await waitFor(() => el.querySelector("table") !== null, "the results");
     expect(outcome(el)).toEqual([en["runs.done"]]);
+    // Said, not shown: each run's line already says Completed (H-039).
+    expect(el.querySelector('[role="status"][data-quiet]')?.textContent).toBe(en["runs.done"]);
     expect(button(el, en["runs.cancel"])).toBeUndefined();
     // The server's values, exactly, beside their locale text.
     const lead = boardComparison.metrics.find((m) => m.metric_path === "/metrics/lead_time_minutes/p50")!;
     const row = [...el.querySelectorAll("tbody tr")].find((r) => r.querySelector("th")?.textContent === en["metric.leadTimeMedian"])!;
     expect([...row.querySelectorAll("data")].map((d) => d.getAttribute("value"))).toEqual([String(lead.baseline), String(lead.scenario), String(lead.absolute_delta), String(lead.relative_delta)]);
-    expect([...row.querySelectorAll("data")].map((d) => d.textContent)).toEqual(["29.14 min", "19.77 min", "-9.37 min", "-32.2%"]);
+    expect([...row.querySelectorAll("data")].map((d) => d.textContent)).toEqual(["29.14 min", "19.77 min", "−9.37 min", "−32.2%"]);
     expect(text(el)).toContain("Median lead time 29.14 min → 19.77 min: 32.2% shorter.");
+    // The scenario's value is set apart (DESIGN.md value pairs), and a caption says where the figures come from.
+    const summary = [...el.querySelectorAll("p")].find((p) => text(p) === "Median lead time 29.14 min → 19.77 min: 32.2% shorter.")!;
+    expect([summary.querySelector("data")?.getAttribute("value"), text(summary.querySelector("data")!)]).toEqual([String(lead.scenario), "19.77 min"]);
+    expect(text(el)).toContain(en["compare.summary.caption"].other.replace("{count}", "5"));
     // Each run's own interval of a mean, from its Result.
     expect(text(el)).toContain("95% CI 78.14 to 96.26");
     // The chart: an image with a title and a description, two line keys, and its table.
@@ -522,6 +534,9 @@ describe("the runs, from queued to the results", () => {
     expect(cancels.map((c) => [c.path, c.body])).toEqual([[`${v1}/simulations/${BASELINE_RUN}/cancel`, {}], [`${v1}/simulations/${SCENARIO_RUN}/cancel`, {}]]);
     expect(cancels[0]?.key).not.toBe(cancels[1]?.key);
     expect(outcome(el)).toEqual([en["runs.noComparison"]]);
+    // Announced by the quiet region, and shown in the Outcome frame (review of H-039, M2).
+    expect(el.querySelector('[role="status"]')?.hasAttribute("data-quiet")).toBe(true);
+    expect([...el.querySelectorAll('p[aria-hidden="true"]')].map((p) => text(p))).toContain(en["runs.noComparison"]);
     expect(text(el).match(new RegExp(en["runs.status.cancelled"], "g"))).toHaveLength(2);
     expect(button(el, en["runs.cancel"])).toBeUndefined();
     expect(api.calls.some((c) => c.path.includes("comparisons") || c.path.endsWith("/results"))).toBe(false);
@@ -795,7 +810,7 @@ describe("a pack's ratio metric (T-032 review round 1, L4)", () => {
     expect(text(row.querySelector("th")!)).toBe("scrap_rate");
     expect(text(row)).not.toContain("ratio");
     expect([...row.querySelectorAll("data")].map((d) => d.getAttribute("value"))).toEqual(["0.04", "0.025", "-0.015", "-0.375"]);
-    expect([...row.querySelectorAll("data")].map((d) => d.textContent)).toEqual(["4%", "2.5%", zhHant["compare.points"].replace("{value}", "-1.5"), "-37.5%"]);
+    expect([...row.querySelectorAll("data")].map((d) => d.textContent)).toEqual(["4%", "2.5%", zhHant["compare.points"].replace("{value}", "−1.5"), "−37.5%"]);
     expect(await violations()).toEqual([]);
   });
 });

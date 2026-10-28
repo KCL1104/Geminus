@@ -231,8 +231,9 @@ describe("the loop: a photo, the review, the approval", () => {
     await waitFor(() => text(review.querySelector("[data-proposal-status]")) === en("proposal.status.ready"), "ready");
     expect(text(review.querySelector("[data-source=image]"))).toBe(en("proposal.fromPhoto", { type: "PNG", width: "1200", height: "520" }));
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(review, approve));
-    await press(button(review, approve));
+    await press(button(review, confirm));
     await waitFor(() => text(review).includes(en("proposal.outcome.edit", { version: "2" })), "the outcome");
     expect(api.versions()).toHaveLength(2);
     expect(api.versions()[1]!.ir.nodes.some((n) => n.name === "X-ray inspection")).toBe(true);

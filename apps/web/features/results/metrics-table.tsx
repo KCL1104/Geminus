@@ -4,6 +4,8 @@
 // the server's, written for the reader's language, with the exact value in
 // <data value> (formatting never changes a value). Where the server has no
 // value or no difference, the cell says why instead of showing a number.
+// On a phone each row is a grid (results.module.css), so the table states
+// its roles: a table whose display changes may otherwise lose them.
 import { Fragment, type ReactNode } from "react";
 import { useI18n } from "../../lib/i18n/provider";
 import { LineKey } from "../simulations/run-status";
@@ -36,7 +38,7 @@ export function MetricName({ label }: { label: MetricLabel }) {
 }
 
 /** A message whose placeholders are elements: each marker the translator filled in is replaced by its node. */
-function withNodes(text: string, nodes: Record<string, ReactNode>): ReactNode[] {
+export function withNodes(text: string, nodes: Record<string, ReactNode>): ReactNode[] {
   const parts = text.split(/(\u0000\w+\u0000)/);
   return parts.map((p, i) => {
     const m = /^\u0000(\w+)\u0000$/.exec(p);
@@ -68,20 +70,20 @@ function Deltas({ row }: { row: MetricRow }) {
   const why = row.status === "missing" ? t("compare.reason.missing") : row.reason ? t(`compare.reason.${row.reason}`) : null;
   if (row.absolute === null) {
     return (
-      <td colSpan={2} className={styles.reason}>
+      <td role="cell" colSpan={2} className={styles.reason}>
         {why}
       </td>
     );
   }
   return (
     <>
-      <td className={styles.delta}>
+      <td role="cell" className={styles.delta}>
         <data value={String(row.absolute)}>{formatAbsolute(i18n, row.absolute, row.unit)}</data>
       </td>
       {row.relative === null ? (
-        <td className={styles.reason}>{why}</td>
+        <td role="cell" className={styles.reason}>{why}</td>
       ) : (
-        <td className={styles.delta}>
+        <td role="cell" className={styles.delta}>
           <data value={String(row.relative)}>{formatRelative(i18n, row.relative)}</data>
         </td>
       )}
@@ -92,21 +94,23 @@ function Deltas({ row }: { row: MetricRow }) {
 function Head() {
   const { t } = useI18n();
   return (
-    <thead>
-      <tr>
-        <th scope="col">{t("compare.metric")}</th>
-        <th scope="col" className={styles.num}>
+    <thead role="rowgroup">
+      <tr role="row">
+        <th scope="col" role="columnheader">
+          {t("compare.metric")}
+        </th>
+        <th scope="col" role="columnheader" className={styles.num}>
           <LineKey side="baseline" />
           {t("compare.baseline")}
         </th>
-        <th scope="col" className={`${styles.num} ${styles.scenarioCol}`}>
+        <th scope="col" role="columnheader" className={`${styles.num} ${styles.scenarioCol}`}>
           <LineKey side="scenario" />
           {t("compare.scenario")}
         </th>
-        <th scope="col" className={styles.num}>
+        <th scope="col" role="columnheader" className={styles.num}>
           {t("compare.absolute")}
         </th>
-        <th scope="col" className={styles.num}>
+        <th scope="col" role="columnheader" className={styles.num}>
           {t("compare.relative")}
         </th>
       </tr>
@@ -116,14 +120,14 @@ function Head() {
 
 function Row({ row }: { row: MetricRow }) {
   return (
-    <tr data-status={row.status}>
-      <th scope="row">
+    <tr role="row" data-status={row.status}>
+      <th scope="row" role="rowheader">
         <MetricName label={row.label} />
       </th>
-      <td className={styles.num}>
+      <td role="cell" className={styles.num}>
         <Value value={row.baseline} unit={row.unit} ci={row.ci.baseline} />
       </td>
-      <td className={`${styles.num} ${styles.scenarioCol}`}>
+      <td role="cell" className={`${styles.num} ${styles.scenarioCol}`}>
         <Value value={row.scenario} unit={row.unit} ci={row.ci.scenario} />
       </td>
       <Deltas row={row} />
@@ -142,16 +146,16 @@ export function MetricsTable({ rows }: { rows: MetricRow[] }) {
   const measured = [...steps.filter((r) => r.baseline !== null || r.scenario !== null), ...steps.filter((r) => r.baseline === null && r.scenario === null)];
   return (
     <>
-      <table className={styles.table}>
+      <table role="table" className={styles.table}>
         <caption>{t("compare.caption")}</caption>
         <Head />
         {groups.map((g) => {
           const inGroup = main.filter((r) => r.group === g);
           if (inGroup.length === 0) return null;
           return (
-            <tbody key={g}>
-              <tr>
-                <th scope="colgroup" colSpan={5} className={styles.group}>
+            <tbody key={g} role="rowgroup">
+              <tr role="row">
+                <th scope="colgroup" role="columnheader" colSpan={5} className={styles.group}>
                   {t(`compare.group.${g}`)}
                 </th>
               </tr>
@@ -165,10 +169,10 @@ export function MetricsTable({ rows }: { rows: MetricRow[] }) {
       {measured.length > 0 && (
         <details className={styles.more}>
           <summary>{t("compare.steps", { count: String(measured.length) })}</summary>
-          <table className={styles.table}>
+          <table role="table" className={styles.table}>
             <caption>{t("compare.stepsCaption")}</caption>
             <Head />
-            <tbody>
+            <tbody role="rowgroup">
               {measured.map((row) => (
                 <Row key={row.path} row={row} />
               ))}

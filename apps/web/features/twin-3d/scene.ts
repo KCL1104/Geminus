@@ -32,7 +32,8 @@ export type SceneNode = {
 
 export type SceneEdge = { id: string; from: string; to: string; start: Vec3; end: Vec3 };
 
-export type Scene = { nodes: SceneNode[]; edges: SceneEdge[]; center: Vec3; radius: number };
+/** columns: a run's results are shown, so playback may raise a column on any step (engine.ts). */
+export type Scene = { nodes: SceneNode[]; edges: SceneEdge[]; center: Vec3; radius: number; columns: boolean };
 
 // One 2D layer (240 px) is 4 units, one row (120 px) is 3.
 const PER_X = 60;
@@ -85,13 +86,15 @@ export function buildScene(ir: ModelIR, results?: Result | null): Scene {
     const b = byId.get(f.to);
     if (a && b) edges.push({ id: f.id, from: a.id, to: b.id, start: [a.position[0], 0.05, a.position[2]], end: [b.position[0], 0.05, b.position[2]] });
   }
-  if (nodes.length === 0) return { nodes, edges, center: [0, 0, 0], radius: 5 };
+  const columns = results != null;
+  if (nodes.length === 0) return { nodes, edges, center: [0, 0, 0], radius: 5, columns };
   const xs = nodes.map((n) => n.position[0]);
   const zs = nodes.map((n) => n.position[2]);
   const [minX, maxX, minZ, maxZ] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
-  const center: Vec3 = [(minX + maxX) / 2, 0, (minZ + maxZ) / 2];
+  // With results the view looks halfway up the tallest column, which only rises: the line and the columns share the view.
+  const center: Vec3 = [(minX + maxX) / 2, columns ? COLUMN_MAX / 2 : 0, (minZ + maxZ) / 2];
   const radius = Math.max(5, Math.hypot(maxX - minX, maxZ - minZ) / 2 + 2);
-  return { nodes, edges, center, radius };
+  return { nodes, edges, center, radius, columns };
 }
 
 /**
@@ -127,4 +130,62 @@ export function pick(scene: Scene, origin: Vec3, direction: Vec3): string | null
     }
   }
   return best?.id ?? null;
+}
+
+/** The camera's vertical field of view and the first view's pitch, in degrees. */
+export const FOV = 40;
+export const START_PITCH = 52;
+/** A playback column's height per item at its step, and its cap (engine.ts draws them). */
+export const ITEM_RISE = 0.4;
+export const COLUMN_MAX = 5;
+/** The share of the view the line may take in the first view: the rest is margin. */
+const FILL = 0.9;
+
+/**
+ * Every corner the first view must hold: each step's box (a turned one by
+ * its circle) and, with results, the tallest column playback can raise on it.
+ * In the first view's camera space (yaw 0, START_PITCH, looking at the
+ * scene's centre): across, up, and the depth towards the camera.
+ */
+function corners(scene: Scene): { x: number; y: number; depth: number }[] {
+  const pitch = (START_PITCH * Math.PI) / 180;
+  const out: { x: number; y: number; depth: number }[] = [];
+  for (const n of scene.nodes) {
+    const r = n.rotationY === 0 ? null : Math.hypot(n.size[0], n.size[2]) / 2;
+    const hx = r ?? n.size[0] / 2;
+    const hz = r ?? n.size[2] / 2;
+    const bottom = n.position[1] - n.size[1] / 2;
+    const top = n.position[1] + n.size[1] / 2 + (scene.columns ? COLUMN_MAX : 0);
+    for (const dx of [-hx, hx])
+      for (const dz of [-hz, hz])
+        for (const y of [bottom, top]) {
+          const v = [n.position[0] + dx - scene.center[0], y - scene.center[1], n.position[2] + dz - scene.center[2]] as const;
+          out.push({ x: v[0], y: v[1] * Math.cos(pitch) - v[2] * Math.sin(pitch), depth: v[1] * Math.sin(pitch) + v[2] * Math.cos(pitch) });
+        }
+  }
+  return out;
+}
+
+/**
+ * The camera distance at which the first view holds every corner within
+ * FILL of a view of this width-to-height, in perspective: a corner nearer
+ * the camera needs more room (review of H-039, M1).
+ */
+export function fitDistance(scene: Scene, aspect: number): number {
+  const t = Math.tan(((FOV / 2) * Math.PI) / 180) * FILL;
+  let d = 4;
+  for (const c of corners(scene)) d = Math.max(d, c.depth + Math.abs(c.x) / (t * aspect), c.depth + Math.abs(c.y) / t);
+  return d;
+}
+
+/** The width-to-height of the view the line fills best: its corners' spread across and up, seen from where a square view would hold them. */
+export function stageAspect(scene: Scene): number {
+  const d = fitDistance(scene, 1);
+  let across = 0;
+  let up = 0;
+  for (const c of corners(scene)) {
+    across = Math.max(across, Math.abs(c.x) / (d - c.depth));
+    up = Math.max(up, Math.abs(c.y) / (d - c.depth));
+  }
+  return up === 0 ? 1 : across / up;
 }

@@ -43,8 +43,8 @@ test("approves an edit with the keyboard only: confirm in place, then the outcom
   expect(await focusIsVisible(page)).toBe(true);
   await page.keyboard.press("Enter");
   await expect(page.getByText(fill(en["proposal.approve.question.edit"], { version: "2", base: "1" }))).toBeVisible();
-  // Focus moved to the committing action of the confirmation.
-  await expect(page.getByRole("button", { name: approve })).toBeFocused();
+  // Focus moved to the committing action of the confirmation, worded apart from Approve (H-039).
+  await expect(page.getByRole("button", { name: fill(en["proposal.approve.confirm.edit"], { version: "2" }) })).toBeFocused();
   expect(await focusIsVisible(page)).toBe(true);
   expect(await violations(page), "the confirmation").toEqual([]);
   await page.keyboard.press("Enter");
@@ -61,7 +61,7 @@ test("approves a scenario as its own action, and offers the scenario to run", as
   await open(page, "/ui-gallery/proposal?state=scenario", "en");
   const approve = en["proposal.approve.scenario"];
   await page.getByRole("button", { name: approve }).click();
-  await page.getByRole("button", { name: approve }).click();
+  await page.getByRole("button", { name: en["proposal.approve.confirm.scenario"] }).click();
   const outcome = page.locator("[data-outcome=approved]");
   await expect(outcome.getByRole("heading")).toHaveText(en["proposal.outcome.scenario"]);
   // The review page's scenario link goes to the results review page; the product's goes to /scenarios/<id>.
@@ -89,7 +89,7 @@ test("keeps the page when the model changed just before the approval, and says w
   await open(page, "/ui-gallery/proposal?state=conflict", "en");
   const approve = fill(en["proposal.approve.edit"], { version: "2" });
   await page.getByRole("button", { name: approve }).click();
-  await page.getByRole("button", { name: approve }).click();
+  await page.getByRole("button", { name: fill(en["proposal.approve.confirm.edit"], { version: "2" }) }).click();
   const note = page.locator("[data-conflict]");
   await expect(note).toBeFocused();
   await expect(note).toContainText(fill(en["proposal.conflict.body"], { base: "1", latest: "2" }));
@@ -208,6 +208,8 @@ type ApiCall = { method: string; path: string; org: string | null; cookie: strin
 const apiCalls = async (request: APIRequestContext): Promise<ApiCall[]> => ((await (await request.get(`${PROVIDER}/__state`)).json()) as { apiCalls: ApiCall[] }).apiCalls;
 const fixedAnswer = JSON.parse(readFileSync(join(import.meta.dirname, "../fake/proposal-answer.json"), "utf8")) as Record<"en" | "zh-Hant", { summary: string; assumptions: string[] }>;
 const fixture = JSON.parse(readFileSync(join(import.meta.dirname, "../../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as { base_version_id: string; revision: number; ir: { domain: string } };
+// The model page names the domain as its pack's catalog does (H-039).
+const domainIn = (catalog: Record<string, unknown>) => catalog[`domain.${fixture.ir.domain}.name`] as string;
 
 /** Moves focus with Tab (or Shift+Tab) until target has it, the focus visible at every stop. */
 async function keyTo(page: Page, target: Locator, key: "Tab" | "Shift+Tab" = "Tab") {
@@ -235,7 +237,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     test(`${locale}: asks on the model page, reviews the proposal, approves the edit with the keyboard and sees version 2`, async ({ page, request }) => {
       const t = catalogs[locale];
       await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, locale);
-      await expect(page.getByText(fill(t["model.summary"], { version: "1", domain: fixture.ir.domain }))).toBeVisible();
+      await expect(page.getByText(fill(t["model.summary"], { version: "1", domain: domainIn(t) }))).toBeVisible();
       expect(await violations(page), "the model page").toEqual([]);
       const before = (await apiCalls(request)).length;
 
@@ -265,7 +267,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       await keyTo(page, approve);
       await page.keyboard.press("Enter");
       await expect(page.getByText(fill(t["proposal.approve.question.edit"], { version: "2", base: "1" }))).toBeVisible();
-      await expect(approve).toBeFocused();
+      await expect(page.getByRole("button", { name: fill(t["proposal.approve.confirm.edit"], { version: "2" }) })).toBeFocused();
       expect(await focusIsVisible(page)).toBe(true);
       expect(await violations(page), "the confirmation").toEqual([]);
       await page.keyboard.press("Enter");
@@ -289,7 +291,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       await page.keyboard.press("Enter");
       await page.waitForURL(`${APP}/models/${tenant.MODEL}`);
       await settled(page, locale);
-      await expect(page.getByText(fill(t["model.summary"], { version: "2", domain: fixture.ir.domain }))).toBeVisible();
+      await expect(page.getByText(fill(t["model.summary"], { version: "2", domain: domainIn(t) }))).toBeVisible();
       await expect(page.locator("[data-draft-status]")).toContainText(fill(t["draft.revision"], { revision: String(fixture.revision + 1) }));
       expect(await violations(page), "the model on version 2").toEqual([]);
     });
@@ -315,6 +317,6 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     expect(posts[1]!.body).toEqual({ comment: "Not this quarter." });
     await page.getByRole("link", { name: en["proposal.back"] }).click();
     await settled(page, "en");
-    await expect(page.getByText(fill(en["model.summary"], { version: "1", domain: fixture.ir.domain }))).toBeVisible();
+    await expect(page.getByText(fill(en["model.summary"], { version: "1", domain: domainIn(en) }))).toBeVisible();
   });
 });

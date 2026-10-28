@@ -149,16 +149,17 @@ for (const locale of locales) {
 
     it("the approve confirmation, the reject confirmation and each outcome", async () => {
       const approve = t("proposal.approve.edit", { version: "2" });
+      const confirm = t("proposal.approve.confirm.edit", { version: "2" });
       let el = await proposal("ready", locale);
       await press(button(el, approve));
-      await check(el, locale, [approve, t("proposal.cancel")]);
-      await press(button(el, approve));
+      await check(el, locale, [confirm, t("proposal.cancel")]);
+      await press(button(el, confirm));
       await waitFor(() => el.querySelector("[data-outcome]") !== null, "the edit outcome");
       await check(el, locale, [back]);
 
       el = await proposal("scenario", locale);
       await press(button(el, t("proposal.approve.scenario")));
-      await press(button(el, t("proposal.approve.scenario")));
+      await press(button(el, t("proposal.approve.confirm.scenario")));
       await waitFor(() => el.querySelector("[data-outcome]") !== null, "the scenario outcome");
       await check(el, locale, [t("proposal.outcome.openScenario"), back]);
 
@@ -171,13 +172,13 @@ for (const locale of locales) {
 
       el = await proposal("conflict", locale);
       await press(button(el, approve));
-      await press(button(el, approve));
+      await press(button(el, confirm));
       await waitFor(() => el.querySelector("[data-conflict]") !== null, "the conflict");
       await check(el, locale, [back]);
 
       el = await proposal("ready", locale, { refuseNext: { status: 503, code: "SERVICE_UNAVAILABLE", message: "down" } });
       await press(button(el, approve));
-      await press(button(el, approve));
+      await press(button(el, confirm));
       await waitFor(() => el.querySelector("[role=alert]") !== null, "the problem");
       await check(el, locale, [approve, t("proposal.reject")]);
 
@@ -188,7 +189,7 @@ for (const locale of locales) {
       ]) {
         el = await proposal("ready", locale, { refuseNext });
         await press(button(el, approve));
-        await press(button(el, approve));
+        await press(button(el, confirm));
         await waitFor(() => el.querySelector("[data-refused]") !== null, `the refusal (${refuseNext.status})`);
         await check(el, locale, [t("proposal.reject"), back]);
         expect(controls(el).map((c) => c.name), "Approve is not offered again").not.toContain(approve);

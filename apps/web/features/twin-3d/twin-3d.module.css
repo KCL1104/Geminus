@@ -6,9 +6,16 @@
   gap: var(--gm-space-sm);
 }
 
+/* As wide as its column and as tall as the line's shape needs (viewer.tsx), within
+   240–520 px; 520 px without steps. The width is set, so the minimum height
+   never widens it through the aspect ratio (review of H-039, H1). */
 .stage {
   position: relative;
+  width: 100%;
+  min-width: 0;
   height: 520px;
+  min-height: 240px;
+  max-height: 520px;
   overflow: hidden;
   border-top: 1px solid var(--gm-color-edge);
   background: var(--gm-color-sheet);

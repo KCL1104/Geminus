@@ -11,10 +11,12 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
   errorMessage?: ReactNode;
   /** Several lines of text (a request in a person's own words), in a text area that grows with the window's width. */
   multiline?: boolean;
+  /** The text area's height in lines (multiline only). */
+  rows?: number;
   /**
-   * A second line under the description, with the caller's ID so other
-   * controls it applies to can name it too; the field names it in its
-   * aria-describedby, after the description.
+   * A second sentence after the description, on the same line, with the
+   * caller's ID so other controls it applies to can name it too; the field
+   * names it in its aria-describedby, after the description.
    */
   notice?: { id: string; text: ReactNode };
 };
@@ -24,21 +26,18 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
  * field only shows it, and never runs the browser's own validation, whose
  * messages would come in the browser's language (validationBehavior "aria").
  */
-export function TextField({ label, description, errorMessage, multiline = false, notice, ...props }: TextFieldProps) {
+export function TextField({ label, description, errorMessage, multiline = false, rows = 3, notice, ...props }: TextFieldProps) {
   const describedBy = [props["aria-describedby"], notice?.id].filter(Boolean).join(" ") || undefined;
   return (
     <AriaTextField {...props} aria-describedby={describedBy} validationBehavior="aria" className={cx(styles.field, multiline && styles.wide)}>
       <Label className={styles.label}>{label}</Label>
-      {multiline ? <TextArea className={cx(styles.input, styles.area)} rows={3} /> : <Input className={styles.input} />}
-      {description && (
-        <Text slot="description" className={styles.description}>
-          {description}
-        </Text>
-      )}
-      {notice && (
-        <span id={notice.id} className={styles.description}>
-          {notice.text}
-        </span>
+      {multiline ? <TextArea className={cx(styles.input, styles.area)} rows={rows} /> : <Input className={styles.input} />}
+      {(description || notice) && (
+        <p className={styles.description}>
+          {description && <Text slot="description">{description}</Text>}
+          {description && notice && " "}
+          {notice && <span id={notice.id}>{notice.text}</span>}
+        </p>
       )}
       <FieldError className={styles.error}>{errorMessage}</FieldError>
     </AriaTextField>

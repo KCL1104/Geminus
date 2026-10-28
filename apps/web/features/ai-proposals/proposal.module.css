@@ -11,6 +11,13 @@
   color: var(--gm-color-ink-2);
 }
 
+/* Prose keeps a readable measure inside the 960 px page. */
+.meta,
+.words,
+.hint {
+  max-width: 75ch;
+}
+
 .state {
   font-weight: var(--gm-font-weight-strong);
 }
@@ -209,7 +216,7 @@ ul.words {
   line-height: var(--gm-line-height-label);
 }
 
-/* T-056: the photo button sits in the actions row beside Send; its hint and refusal take whole lines below. */
+/* T-056: the photo button sits in the ask row beside Send; its hint and refusal take whole lines below. */
 .photo {
   display: contents;
 }

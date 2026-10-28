@@ -14,20 +14,23 @@ const minutes = { style: "unit", unit: "minute", unitDisplay: "short" } as const
 const percent = { style: "percent", maximumFractionDigits: 1 } as const satisfies Intl.NumberFormatOptions;
 const signed = { signDisplay: "exceptZero" } as const satisfies Intl.NumberFormatOptions;
 
+/** A negative number's sign as a minus (U+2212) rather than a hyphen, as a screen reader also reads it. */
+const minus = (s: string) => s.replace("-", "\u2212");
+
 export function formatValue(i18n: I18n, value: number, unit: MetricUnit): string {
-  if (unit === "ratio") return i18n.number(value, percent);
-  if (unit === "minute") return i18n.number(value, { ...precise, ...minutes });
-  return i18n.number(value, precise);
+  if (unit === "ratio") return minus(i18n.number(value, percent));
+  if (unit === "minute") return minus(i18n.number(value, { ...precise, ...minutes }));
+  return minus(i18n.number(value, precise));
 }
 
 /** scenario − baseline as the server computed it; a ratio's difference is in percentage points. */
 export function formatAbsolute(i18n: I18n, value: number, unit: MetricUnit): string {
-  if (unit === "ratio") return i18n.t("compare.points", { value: i18n.number(value * 100, { maximumFractionDigits: 1, ...signed }) });
-  if (unit === "minute") return i18n.number(value, { ...precise, ...minutes, ...signed });
-  return i18n.number(value, { ...precise, ...signed });
+  if (unit === "ratio") return i18n.t("compare.points", { value: minus(i18n.number(value * 100, { maximumFractionDigits: 1, ...signed })) });
+  if (unit === "minute") return minus(i18n.number(value, { ...precise, ...minutes, ...signed }));
+  return minus(i18n.number(value, { ...precise, ...signed }));
 }
 
 /** The server's relative delta (absolute / baseline) as a signed percentage. */
 export function formatRelative(i18n: I18n, value: number): string {
-  return i18n.number(value, { ...percent, ...signed });
+  return minus(i18n.number(value, { ...percent, ...signed }));
 }

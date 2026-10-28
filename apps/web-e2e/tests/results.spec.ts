@@ -153,7 +153,8 @@ test("the running runs cancel from the keyboard, with a visible focus", async ({
   expect(await focusIsVisible(page)).toBe(true);
   await page.keyboard.press("Enter");
   await expect(page.getByRole("progressbar")).toHaveCount(0);
-  await expect(page.getByText(en["runs.noComparison"])).toBeVisible();
+  // Shown in the Outcome frame; the live region that announced it is never shown (H-039).
+  await expect(page.locator("main p:not([role=status])", { hasText: en["runs.noComparison"] })).toBeVisible();
 });
 
 // H-008 / REQ-022, as strings.spec.ts does for the gallery: every string is

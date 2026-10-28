@@ -190,18 +190,19 @@ describe("numbers in the reader's language (TEST-031), the value itself unchange
     expect(formatValue(en, 0.0003094456601021152, "minute")).toBe("0.000309 min");
   });
 
+  // A negative sign is a minus (U+2212), not a hyphen (H-039).
   it("sign every difference, and give a ratio's difference in percentage points", () => {
-    expect(formatAbsolute(en, -9.372116666666667, "minute")).toBe("-9.37 min");
+    expect(formatAbsolute(en, -9.372116666666667, "minute")).toBe("−9.37 min");
     expect(formatAbsolute(en, 2, "count")).toBe("+2");
     expect(formatAbsolute(en, 0, "count")).toBe("0");
-    expect(formatAbsolute(en, -0.24752475247524752, "ratio")).toBe("-24.8 pp");
-    expect(formatAbsolute(zh, -0.24752475247524752, "ratio")).toBe("-24.8 個百分點");
+    expect(formatAbsolute(en, -0.24752475247524752, "ratio")).toBe("−24.8 pp");
+    expect(formatAbsolute(zh, -0.24752475247524752, "ratio")).toBe("−24.8 個百分點");
   });
 
   it("write the relative change as the server's ratio × 100, signed (SIMULATION_SPEC §7: -0.11 is -11%, never -0.11%)", () => {
     expect(formatRelative(en, 0.1)).toBe("+10%");
-    expect(formatRelative(en, -0.3216382112786464)).toBe("-32.2%");
-    expect(formatRelative(en, -0.11)).toBe("-11%");
+    expect(formatRelative(en, -0.3216382112786464)).toBe("−32.2%");
+    expect(formatRelative(en, -0.11)).toBe("−11%");
     expect(formatRelative(zh, 0)).toBe("0%");
   });
 });

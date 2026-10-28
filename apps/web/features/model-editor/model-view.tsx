@@ -16,6 +16,8 @@ import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
 import type { Model } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
+import type { MessageKey } from "../../lib/i18n/translate";
+import { en } from "../../messages/en";
 import { loadModelPage, type ModelPage } from "../../lib/pages";
 import { type DraftEvent, type DraftSession, loadedDraft, pendingOps, reduceDraft } from "../../lib/state/draft";
 import { AskForm } from "../ai-proposals/ask-form";
@@ -30,6 +32,12 @@ function pageReducer(s: Page, e: DraftEvent | { type: "loaded"; page: ModelPage 
   if (s === null) return s;
   const session = reduceDraft(s.session, e);
   return session === s.session ? s : { ...s, session };
+}
+
+/** The pack's name for its domain (D-117 (h)); the ID when the catalog has none. */
+function domainName(domain: string, t: (k: MessageKey) => string): string {
+  const k = `domain.${domain}.name`;
+  return Object.hasOwn(en, k) ? t(k as MessageKey) : domain;
 }
 
 /** onProposal: where a proposal the AI was asked for goes (the route's navigation); without it the page offers no request. */
@@ -57,7 +65,7 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
             <p>
               <Link href={`/projects/${page.model.project_id}`}>{t("model.back")}</Link>
             </p>
-            <p>{t("model.summary", { version: String(page.model.latest_version.version), domain: page.model.domain })}</p>
+            <p>{t("model.summary", { version: String(page.model.latest_version.version), domain: domainName(page.model.domain, t) })}</p>
             {onProposal && canEdit(role) && (
               <AskForm
                 model={page.model}

@@ -338,7 +338,9 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
             </div>
           </div>
           {view === "3d" ? (
-            <Twin3D ir={working} selected={selected} onSelect={(id) => store.select(id)} />
+            <div className={styles.twin3d}>
+              <Twin3D ir={working} selected={selected} onSelect={(id) => store.select(id)} />
+            </div>
           ) : (
           <div ref={canvasRef}>
             <Canvas

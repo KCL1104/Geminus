@@ -11,7 +11,7 @@ import { act } from "react";
 import { describe, expect, it } from "vitest";
 import type { ModelIR, Result } from "../lib/contracts";
 import { canvasLayout } from "../features/model-editor/layout";
-import { buildScene, pick } from "../features/twin-3d/scene";
+import { buildScene, COLUMN_MAX, fitDistance, FOV, pick, type Scene, stageAspect, START_PITCH } from "../features/twin-3d/scene";
 import { en } from "../messages/en";
 import { mount, settle, unmountAll } from "./ui-harness";
 import type { View } from "../features/twin-3d/viewer";
@@ -74,6 +74,53 @@ describe("the 3D scene (T-033)", () => {
   });
 });
 
+// Review of H-039 (M1): projected as the engine places the camera (yaw 0,
+// START_PITCH, looking at the centre), every corner of every step, each box
+// turned by its own rotation, and with results the tallest column on it,
+// lies inside the view, whatever the stage's shape.
+function outermost(scene: Scene, aspect: number): number {
+  const d = fitDistance(scene, aspect);
+  const p = (START_PITCH * Math.PI) / 180;
+  const [cx, cy, cz] = scene.center;
+  const eye = [cx, cy + d * Math.sin(p), cz + d * Math.cos(p)];
+  const f = [0, -Math.sin(p), -Math.cos(p)];
+  const r = [1, 0, 0];
+  const u = [r[1]! * f[2]! - r[2]! * f[1]!, r[2]! * f[0]! - r[0]! * f[2]!, r[0]! * f[1]! - r[1]! * f[0]!];
+  const t = Math.tan(((FOV / 2) * Math.PI) / 180);
+  const dot = (a: number[], b: number[]) => a[0]! * b[0]! + a[1]! * b[1]! + a[2]! * b[2]!;
+  let worst = 0;
+  for (const n of scene.nodes) {
+    const a = (n.rotationY * Math.PI) / 180;
+    const top = n.position[1] + n.size[1] / 2 + (scene.columns ? COLUMN_MAX : 0);
+    for (const sx of [-1, 1])
+      for (const sz of [-1, 1])
+        for (const y of [n.position[1] - n.size[1] / 2, top]) {
+          const lx = (sx * n.size[0]) / 2;
+          const lz = (sz * n.size[2]) / 2;
+          const v = [n.position[0] + lx * Math.cos(a) + lz * Math.sin(a) - eye[0]!, y - eye[1]!, n.position[2] - lx * Math.sin(a) + lz * Math.cos(a) - eye[2]!];
+          const z = dot(v, f);
+          worst = Math.max(worst, Math.abs(dot(v, r)) / (z * t * aspect), Math.abs(dot(v, u)) / (z * t));
+        }
+  }
+  return worst;
+}
+
+describe("the 3D view's first framing", () => {
+  it("holds every step in perspective, and with results the tallest column, at any stage shape", () => {
+    const editor = buildScene(template());
+    const results = buildScene(boardModel(), scenarioResult());
+    expect([editor.columns, results.columns]).toEqual([false, true]);
+    for (const scene of [editor, results])
+      for (const aspect of [886 / 240, 358 / 240, 1248 / 400, stageAspect(scene), 1])
+        expect(outermost(scene, aspect), `aspect ${aspect.toFixed(2)}`).toBeLessThanOrEqual(1);
+  });
+
+  it("fills most of the view along its limiting side", () => {
+    const scene = buildScene(template());
+    expect(outermost(scene, stageAspect(scene))).toBeGreaterThan(0.85);
+  });
+});
+
 describe("the 3D view without WebGL", () => {
   it("says it cannot run, with nothing else on the page affected", async () => {
     const { Twin3D } = await import("../features/twin-3d/viewer");
@@ -121,6 +168,14 @@ describe("the 3D view's pointer and keys (review r1)", () => {
     };
     return { el, canvas, calls, picked, pointer, key };
   }
+
+  // H-039: the stage takes the line's shape, so a long flat line is not a thin band in a tall box.
+  it("gives the stage the line's shape", async () => {
+    const { canvas } = await opened();
+    expect(stageAspect(buildScene(template()))).toBeGreaterThan(1);
+    expect(canvas.parentElement!.style.aspectRatio).toBe(`${stageAspect(buildScene(template()))} / 1`);
+    expect(canvas.parentElement!.style.height).toBe("auto");
+  });
 
   it("draws the scene and the selection once the view is made, and destroys it when it goes", async () => {
     const { calls } = await opened();

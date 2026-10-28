@@ -196,10 +196,13 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const title = rich(p.mode === "edit" ? "proposal.title.edit" : "proposal.title.scenario", { model: data(page.model.name) });
   const approveLabel = p.mode === "edit" ? t("proposal.approve.edit", { version: String(baseVersion + 1) }) : t("proposal.approve.scenario");
   const decidable = canEdit(role) && outcome === null && (p.status === "ready" || p.status === "needs_input");
+  // A ready proposal on an older version is not ready for review: it can never be approved (H-039).
   const statusText =
     p.status === "approved" || p.status === "rejected"
       ? t(`proposal.status.${p.status}`, { date: p.decided_at ? dateTime(p.decided_at) : "" })
-      : t(`proposal.status.${p.status}`);
+      : p.status === "ready" && stale
+        ? t("proposal.status.stale")
+        : t(`proposal.status.${p.status}`);
   const hasContent = p.changes !== undefined && p.status !== "needs_input";
 
   return (
@@ -403,8 +406,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
                 {p.mode === "edit" ? t("proposal.approve.question.edit", { version: String(baseVersion + 1), base: String(baseVersion) }) : t("proposal.approve.question.scenario", { base: String(baseVersion) })}
               </p>
               <div className={styles.actions}>
+                {/* Worded apart from Approve, so a second Enter is not taken for the first (H-039). */}
                 <Button ref={confirmRef} variant="primary" onPress={() => void approve()}>
-                  {approveLabel}
+                  {p.mode === "edit" ? t("proposal.approve.confirm.edit", { version: String(baseVersion + 1) }) : t("proposal.approve.confirm.scenario")}
                 </Button>
                 <Button
                   onPress={() => {

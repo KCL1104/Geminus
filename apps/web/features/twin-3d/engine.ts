@@ -4,7 +4,7 @@
 // viewer's lazy import, so PlayCanvas never enters the page's main bundle,
 // and it holds no model: setScene replaces every object.
 import type * as PlayCanvas from "playcanvas";
-import { pick, type Scene, type SceneNode, type Vec3 } from "./scene";
+import { COLUMN_MAX, FOV, fitDistance, ITEM_RISE, pick, START_PITCH, type Scene, type SceneNode, type Vec3 } from "./scene";
 
 type PC = typeof PlayCanvas;
 
@@ -29,9 +29,6 @@ export type View = {
 };
 
 const MIN_PITCH = 10;
-/** A column's height per item at its node, and its cap (a crowded queue stays on screen). */
-const ITEM_RISE = 0.4;
-const COLUMN_MAX = 5;
 const COLUMN_WIDTH = 0.5;
 const MAX_PITCH = 85;
 
@@ -45,7 +42,7 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     return c;
   };
   const camera = new pc.Entity("camera");
-  camera.addComponent("camera", { fov: 40 });
+  camera.addComponent("camera", { fov: FOV });
   app.root.addChild(camera);
   const sun = new pc.Entity("sun");
   sun.addComponent("light", { type: "directional", intensity: 1.1 });
@@ -91,7 +88,7 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     return idle;
   };
 
-  let scene: Scene = { nodes: [], edges: [], center: [0, 0, 0], radius: 5 };
+  let scene: Scene = { nodes: [], edges: [], center: [0, 0, 0], radius: 5, columns: false };
   let selected: string | null = null;
   const objects = new Map<string, PlayCanvas.Entity>();
   const columns = new Map<string, PlayCanvas.Entity>();
@@ -100,7 +97,7 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
 
   // The orbit: yaw and pitch in degrees about the target, at a distance.
   // It starts facing the line (yaw 0), which runs left to right as in 2D.
-  const orbit = { yaw: 0, pitch: 40, distance: 10, target: new pc.Vec3() };
+  const orbit = { yaw: 0, pitch: START_PITCH, distance: 10, target: new pc.Vec3() };
   const place = () => {
     const yaw = (orbit.yaw * Math.PI) / 180;
     const pitch = (orbit.pitch * Math.PI) / 180;
@@ -111,10 +108,13 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     );
     camera.lookAt(orbit.target);
   };
+  // The distance at which the first view holds the whole line, and the
+  // tallest column playback can raise, in perspective (scene.ts fitDistance).
+  const fit = () => fitDistance(scene, Math.max(0.5, canvas.clientWidth / Math.max(1, canvas.clientHeight)));
   const reset = () => {
     orbit.yaw = 0;
-    orbit.pitch = 40;
-    orbit.distance = scene.radius * 1.9;
+    orbit.pitch = START_PITCH;
+    orbit.distance = scene.nodes.length === 0 ? scene.radius * 1.9 : fit();
     orbit.target.set(...scene.center);
     place();
   };

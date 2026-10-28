@@ -16,7 +16,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
 import type { Palette, View } from "./engine";
 export type { View } from "./engine";
-import { buildScene } from "./scene";
+import { buildScene, stageAspect } from "./scene";
 import styles from "./twin-3d.module.css";
 
 /** Makes the view on a canvas; the default loads PlayCanvas (a test passes its own). */
@@ -67,6 +67,8 @@ export function Twin3D({ ir, results, selected, onSelect, occupancy = null, load
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
   const scene = useMemo(() => buildScene(ir, results), [ir, results]);
+  // The stage takes the line's shape as the first view frames it (H-039): a long, flat line gets a low stage.
+  const shape = useMemo(() => (scene.nodes.length === 0 ? undefined : { aspectRatio: `${stageAspect(scene)} / 1`, height: "auto" }), [scene]);
   const drag = useRef<{ x0: number; y0: number; x: number; y: number; moved: boolean; pan: boolean } | null>(null);
 
   useEffect(() => {
@@ -151,7 +153,7 @@ export function Twin3D({ ir, results, selected, onSelect, occupancy = null, load
 
   return (
     <div className={styles.twin}>
-      <div ref={wrap} className={styles.stage}>
+      <div ref={wrap} className={styles.stage} style={shape}>
         <canvas
           ref={canvas}
           className={styles.canvas}

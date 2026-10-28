@@ -135,15 +135,18 @@ describe("a ready edit proposal", () => {
   it("approves only after the person confirms, with the reviewed base and a key, and shows the new version", async () => {
     const { el, api } = await open("ready");
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     expect(names(el)).toEqual(expect.arrayContaining([approve, en("proposal.reject")]));
     // Reading and polling never decide anything (the AI never approves).
     expect(decisions(api)).toEqual([]);
     await press(button(el, approve));
     expect(text(el)).toContain(en("proposal.approve.question.edit", { version: "2", base: "1" }));
     expect(decisions(api)).toEqual([]);
-    expect(names(el)).toEqual(expect.arrayContaining([approve, en("proposal.cancel")]));
+    expect(names(el)).toEqual(expect.arrayContaining([confirm, en("proposal.cancel")]));
+    // The confirmation's button is worded apart from Approve (H-039).
+    expect(names(el)).not.toContain(approve);
     expect(names(el)).not.toContain(en("proposal.reject"));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => text(el).includes(en("proposal.outcome.edit", { version: "2" })), "the outcome");
     const [call] = decisions(api);
     expect([call!.path, call!.body]).toEqual([`/api/v1/ai-proposals/${api.proposalId}/approve`, { expected_base_version_id: api.baseVersionId }]);
@@ -172,7 +175,7 @@ describe("a ready edit proposal", () => {
     const { el, api } = await open("ready", { holdDecisions: true });
     const approve = en("proposal.approve.edit", { version: "2" });
     await press(button(el, approve));
-    const confirm = button(el, approve);
+    const confirm = button(el, en("proposal.approve.confirm.edit", { version: "2" }));
     await press(confirm);
     await press(confirm);
     expect(text(el)).toContain(en("proposal.approving"));
@@ -184,8 +187,9 @@ describe("a ready edit proposal", () => {
   it("says when the model's draft had unpublished changes and was kept as it was", async () => {
     const { el } = await open("ready", { dirtyDraft: true });
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(el, approve));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => text(el).includes(en("proposal.outcome.edit", { version: "2" })), "the outcome");
     expect(text(el)).toContain(en("proposal.outcome.draftKept"));
   });
@@ -193,14 +197,15 @@ describe("a ready edit proposal", () => {
   it("shows a refused approval's problem, keeps the proposal open, and retries with the same key", async () => {
     const { el, api } = await open("ready", { refuseNext: { status: 503, code: "SERVICE_UNAVAILABLE", message: "the dataset snapshots could not be read; nothing was changed (retry later)", details: [{ path: "", reason: "the dataset storage failed", code: "DATASET_STORAGE_FAILED" }] } });
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(el, approve));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => el.querySelector('[role=alert][data-problem="unavailable"]') !== null, "the problem");
     expect(text(el.querySelector("[role=alert]"))).toContain(en("error.SERVICE_UNAVAILABLE"));
     expect(text(el.querySelector("[role=alert] details"))).toContain("req_01M4YDQK00V6H8S0ST4F7510KR");
     // Still ready: the decision is still there.
     await press(button(el, approve));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => text(el).includes(en("proposal.outcome.edit", { version: "2" })), "the outcome");
     const keys = decisions(api).map((c) => c.key);
     expect(keys).toHaveLength(2);
@@ -214,8 +219,9 @@ describe("a ready edit proposal", () => {
   it("after a failed revalidation (422) shows why, approves nothing, and offers Reject, not Approve again", async () => {
     const { el, api } = await open("ready", { refuseNext: { status: 422, code: "MODEL_VALIDATION_FAILED", message: "the proposal does not pass the server's review again; nothing was changed", details: [{ path: "/dataset_bindings/0/content_hash", reason: "x", code: "DATASET_BINDING_INVALID", severity: "error" }] } });
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(el, approve));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => el.querySelector("[role=alert]") !== null, "the problem");
     expect(text(el.querySelector("[role=alert]"))).toContain(en("validation.DATASET_BINDING_INVALID"));
     expect(api.versions()).toHaveLength(1);
@@ -241,8 +247,9 @@ describe("a ready edit proposal", () => {
         refuseNext: { status: 409, code: "LIFECYCLE_CONFLICT", message: "the server's risk of this proposal is not the one it was reviewed with; nothing was changed (ask for a new proposal)", details: [{ path, reason: "the server now computes high, not medium" }] },
       });
       const approve = en("proposal.approve.edit", { version: "2" });
+      const confirm = en("proposal.approve.confirm.edit", { version: "2" });
       await press(button(el, approve));
-      await press(button(el, approve));
+      await press(button(el, confirm));
       await waitFor(() => el.querySelector("[data-refused]") !== null, "the refusal note");
       const note = section(el, "decision")!.querySelector("[data-refused]")!;
       expect(note.getAttribute("data-refused")).toBe("risk");
@@ -276,7 +283,7 @@ describe("approve scenario: a separate action with a separate effect", () => {
     expect(names(el)).not.toContain(en("proposal.approve.edit", { version: "2" }));
     await press(button(el, approve));
     expect(text(el)).toContain(en("proposal.approve.question.scenario", { base: "1" }));
-    await press(button(el, approve));
+    await press(button(el, en("proposal.approve.confirm.scenario")));
     await waitFor(() => text(el).includes(en("proposal.outcome.scenario")), "the outcome");
     const link = [...el.querySelectorAll("a")].find((a) => text(a) === en("proposal.outcome.openScenario"));
     expect(link?.getAttribute("href")).toBe(`/scenarios/${api.scenarios()[0]!.id}`);
@@ -344,8 +351,9 @@ describe("a stale base", () => {
   it("keeps the page when the model moved just before approving, says what changed, and does not rebase", async () => {
     const { el, api } = await open("conflict");
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(el, approve));
-    await press(button(el, approve));
+    await press(button(el, confirm));
     await waitFor(() => el.querySelector("[data-conflict]") !== null, "the conflict note");
     const note = el.querySelector("[data-conflict]")!;
     expect(text(note)).toContain(en("proposal.conflict.title"));
@@ -372,6 +380,8 @@ describe("a stale base", () => {
 
   it("does not offer Approve when the model has a newer version already (it could never be approved), and says why", async () => {
     const { el, api } = await open("stale");
+    // The state says so too, not "ready for your review" (H-039).
+    expect(text(status(el))).toBe(en("proposal.status.stale"));
     // A ready proposal's base never becomes the latest again: no disabled-forever control (H-027), no version number that exists.
     expect(names(el)).toEqual([en("proposal.reject")]);
     expect(text(el)).not.toContain(en("proposal.effect.edit", { version: "2" }));

@@ -190,9 +190,9 @@ describe("asking the AI for a change on the model page", () => {
     await waitFor(() => el.querySelector("[data-ask] [role=alert]") !== null, "the conflict");
     expect(text(ask(el).querySelector("[role=alert]"))).toContain(en("error.MODEL_VERSION_CONFLICT"));
     expect(created).toEqual([]);
-    expect(text(el)).toContain(en("model.summary", { version: "1", domain: "electronics_line" }));
+    expect(text(el)).toContain(en("model.summary", { version: "1", domain: en("domain.electronics_line.name") }));
     await press(button(ask(el), en("ask.reload")));
-    await waitFor(() => text(el).includes(en("model.summary", { version: "2", domain: "electronics_line" })), "the reload");
+    await waitFor(() => text(el).includes(en("model.summary", { version: "2", domain: en("domain.electronics_line.name") })), "the reload");
     expect(fieldOf(ask(el), en("ask.intent")).value).toBe("Burn-in batches of 48 boards");
     await press(button(ask(el), en("ask.send")));
     await waitFor(() => created.length === 1, "the proposal");
@@ -248,14 +248,15 @@ describe("the loop: ask, review, approve, and the model page reads the new versi
     );
     await waitFor(() => text(review.querySelector("[data-proposal-status]")) === en("proposal.status.ready"), "ready");
     const approve = en("proposal.approve.edit", { version: "2" });
+    const confirm = en("proposal.approve.confirm.edit", { version: "2" });
     await press(button(review, approve));
-    await press(button(review, approve));
+    await press(button(review, confirm));
     await waitFor(() => text(review).includes(en("proposal.outcome.edit", { version: "2" })), "the outcome");
 
     // Back on the model page: read again, version 2, the burn-in step's batch as approved.
     unmountAll();
     const again = await modelPage({ api });
-    expect(text(again.el)).toContain(en("model.summary", { version: "2", domain: "electronics_line" }));
+    expect(text(again.el)).toContain(en("model.summary", { version: "2", domain: en("domain.electronics_line.name") }));
     expect([...again.el.querySelectorAll(".react-flow__node")].map((n) => n.getAttribute("data-id")).sort()).toEqual(ids);
     expect(ids).toEqual(sampleLine.nodes.map((n) => n.id).sort());
     const n = again.el.querySelector<HTMLElement>('.react-flow__node[data-id="burn_in"]')!;

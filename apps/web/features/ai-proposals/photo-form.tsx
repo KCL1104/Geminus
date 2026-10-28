@@ -102,7 +102,7 @@ export function PhotoForm({ model, blockedReason, reasonId, noticeId, onCreated 
       {t("photo.choose")}
     </Button>
   );
-  // In the ask form's actions row: the button beside Send, the hint and
+  // In the ask form's row: the button beside Send, the hint and
   // any refusal on their own lines below.
   return (
     <div className={styles.photo} data-photo>

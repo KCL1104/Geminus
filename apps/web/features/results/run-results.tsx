@@ -14,7 +14,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Loading, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
-import { StatusRegion } from "../../ui/status";
+import { ShownStatus, StatusRegion } from "../../ui/status";
 import { checkPair, pairPhase } from "../simulations/run-pair";
 import { RunPairStatus } from "../simulations/run-status";
 import { useRunPair } from "../simulations/use-run-pair";
@@ -77,10 +77,13 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
                   onCancel={() => void pair.cancel()}
                 />
               )}
-              {/* The runs' outcome, announced when it arrives (WCAG 4.1.3); progress itself is not. */}
+              {/* The runs' outcome, announced when it arrives (WCAG 4.1.3); progress itself is not. The region
+                  is never shown, so its look does not change as it speaks: completed is on each run's line
+                  (H-039), and a stopped run's outcome is framed beside it (review M2). */}
               {pair.baseline && pair.scenario && (
-                <StatusRegion message={phase === "completed" ? t("runs.done") : phase === "stopped" ? t("runs.noComparison") : null} />
+                <StatusRegion message={phase === "completed" ? t("runs.done") : phase === "stopped" ? t("runs.noComparison") : null} quiet />
               )}
+              {phase === "stopped" && <ShownStatus message={t("runs.noComparison")} />}
               {phase === "completed" && pair.baseline && pair.scenario && <Completed baseline={pair.baseline} scenario={pair.scenario} analysis={analysis} />}
             </>
           )}

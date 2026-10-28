@@ -169,6 +169,8 @@ export const en = {
   // The electronics assembly and test line pack (T-051): its step and
   // resource kinds (the English labels are the pack's catalog labels) and
   // its domain metric names (ELECTRONICS_LINE §5).
+  "domain.electronics_line.name": "Electronics assembly and test line",
+  "domain.software_delivery.name": "Software delivery",
   "domain.electronics_line.node.board_release": "Board release",
   "domain.electronics_line.node.line_buffer": "Line buffer",
   "domain.electronics_line.node.smt_station": "SMT line",
@@ -462,6 +464,7 @@ export const en = {
   "analysis.otherRuns": "This explanation is of other runs, so it is not shown here.",
   "analysis.again": "Ask again",
   "analysis.provenance": "Written by the AI from these results. The figures beside its words are the server's; the numbers in its words were checked against the results.",
+  "analysis.summaries": "The AI's summary of each run, and what changed",
   "analysis.baseline": "Baseline: {summary}",
   "analysis.changed": "What changed",
   "analysis.why": "Why",
@@ -516,6 +519,8 @@ export const en = {
   "compare.summary.shorter": "Median lead time {baseline} → {scenario}: {percent} shorter.",
   "compare.summary.longer": "Median lead time {baseline} → {scenario}: {percent} longer.",
   "compare.summary.same": "Median lead time {baseline} in both runs.",
+  "compare.summary.caption": { one: "From {count} replication of each run. Where the server computed them, the table gives 95% intervals.", other: "From {count} replications of each run. Where the server computed them, the table gives 95% intervals." },
+  "compare.summary.captionMixed": "The runs have different numbers of replications. Where the server computed them, the table gives 95% intervals.",
   "metric.throughput": "Completed work items (mean per replication)",
   "metric.leadTimeMedian": "Lead time, median",
   "metric.leadTimeP95": "Lead time, 95th percentile",
@@ -683,6 +688,9 @@ export const en = {
   "proposal.effects": "What the AI expects",
   "proposal.effectsHint": "Expectations, not results: a simulation shows what changes.",
   "proposal.decision": "Your decision",
+  "proposal.status.stale": "Out of date: it was made on an older version and cannot be approved.",
+  "proposal.approve.confirm.edit": "Yes, create version {version}",
+  "proposal.approve.confirm.scenario": "Yes, save the scenario",
   "proposal.approve.edit": "Approve and create version {version}",
   "proposal.approve.scenario": "Approve and save the scenario",
   "proposal.approve.question.edit": "Approve this proposal? It creates version {version} from version {base} with the changes above. A version cannot be changed later.",
