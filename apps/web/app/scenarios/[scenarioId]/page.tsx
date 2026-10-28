@@ -18,8 +18,6 @@ function ScenarioRoute({ scenarioId }: { scenarioId: string }) {
         <SimulateView
           scenario={page.scenario}
           version={page.version}
-          earlier={page.earlier}
-          runsCut={page.runsCut}
           onStarted={(baseline, scenario) => router.push(resultsHref(page.scenario.id, baseline, scenario))}
         />
       )}

@@ -183,6 +183,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
       const v = versions.find((x) => x.id === version[1]);
       return v ? json(200, v) : error(404, "NOT_FOUND", "not found");
     }
+    if (method === "GET" && path === `${m}/versions`) return json(200, { items: [...versions].reverse(), next_cursor: null });
     const onVersion = path.match(/^\/api\/v1\/model-versions\/([^/]+)\/scenarios$/);
     if (method === "GET" && onVersion) {
       if (!versions.some((x) => x.id === onVersion[1])) return error(404, "NOT_FOUND", "not found");

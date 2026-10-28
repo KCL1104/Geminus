@@ -11,6 +11,17 @@
   margin: 0;
 }
 
+.earlier li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--gm-space-sm);
+}
+
+/* A pair that has not finished says so beside its link. */
+.status {
+  color: var(--gm-color-ink-2);
+}
+
 .intro {
   max-width: 720px;
   color: var(--gm-color-ink-2);

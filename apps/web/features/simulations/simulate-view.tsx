@@ -18,23 +18,23 @@ import { Button } from "../../ui/button";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
-import { MAX_RUN_PAGES, resultsHref } from "./load";
-import type { RunPair } from "./run-pair";
+import { RemoteView } from "../../app/_components/states";
+import { useRemote } from "../../app/_components/use-remote";
+import { loadEarlierRuns, MAX_RUN_PAGES, resultsHref } from "./load";
+import { isActive } from "./run-pair";
 import { defaultRunForm, type FormIssue, keysFor, parseRunForm, type RunField, type RunForm, type RunKeys, runRequests } from "./run-config";
 import styles from "./simulations.module.css";
 
 const issueKey = { required: "run.issue.required", number: "run.issue.number", positive: "run.issue.positive", warmup: "run.issue.warmup", replications: "run.issue.replications", seed: "run.issue.seed" } as const satisfies Record<FormIssue, string>;
 
-export function SimulateView({ scenario, version, earlier, runsCut, onStarted }: {
+export function SimulateView({ scenario, version, onStarted }: {
   scenario: Scenario;
   version: ModelVersion;
-  earlier: RunPair[];
-  runsCut: boolean;
   onStarted: (baselineRunId: string, scenarioRunId: string) => void;
 }) {
   const api = useApi();
   const { role } = useAuth();
-  const { t, dateTime } = useI18n();
+  const { t } = useI18n();
   const unit = version.ir.time_unit;
   const [form, setForm] = useState<RunForm>(() => defaultRunForm(unit));
   const [issues, setIssues] = useState<Partial<Record<RunField, FormIssue>>>({});
@@ -113,21 +113,41 @@ export function SimulateView({ scenario, version, earlier, runsCut, onStarted }:
       ) : (
         <Callout tone="info">{t(role === null ? "run.readOnly.unknownRole" : "run.readOnly.viewer")}</Callout>
       )}
-      {earlier.length > 0 && (
-        <section aria-labelledby="earlier-heading" className={styles.section}>
-          <h2 id="earlier-heading">{t("scenario.earlier.title")}</h2>
-          <ul className={styles.earlier}>
-            {earlier.map(({ baseline, scenario: run }) => (
-              <li key={run.id}>
-                <Link href={resultsHref(scenario.id, baseline.id, run.id)}>
-                  {t("scenario.earlier.item", { date: dateTime(run.created_at), count: run.config.replications, seed: String(run.config.seed) })}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {runsCut && <Callout tone="info">{t("scenario.earlier.cut", { count: MAX_RUN_PAGES * 100 })}</Callout>}
+      <EarlierResults scenario={scenario} />
     </>
+  );
+}
+
+/** The scenario's earlier runs, each opening its results; loaded on their own, so a failure here leaves the form usable. */
+function EarlierResults({ scenario }: { scenario: Scenario }) {
+  const api = useApi();
+  const { t, dateTime } = useI18n();
+  const [remote, retry] = useRemote((signal) => loadEarlierRuns(api, scenario, signal), api, scenario.id);
+  return (
+    <RemoteView remote={remote} what="runs" onRetry={retry} headingLevel={2}>
+      {({ pairs, cut }) => (
+        <>
+          {pairs.length > 0 && (
+            <section aria-labelledby="earlier-heading" className={styles.section}>
+              <h2 id="earlier-heading">{t("scenario.earlier.title")}</h2>
+              <ul className={styles.earlier}>
+                {pairs.map(({ baseline, scenario: run }) => {
+                  const status = run.status === "completed" && baseline.status === "completed" ? null : isActive(run) || isActive(baseline) ? "running" : "stopped";
+                  return (
+                    <li key={run.id}>
+                      <Link href={resultsHref(scenario.id, baseline.id, run.id)}>
+                        {t("scenario.earlier.item", { date: dateTime(run.created_at), count: run.config.replications, seed: String(run.config.seed) })}
+                      </Link>
+                      {status && <span className={styles.status}>{t(`scenario.earlier.${status}`)}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+          {cut && <Callout tone="info">{t("scenario.earlier.cut", { count: MAX_RUN_PAGES * 100 })}</Callout>}
+        </>
+      )}
+    </RemoteView>
   );
 }

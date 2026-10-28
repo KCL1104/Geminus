@@ -368,7 +368,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 15 }, ok));
+    const f = fakeFetch(...Array.from({ length: 16 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -402,6 +402,14 @@ describe("model writes and versions (T-013)", () => {
     record("getScenario");
     await client.compareSimulations(BASELINE_RUN, SCENARIO_RUN);
     record("compareSimulations");
+    await client.listSimulations(MODEL, { cursor: "next" });
+    record("listSimulations");
+    // A page of up to 100 runs after the cursor (T-057 review r1 L6).
+    expect(Object.fromEntries(f.calls[seen.listSimulations!]!.url.searchParams)).toEqual({ cursor: "next", limit: "100" });
+    // An ID of another kind is refused before any request.
+    const before = f.calls.length;
+    expect((await client.listSimulations(PROJECT)).ok).toBe(false);
+    expect(f.calls).toHaveLength(before);
     for (const [id, i] of Object.entries(seen)) {
       const op = operations.find((o) => o.operation_id === id);
       const call = f.calls[i]!;

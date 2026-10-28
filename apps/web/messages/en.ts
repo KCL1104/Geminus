@@ -53,7 +53,8 @@ export const en = {
   "models.outOfDate": "(draft out of date)",
   "model.back": "Back to project",
   "model.summary": "Latest version {version}; domain {domain}.",
-  "model.scenarios.title": "Scenarios on version {version}",
+  "model.scenarios.title": "Scenarios",
+  "model.scenarios.version": "on version {version}",
 
   "loading.projects": "Loading projects…",
   "loading.models": "Loading models…",
@@ -370,6 +371,8 @@ export const en = {
     one: "{date}: {count} replication, seed {seed}",
     other: "{date}: {count} replications, seed {seed}",
   },
+  "scenario.earlier.running": "still running",
+  "scenario.earlier.stopped": "did not finish",
   "scenario.earlier.cut": "Only the model's first {count} runs were read, so later results may be missing here.",
   "scenario.summary": {
     one: "A what-if on version {version} of {model}, with {count} change.",

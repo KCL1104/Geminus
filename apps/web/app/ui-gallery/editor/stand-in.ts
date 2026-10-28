@@ -99,6 +99,7 @@ export function createStandIn(opts: StandInOptions) {
     if (method === "GET" && path === base) return json(200, model());
     if (method === "GET" && path === `${base}/draft`) return json(200, draft(), draftETag(revision));
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}`) return json(200, modelVersion());
+    if (method === "GET" && path === `${base}/versions`) return json(200, { items: [modelVersion()], next_cursor: null });
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}/scenarios`) return json(200, { items: [], next_cursor: null });
     if (method === "PATCH" && path === `${base}/draft`) {
       if (otherSave !== undefined) {

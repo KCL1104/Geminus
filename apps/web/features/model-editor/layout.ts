@@ -68,20 +68,42 @@ export function layeredLayout(ir: ModelIR): Record<string, Position> {
 /**
  * The canvas's positions (the 2D editor, and the 3D view that derives from
  * 2D): the layered layout of ir, except when the IR places some steps and
- * not others while every placed step is still on the layered grid. Steps
- * without a position come from an AI edit (D-022: it cannot write the view),
- * and grid positions were never placed by hand, so they describe the line
- * before the edit: the whole line is laid out again from its flows, and the
- * first edit writes that layout down (edits.ts materialize).
+ * not others and the placed ones are exactly the layered default of the
+ * line before those steps were added. Steps without a position come from an
+ * AI edit (D-022: it cannot write the view); positions that are the default
+ * were placed by no one, so the whole line is laid out again from its flows,
+ * and the first edit writes that down (edits.ts materialize). Positions
+ * someone placed (a template's, a drag's, a key's) are always kept.
  */
-// ponytail: "on the grid" stands for "never placed by hand"; a step dragged exactly onto a grid point counts as unplaced. Store a placed-by-hand flag in the view if that ever matters.
 export function canvasLayout(ir: ModelIR): Record<string, Position> {
   const saved = ir.views["2d"].positions;
-  const onGrid = (p: Position) => p.x % LAYER_SPACING === 0 && p.y % ROW_SPACING === 0;
-  if (saved !== undefined && ir.nodes.some((n) => !Object.hasOwn(saved, n.id)) && Object.values(saved).every(onGrid)) {
-    return layeredLayout({ ...ir, views: { ...ir.views, "2d": { ...ir.views["2d"], positions: {} } } });
+  if (saved === undefined || ir.nodes.every((n) => Object.hasOwn(saved, n.id)) || !defaultBefore(ir, saved)) return layeredLayout(ir);
+  return layeredLayout({ ...ir, views: { ...ir.views, "2d": { ...ir.views["2d"], positions: {} } } });
+}
+
+/**
+ * Whether saved is the layered default of the line before its unplaced
+ * steps: the placed steps alone, each joined to the placed steps it reaches
+ * directly or through unplaced ones only.
+ */
+function defaultBefore(ir: ModelIR, saved: Record<string, Position>): boolean {
+  const placed = new Set(ir.nodes.filter((n) => Object.hasOwn(saved, n.id)).map((n) => n.id));
+  const next = new Map<string, string[]>();
+  for (const f of ir.flows) next.set(f.from, [...(next.get(f.from) ?? []), f.to]);
+  const flows: ModelIR["flows"] = [];
+  for (const from of placed) {
+    const seen = new Set<string>();
+    const stack = [...(next.get(from) ?? [])];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (placed.has(id)) flows.push({ id: `${from}>${id}`, from, to: id } as ModelIR["flows"][number]); // layeredLayout reads only from and to
+      else stack.push(...(next.get(id) ?? []));
+    }
   }
-  return layeredLayout(ir);
+  const before = layeredLayout({ ...ir, nodes: ir.nodes.filter((n) => placed.has(n.id)), flows, views: { ...ir.views, "2d": { ...ir.views["2d"], positions: {} } } });
+  return [...placed].every((id) => before[id]!.x === saved[id]!.x && before[id]!.y === saved[id]!.y);
 }
 
 // Go's math.Round rounds half away from zero; Math.round rounds half up.

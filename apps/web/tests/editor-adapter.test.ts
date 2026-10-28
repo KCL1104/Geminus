@@ -32,6 +32,8 @@ import { applyPatch, type Op, parsePointer, reapplyPatch } from "../features/mod
 const fixture = (name: string): ModelIR => JSON.parse(readFileSync(join(process.cwd(), "../../testdata/contracts", name), "utf8")) as ModelIR;
 const minimal = () => fixture("valid-minimal-ir.json");
 const lineFlow = () => fixture("valid-line-flow-ir.json");
+const template = (): ModelIR => JSON.parse(readFileSync(join(process.cwd(), "../../internal/domainpack/electronicsline/templates/electronics_assembly_test_line.json"), "utf8")) as ModelIR;
+const bareLine = (): ModelIR => JSON.parse(readFileSync(join(process.cwd(), "../../testdata/photos/bare-line.json"), "utf8")) as ModelIR;
 const sample = (): ModelIR => JSON.parse(JSON.stringify(sampleLine)) as ModelIR;
 /** The sample with every node placed, as after its first edit. */
 const placed = (): ModelIR => {
@@ -127,14 +129,46 @@ describe("the canvas's layout", () => {
     expect(nodes.map((n) => [n.id, n.position.x])).toEqual([["start", 0], ["work", 240], ["check", 480], ["end", 720]]);
   });
 
-  it("keeps the IR's positions when every step has one or when a step was placed by hand", () => {
-    const placedAll = aiInserted();
-    placedAll.views["2d"].positions!.check = { x: 600, y: 120 };
-    expect(canvasLayout(placedAll)).toEqual(placedAll.views["2d"].positions);
-    const byHand = aiInserted();
-    byHand.views["2d"].positions!.work = { x: 250, y: 7 };
-    expect(canvasLayout(byHand)).toEqual(layeredLayout(byHand));
-    expect(canvasLayout(byHand).end).toEqual({ x: 480, y: 0 });
+  it("keeps positions someone placed: every step placed, a step keyed onto a grid point, a template's own layout", () => {
+    const all = aiInserted();
+    all.views["2d"].positions!.check = { x: 240, y: 240 }; // on the grid, not the layered default
+    expect(canvasLayout(all)).toEqual(all.views["2d"].positions);
+    // Six Shift+arrow presses (20 px each) move work one row down, exactly onto the grid (review r1 M2).
+    const keyed = aiInserted();
+    keyed.views["2d"].positions!.work = { x: 240, y: 120 };
+    expect(canvasLayout(keyed)).toEqual(layeredLayout(keyed));
+    expect(canvasLayout(keyed).end).toEqual({ x: 480, y: 0 });
+    // The shipped template's positions are on the grid but hand-placed (its rework loops): kept,
+    // with or without a step an AI put between AOI and its result (review r1 H1).
+    const tpl = template();
+    const authored = { ...tpl.views["2d"].positions! };
+    expect(canvasLayout(tpl)).toEqual(authored);
+    const at = tpl.flows.findIndex((f) => f.from === "aoi" && f.to === "aoi_result");
+    tpl.flows.splice(at, 1, { ...tpl.flows[at]!, id: "aoi_xray", to: "xray" }, { ...tpl.flows[at]!, id: "xray_aoi_result", from: "xray" });
+    tpl.nodes.push({ id: "xray", type: "delay", delay_time: { distribution: { type: "constant", value: 1 } } });
+    const got = canvasLayout(tpl);
+    for (const [id, p] of Object.entries(authored)) expect(got[id], id).toEqual(p);
+  });
+
+  it("puts Shipped last again after the photo proposal adds the line's stations to the bare line (T-057 live)", () => {
+    const ir = bareLine();
+    ir.flows = ir.flows.filter((f) => f.from !== "smt");
+    const steps = ["q_aoi", "aoi", "q_ict", "ict"];
+    ir.nodes.push(...steps.map((id) => ({ id, type: "delay" as const, delay_time: { distribution: { type: "constant" as const, value: 1 } } })));
+    ["smt", ...steps, "shipped"].slice(1).forEach((to, k, list) => {
+      const from = k === 0 ? "smt" : list[k - 1]!;
+      ir.flows.push({ id: `${from}_${to}`, from, to, routing: { type: "probability", probability: 1 } });
+    });
+    const got = canvasLayout(ir);
+    expect(Math.max(...Object.values(got).map((p) => p.x))).toBe(got.shipped!.x);
+    expect(got.shipped).toEqual({ x: 7 * LAYER_SPACING, y: 0 });
+    // A step put in the middle of the line, before SMT: the line before it is release, q_smt, smt, shipped.
+    const mid = bareLine();
+    mid.flows = mid.flows.filter((f) => f.to !== "smt");
+    mid.nodes.push({ id: "bake", type: "delay", delay_time: { distribution: { type: "constant", value: 1 } } });
+    mid.flows.push({ id: "q_smt_bake", from: "q_smt", to: "bake", routing: { type: "probability", probability: 1 } },
+      { id: "bake_smt", from: "bake", to: "smt", routing: { type: "probability", probability: 1 } });
+    expect(canvasLayout(mid)).toEqual({ release: { x: 0, y: 0 }, q_smt: { x: 240, y: 0 }, bake: { x: 480, y: 0 }, smt: { x: 720, y: 0 }, shipped: { x: 960, y: 0 } });
   });
 
   it("is what the first edit writes down, each kept position it changes after a test of its old value", () => {

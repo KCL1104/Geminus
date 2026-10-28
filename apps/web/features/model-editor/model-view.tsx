@@ -6,8 +6,8 @@
 // for a change here (T-031), in words or, for a domain whose pack reads
 // photos, from a photo of the line (T-056); the proposal opens on its own
 // page, so either request waits while the editor has edits the page would
-// lose. Under the editor, the latest version's scenarios lead back to
-// their runs and results.
+// lose. Under the editor, the model's scenarios lead back to their runs
+// and results.
 import Link from "next/link";
 import { useEffect, useReducer } from "react";
 import { RemoteView } from "../../app/_components/states";
@@ -68,7 +68,7 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
               />
             )}
             <ModelEditor model={page.model} session={page.session} dispatch={dispatch} reloadPage={reloadPage} />
-            <ScenarioList versionId={page.model.latest_version.id} version={page.model.latest_version.version} />
+            <ScenarioList modelId={page.model.id} latestVersionId={page.model.latest_version.id} />
           </>
         )
       }

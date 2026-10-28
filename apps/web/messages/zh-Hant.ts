@@ -52,7 +52,8 @@ export const zhHant: Catalog = {
   "models.outOfDate": "（草稿已過時）",
   "model.back": "返回專案",
   "model.summary": "最新版本 {version}；領域 {domain}。",
-  "model.scenarios.title": "版本 {version} 的情境",
+  "model.scenarios.title": "情境",
+  "model.scenarios.version": "以版本 {version} 為基礎",
 
   "loading.projects": "正在載入專案…",
   "loading.models": "正在載入模型…",
@@ -354,6 +355,8 @@ export const zhHant: Catalog = {
   "scenario.back": "返回模型",
   "scenario.earlier.title": "先前的結果",
   "scenario.earlier.item": { other: "{date}：{count} 次重複，種子 {seed}" },
+  "scenario.earlier.running": "仍在執行",
+  "scenario.earlier.stopped": "未完成",
   "scenario.earlier.cut": "只讀取了這個模型最早的 {count} 次執行，較新的結果可能沒有列在這裡。",
   "scenario.summary": { other: "以 {model} 的版本 {version} 為基礎的假設情境，含 {count} 項變更。" },
   "run.title": "執行模擬",

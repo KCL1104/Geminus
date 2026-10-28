@@ -223,6 +223,7 @@ describe("the scenario page: run the scenario and its baseline", () => {
     for (const auth of [editor, viewer]) {
       const api = fakeApi({ ...scenarioAnswers, [runsPath]: [json(200, { items: [b1, s1, elsewhere], next_cursor: "page-2" }), json(200, { items: [b2, anotherScenario, s2, lone], next_cursor: null })] });
       const el = await scenarioPage(api, auth);
+      await waitFor(() => el.querySelector('section[aria-labelledby="earlier-heading"]') !== null, "the earlier results");
       const section = el.querySelector('section[aria-labelledby="earlier-heading"]')!;
       expect(section.querySelector("h2")?.textContent).toBe(en["scenario.earlier.title"]);
       const links = [...section.querySelectorAll("a")];
@@ -238,9 +239,23 @@ describe("the scenario page: run the scenario and its baseline", () => {
     }
   });
 
+  it("keeps the run form when the runs cannot be read, and reads them again on retry (review r1 M4)", async () => {
+    const runsPath = `GET ${v1}/models/${boardScenario.model_id}/simulations`;
+    const api = fakeApi({ ...scenarioAnswers, [runsPath]: [problem(503, "SERVICE_UNAVAILABLE"), json(200, { items: [boardBaselineRun(), boardScenarioRun({ status: "cancelled" })], next_cursor: null })] });
+    const el = await scenarioPage(api);
+    await waitFor(() => el.querySelector('[role="alert"]') !== null, "the runs' problem");
+    expect(button(el, en["run.start"])).toBeDefined();
+    await press(button(el, en.retry));
+    await waitFor(() => el.querySelector('section[aria-labelledby="earlier-heading"] li') !== null, "the earlier results");
+    // A pair that did not finish says so beside its link.
+    expect(text(el.querySelector('section[aria-labelledby="earlier-heading"] li')!)).toContain(en["scenario.earlier.stopped"]);
+    expect(el.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it("says so when the model has more runs than the page reads", async () => {
     const api = fakeApi({ ...scenarioAnswers, [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [boardBaselineRun(), boardScenarioRun()], next_cursor: "more" }) });
     const el = await scenarioPage(api);
+    await waitFor(() => text(el).includes("Only the model"), "the cut notice");
     expect(text(el)).toContain(en["scenario.earlier.cut"].replace("{count}", "1,000"));
     expect(api.calls.filter((c) => c.path.includes("/simulations?")).length).toBe(10);
   });
@@ -253,13 +268,17 @@ describe("the scenario page: run the scenario and its baseline", () => {
 });
 
 describe("the model page's scenarios (the way back to a scenario and its results)", () => {
-  async function list(answer: Answer | Answer[]) {
+  const v2 = { ...boardVersion, id: "mv_01M4YDQK00FRYWV7GS7X1QCX02", version: 2 };
+  const older = { ...boardScenario, id: "scn_01M4YDQK00TA0000000000T033", name: "Faster AOI", base_version_id: v2.id };
+  const versionsPath = `GET ${v1}/models/${boardScenario.model_id}/versions`;
+  const scenariosOf = (id: string) => `GET ${v1}/model-versions/${id}/scenarios`;
+  async function list(table: Record<string, Answer | Answer[]>) {
     const { ScenarioList } = await import("../features/simulations/scenario-list");
-    const api = fakeApi({ [`GET ${v1}/model-versions/${boardVersion.id}/scenarios`]: answer });
+    const api = fakeApi(table);
     const el = await mount(
       <AuthProvider value={viewer}>
         <ApiProvider client={api.client}>
-          <ScenarioList versionId={boardVersion.id} version={3} />
+          <ScenarioList modelId={boardScenario.model_id} latestVersionId={boardVersion.id} />
         </ApiProvider>
       </AuthProvider>,
       "en",
@@ -268,22 +287,23 @@ describe("the model page's scenarios (the way back to a scenario and its results
     await waitFor(() => api.calls.length > 0 && !text(el).includes(en["loading.scenarios"]), "the scenarios");
     return el;
   }
+  const page = <T,>(items: T[], next: string | null = null) => json(200, { items, next_cursor: next });
 
-  it("links each scenario on the latest version to its page, for anyone who can read the model", async () => {
-    const other = { ...boardScenario, id: "scn_01M4YDQK00TA0000000000T033", name: "Faster AOI" };
-    const el = await list(json(200, { items: [boardScenario, other], next_cursor: null }));
-    expect(el.querySelector("h2")?.textContent).toBe("Scenarios on version 3");
-    expect([...el.querySelectorAll("li a")].map((a) => [a.getAttribute("href"), a.textContent])).toEqual([
-      [`/scenarios/${boardScenario.id}`, boardScenario.name],
-      [`/scenarios/${other.id}`, "Faster AOI"],
+  it("links every version's scenarios to their pages, newest version first, for anyone who can read the model (review r1 M5)", async () => {
+    const el = await list({ [versionsPath]: page([boardVersion, v2]), [scenariosOf(boardVersion.id)]: page([boardScenario]), [scenariosOf(v2.id)]: page([older]) });
+    expect(el.querySelector("h2")?.textContent).toBe("Scenarios");
+    expect([...el.querySelectorAll("li")].map((li) => [li.querySelector("a")?.getAttribute("href"), text(li)])).toEqual([
+      [`/scenarios/${boardScenario.id}`, `${boardScenario.name}on version 3`],
+      [`/scenarios/${older.id}`, "Faster AOIon version 2"],
     ]);
     expect(await violations()).toEqual([]);
   });
 
-  it("shows nothing when the version has none, says when there are more, and offers a retry when the list fails", async () => {
-    expect((await list(json(200, { items: [], next_cursor: null }))).textContent).toBe("");
-    expect(text(await list(json(200, { items: [boardScenario], next_cursor: "more" })))).toContain("Showing the first scenario. More exist");
-    const failed = await list([problem(503, "SERVICE_UNAVAILABLE"), json(200, { items: [boardScenario], next_cursor: null })]);
+  it("shows nothing when the model has none, says when there are more, and offers a retry when a list fails", async () => {
+    expect((await list({ [versionsPath]: page([boardVersion]), [scenariosOf(boardVersion.id)]: page([]) })).textContent).toBe("");
+    expect(text(await list({ [versionsPath]: page([boardVersion], "more"), [scenariosOf(boardVersion.id)]: page([boardScenario]) }))).toContain("Showing the first scenario. More exist");
+    expect(text(await list({ [versionsPath]: page([boardVersion]), [scenariosOf(boardVersion.id)]: page([boardScenario], "more") }))).toContain("More exist");
+    const failed = await list({ [versionsPath]: page([boardVersion]), [scenariosOf(boardVersion.id)]: [problem(503, "SERVICE_UNAVAILABLE"), page([boardScenario])] });
     expect(failed.querySelector('[role="alert"]')).not.toBeNull();
     await press(button(failed, en.retry));
     await waitFor(() => failed.querySelector("li a") !== null, "the retried list");
