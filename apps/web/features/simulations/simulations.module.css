@@ -4,6 +4,13 @@
   margin: 0 0 var(--gm-space-xl);
 }
 
+/* Earlier results: one link a row, newest first, spaced as a target (WCAG 2.5.8). */
+.earlier {
+  display: grid;
+  gap: var(--gm-space-sm);
+  margin: 0;
+}
+
 .intro {
   max-width: 720px;
   color: var(--gm-color-ink-2);

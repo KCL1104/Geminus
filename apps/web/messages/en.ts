@@ -53,6 +53,7 @@ export const en = {
   "models.outOfDate": "(draft out of date)",
   "model.back": "Back to project",
   "model.summary": "Latest version {version}; domain {domain}.",
+  "model.scenarios.title": "Scenarios on version {version}",
 
   "loading.projects": "Loading projects…",
   "loading.models": "Loading models…",
@@ -66,6 +67,10 @@ export const en = {
   "morePages.models": {
     one: "Showing the first model. More exist; this build cannot page through them yet.",
     other: "Showing the first {count} models. More exist; this build cannot page through them yet.",
+  },
+  "morePages.scenarios": {
+    one: "Showing the first scenario. More exist; this build cannot page through them yet.",
+    other: "Showing the first {count} scenarios. More exist; this build cannot page through them yet.",
   },
   "readOnly.unknownRole": "Your role is not known yet, so editing is off.",
   "readOnly.viewer": "You can view this model but not change it.",
@@ -357,8 +362,15 @@ export const en = {
 
   "loading.scenario": "Loading the scenario…",
   "loading.runs": "Loading the runs…",
+  "loading.scenarios": "Loading the scenarios…",
   "loading.results": "Loading the results…",
   "scenario.back": "Back to the model",
+  "scenario.earlier.title": "Earlier results",
+  "scenario.earlier.item": {
+    one: "{date}: {count} replication, seed {seed}",
+    other: "{date}: {count} replications, seed {seed}",
+  },
+  "scenario.earlier.cut": "Only the model's first {count} runs were read, so later results may be missing here.",
   "scenario.summary": {
     one: "A what-if on version {version} of {model}, with {count} change.",
     other: "A what-if on version {version} of {model}, with {count} changes.",

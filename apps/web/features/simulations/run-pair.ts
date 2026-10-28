@@ -4,7 +4,7 @@
 // progress revision, which the server raises on every visible change, so a
 // late poll cannot undo a cancel the server already answered.
 import { errorCodeStatus, type Problem, problemFromResponse } from "../../lib/api/problem";
-import type { ErrorCode, Run } from "../../lib/contracts";
+import type { ErrorCode, Run, Scenario } from "../../lib/contracts";
 
 export const isActive = (r: Run): boolean => r.status === "queued" || r.status === "running";
 
@@ -81,4 +81,23 @@ export function reducePair(s: PairState, e: PairEvent): PairState {
     case "cancelDone":
       return { ...s, cancelling: false };
   }
+}
+
+export type RunPair = { baseline: Run; scenario: Run };
+
+/**
+ * The scenario's runs among runs (oldest first), newest first, each with the
+ * baseline started beside it (SimulateView queues the baseline first): the
+ * latest run created at or before it of the same version, with no scenario,
+ * an empty patch and the same config. A run without one is left out.
+ */
+export function earlierPairs(runs: readonly Run[], scenario: Scenario): RunPair[] {
+  const baselines = runs.filter((r) => r.scenario_id === null && r.scenario_patch.length === 0 && r.model_version_id === scenario.base_version_id);
+  return runs
+    .filter((r) => r.scenario_id === scenario.id)
+    .flatMap((s) => {
+      const b = baselines.filter((r) => r.config_hash === s.config_hash && Date.parse(r.created_at) <= Date.parse(s.created_at)).at(-1);
+      return b === undefined ? [] : [{ baseline: b, scenario: s }];
+    })
+    .reverse();
 }

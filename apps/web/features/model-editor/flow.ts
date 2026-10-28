@@ -1,14 +1,15 @@
 // IR → React Flow (ADR-007: the 2D canvas is a projection of the IR, never
 // a second topology). Each IR node is a React Flow node with the node's ID,
 // each flow an edge with the flow's ID and endpoints; positions are the
-// IR's views.2d.positions, else the layered default the server also uses.
+// IR's views.2d.positions, else the layered default the server also uses
+// (canvasLayout: the whole line again after an AI edit added steps).
 // Nothing the canvas holds is saved: edits become JSON Patch (edits.ts).
 // The 3D viewer (T-017) is to take the same IDs and the same selection store.
 import type { Edge, Node } from "@xyflow/react";
 import type { ModelIR } from "../../lib/contracts";
 import type { NodeType } from "./edits";
 import { stepLabel } from "./edits";
-import { layeredLayout } from "./layout";
+import { canvasLayout } from "./layout";
 
 export type Severity = "error" | "warning";
 
@@ -39,7 +40,7 @@ export type FlowOptions = {
 };
 
 export function toFlow(ir: ModelIR, opts: FlowOptions): { nodes: StepNode[]; edges: Edge[] } {
-  const positions = layeredLayout(ir);
+  const positions = canvasLayout(ir);
   const byId = new Map(ir.nodes.map((n) => [n.id, n]));
   const label = (id: string) => {
     const n = byId.get(id);

@@ -52,6 +52,7 @@ export const zhHant: Catalog = {
   "models.outOfDate": "（草稿已過時）",
   "model.back": "返回專案",
   "model.summary": "最新版本 {version}；領域 {domain}。",
+  "model.scenarios.title": "版本 {version} 的情境",
 
   "loading.projects": "正在載入專案…",
   "loading.models": "正在載入模型…",
@@ -60,6 +61,7 @@ export const zhHant: Catalog = {
   "retry": "重試",
   "morePages.projects": { other: "顯示前 {count} 個專案。還有更多專案，目前尚無法翻頁。" },
   "morePages.models": { other: "顯示前 {count} 個模型。還有更多模型，目前尚無法翻頁。" },
+  "morePages.scenarios": { other: "顯示前 {count} 個情境。還有更多情境，目前尚無法翻頁。" },
   "readOnly.unknownRole": "尚未得知你的角色，因此無法編輯。",
   "readOnly.viewer": "你可以檢視這個模型，但不能修改。",
 
@@ -347,8 +349,12 @@ export const zhHant: Catalog = {
 
   "loading.scenario": "正在載入此情境…",
   "loading.runs": "正在載入模擬執行…",
+  "loading.scenarios": "正在載入情境…",
   "loading.results": "正在載入結果…",
   "scenario.back": "返回模型",
+  "scenario.earlier.title": "先前的結果",
+  "scenario.earlier.item": { other: "{date}：{count} 次重複，種子 {seed}" },
+  "scenario.earlier.cut": "只讀取了這個模型最早的 {count} 次執行，較新的結果可能沒有列在這裡。",
   "scenario.summary": { other: "以 {model} 的版本 {version} 為基礎的假設情境，含 {count} 項變更。" },
   "run.title": "執行模擬",
   "run.intro": "基準（版本 {version} 不變）與此情境以相同的設定與種子執行，因此結果可以比較。會保留一份取樣追蹤供圖表使用。",

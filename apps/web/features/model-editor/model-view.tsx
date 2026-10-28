@@ -6,7 +6,8 @@
 // for a change here (T-031), in words or, for a domain whose pack reads
 // photos, from a photo of the line (T-056); the proposal opens on its own
 // page, so either request waits while the editor has edits the page would
-// lose.
+// lose. Under the editor, the latest version's scenarios lead back to
+// their runs and results.
 import Link from "next/link";
 import { useEffect, useReducer } from "react";
 import { RemoteView } from "../../app/_components/states";
@@ -19,6 +20,7 @@ import { loadModelPage, type ModelPage } from "../../lib/pages";
 import { type DraftEvent, type DraftSession, loadedDraft, pendingOps, reduceDraft } from "../../lib/state/draft";
 import { AskForm } from "../ai-proposals/ask-form";
 import { PHOTO_DOMAINS } from "../ai-proposals/photo-form";
+import { ScenarioList } from "../simulations/scenario-list";
 import { ModelEditor } from "./model-editor";
 
 type Page = { model: Model; session: DraftSession } | null;
@@ -66,6 +68,7 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
               />
             )}
             <ModelEditor model={page.model} session={page.session} dispatch={dispatch} reloadPage={reloadPage} />
+            <ScenarioList versionId={page.model.latest_version.id} version={page.model.latest_version.version} />
           </>
         )
       }

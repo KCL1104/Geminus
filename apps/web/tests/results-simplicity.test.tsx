@@ -103,6 +103,7 @@ const v1 = "/api/v1";
 const scenarioAnswers = {
   [`GET ${v1}/scenarios/${boardScenario.id}`]: () => json(200, boardScenario),
   [`GET ${v1}/model-versions/${boardVersion.id}`]: () => json(200, boardVersion),
+  [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: () => json(200, { items: [boardBaselineRun(), boardScenarioRun()], next_cursor: null }),
 };
 const results = (comparison: Comparison = boardComparison) => ({
   [`GET ${v1}/simulation-comparisons`]: () => json(200, comparison),

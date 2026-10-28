@@ -67,6 +67,7 @@ const v1 = "/api/v1";
 const scenarioAnswers = {
   [`GET ${v1}/scenarios/${boardScenario.id}`]: json(200, boardScenario),
   [`GET ${v1}/model-versions/${boardVersion.id}`]: json(200, boardVersion),
+  [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [], next_cursor: null }),
 };
 const resultAnswers = (over: { comparison?: Comparison; traces?: { baseline: TraceArtifact | null; scenario: TraceArtifact | null } } = {}) => {
   const traces = over.traces ?? boardTraces;
@@ -207,10 +208,85 @@ describe("the scenario page: run the scenario and its baseline", () => {
     expect(el.querySelectorAll("input")).toHaveLength(0);
   });
 
+  it("lists its earlier results, newest first, each beside the baseline started with it, over every page of the model's runs", async () => {
+    const at = (m: number) => `2026-10-26T09:0${m}:00Z`;
+    const id = (n: number) => `sim_01M4YDQK00FGZZWH0PP15XPN0${n}`;
+    const otherConfig = (d: string) => `sha256:${d.repeat(64)}`;
+    const [b1, s1] = [boardBaselineRun({ id: id(1), created_at: at(1) }), boardScenarioRun({ id: id(2), created_at: at(1) })];
+    const elsewhere = boardBaselineRun({ id: id(3), created_at: at(5), config_hash: otherConfig("9") });
+    const [b2, s2] = [boardBaselineRun({ id: id(4), created_at: at(6) }), boardScenarioRun({ id: id(5), created_at: at(7) })];
+    // Another scenario's run with no patch is that scenario's, not a baseline.
+    const anotherScenario = boardScenarioRun({ id: id(7), created_at: at(7), scenario_id: "scn_01M4YDQK00TA0000000000T033", scenario_patch: [] });
+    // Its config matches no baseline started before it, so it has no results to compare and is left out.
+    const lone = boardScenarioRun({ id: id(6), created_at: at(8), config_hash: otherConfig("8") });
+    const runsPath = `GET ${v1}/models/${boardScenario.model_id}/simulations`;
+    for (const auth of [editor, viewer]) {
+      const api = fakeApi({ ...scenarioAnswers, [runsPath]: [json(200, { items: [b1, s1, elsewhere], next_cursor: "page-2" }), json(200, { items: [b2, anotherScenario, s2, lone], next_cursor: null })] });
+      const el = await scenarioPage(api, auth);
+      const section = el.querySelector('section[aria-labelledby="earlier-heading"]')!;
+      expect(section.querySelector("h2")?.textContent).toBe(en["scenario.earlier.title"]);
+      const links = [...section.querySelectorAll("a")];
+      expect(links.map((a) => a.getAttribute("href"))).toEqual([
+        `/scenarios/${boardScenario.id}/results?baseline=${b2.id}&scenario=${s2.id}`,
+        `/scenarios/${boardScenario.id}/results?baseline=${b1.id}&scenario=${s1.id}`,
+      ]);
+      expect(text(links[0]!)).toContain("5 replications, seed 42");
+      expect(await violations()).toEqual([]);
+      const reads = api.calls.filter((c) => c.path.startsWith(runsPath.slice(4)));
+      expect(reads.map((c) => new URL(c.path, "http://app.test").searchParams.get("cursor"))).toEqual([null, "page-2"]);
+      expect(reads.every((c) => c.path.includes("limit=100"))).toBe(true);
+    }
+  });
+
+  it("says so when the model has more runs than the page reads", async () => {
+    const api = fakeApi({ ...scenarioAnswers, [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [boardBaselineRun(), boardScenarioRun()], next_cursor: "more" }) });
+    const el = await scenarioPage(api);
+    expect(text(el)).toContain(en["scenario.earlier.cut"].replace("{count}", "1,000"));
+    expect(api.calls.filter((c) => c.path.includes("/simulations?")).length).toBe(10);
+  });
+
   it("shows a scenario that does not exist as not found", async () => {
     const api = fakeApi({ [`GET ${v1}/scenarios/${boardScenario.id}`]: problem(404, "NOT_FOUND") });
     const el = await scenarioPage(api);
     expect(el.querySelector('[role="alert"]')?.getAttribute("data-problem")).toBe("not_found");
+  });
+});
+
+describe("the model page's scenarios (the way back to a scenario and its results)", () => {
+  async function list(answer: Answer | Answer[]) {
+    const { ScenarioList } = await import("../features/simulations/scenario-list");
+    const api = fakeApi({ [`GET ${v1}/model-versions/${boardVersion.id}/scenarios`]: answer });
+    const el = await mount(
+      <AuthProvider value={viewer}>
+        <ApiProvider client={api.client}>
+          <ScenarioList versionId={boardVersion.id} version={3} />
+        </ApiProvider>
+      </AuthProvider>,
+      "en",
+    );
+    await settle();
+    await waitFor(() => api.calls.length > 0 && !text(el).includes(en["loading.scenarios"]), "the scenarios");
+    return el;
+  }
+
+  it("links each scenario on the latest version to its page, for anyone who can read the model", async () => {
+    const other = { ...boardScenario, id: "scn_01M4YDQK00TA0000000000T033", name: "Faster AOI" };
+    const el = await list(json(200, { items: [boardScenario, other], next_cursor: null }));
+    expect(el.querySelector("h2")?.textContent).toBe("Scenarios on version 3");
+    expect([...el.querySelectorAll("li a")].map((a) => [a.getAttribute("href"), a.textContent])).toEqual([
+      [`/scenarios/${boardScenario.id}`, boardScenario.name],
+      [`/scenarios/${other.id}`, "Faster AOI"],
+    ]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("shows nothing when the version has none, says when there are more, and offers a retry when the list fails", async () => {
+    expect((await list(json(200, { items: [], next_cursor: null }))).textContent).toBe("");
+    expect(text(await list(json(200, { items: [boardScenario], next_cursor: "more" })))).toContain("Showing the first scenario. More exist");
+    const failed = await list([problem(503, "SERVICE_UNAVAILABLE"), json(200, { items: [boardScenario], next_cursor: null })]);
+    expect(failed.querySelector('[role="alert"]')).not.toBeNull();
+    await press(button(failed, en.retry));
+    await waitFor(() => failed.querySelector("li a") !== null, "the retried list");
   });
 });
 

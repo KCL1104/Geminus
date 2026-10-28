@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { use } from "react";
 import { useApi } from "../../../lib/api/provider";
-import { loadScenarioPage } from "../../../features/simulations/load";
+import { loadScenarioPage, resultsHref } from "../../../features/simulations/load";
 import { SimulateView } from "../../../features/simulations/simulate-view";
 import { RemoteView, RequireSession } from "../../_components/states";
 import { useRemote } from "../../_components/use-remote";
@@ -18,7 +18,9 @@ function ScenarioRoute({ scenarioId }: { scenarioId: string }) {
         <SimulateView
           scenario={page.scenario}
           version={page.version}
-          onStarted={(baseline, scenario) => router.push(`/scenarios/${page.scenario.id}/results?baseline=${baseline}&scenario=${scenario}`)}
+          earlier={page.earlier}
+          runsCut={page.runsCut}
+          onStarted={(baseline, scenario) => router.push(resultsHref(page.scenario.id, baseline, scenario))}
         />
       )}
     </RemoteView>

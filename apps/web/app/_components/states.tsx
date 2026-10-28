@@ -15,7 +15,7 @@ import { useOrganizationLabels } from "./account";
 import { ProblemView } from "./problem-view";
 
 /** What a page loads; each has its own sentence in the catalog. */
-export type Loadable = "projects" | "models" | "model" | "scenario" | "runs" | "results" | "account" | "proposal";
+export type Loadable = "projects" | "models" | "model" | "scenario" | "scenarios" | "runs" | "results" | "account" | "proposal";
 
 export function Loading({ what }: { what: Loadable }) {
   const { t } = useI18n();
@@ -123,7 +123,7 @@ export function RemoteView<T>({ remote, what, onRetry, headingLevel, children }:
 }
 
 /** Says so when a list has more pages than this build shows (no silent truncation). */
-export function MorePages({ cursor, shown, what }: { cursor: string | null; shown: number; what: "projects" | "models" }) {
+export function MorePages({ cursor, shown, what }: { cursor: string | null; shown: number; what: "projects" | "models" | "scenarios" }) {
   const { t } = useI18n();
   if (cursor === null) return null;
   return <Callout tone="info">{t(`morePages.${what}`, { count: shown })}</Callout>;

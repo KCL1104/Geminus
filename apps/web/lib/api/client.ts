@@ -28,6 +28,7 @@ import type {
   Run,
   RunAccepted,
   RunRequest,
+  Runs,
   Scenario,
   Scenarios,
   Result as SimulationResult,
@@ -397,6 +398,11 @@ export function createApiClient(cfg: ClientConfig) {
         idempotencyKey: key,
         signal: opts.signal,
       });
+    },
+    /** One page of the model's runs, oldest first (up to 100). */
+    async listSimulations(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      return call<Runs>({ method: "GET", path: `/models/${modelId}/simulations`, query: { cursor: opts.cursor, limit: "100" }, signal: opts.signal });
     },
     /** A run's status, progress and frozen input. */
     async getSimulation(runId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Run>> {

@@ -4,7 +4,8 @@
 // (DESIGN.md: the scenario run in Deep Scenario Green; H-027: only the
 // controls the view needs). Both runs are queued before the page moves on
 // to follow them; a run that could not start says which, and a retry
-// reuses its key (D-011), so nothing is queued twice.
+// reuses its key (D-011), so nothing is queued twice. Under the form, the
+// scenario's earlier runs open their results again.
 import Link from "next/link";
 import { type FormEvent, useRef, useState } from "react";
 import type { Problem } from "../../lib/api/problem";
@@ -17,19 +18,23 @@ import { Button } from "../../ui/button";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
+import { MAX_RUN_PAGES, resultsHref } from "./load";
+import type { RunPair } from "./run-pair";
 import { defaultRunForm, type FormIssue, keysFor, parseRunForm, type RunField, type RunForm, type RunKeys, runRequests } from "./run-config";
 import styles from "./simulations.module.css";
 
 const issueKey = { required: "run.issue.required", number: "run.issue.number", positive: "run.issue.positive", warmup: "run.issue.warmup", replications: "run.issue.replications", seed: "run.issue.seed" } as const satisfies Record<FormIssue, string>;
 
-export function SimulateView({ scenario, version, onStarted }: {
+export function SimulateView({ scenario, version, earlier, runsCut, onStarted }: {
   scenario: Scenario;
   version: ModelVersion;
+  earlier: RunPair[];
+  runsCut: boolean;
   onStarted: (baselineRunId: string, scenarioRunId: string) => void;
 }) {
   const api = useApi();
   const { role } = useAuth();
-  const { t } = useI18n();
+  const { t, dateTime } = useI18n();
   const unit = version.ir.time_unit;
   const [form, setForm] = useState<RunForm>(() => defaultRunForm(unit));
   const [issues, setIssues] = useState<Partial<Record<RunField, FormIssue>>>({});
@@ -108,6 +113,21 @@ export function SimulateView({ scenario, version, onStarted }: {
       ) : (
         <Callout tone="info">{t(role === null ? "run.readOnly.unknownRole" : "run.readOnly.viewer")}</Callout>
       )}
+      {earlier.length > 0 && (
+        <section aria-labelledby="earlier-heading" className={styles.section}>
+          <h2 id="earlier-heading">{t("scenario.earlier.title")}</h2>
+          <ul className={styles.earlier}>
+            {earlier.map(({ baseline, scenario: run }) => (
+              <li key={run.id}>
+                <Link href={resultsHref(scenario.id, baseline.id, run.id)}>
+                  {t("scenario.earlier.item", { date: dateTime(run.created_at), count: run.config.replications, seed: String(run.config.seed) })}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {runsCut && <Callout tone="info">{t("scenario.earlier.cut", { count: MAX_RUN_PAGES * 100 })}</Callout>}
     </>
   );
 }

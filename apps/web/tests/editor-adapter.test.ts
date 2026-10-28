@@ -26,7 +26,7 @@ import {
 } from "../features/model-editor/edits";
 import { toFlow } from "../features/model-editor/flow";
 import { claim, locate, locateIssues, stepOf } from "../features/model-editor/issues";
-import { LAYER_SPACING, layeredLayout, ROW_SPACING } from "../features/model-editor/layout";
+import { canvasLayout, LAYER_SPACING, layeredLayout, ROW_SPACING } from "../features/model-editor/layout";
 import { applyPatch, type Op, parsePointer, reapplyPatch } from "../features/model-editor/patch";
 
 const fixture = (name: string): ModelIR => JSON.parse(readFileSync(join(process.cwd(), "../../testdata/contracts", name), "utf8")) as ModelIR;
@@ -105,6 +105,49 @@ describe("layered default layout (the same rule as internal/domainpack.LayeredLa
     expect(layeredLayout(ir).start).toEqual({ x: 0, y: 0 });
     ir.views["2d"].positions = { end: { x: 120, y: 0 } };
     expect(layeredLayout(ir).work).toEqual({ x: 240, y: 120 });
+  });
+});
+
+/** minimal() laid out, then an AI edit (which cannot write the view, D-022) puts a step "check" between work and end. */
+const aiInserted = (): ModelIR => {
+  const ir = minimal();
+  ir.views["2d"].positions = layeredLayout(ir);
+  ir.nodes.splice(2, 0, { id: "check", type: "delay", delay_time: { distribution: { type: "constant", value: 1 } } });
+  ir.flows = [ir.flows[0]!, { id: "work_check", from: "work", to: "check", routing: { type: "probability", probability: 1 } }, { id: "check_end", from: "check", to: "end", routing: { type: "probability", probability: 1 } }];
+  return ir;
+};
+
+describe("the canvas's layout", () => {
+  it("lays the whole line out again when an AI edit added steps to a layout no one placed by hand", () => {
+    // The layered layout alone keeps end where it was, in front of the step the AI put before it.
+    expect(layeredLayout(aiInserted()).end).toEqual({ x: 480, y: 0 });
+    expect(canvasLayout(aiInserted())).toEqual({ start: { x: 0, y: 0 }, work: { x: 240, y: 0 }, check: { x: 480, y: 0 }, end: { x: 720, y: 0 } });
+    const words = { step: (id: string) => id, edge: (from: string, to: string) => `${from}>${to}`, roleStep: "step", roleEdge: "connection", probability: (p: number) => String(p) };
+    const { nodes } = toFlow(aiInserted(), { selected: null, severity: () => null, editable: true, describe: words });
+    expect(nodes.map((n) => [n.id, n.position.x])).toEqual([["start", 0], ["work", 240], ["check", 480], ["end", 720]]);
+  });
+
+  it("keeps the IR's positions when every step has one or when a step was placed by hand", () => {
+    const placedAll = aiInserted();
+    placedAll.views["2d"].positions!.check = { x: 600, y: 120 };
+    expect(canvasLayout(placedAll)).toEqual(placedAll.views["2d"].positions);
+    const byHand = aiInserted();
+    byHand.views["2d"].positions!.work = { x: 250, y: 7 };
+    expect(canvasLayout(byHand)).toEqual(layeredLayout(byHand));
+    expect(canvasLayout(byHand).end).toEqual({ x: 480, y: 0 });
+  });
+
+  it("is what the first edit writes down, each kept position it changes after a test of its old value", () => {
+    const ir = aiInserted();
+    const first = ops(moveStep(ir, "start", { x: -10, y: 0 }));
+    expect(first).toEqual([
+      { op: "add", path: "/views/2d/positions/check", value: { x: 480, y: 0 } },
+      { op: "test", path: "/views/2d/positions/end", value: { x: 480, y: 0 } },
+      { op: "replace", path: "/views/2d/positions/end", value: { x: 720, y: 0 } },
+      { op: "test", path: "/views/2d/positions/start", value: { x: 0, y: 0 } },
+      { op: "replace", path: "/views/2d/positions/start", value: { x: -10, y: 0 } },
+    ]);
+    expect(after(ir, moveStep(ir, "start", { x: -10, y: 0 })).views["2d"].positions).toEqual({ ...canvasLayout(ir), start: { x: -10, y: 0 } });
   });
 });
 

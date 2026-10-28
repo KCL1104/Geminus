@@ -16,7 +16,7 @@
 // does not hold yet is written down first, so the nodes the person sees
 // stay where they are.
 import type { Distribution, ModelIR } from "../../lib/contracts";
-import { layeredLayout, type Position } from "./layout";
+import { canvasLayout, layeredLayout, type Position } from "./layout";
 import { type Op, pointer } from "./patch";
 
 type IRNode = ModelIR["nodes"][number];
@@ -62,15 +62,19 @@ export function stepLabel(n: IRNode): string {
   return n.name ?? n.id;
 }
 
-/** Ops that write down the positions the layered layout gives the nodes the IR has no position for (all but `except`). */
+/** Ops that write down where the canvas shows the nodes (all but `except`) wherever the IR does not say so already. */
 function materialize(ir: ModelIR, except?: string): Op[] {
-  const layout = layeredLayout(ir);
+  const layout = canvasLayout(ir);
   const positions = ir.views["2d"].positions;
-  const missing = ir.nodes.filter((n) => n.id !== except && (positions === undefined || !has(positions, n.id)));
+  const others = ir.nodes.filter((n) => n.id !== except);
   if (positions === undefined) {
-    return [{ op: "add", path: "/views/2d/positions", value: Object.fromEntries(missing.map((n) => [n.id, layout[n.id]])) }];
+    return [{ op: "add", path: "/views/2d/positions", value: Object.fromEntries(others.map((n) => [n.id, layout[n.id]])) }];
   }
-  return missing.map((n) => ({ op: "add", path: pointer("views", "2d", "positions", n.id), value: layout[n.id] }));
+  return others.flatMap((n) => {
+    const old = has(positions, n.id) ? positions[n.id] : undefined;
+    const p = layout[n.id]!;
+    return old !== undefined && old.x === p.x && old.y === p.y ? [] : setAt([], pointer("views", "2d", "positions", n.id), old, p);
+  });
 }
 
 const round = (p: Position): Position => ({ x: Math.round(p.x), y: Math.round(p.y) });
@@ -135,7 +139,7 @@ export function addStep(ir: ModelIR, type: NodeType): EditResult {
       node = { id, type };
   }
   const ops = materialize(ir);
-  const positions = { ...layeredLayout(ir) };
+  const positions = { ...canvasLayout(ir) };
   const withNode: ModelIR = { ...ir, nodes: [...ir.nodes, node], views: { ...ir.views, "2d": { positions } } };
   const at = layeredLayout(withNode)[id]!;
   ops.push({ op: "add", path: "/nodes/-", value: node });

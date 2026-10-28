@@ -183,6 +183,11 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
       const v = versions.find((x) => x.id === version[1]);
       return v ? json(200, v) : error(404, "NOT_FOUND", "not found");
     }
+    const onVersion = path.match(/^\/api\/v1\/model-versions\/([^/]+)\/scenarios$/);
+    if (method === "GET" && onVersion) {
+      if (!versions.some((x) => x.id === onVersion[1])) return error(404, "NOT_FOUND", "not found");
+      return json(200, { items: scenarios.filter((s) => s.base_version_id === onVersion[1]), next_cursor: null });
+    }
     if (method === "POST" && path === `${m}/ai-proposals`) {
       const no = refused();
       if (no) return no;

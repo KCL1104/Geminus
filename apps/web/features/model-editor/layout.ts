@@ -65,6 +65,25 @@ export function layeredLayout(ir: ModelIR): Record<string, Position> {
   return positions;
 }
 
+/**
+ * The canvas's positions (the 2D editor, and the 3D view that derives from
+ * 2D): the layered layout of ir, except when the IR places some steps and
+ * not others while every placed step is still on the layered grid. Steps
+ * without a position come from an AI edit (D-022: it cannot write the view),
+ * and grid positions were never placed by hand, so they describe the line
+ * before the edit: the whole line is laid out again from its flows, and the
+ * first edit writes that layout down (edits.ts materialize).
+ */
+// ponytail: "on the grid" stands for "never placed by hand"; a step dragged exactly onto a grid point counts as unplaced. Store a placed-by-hand flag in the view if that ever matters.
+export function canvasLayout(ir: ModelIR): Record<string, Position> {
+  const saved = ir.views["2d"].positions;
+  const onGrid = (p: Position) => p.x % LAYER_SPACING === 0 && p.y % ROW_SPACING === 0;
+  if (saved !== undefined && ir.nodes.some((n) => !Object.hasOwn(saved, n.id)) && Object.values(saved).every(onGrid)) {
+    return layeredLayout({ ...ir, views: { ...ir.views, "2d": { ...ir.views["2d"], positions: {} } } });
+  }
+  return layeredLayout(ir);
+}
+
 // Go's math.Round rounds half away from zero; Math.round rounds half up.
 function roundHalfAway(v: number): number {
   return Math.sign(v) * Math.round(Math.abs(v));
