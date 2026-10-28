@@ -1295,9 +1295,9 @@
       "resolves": [],
       "source_pages": "N/A（H-018；AI_SPEC §3、§8、§9）",
       "owner_role": "AI / Security",
-      "status": "proposed",
-      "approved_by": null,
-      "approved_at": null
+      "status": "approved",
+      "approved_by": "KCL1104 (repository owner; session decision, H-038)",
+      "approved_at": "2026-10-28"
     },
     {
       "id": "D-113",
@@ -1925,6 +1925,18 @@
       "source": "Claude Code session：AskUserQuestion 選擇",
       "still_open": [
         "live：count_tokens 對圖片的行為與實際計費"
+      ]
+    },
+    {
+      "id": "H-038",
+      "subject": "D-112 批准，analyst 加入 H-029（Meta）紀錄的 live role；importer 仍關閉；黑客松剩餘時程",
+      "decision": "Owner 在選擇題回答「批准 analyst 走 live (Recommended)」：D-112 選項 A 批准，並在 H-029（Meta）的 approval record 的 DataPolicy.Roles 加入 analyst（T-030 的 grounded analyst；送出的是模擬以 synthetic demo 資料算出的指標與模型，不含上傳檔案）；importer（T-027）仍不得 live；H-018（Anthropic）紀錄不變。analyst 的 live 只在 T-030 經獨立 review 後開啟（H-029 (4)）。同一輪 owner 回答「3D 唯讀檢視 (Recommended)」：產品完整度的第三優先是 T-033（唯讀 3D），匯入畫面（T-027→T-018→T-031）之後；並說「現在既然還有時間就繼續 push 產品完整度，最後留兩天給 demo 就好」：2026-10-28 至 11-01 做產品，11-02 至 11-03（code freeze 23:59 UTC）只做 demo。",
+      "quote": "批准 analyst 走 live (Recommended)；3D 唯讀檢視 (Recommended)；我認為現在既然還有時間就繼續 push 產品完整度，最後留兩天給 demo就好",
+      "decided_by": "repository owner (GitHub: KCL1104)",
+      "decided_at": "2026-10-28",
+      "source": "Claude Code session：AskUserQuestion 選擇與對話",
+      "still_open": [
+        "T-030 的 analyst 在 live 上的實際行為與花費"
       ]
     }
   ]

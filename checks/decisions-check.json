@@ -1,8 +1,8 @@
 {
   "status": "PASS_REGISTER_SHAPE_ONLY",
   "decisions_by_status": {
-    "approved": 91,
-    "proposed": 14,
+    "approved": 92,
+    "proposed": 13,
     "rejected": 0,
     "superseded": 0
   },
@@ -43,7 +43,8 @@
     "H-034",
     "H-035",
     "H-036",
-    "H-037"
+    "H-037",
+    "H-038"
   ],
   "tasks_by_status": {
     "blocked": 0,
@@ -823,7 +824,7 @@
       ]
     },
     "D-112": {
-      "status": "proposed",
+      "status": "approved",
       "gate": "T-053 驗收前；T-027、T-030 開啟 live 前",
       "gates_tasks": [
         "T-053"
