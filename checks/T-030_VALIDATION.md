@@ -136,3 +136,56 @@ Reviewer（獨立 subagent，只讀 commit 448357f 的程式，沒有 shell）�
 | Mutation A1–A8、DM1–DM3 | 見第 3 節，各以 `go test`／`make db-test` 確認 KILLED |
 
 第一次整合測試（review 前）`TestAnUngroundedAnalysisFails` 失敗：之後加入的「少於 2 次 replication 必須寫出不確定性」使測試的捏造回答多一個 issue（2 而非 1）；測試回答補上不確定性，只留下捏造數字一個缺陷。
+
+## 7. 部署後的 live 確認：context 超過 budget（2026-10-28）
+
+部署 a383141（owner 授權；`deploy.sh --apply`，`GEMINUS_AUTH0_SETUP=manual`）：18 個 migration 都已記錄（含 0018）、api／worker／web 都是 SUCCESS、`/healthz` 與 `/readyz` 200、`/v1/me` 401、web 200、`/auth/login` 303 到 Auth0、Postgres 沒有開著的 TCP proxy。
+
+以評審帳號在 demo 的一對執行（電子產線範本、ICT tester 2 → 3、5 次 replication、1 天）要求解讀：**失敗**，`context_too_large`（「the results are too large for the AI context budget」），在付費呼叫之前。以同兩個 Result（API 讀回）在本機重建 context 量得：
+
+| 區塊 | bytes |
+|---|---|
+| COMPARISON（396 列，120 列 unavailable） | 80,247 |
+| SCENARIO_RESULTS、BASELINE_RESULTS（各有 110 個 domain metric，40 個 unavailable） | 35,137、35,177 |
+| ALLOWED_METRIC_REFERENCES | 12,817 |
+| system 與其他 | 8,383 |
+| **合計** | **171,761**（預設 budget 131,072） |
+
+測試的 Result fixture 只有少數 metric，所以先前的測試與 eval 都沒有遇到。
+
+**修正**（`internal/ai/aicontext/analysis.go`）：
+- `comparisonView`：COMPARISON 只留 delta：不列 unavailable 的列（它們沒有 delta），也不列每列的 baseline／scenario 值（兩次執行的值已在各自的 results）；留下的列數記在 CONTEXT_OMISSIONS（`comparison.metrics`、`not_available`）。核對不變：`analyst.Check` 仍以完整的 server comparison 比對 delta。
+- `resultView`：`dora`、`additional_metrics`、`domain` 中不是 available 的 metric 不列，數量記在 CONTEXT_OMISSIONS（`<run>_results.unavailable_named_metrics`）。ALLOWED_METRIC_REFERENCES 只列 available 的，所以可引用的都還在。
+- Prompt `analyst-0.3.2`：baseline 與 scenario 的值取自兩個 results 區塊，delta 只取自 COMPARISON（review 第 2 輪 M2）。
+- CONTEXT_OMISSIONS 中的數量（省略與遮蔽）也算 server 供應的數字，AI 可以在 uncertainty 中說（review 第 2 輪 M1）。
+- 部署：worker 設 `AI_MAX_PROMPT_BYTES=262144`（`deploy/railway/variables.json`；上限 512 KiB；花費仍受 D-110 的日上限），留給 AI 新增的工站與長問題。
+
+新測試 `TestElectronicsLineAnalysisContext`：以 des 引擎跑兩次電子產線範本（同 demo 的設定）、server 比較、建 context：在預設 budget 內（**127,000 / 131,072 bytes**）；COMPARISON 沒有 unavailable 列、沒有 baseline／scenario 值；results 只有 available 的 domain metric；每個可引用的 metric 都在它的 results 中；省略的數量正確，且屬於供應的數字。Mutation：拿掉 comparison 的修剪、拿掉 results 的修剪（兩者都 `context_too_large`）、不把省略數量算入供應數字：皆 KILLED。
+
+### 獨立 review 第 2 輪（H-029）與修正
+
+Reviewer（獨立 subagent，只讀，沒有 shell）：**High 0**、Medium 2、Low 5。確認：供應數字只會變少（被拿掉的都在 results 中或是 unavailable 的），核對不會放寬；unavailable 的列 delta 都是 null；ALLOWED 與顯示一致；沒有共用資料被修改；incomparable 的列保留且在付費之前就被擋下；部署變數從 `config/ai.go` 一路到 analyzer。
+
+| # | 發現 | 處理 |
+|---|---|---|
+| M1 | CONTEXT_OMISSIONS 的數量不在供應數字中；AI 在 uncertainty 寫「120 個比較項目無法取得」會使整個回答被拒（`ANALYSIS_UNGROUNDED`，已付費、不重試） | **修正**；測試（mutation KILLED） |
+| M2 | `prompts/analyst/system.md` 仍說 baseline／scenario 取自 COMPARISON | **修正**：analyst-0.3.2 |
+| L3 | 本機預設 budget 只剩約 3% | 記為已知限制：live 的 worker 是 256 KiB；本機與 CI 的 fake provider 用預設 budget，超過時是明確的 `context_too_large`，不是錯誤的回答 |
+| L4 | 測試沒有檢查可引用的 metric 仍在 results、dora／additional_metrics 與 baseline 的修剪、`comparisonView` 的邊界 | **部分修正**：可引用的 metric 都在 results（兩個 run）；其餘延後 |
+| L5 | 省略的計數有重複（`metric_references.*` 與新的計數）；comparison 在 sanitizer 之後才修剪 | 延後（只影響計數的呈現） |
+| L6 | 不列 unavailable 的 metric 也拿掉了它的 reason | 延後 |
+| L7 | `comparisonView` 只排除 `unavailable` | 接受 |
+
+### 命令與結果（修正後，2026-10-28，本機 WSL2；Go 1.27.3；disposable PostgreSQL 16 `dt_test_t030`）
+
+| 命令 | 結果 |
+|---|---|
+| `make backend-test` | exit 0：**85 個 package ok** |
+| `make architecture-check` | exit 0 |
+| `make ai-eval` | exit 0（fake analyst：grounded 保留、unsafe 拒絕，gate 皆 0） |
+| `make spec-check` | exit 0 |
+| `make integration-test`（重建的 `dt_test_t030`） | exit 0：**38 個 package ok** |
+| `scripts/check_deploy.py`、`scripts/rehearse_railway_deploy.py` | exit 0；`rehearsal: PASS`（Railway 本身 NOT RUN） |
+| Mutation（comparison 修剪、results 修剪、省略數量） | 皆 KILLED |
+
+`make backend-race` 與 `make frontend-test` 本輪沒有重跑（沒有前端與並行的改動）：NOT RUN。

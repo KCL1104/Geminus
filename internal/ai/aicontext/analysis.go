@@ -2,6 +2,7 @@ package aicontext
 
 import (
 	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"slices"
 	"sort"
 	"strings"
@@ -142,9 +143,51 @@ func resultView(r *simulation.Result, z *sanitizer, om *omissions, role string) 
 	if err != nil {
 		return nil, err
 	}
+	// A named metric that is not available is left out (counted): not a
+	// known value, and a third of the electronics pack's (T-030, live).
+	metrics, _ := v.(map[string]any)["metrics"].(map[string]any)
+	left := 0
+	for _, group := range []string{"dora", "additional_metrics", "domain"} {
+		named, _ := metrics[group].(map[string]any)
+		for k, s := range named {
+			if s, _ := s.(map[string]any); s["status"] != string(simulation.Available) {
+				delete(named, k)
+				left++
+			}
+		}
+	}
+	om.add(role+"_results.unavailable_named_metrics", left, ReasonUnavailable)
 	om.add(role+"_results.run_id", 1, ReasonServerBound)
 	om.add(role+"_results.replication_summaries", len(r.ReplicationSummaries), ReasonBounded)
 	return z.value(v), nil
+}
+
+// comparisonView keeps the comparison's deltas only: each run's own values
+// are in its results block already, and a metric the comparison has as
+// unavailable has no delta. Without this the electronics line template's
+// two runs and their comparison (396 rows, 80 KB) do not fit the default
+// budget (found live, 2026-10-28). It returns the rows left out.
+func comparisonView(c any) int {
+	m, _ := c.(map[string]any)
+	rows, _ := m["metrics"].([]any)
+	if rows == nil {
+		return 0
+	}
+	kept := rows[:0]
+	for _, r := range rows {
+		row, ok := r.(map[string]any)
+		if !ok || row["status"] == "unavailable" {
+			continue
+		}
+		delete(row, "baseline")
+		delete(row, "scenario")
+		if row["reason"] == nil {
+			delete(row, "reason")
+		}
+		kept = append(kept, row)
+	}
+	m["metrics"] = kept
+	return len(rows) - len(kept)
 }
 
 // Analysis builds the context of an analysis of supplied results.
@@ -283,6 +326,7 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 		if err != nil {
 			return AnalysisPrompt{}, &Error{Code: InvalidInput, Path: "/comparison", cause: err}
 		}
+		om.add("comparison.metrics", comparisonView(cmp), ReasonUnavailable)
 		collect(cmp)
 		if err := add(provider.UntrustedData, "COMPARISON", cmp); err != nil {
 			return AnalysisPrompt{}, err
@@ -305,6 +349,14 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 	}
 	if !fits(p, in.Budget) {
 		return AnalysisPrompt{}, fail(TooLarge, "")
+	}
+	// What was left out, and how much, is the server's too: the AI may say
+	// it in its uncertainty (review M1).
+	for _, b := range p.Blocks {
+		var v any
+		if b.Name == "CONTEXT_OMISSIONS" && json.Unmarshal(b.Content, &v) == nil {
+			collect(v)
+		}
 	}
 	slices.Sort(supplied)
 	supplied = slices.Compact(supplied)
