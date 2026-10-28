@@ -93,6 +93,30 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("the 2D / 3D switch (T-033)", () => {
+  it("shows the same model read-only in 3D (without WebGL: why not), keeps the selection, and goes back to 2D", async () => {
+    const { el } = await open();
+    await press(stepNode(el, "burn_in"));
+    expect(panelHeading(el).textContent).toBe("Burn-in");
+    const three = button("3D");
+    expect([three.getAttribute("role"), button("2D").getAttribute("aria-checked")]).toEqual(["radio", "true"]);
+    await press(three);
+    await settle();
+    const until = Date.now() + 15_000;
+    while (!(el.textContent ?? "").includes(en["twin3d.unavailable"]) && Date.now() < until) await settle();
+    expect(el.textContent).toContain(en["twin3d.unavailable"]);
+    // No authoring in 3D: no step is added or fitted; the selected step stays selected.
+    expect(buttons().some((b) => b.textContent?.trim() === en["editor.fit"])).toBe(false);
+    expect(el.querySelector(".react-flow")).toBeNull();
+    expect(panelHeading(el).textContent).toBe("Burn-in");
+    expect(three.getAttribute("aria-checked")).toBe("true");
+    await press(button("2D"));
+    await settle();
+    expect(stepNode(el, "burn_in")).not.toBeNull();
+    expect(await violations()).toEqual([]);
+  });
+});
+
 describe("the editor on the model page", () => {
   it("draws the IR on the canvas with its own IDs, one node per step and one edge per flow", async () => {
     const { el } = await open();

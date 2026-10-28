@@ -160,16 +160,21 @@ test.describe("the editor's 3D view", () => {
     await expect(page.getByRole("button", { name: "Add step" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Show all steps" })).toHaveCount(0);
     await expect(page.locator(".react-flow")).toHaveCount(0);
-    // WebGL in this browser or not, the view answers: the scene, or why it cannot run.
+    // WebGL in this browser or not, the view answers once it has loaded: the scene, or why it cannot run.
+    await expect(page.getByText("Loading the 3D view…")).toHaveCount(0, { timeout: 30_000 });
     const scene = page.getByRole("img", { name: /^3D view of the line: \d+ steps$/ });
     const unavailable = page.getByText("The 3D view cannot run in this browser.", { exact: false });
-    await expect(scene.or(unavailable)).toBeVisible({ timeout: 30_000 });
+    await expect(scene.or(unavailable)).toBeVisible();
     if (await scene.isVisible()) {
-      await expect(page.getByText("Loading the 3D view…")).toHaveCount(0, { timeout: 30_000 });
-      // The selection made in 2D is the 3D view's too; Escape on the scene clears it for both.
+      // The selection made in 2D is the 3D view's too.
       await expect(page.getByText("Selected: Burn-in.")).toBeVisible();
+      // Something is drawn, and the keys turn the camera: the picture changes (review r1 M5).
+      const before = await scene.screenshot();
       await scene.focus();
-      await page.keyboard.press("ArrowLeft");
+      for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowLeft");
+      const after = await scene.screenshot();
+      expect(after.equals(before)).toBe(false);
+      // Escape on the scene clears the selection for both views.
       await page.keyboard.press("Escape");
       await expect(panelHeading(page)).toHaveText("Properties");
     }

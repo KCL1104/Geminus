@@ -15,8 +15,17 @@ import type { ModelIR, Result } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
 import type { Palette, View } from "./engine";
+export type { View } from "./engine";
 import { buildScene } from "./scene";
 import styles from "./twin-3d.module.css";
+
+/** Makes the view on a canvas; the default loads PlayCanvas (a test passes its own). */
+export type LoadView = (canvas: HTMLCanvasElement, palette: Palette) => Promise<View>;
+
+const loadPlayCanvas: LoadView = async (canvas, palette) => {
+  const [pc, { createView }] = await Promise.all([import("playcanvas"), import("./engine")]);
+  return createView(pc, canvas, palette);
+};
 
 type Props = {
   ir: ModelIR;
@@ -24,6 +33,7 @@ type Props = {
   results?: Result | null;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  loadView?: LoadView;
 };
 
 // The tokens as #rrggbb, the one form PlayCanvas parses: the built CSS
@@ -43,8 +53,10 @@ function palette(el: Element): Palette {
 }
 
 const KEY_ORBIT = 10;
+/** A press that moves less than this far from where it went down is a click (review r1 M2). */
+const CLICK_SLOP = 4;
 
-export function Twin3D({ ir, results, selected, onSelect }: Props) {
+export function Twin3D({ ir, results, selected, onSelect, loadView = loadPlayCanvas }: Props) {
   const { t } = useI18n();
   const hintId = useId();
   const wrap = useRef<HTMLDivElement>(null);
@@ -53,22 +65,40 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
   const scene = useMemo(() => buildScene(ir, results), [ir, results]);
-  const drag = useRef<{ x: number; y: number; moved: boolean; pan: boolean } | null>(null);
+  const drag = useRef<{ x0: number; y0: number; x: number; y: number; moved: boolean; pan: boolean } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let observer: ResizeObserver | undefined;
+    let themes: MutationObserver | undefined;
+    const scheme = window.matchMedia?.("(prefers-color-scheme: dark)");
+    // The page's theme can change while the view is open (review r1 M4).
+    const retheme = () => wrap.current && view.current?.setPalette(palette(wrap.current));
+    // The wheel zooms the scene, not the page (a passive React listener could not stop it).
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      view.current?.zoom(Math.min(1.5, Math.max(0.66, Math.exp(e.deltaY * 0.0015))));
+    };
+    const el = canvas.current;
+    el?.addEventListener("wheel", wheel, { passive: false });
     void (async () => {
       try {
-        const pc = await import("playcanvas");
-        const { createView } = await import("./engine");
-        if (cancelled || !canvas.current || !wrap.current) return;
-        const v = createView(pc, canvas.current, palette(wrap.current));
+        if (!el || !wrap.current) return;
+        const v = await loadView(el, palette(wrap.current));
+        if (cancelled || !wrap.current) {
+          v.destroy();
+          return;
+        }
         view.current = v;
         const fit = () => wrap.current && v.resize(wrap.current.clientWidth, wrap.current.clientHeight);
         fit();
-        observer = new ResizeObserver(fit);
-        observer.observe(wrap.current);
+        if (typeof ResizeObserver !== "undefined") {
+          observer = new ResizeObserver(fit);
+          observer.observe(wrap.current);
+        }
+        themes = new MutationObserver(retheme);
+        themes.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+        scheme?.addEventListener("change", retheme);
         setState("ready"); // the effects below draw the scene and the selection now
       } catch {
         if (!cancelled) setState("failed");
@@ -76,13 +106,20 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
     })();
     return () => {
       cancelled = true;
+      el?.removeEventListener("wheel", wheel);
       observer?.disconnect();
+      themes?.disconnect();
+      scheme?.removeEventListener("change", retheme);
       view.current?.destroy();
       view.current = null;
     };
-  }, []);
-  useEffect(() => view.current?.setScene(scene), [scene, state]);
-  useEffect(() => view.current?.setSelected(selected), [selected, state]);
+  }, [loadView]);
+  useEffect(() => {
+    view.current?.setScene(scene);
+  }, [scene, state]);
+  useEffect(() => {
+    view.current?.setSelected(selected);
+  }, [selected, state]);
 
   if (state === "failed") return <Callout tone="info">{t("twin3d.unavailable")}</Callout>;
 
@@ -93,7 +130,8 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
   const label = (id: string) => scene.nodes.find((n) => n.id === id)?.label ?? id;
   const keys = (e: KeyboardEvent<HTMLCanvasElement>) => {
     const v = view.current;
-    if (!v) return;
+    // The browser's own shortcuts (Ctrl/Cmd + and −: page zoom, WCAG 1.4.4; Alt+←) stay the browser's (review r1 M1).
+    if (!v || e.ctrlKey || e.metaKey || e.altKey) return;
     const act: Record<string, () => void> = {
       ArrowLeft: () => v.orbit(-KEY_ORBIT, 0), ArrowRight: () => v.orbit(KEY_ORBIT, 0),
       ArrowUp: () => v.orbit(0, KEY_ORBIT), ArrowDown: () => v.orbit(0, -KEY_ORBIT),
@@ -119,8 +157,10 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
           onKeyDown={keys}
           onContextMenu={(e) => e.preventDefault()}
           onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId);
-            drag.current = { ...at(e), moved: false, pan: e.button === 2 || e.shiftKey };
+            e.currentTarget.setPointerCapture?.(e.pointerId);
+            const p = at(e);
+            drag.current = { x0: p.x, y0: p.y, ...p, moved: false, pan: e.button === 2 || e.shiftKey };
+            setHover(null);
           }}
           onPointerMove={(e) => {
             const p = at(e);
@@ -128,7 +168,7 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
             if (d) {
               const dx = p.x - d.x;
               const dy = p.y - d.y;
-              if (Math.abs(dx) + Math.abs(dy) > 3) d.moved = true;
+              if (Math.hypot(p.x - d.x0, p.y - d.y0) > CLICK_SLOP) d.moved = true;
               if (d.pan) view.current?.pan(dx, dy);
               else view.current?.orbit(dx * 0.3, dy * 0.3);
               d.x = p.x;
@@ -141,10 +181,11 @@ export function Twin3D({ ir, results, selected, onSelect }: Props) {
           onPointerUp={(e) => {
             const d = drag.current;
             drag.current = null;
-            if (d && !d.moved && e.button === 0) onSelect(view.current?.stepAt(d.x, d.y) ?? null);
+            if (d && !d.moved && e.button === 0) onSelect(view.current?.stepAt(d.x0, d.y0) ?? null);
           }}
+          onPointerCancel={() => (drag.current = null)}
+          onLostPointerCapture={() => (drag.current = null)}
           onPointerLeave={() => setHover(null)}
-          onWheel={(e) => view.current?.zoom(e.deltaY > 0 ? 1.1 : 0.9)}
         />
         {hover && (
           <span className={styles.tip} style={{ left: hover.x + 12, top: hover.y + 12 }} aria-hidden="true">

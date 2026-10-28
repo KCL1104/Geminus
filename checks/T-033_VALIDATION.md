@@ -38,7 +38,6 @@
 
 - **T-034（播放）**：沿時間播放 sampled trace 不在本切片。
 - **觸控手勢**（兩指縮放、旋轉）：只測滑鼠、滾輪與鍵盤。
-- **獨立 review**：見之後的紀錄。
 
 ## 5. 命令與結果（2026-10-28，本機 WSL2；Node 24.21.0、Playwright 1.56.1）
 
@@ -49,3 +48,30 @@
 | `npx playwright test tests/editor.spec.ts -g "3D view"` | 1 passed（真的 Chromium，WebGL 可用） |
 | `make spec-check` | exit 0 |
 | `make e2e-test` | 見提交後的紀錄 |
+
+## 6. 獨立 review 第 1 輪（H-029）與修正
+
+Reviewer（獨立 subagent，只讀 03decf6 與 9e2d781 的 3D 部分，沒有 shell）：**High 0**、Medium 5、Low 多項。確認無誤的：位置與 ID 只來自 `canvasLayout` 與 IR、不寫回；selection store 拒絕未知 ID；清理順序；PlayCanvas 確實不在任何頁面的 first-load chunks（`route-bundle-stats.json`）；射線與相機的數學。
+
+| # | 發現 | 處理 |
+|---|---|---|
+| M1 | 鍵盤處理不看修飾鍵：canvas 有焦點時 Ctrl／Cmd ＋／−／0（頁面縮放，WCAG 1.4.4）與 Alt＋← 被吃掉 | **修正**：有 Ctrl、Cmd 或 Alt 時一律交給瀏覽器；測試 |
+| M2 | 慢慢拖曳時每次移動都小於 3 px，放開時被當成點選，選取被換掉 | **修正**：以按下的位置量累計距離（超過 4 px 就是拖曳），點選也以按下的位置找步驟；測試（20 次 1 px 的移動） |
+| M3 | 2D／3D 的焦點框被 `overflow: hidden` 裁掉，選取項目上的 Ink 框看不見（WCAG 2.4.7） | **修正**：焦點框畫在項目內（`--gm-focus-width` 的兩倍內縮），選取項目上用 Reverse Ink |
+| M4 | 顏色只在打開時讀一次；切換主題後 3D 與頁面不一致 | **修正**：觀察 `<html data-theme>` 與 `prefers-color-scheme`，`View.setPalette` 重設背景、環境光、線與材質；測試 |
+| M5 | 測試在程式壞掉時也會通過：沒有測點選、拖曳與相機；e2e 的「有沒有 WebGL」分支永遠走同一邊、沒檢查有東西被畫出 | **修正**：viewer 可注入 view（`loadView`），以假 view 測點選、慢拖曳、取消、按鍵、修飾鍵、主題、銷毀（8 個測試，4 個 mutant 皆 KILLED）；e2e 先等載入結束，再在 WebGL 分支比對方向鍵前後的截圖必須不同；編輯器的 2D／3D 切換加 unit 測試 |
+| L | effect 以箭頭函式回傳 `setScene` 的值，React 會把它當 cleanup | **修正**（M5 的測試抓到） |
+| L | 沒有 `pointercancel`／`lostpointercapture` | **修正**；測試 |
+| L | 草稿中重複的 ID 會留下無法銷毀的物件 | **修正**：同一 ID 只畫第一個 |
+| L | 滾輪：React 的 listener 是 passive，頁面也跟著捲；每次固定 10% | **修正**：non-passive 的原生 listener，依 `deltaY` 縮放（每次 0.66–1.5 倍） |
+| L | DESIGN.md 仍說編輯器沒有 2D／3D、3D「when it lands」 | **修正**：新增 3D 的 Simplifications 條目 |
+| L | 只能拖曳轉動與平移、沒有畫面上的按鈕（WCAG 2.5.7）；canvas 的 `role="img"` 與鍵盤；步驟名稱只在 hover；結果頁的使用率只以顏色表示；3D 中刪除步驟後焦點；選取的步驟失去使用率顏色；結果頁以 `analysis` prop 代表「真的結果頁」 | **延後**：3D 是投影，2D（每個步驟都在 Tab 順序）與指標表（數值）是完整的替代；記為已知限制 |
+
+### 修正後的命令與結果
+
+| 命令 | 結果 |
+|---|---|
+| `make frontend-test` | exit 0：**49 files、1085 tests passed** |
+| `make spec-check` | exit 0 |
+| Mutation V1–V4（每次移動的門檻、吃掉快捷鍵、不跟主題、取消不結束拖曳） | 皆 KILLED |
+| `make e2e-test` | 見下 |

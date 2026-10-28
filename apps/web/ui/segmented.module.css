@@ -32,7 +32,13 @@
   font-weight: var(--gm-font-weight-strong);
 }
 
+/* The ring inside the item: the group clips its outside, and on the
+   selected (Graphite Ink) item it takes Reverse Ink (review r1 M3). */
 .item[data-focus-visible] {
-  outline: 2px solid var(--gm-color-ink);
-  outline-offset: 2px;
+  outline: var(--gm-focus-width) solid var(--gm-color-ink);
+  outline-offset: calc(-2 * var(--gm-focus-width));
+}
+
+.item[data-selected][data-focus-visible] {
+  outline-color: var(--gm-color-on-ink);
 }

@@ -13,6 +13,8 @@ export type Palette = { sheet: string; ink: string; edge: string; rule: string; 
 
 export type View = {
   setScene(scene: Scene): void;
+  /** Redraws in another theme's tokens (the page's theme changed while the view was open). */
+  setPalette(palette: Palette): void;
   setSelected(id: string | null): void;
   /** The step at a point of the canvas (CSS pixels from its top left), or null. */
   stepAt(x: number, y: number): string | null;
@@ -37,13 +39,12 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     return c;
   };
   const camera = new pc.Entity("camera");
-  camera.addComponent("camera", { clearColor: color(palette.sheet), fov: 40 });
+  camera.addComponent("camera", { fov: 40 });
   app.root.addChild(camera);
   const sun = new pc.Entity("sun");
   sun.addComponent("light", { type: "directional", intensity: 1.1 });
   sun.setEulerAngles(50, 30, 0);
   app.root.addChild(sun);
-  app.scene.ambientLight = color(palette.rule);
 
   const materials = new Map<string, PlayCanvas.StandardMaterial>();
   const material = (c: PlayCanvas.Color) => {
@@ -57,10 +58,23 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     }
     return m;
   };
-  const idle = color(palette.edge);
-  const busy = color(palette.busy);
-  // A queue between Rule and Control Edge: Rule alone vanishes on the white sheet.
-  const tones = { ink: color(palette.ink), baseline: color(palette.baseline), queue: new pc.Color().lerp(color(palette.rule), idle, 0.5) };
+  // The palette's colours (setPalette replaces them all). A queue sits
+  // between Rule and Control Edge: Rule alone vanishes on the white sheet.
+  let idle = new pc.Color();
+  let busy = new pc.Color();
+  let tones = { ink: idle, baseline: idle, queue: idle };
+  const line = new pc.Color();
+  const applyPalette = (p: Palette) => {
+    idle = color(p.edge);
+    busy = color(p.busy);
+    tones = { ink: color(p.ink), baseline: color(p.baseline), queue: new pc.Color().lerp(color(p.rule), idle, 0.5) };
+    line.copy(color(p.baseline));
+    if (camera.camera) camera.camera.clearColor = color(p.sheet);
+    app.scene.ambientLight = color(p.rule);
+    for (const m of materials.values()) m.destroy();
+    materials.clear();
+  };
+  applyPalette(palette);
   // A step's colour: Graphite Ink when selected; with results, a process
   // from Control Edge (idle) toward the busy colour (fully used); else by kind.
   const tone = (n: SceneNode, selected: boolean): PlayCanvas.Color => {
@@ -74,7 +88,6 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
   let scene: Scene = { nodes: [], edges: [], center: [0, 0, 0], radius: 5 };
   let selected: string | null = null;
   const objects = new Map<string, PlayCanvas.Entity>();
-  const line = color(palette.baseline);
   const ends: [PlayCanvas.Vec3, PlayCanvas.Vec3][] = [];
 
   // The orbit: yaw and pitch in degrees about the target, at a distance.
@@ -118,6 +131,8 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
       objects.clear();
       scene = next;
       for (const n of next.nodes) {
+        // A draft may repeat an ID; the first stands, as in the layout (review r1).
+        if (objects.has(n.id)) continue;
         const e = new pc.Entity(n.id);
         e.addComponent("render", { type: n.shape });
         e.setLocalScale(...n.size);
@@ -130,6 +145,10 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
       for (const edge of next.edges) ends.push([new pc.Vec3(...edge.start), new pc.Vec3(...edge.end)]);
       paint();
       if (first) reset();
+    },
+    setPalette(p) {
+      applyPalette(p);
+      paint();
     },
     setSelected(id) {
       selected = id;
