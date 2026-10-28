@@ -47,7 +47,7 @@
 | `make frontend-test` | exit 0：eslint、tsc、vitest **49 files、1080 tests passed** |
 | `npx playwright test tests/editor.spec.ts -g "3D view"` | 1 passed（真的 Chromium，WebGL 可用） |
 | `make spec-check` | exit 0 |
-| `make e2e-test` | 見提交後的紀錄 |
+| `make e2e-test` | 見第 6 節 |
 
 ## 6. 獨立 review 第 1 輪（H-029）與修正
 
@@ -74,4 +74,5 @@ Reviewer（獨立 subagent，只讀 03decf6 與 9e2d781 的 3D 部分，沒有 s
 | `make frontend-test` | exit 0：**49 files、1085 tests passed** |
 | `make spec-check` | exit 0 |
 | Mutation V1–V4（每次移動的門檻、吃掉快捷鍵、不跟主題、取消不結束拖曳） | 皆 KILLED |
-| `make e2e-test` | 見下 |
+| `make e2e-test`（修正前，9e2d781） | exit 0：**515 passed**、32 skipped（截圖，只在 CI 跑），16.9 分鐘 |
+| `make e2e-test`（修正後，c3b3a3b） | exit 0：**515 passed**、32 skipped，16.7 分鐘；`the editor's 3D view` 在 WebGL 分支比對到畫面改變 |
