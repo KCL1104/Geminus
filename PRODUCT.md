@@ -68,7 +68,7 @@ The visual constraint the owner set (H-012): the dark theme uses grey-black, not
 
 - There are no real customers, customer data, benchmarks, testimonials or achieved metrics yet; the owner also has no potential users to reach yet (H-016).
 - The examples in the PRD (for example 2 ICT and 3 FCT machines) are only illustrations, not a customer's actual situation. Demo data in prototypes and the UI is always labelled synthetic.
-- There is a Software Delivery example template, with the pipeline Source → Review → CI → Test → Deploy → Sink (T-011); the electronics line template is not built yet (T-051).
+- There is a Software Delivery example template, with the pipeline Source → Review → CI → Test → Deploy → Sink (T-011); the electronics assembly and test line template is built (T-051 hackathon slice, the live demo model) with five ready what-if scenarios (`deploy/demo/whatifs.json`).
 - The engineering targets in PRD §6 are not achieved results and must not be written as product claims.
 
 ## Product Principles

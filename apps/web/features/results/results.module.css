@@ -423,3 +423,20 @@
 .ids code {
   font-size: var(--gm-font-size-label);
 }
+
+/* The frozen settings under the explanation: reference, not a card of its own (H-042: one focal card per column). */
+.settings {
+  margin: 0;
+  padding: var(--gm-space-xs) var(--gm-space-xs) 0;
+}
+
+.settings h2 {
+  margin: 0 0 var(--gm-space-md);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-body);
+}
+
+/* H-043: a suggested next experiment's action, under its words. */
+.proposeNext {
+  margin: var(--gm-space-sm) 0 var(--gm-space-xs);
+}

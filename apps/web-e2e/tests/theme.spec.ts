@@ -21,8 +21,10 @@ test("follows the system's light or dark when the reader chose none", async ({ p
 test("a choice overrides the system, applies at once and is remembered", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await open(page, "/", "en");
-  await page.getByRole("button", { name: "System Theme" }).click();
-  await page.getByRole("option", { name: "Light" }).click();
+  // H-042: the theme is in the rail's settings menu, a three-way choice.
+  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "Light" }).click();
+  await page.keyboard.press("Escape");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(body(page)).toHaveCSS("background-color", sheet.light);
   const cookie = (await page.context().cookies(origin)).find((c) => c.name === "geminus_theme");
@@ -38,8 +40,9 @@ test("a choice overrides the system, applies at once and is remembered", async (
 test("going back to the system's forgets the choice", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await open(page, "/", "en", "light");
-  await page.getByRole("button", { name: "Light Theme" }).click();
-  await page.getByRole("option", { name: "System" }).click();
+  await page.getByRole("button", { name: "Settings" }).click();
+  await expect(page.getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "Light" })).toBeChecked();
+  await page.getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "System" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme");
   await expect(body(page)).toHaveCSS("background-color", sheet.dark);
   expect((await page.context().cookies(origin)).find((c) => c.name === "geminus_theme")).toBeUndefined();

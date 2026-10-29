@@ -92,7 +92,7 @@ describe("configuration", () => {
     expect(cfg.appOrigin).toBe(APP);
     expect(cfg.apiUrl).toBe(API);
     expect(cfg.oidc.issuer).toBe(ISSUER);
-    expect(cfg.oidc.scopes).toBe("openid offline_access");
+    expect(cfg.oidc.scopes).toBe("openid profile email offline_access");
     expect(cfg.loopbackHttp).toBe(false);
   });
 
@@ -143,7 +143,7 @@ describe("login", () => {
     expect(params.get("response_type")).toBe("code");
     expect(params.get("client_id")).toBe(CLIENT_ID);
     expect(params.get("redirect_uri")).toBe(`${APP}/auth/callback`);
-    expect(params.get("scope")).toBe("openid offline_access");
+    expect(params.get("scope")).toBe("openid profile email offline_access");
     expect(params.get("audience")).toBe(AUDIENCE);
     expect(params.get("code_challenge_method")).toBe("S256");
     expect(params.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -200,8 +200,20 @@ describe("callback", () => {
     // Nothing readable leaves the server: no token in any header but sealed.
     expect(allHeaders(res)).not.toContain(s.accessToken);
     expect(allHeaders(res)).not.toContain(s.refreshToken as string);
-    expect(Object.keys(s).sort()).toEqual(["accessExpiresAt", "accessToken", "createdAt", "lastSeenAt", "refreshToken"]);
+    // H-042: a profile (null here: the ID token names no one) and nothing else of the ID token.
+    expect(Object.keys(s).sort()).toEqual(["accessExpiresAt", "accessToken", "createdAt", "lastSeenAt", "profile", "refreshToken"]);
+    expect(s.profile).toBeNull();
     expect(e.logs).toContain("login.succeeded");
+  });
+
+  it("keeps the person's name and email from the ID token, sealed, for their account menu (H-042)", async () => {
+    e.provider.idToken = { extra: { name: "Judge\u202e One", email: "judge@geminus-demo.invalid", groups: ["admins"] } };
+    const { login, code, state } = await startLogin("/projects");
+    const res = await callback(`code=${code}&state=${state}`, login);
+    const set = cookieNamed(res, SESSION_COOKIE) as string;
+    expect((await sessionOf(valueOf(set)))?.profile).toEqual({ name: "Judge One", email: "judge@geminus-demo.invalid" });
+    // Sealed like the tokens: the address is in no header in clear.
+    expect(allHeaders(res)).not.toContain("judge@geminus-demo.invalid");
   });
 
   const refused = async (res: Response, reason: string) => {

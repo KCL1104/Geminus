@@ -11,23 +11,22 @@ async function tab(page: Page, times = 1, back = false): Promise<void> {
 
 const focused = (page: Page) => page.locator(":focus");
 
-// The language and theme choices are the design system's Select since the
-// re-skin (T-045): a button named by its value and its label ("English
-// Language"), whose arrow keys open the list; only a choice changes the page.
-test("the shell: skip link first, then navigation, language and theme; the skip link moves focus to main", async ({ page }) => {
+// The language and theme choices are in the rail's settings menu (H-042):
+// two radio groups, whose arrow keys move between the items; only a press
+// changes the page.
+test("the shell: skip link first, then the rail's brand and settings; the skip link moves focus to main", async ({ page }) => {
   await open(page, "/", "en");
   await tab(page);
   await expect(focused(page)).toHaveText("Skip to main content");
   await expect(focused(page)).toBeInViewport();
   await tab(page);
-  await expect(focused(page)).toHaveText("Projects");
+  // H-042: the rail: the brand (the projects), then the settings.
+  await expect(focused(page)).toHaveAccessibleName("Projects");
   await tab(page);
-  await expect(focused(page)).toHaveAccessibleName("English Language");
-  await tab(page);
-  await expect(focused(page)).toHaveAccessibleName("System Theme");
+  await expect(focused(page)).toHaveAccessibleName("Settings");
   await tab(page);
   await expect(focused(page)).toHaveText("Go to projects");
-  for (let i = 0; i < 4; i++) await page.keyboard.press("Shift+Tab");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab");
   await expect(focused(page)).toHaveText("Skip to main content");
   await page.keyboard.press("Enter");
   await expect(page.locator("main")).toBeFocused();
@@ -36,38 +35,41 @@ test("the shell: skip link first, then navigation, language and theme; the skip 
 test("the language changes from the keyboard, only on a choice, and focus stays on the control", async ({ page }) => {
   await open(page, "/", "en");
   await tab(page, 3);
-  await expect(focused(page)).toHaveAccessibleName("English Language");
-  // On the closed control a sideways arrow does nothing (React Aria would
-  // apply it at once; the strip's Select stops it).
+  await expect(focused(page)).toHaveAccessibleName("Settings");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  // The menu opens on the language's chosen item.
+  await expect(focused(page)).toHaveText("English");
+  // Moving between the languages does not change the language (WCAG 3.2.2).
   await page.keyboard.press("ArrowRight");
-  await expect(focused(page)).toHaveAccessibleName("English Language");
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("listbox")).toBeVisible();
-  // Opening the list or moving in it does not change the language (WCAG 3.2.2).
-  await page.keyboard.press("End");
+  await expect(focused(page)).toHaveText("繁體中文");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
   await expect(page.getByRole("link", { name: "前往專案" })).toBeVisible();
-  await expect(focused(page)).toHaveAccessibleName("繁體中文 語言");
+  await expect(focused(page)).toHaveText("繁體中文");
+  await expect(focused(page)).toHaveAttribute("aria-checked", "true");
   expect(await focusIsVisible(page)).toBe(true);
-  // Nor does typing a language's first letter on the closed control.
+  // Nor does typing a letter or moving back without a press.
   await page.keyboard.press("e");
   await page.keyboard.press("ArrowLeft");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
-  await expect(focused(page)).toHaveAccessibleName("繁體中文 語言");
 });
 
 test("the theme changes from the keyboard and is remembered", async ({ page }) => {
   await open(page, "/", "en");
-  await tab(page, 4);
-  await expect(focused(page)).toHaveAccessibleName("System Theme");
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("End");
+  await tab(page, 3);
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  // From the language to the theme's chosen item, then along it to Dark.
+  await page.keyboard.press("Tab");
+  await expect(focused(page)).toHaveText("System");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(focused(page)).toHaveText("Dark");
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(focused(page)).toHaveAccessibleName("Dark Theme");
+  await expect(focused(page)).toHaveAttribute("aria-checked", "true");
   expect(await focusIsVisible(page)).toBe(true);
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");

@@ -186,7 +186,9 @@ describe("on the page, the AI's names, assumptions and questions are text (L1)",
     // The whole page, the header band included (H-040: the way back to the model is there).
     const article = el;
     expect(hostile(article)).toHaveLength(0);
-    expect([...article.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/models/${api.modelId}`]);
+    // No link at all: the way back to the model is the rail (H-042), so nothing on the page is a link the AI could shape.
+    expect([...article.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([]);
+    expect(api.modelId).toMatch(/^mdl_/);
     const changes = el.querySelector('[data-section="changes"]')!;
     expect(lines(changes)).toEqual([
       `Burn-in ${en("proposal.change.value", { field: en("proposal.field.name"), before: quoted(en, "Burn-in"), after: quoted(en, markup) })}`,
@@ -206,7 +208,7 @@ describe("on the page, the AI's names, assumptions and questions are text (L1)",
     const article = el;
     expect([...el.querySelector('[data-section="questions"]')!.querySelectorAll("li")].map((li) => li.textContent)).toEqual([markup, "Which batch⟨U+202E⟩?84 ro 02"]);
     expect(hostile(article)).toHaveLength(0);
-    expect(article.querySelectorAll("a")).toHaveLength(1);
+    expect(article.querySelectorAll("a")).toHaveLength(0);
     expect(rawCharacters(article)).toEqual([]);
   });
 });

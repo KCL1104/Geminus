@@ -180,6 +180,9 @@
         "content_hash"
       ],
       "additionalProperties": false
+    },
+    "generated_by": {
+      "$ref": "common.schema.json#/$defs/GeneratedBy"
     }
   },
   "required": [

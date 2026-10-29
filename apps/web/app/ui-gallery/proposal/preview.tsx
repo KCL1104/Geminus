@@ -8,7 +8,6 @@
 // (/proposals/<id>, through the BFF) is checked in the browser against the
 // e2e fake API (apps/web-e2e/tests/proposal.spec.ts). No AI is called. Its
 // links go to the other review pages. Not part of the product.
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { createApiClient } from "../../../lib/api/client";
 import { ApiProvider } from "../../../lib/api/provider";
@@ -16,9 +15,16 @@ import { AuthProvider } from "../../../lib/auth/session";
 import { useI18n } from "../../../lib/i18n/provider";
 import { Callout } from "../../../ui/callout";
 import { type ProposalHrefs, ProposalRoute } from "../../../features/ai-proposals/proposal-view";
-import styles from "../editor/preview.module.css";
+import { StateMenu } from "../state-menu";
 import { type SampleState, sampleFor, states } from "./samples";
 import { createProposalStandIn } from "./stand-in";
+
+// The fifteen samples in three groups (H-042); every state stays: the tests use each.
+const groups = [
+  { id: "review", states: ["ready", "scenario", "new-steps", "photo", "hostile", "viewer"] },
+  { id: "progress", states: ["generating", "needs_input", "invalid", "failed"] },
+  { id: "decided", states: ["approved", "rejected", "conflicted", "conflict", "stale"] },
+] as const satisfies readonly { id: string; states: readonly (typeof states)[number][] }[];
 
 const hrefs: ProposalHrefs = { model: () => "/ui-gallery/editor", scenario: () => "/ui-gallery/results" };
 
@@ -30,13 +36,15 @@ export function ProposalPreview({ state }: { state: SampleState }) {
   return (
     <>
       <Callout tone="info">{t("galleryProposal.intro")}</Callout>
-      <nav aria-label={t("galleryProposal.states")} className={styles.states}>
-        {states.map((s) => (
-          <Link key={s} href={`/ui-gallery/proposal?state=${s}`} aria-current={s === state ? "page" : undefined}>
-            {t(`galleryProposal.state.${s}`)}
-          </Link>
-        ))}
-      </nav>
+      <StateMenu
+        label={t("galleryProposal.states")}
+        current={state}
+        href={(s) => `/ui-gallery/proposal?state=${s}`}
+        groups={groups.map((g) => ({
+          title: t(`galleryProposal.group.${g.id}`),
+          states: g.states.map((s) => ({ id: s, label: t(`galleryProposal.state.${s}`) })),
+        }))}
+      />
       <AuthProvider value={auth}>
         <ApiProvider client={client}>
           <ProposalRoute proposalId={standIn.proposalId!} hrefs={hrefs} />

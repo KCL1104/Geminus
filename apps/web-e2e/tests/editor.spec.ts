@@ -223,8 +223,8 @@ test.describe("saving against the server's revision", () => {
     await page.getByLabel("Name").fill("SMT line 1");
     await page.getByLabel("Name").press("Enter");
     await expect(status(page)).toHaveText("Unsaved changes. Draft revision 3.");
-    await page.getByRole("button", { name: "English Language" }).click();
-    await page.getByRole("option", { name: "繁體中文" }).click();
+    await page.getByRole("button", { name: "Settings" }).click();
+    await page.getByRole("radiogroup", { name: "Language" }).getByRole("radio", { name: "繁體中文" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
     await expect(status(page)).toHaveText("有尚未儲存的變更。草稿修訂版 3。");
     await expect(node(page, "smt")).toContainText("SMT line 1");

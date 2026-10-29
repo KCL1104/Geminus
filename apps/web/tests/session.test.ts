@@ -10,6 +10,10 @@ import {
   type Login,
   loginCookie,
   readLogin,
+  cleanEmail,
+  cleanName,
+  MAX_NAME,
+  profileFromClaims,
   readSession,
   SESSION_COOKIE,
   type Session,
@@ -260,5 +264,52 @@ describe("safeReturnTo", () => {
     [`/${"a".repeat(512)}`, "/"],
   ])("%s → %s", (input, want) => {
     expect(safeReturnTo(input)).toBe(want);
+  });
+});
+
+describe("the session's profile (H-042)", () => {
+  it("keeps a name and an email from the ID token, cleaned, and nothing else", () => {
+    expect(profileFromClaims({ sub: "auth0|x", name: "  Judge   One ", email: "judge@geminus-demo.invalid", roles: ["admin"] })).toEqual({ name: "Judge One", email: "judge@geminus-demo.invalid" });
+    // The nickname stands in for a missing name; neither usable is no profile.
+    expect(profileFromClaims({ nickname: "judge", email: 7 })).toEqual({ name: "judge", email: null });
+    expect(profileFromClaims({ name: "", email: "not an address" })).toBeNull();
+  });
+
+  it("drops what shows nothing or reorders text from a name, and caps its length", () => {
+    expect(cleanName("Admin\u202e\u200bnimdA\u0007")).toBe("AdminnimdA");
+    expect(cleanName("\u200b\u2066")).toBeNull();
+    expect([...cleanName("名".repeat(500))!].length).toBe(MAX_NAME);
+    expect(cleanName(["a"])).toBeNull();
+  });
+
+  // Review M1: a cut that ends on a space left it there, so the session it
+  // sealed failed its own check on the next request: a silent sign-in loop.
+  it("cleans a name that is already clean to itself, a cut on a space included, so its session reads back", async () => {
+    const onSpace = `${"a".repeat(MAX_NAME - 1)} ${"b".repeat(20)}`;
+    expect(cleanName(onSpace)).toBe("a".repeat(MAX_NAME - 1));
+    for (const v of [onSpace, " x ", "名".repeat(500), `${"名 ".repeat(100)}`, "a\u3000\u3000b"]) {
+      const once = cleanName(v);
+      expect(cleanName(once), JSON.stringify(v)).toBe(once);
+    }
+    const keys = await keysOf(`k1:${key(1)}`);
+    const signedIn = { ...session, profile: profileFromClaims({ name: onSpace, email: "judge@geminus-demo.invalid" }) };
+    expect(await readSession(keys, valueOf(await sessionCookie(keys, signedIn, now)), now)).toEqual(signedIn);
+  });
+
+  it("takes an email only as one printable address", () => {
+    expect(cleanEmail("a@b.c")).toBe("a@b.c");
+    for (const bad of ["a b@c", "a@@b", "@b", "a@", "a@b\u202e", `${"a".repeat(250)}@b.cd`, 1]) expect(cleanEmail(bad), String(bad)).toBeNull();
+  });
+
+  it("reads a session with a profile, one sealed before H-042 without it, and refuses a malformed profile", async () => {
+    const keys = await keysOf(`k1:${key(1)}`);
+    const withProfile = { ...session, profile: { name: "Judge One", email: "judge@geminus-demo.invalid" } };
+    expect(await readSession(keys, valueOf(await sessionCookie(keys, withProfile, now)), now)).toEqual(withProfile);
+    expect(await readSession(keys, valueOf(await sessionCookie(keys, { ...session, profile: null }, now)), now)).toEqual({ ...session, profile: null });
+    expect(await readSession(keys, valueOf(await sessionCookie(keys, session, now)), now)).toEqual(session);
+    for (const profile of [{ name: "x" }, { name: "a\u202eb", email: null }, { name: null, email: "nope" }, { name: null, email: null, extra: 1 }, "Judge"]) {
+      const sealed = valueOf(await sessionCookie(keys, { ...session, profile } as unknown as Session, now));
+      expect(await readSession(keys, sealed, now), JSON.stringify(profile)).toBeNull();
+    }
   });
 });

@@ -41,7 +41,7 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
     [t("facts.engine"), both(<code>{baseline.engine_version}</code>, <code>{scenario.engine_version}</code>, baseline.engine_version === scenario.engine_version)],
   ];
   return (
-    <section aria-labelledby="facts-heading" className={styles.section}>
+    <section aria-labelledby="facts-heading" className={styles.settings}>
       <h2 id="facts-heading">{t("facts.title")}</h2>
       <dl className={styles.facts}>
         {facts.map(([label, value]) => (

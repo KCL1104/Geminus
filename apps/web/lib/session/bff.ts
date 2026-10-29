@@ -5,7 +5,7 @@
 import type { BffConfig } from "./config";
 import { discard, endSessionUrl, finishLogin, type Oidc, OidcFailure, refresh, revoke, startLogin } from "./oidc";
 import { type SealKeys, SealedTooLarge } from "./seal";
-import { clearCookie, LOGIN_COOKIE, loginCookie, readLogin, readSession, SESSION_COOKIE, type Session, safeReturnTo, sessionCookie } from "./session";
+import { clearCookie, LOGIN_COOKIE, loginCookie, readLogin, readSession, SESSION_COOKIE, type Session, safeReturnTo, sessionCookie, type Profile } from "./session";
 
 export type BffDeps = {
   cfg: BffConfig;
@@ -224,6 +224,15 @@ export function bff(deps: BffDeps) {
      */
     async hasSession(value: string | undefined): Promise<boolean> {
       return (await readSession(keys, value, deps.now())) !== null;
+    },
+
+    /**
+     * The signed-in person's name and email for their own account menu
+     * (H-042), or null without a session or a profile. It only reads, like
+     * hasSession; no token leaves the server.
+     */
+    async profile(value: string | undefined): Promise<Profile | null> {
+      return (await readSession(keys, value, deps.now()))?.profile ?? null;
     },
 
     /** Any method on /api/v1/<path>: forwarded to the Go API with the session's token. */

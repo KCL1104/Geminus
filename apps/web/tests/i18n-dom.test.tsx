@@ -53,15 +53,6 @@ const settle = () => act(async () => { for (let i = 0; i < 5; i++) await new Pro
 const problem = (p: Partial<Problem>): Problem => ({ ...networkProblem(""), ...p });
 
 /** The text of the elements an aria-labelledby names, in order. */
-const nameOf = (el: Element) => (el.getAttribute("aria-labelledby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent).join(" ");
-
-/** Opens a Select (the design system's, T-045) and chooses the option with this text. */
-async function choose(el: HTMLElement, text: string): Promise<void> {
-  await press(el.querySelector("button"));
-  await settle();
-  await press([...document.querySelectorAll("[role=option]")].find((o) => o.textContent === text));
-  await settle();
-}
 
 describe("zh-Hant", () => {
   it("renders the projects page and its states in Chinese", async () => {
@@ -161,20 +152,20 @@ describe("zh-Hant", () => {
   it("remembers a new choice in the language cookie only", async () => {
     let refreshed = 0;
     const el = await mount(<LocaleSwitcher onChanged={() => refreshed++} />, "en");
-    const trigger = el.querySelector("button")!;
-    expect(nameOf(trigger)).toBe("English Language");
-    await press(trigger);
-    await settle();
-    const options = [...document.querySelectorAll("[role=option]")];
-    expect(options.map((o) => [o.textContent, o.querySelector("[lang]")?.getAttribute("lang")])).toEqual([["English", "en"], ["繁體中文", "zh-Hant"]]);
-    await press(options[1]);
+    const radios = () => [...el.querySelectorAll<HTMLElement>("[role=radio]")];
+    expect(el.querySelector("[role=radiogroup]")?.getAttribute("aria-label")).toBe("Language");
+    // Each language is named in itself (ADR-020).
+    expect(radios().map((o) => [o.textContent, o.getAttribute("lang")])).toEqual([["English", "en"], ["繁體中文", "zh-Hant"]]);
+    expect(radios()[0]!.getAttribute("aria-checked")).toBe("true");
+    await press(radios()[1]);
     await settle();
     expect(document.cookie).toContain("geminus_locale=zh-Hant");
     expect(refreshed).toBe(1);
     // Shown at once, before the server has rendered the page again.
-    expect(trigger.textContent).toBe("繁體中文");
+    expect(radios()[1]!.getAttribute("aria-checked")).toBe("true");
     // Choosing the language already shown changes nothing.
-    await choose(el, "繁體中文");
+    await press(radios()[1]);
+    await settle();
     expect(refreshed).toBe(1);
   });
 
@@ -189,9 +180,11 @@ describe("zh-Hant", () => {
 
   it("re-renders the server components after a choice in the app shell", async () => {
     const el = await mount(<LocaleMenu />, "zh-Hant");
-    expect(nameOf(el.querySelector("button")!)).toBe("繁體中文 語言");
+    const radios = [...el.querySelectorAll<HTMLElement>("[role=radio]")];
+    expect(radios.find((r) => r.getAttribute("aria-checked") === "true")?.textContent).toBe("繁體中文");
     const before = router.refreshed;
-    await choose(el, "English");
+    await press(radios.find((r) => r.textContent === "English"));
+    await settle();
     expect(document.cookie).toContain("geminus_locale=en");
     expect(router.refreshed).toBe(before + 1);
   });

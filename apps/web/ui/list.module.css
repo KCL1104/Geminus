@@ -36,3 +36,42 @@
 .empty {
   color: var(--gm-color-ink-2);
 }
+
+/* A row's name when it is not a link (a run without a scenario). */
+.name {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* A short state as a pill (H-042): the tone is the hue's wash and ink. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 var(--gm-space-md);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-well);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.pill[data-tone="ok"] {
+  background: var(--gm-color-scenario-wash);
+  color: var(--gm-color-scenario);
+}
+
+.pill[data-tone="accent"],
+.pill[data-tone="busy"] {
+  background: var(--gm-color-accent-wash);
+  color: var(--gm-color-accent);
+}
+
+.pill[data-tone="warning"] {
+  background: var(--gm-color-warning-wash);
+  color: var(--gm-color-warning);
+}
+
+.pill[data-tone="error"] {
+  background: var(--gm-color-error-wash);
+  color: var(--gm-color-error);
+}

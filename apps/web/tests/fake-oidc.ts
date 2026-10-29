@@ -21,7 +21,7 @@ const b64url = (b: Buffer | string) => Buffer.from(b).toString("base64url");
 
 type Code = { challenge: string; method: string; nonce: string; redirectUri: string; clientId: string; used: boolean };
 
-export type IdTokenChange = Partial<{ iss: string; aud: string; nonce: string; sub: string | null; exp: number; iat: number; badSignature: boolean }>;
+export type IdTokenChange = Partial<{ iss: string; aud: string; nonce: string; sub: string | null; exp: number; iat: number; badSignature: boolean; extra: Record<string, unknown> }>;
 
 export class FakeProvider {
   private keys = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -106,6 +106,7 @@ export class FakeProvider {
         ...(nonce === null ? {} : { nonce: c.nonce ?? nonce }),
         iat: c.iat ?? now,
         exp: c.exp ?? now + 600,
+        ...c.extra,
       };
       if (claims.sub === null) delete claims.sub;
       out.id_token = this.jwt(claims, c.badSignature ? this.other.privateKey : this.keys.privateKey);

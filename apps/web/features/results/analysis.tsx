@@ -9,16 +9,19 @@
 // server's comparison's (the deltas the server stored, never the AI's own),
 // and each piece of evidence is named as the metrics table names it. Its
 // experiments are suggestions only: nothing here runs or changes anything.
+import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
 import { errorCodeStatus, type Problem, problemFromResponse } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
-import type { AnalysisOutput, AnalysisRecord, ErrorCode, Run } from "../../lib/contracts";
+import type { AnalysisOutput, AnalysisRecord, ErrorCode, GeneratedBy, ProposalRequest, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
-import { AskIcon } from "../../ui/icons";
+import { AskIcon, SendIcon } from "../../ui/icons";
+import { useWriter } from "../ai-proposals/generated-by";
+import { visible } from "../ai-proposals/shown";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { formatAbsolute, formatRelative } from "./format";
@@ -49,7 +52,7 @@ export function Analysis({ baseline, scenario, rows, analysisId, onAnalysis, pol
         <AskForm baseline={baseline} scenario={scenario} onAnalysis={onAnalysis} />
       ) : (
         <Followed key={analysisId} id={analysisId} runs={{ run: scenario.id, baseline: baseline.id }} rows={rows} pollMs={pollMs}
-          onAgain={canEdit(role) ? () => onAnalysis(null) : null} />
+          onAgain={canEdit(role) ? () => onAnalysis(null) : null} modelId={canEdit(role) ? scenario.model_id : null} />
       )}
     </section>
   );
@@ -95,8 +98,10 @@ function failureProblem(r: AnalysisRecord): Problem | null {
   return problemFromResponse(status, new Headers(), r.error);
 }
 
-function Followed({ id, runs, rows, pollMs, onAgain }: {
+function Followed({ id, runs, rows, pollMs, onAgain, modelId }: {
   id: string;
+  /** The model whose next experiment an editor may ask the AI for (H-043), or null. */
+  modelId: string | null;
   /** This page's runs: an analysis of others (an old or edited address) is not shown here (T-030 review r1 M2). */
   runs: { run: string; baseline: string };
   rows: MetricRow[];
@@ -147,7 +152,9 @@ function Followed({ id, runs, rows, pollMs, onAgain }: {
   return (
     <>
       <StatusRegion message={generating ? t("analysis.generating") : record.status === "completed" ? t("analysis.done") : t("analysis.notKept")} />
-      {record?.status === "completed" && record.analysis && <Explained analysis={record.analysis} rows={rows} />}
+      {record?.status === "completed" && record.analysis && (
+        <Explained analysis={record.analysis} rows={rows} generatedBy={record.generated_by} modelId={modelId} />
+      )}
       {record?.status === "failed" && <Failed record={record} />}
       {!generating && onAgain && <Button onPress={onAgain}>{t("analysis.again")}</Button>}
     </>
@@ -168,9 +175,62 @@ function Cited({ path, rows }: { path: string; rows: MetricRow[] }) {
   return row ? <MetricName label={row.label} /> : <code>{path}</code>;
 }
 
-function Explained({ analysis, rows }: { analysis: AnalysisOutput; rows: MetricRow[] }) {
+/**
+ * H-043: one suggested next experiment, asked of the AI as a scenario
+ * proposal on the model's latest version, in the reader's language; the
+ * proposal opens on its own page for a person to review, approve and run.
+ * Nothing runs and nothing is saved until then. The same request again (a
+ * retry) reuses its key (D-011).
+ */
+function ProposeNext({ modelId, name, intent }: { modelId: string; name: string; intent: string }) {
+  const api = useApi();
+  const router = useRouter();
+  const { t, locale } = useI18n();
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [busy, setBusy] = useState(false);
+  const sent = useRef<{ request: string; key: string } | null>(null);
+  // Review L6: a person who has left the results is not pulled to the proposal when it answers.
+  const here = useRef(true);
+  useEffect(() => {
+    here.current = true;
+    return () => {
+      here.current = false;
+    };
+  }, []);
+  const propose = async () => {
+    if (busy) return;
+    setBusy(true);
+    setProblem(null);
+    const model = await api.getModel(modelId);
+    if (!here.current) return;
+    if (!model.ok) {
+      setBusy(false);
+      setProblem(model.problem);
+      return;
+    }
+    const body: ProposalRequest = { base_version_id: model.data.latest_version.id, mode: "scenario", intent, output_locale: locale };
+    const request = `${modelId} ${JSON.stringify(body)}`;
+    if (sent.current?.request !== request) sent.current = { request, key: newIdempotencyKey() };
+    const r = await api.createProposal(modelId, body, sent.current.key);
+    if (!here.current) return;
+    setBusy(false);
+    if (r.ok) router.push(`/proposals/${r.data.proposal_id}`);
+    else setProblem(r.problem);
+  };
+  return (
+    <div className={styles.proposeNext}>
+      <Button variant="ai" icon={<SendIcon />} aria-label={t("analysis.proposeNamed", { name: visible(name, "prose") })} blocked={busy} onPress={() => void propose()}>
+        {t("analysis.propose")}
+      </Button>
+      {problem && <ProblemView problem={problem} headingLevel={3} />}
+    </div>
+  );
+}
+
+function Explained({ analysis, rows, generatedBy, modelId }: { analysis: AnalysisOutput; rows: MetricRow[]; generatedBy?: GeneratedBy; modelId: string | null }) {
   const i18n = useI18n();
   const { t } = i18n;
+  const writer = useWriter(generatedBy);
   const byPath = new Map(rows.map((r) => [r.path, r]));
   const list = (heading: string, items: string[]) =>
     items.length > 0 && (
@@ -185,7 +245,17 @@ function Explained({ analysis, rows }: { analysis: AnalysisOutput; rows: MetricR
     );
   return (
     <div className={styles.analysis}>
-      <p className={styles.note}>{t("analysis.provenance")}</p>
+      {/* H-043: the model by name when the server says which wrote it; else "the AI". */}
+      <p className={styles.note}>
+        {writer === null ? (
+          t("analysis.provenance")
+        ) : (
+          <>
+            {t("analysis.writtenBy", { model: writer })}{" "}
+            {t("analysis.checked")}
+          </>
+        )}
+      </p>
       {/* The summaries and what changed say again what the table shows: one click away (H-039). */}
       <details className={styles.details}>
         <summary>{t("analysis.summaries")}</summary>
@@ -255,6 +325,7 @@ function Explained({ analysis, rows }: { analysis: AnalysisOutput; rows: MetricR
             {analysis.suggested_next_experiments.map((x, i) => (
               <li key={i}>
                 <strong>{x.name}</strong>: {x.hypothesis}
+                {modelId !== null && <ProposeNext modelId={modelId} name={x.name} intent={`${x.name}: ${x.hypothesis}`} />}
               </li>
             ))}
           </ul>

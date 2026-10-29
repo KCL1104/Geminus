@@ -806,6 +806,9 @@
               "type": "null"
             }
           ]
+        },
+        "generated_by": {
+          "$ref": "common.schema.json#/$defs/GeneratedBy"
         }
       },
       "required": [

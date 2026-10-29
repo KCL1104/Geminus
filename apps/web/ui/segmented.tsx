@@ -6,11 +6,13 @@
 import { ToggleButton, ToggleButtonGroup } from "react-aria-components";
 import styles from "./segmented.module.css";
 
-export function Segmented<T extends string>({ label, items, value, onChange }: {
+export function Segmented<T extends string>({ label, items, value, onChange, autoFocus = false }: {
   label: string;
-  items: readonly { id: T; label: string }[];
+  items: readonly { id: T; label: string; lang?: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** Focus the selected item when it mounts (the first control of a menu). */
+  autoFocus?: boolean;
 }) {
   return (
     <ToggleButtonGroup
@@ -25,7 +27,7 @@ export function Segmented<T extends string>({ label, items, value, onChange }: {
       className={styles.group}
     >
       {items.map((item) => (
-        <ToggleButton key={item.id} id={item.id} className={styles.item}>
+        <ToggleButton key={item.id} id={item.id} lang={item.lang} autoFocus={autoFocus && item.id === value} className={styles.item}>
           {item.label}
         </ToggleButton>
       ))}

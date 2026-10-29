@@ -13,8 +13,43 @@
   max-width: none;
 }
 
+/* The sentence is for the status region and Save's description; the band shows the short pill (H-042). */
 .status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.draft {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-sm);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-scenario);
+}
+
+.draft[data-state="dirty"] .dot,
+.draft[data-state="saving"] .dot {
+  background: var(--gm-color-warning-mark);
+}
+
+.draft[data-state="conflict"] .dot,
+.draft[data-state="error"] .dot {
+  background: var(--gm-color-error);
+}
+
+.rev {
+  color: var(--gm-color-ink-3);
+  font-weight: var(--gm-font-weight-regular);
 }
 
 /* A blocked action's 12 px reason sits to its left. */

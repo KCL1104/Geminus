@@ -2,6 +2,7 @@
 // T-043). A deployment without a valid session configuration answers 503
 // for every auth and API route: it never serves a half-configured login.
 // Server-side only.
+import type { Profile } from "./session";
 import { apiError, bff } from "./bff";
 import { BffConfigError, loadBffConfig } from "./config";
 import { newOidc } from "./oidc";
@@ -40,6 +41,14 @@ export async function hasSession(value: string | undefined): Promise<boolean> {
   built ??= build();
   const h = await built;
   return h !== null && h.hasSession(value);
+}
+
+/** The session's profile (H-042: the account menu's name and email), or null; read only, like hasSession. */
+export async function sessionProfile(value: string | undefined): Promise<Profile | null> {
+  if (value === undefined) return null;
+  built ??= build();
+  const h = await built;
+  return h === null ? null : h.profile(value);
 }
 
 /** Runs fn with the process's BFF, or answers 503 when it is not configured. */

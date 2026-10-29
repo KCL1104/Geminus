@@ -1,7 +1,7 @@
-/* The app shell (T-045, DESIGN.md Navigation, H-041): a 48 px app strip on
-   the page's ground (the brand mark and name, the main navigation, the
-   language and theme choices), then one main region where the page's cards
-   sit. Nothing else is in the frame (H-027). */
+/* The app shell (T-045, H-042; DESIGN.md Layout): a 56 px rail at the left
+   (the brand, a model's four sections, the account and settings at the
+   foot), then one main region where the page's cards sit. On a phone the
+   rail is a 52 px bar across the top. Nothing else is in the frame (H-027). */
 .skip {
   position: absolute;
   top: var(--gm-space-md);
@@ -20,28 +20,42 @@
   transform: none;
 }
 
-.header {
+.frame {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+/* The rail stays in view while the page scrolls. */
+.rail {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: var(--gm-space-md) var(--gm-space-gutter);
-  min-height: 48px;
-  padding: var(--gm-space-xs) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-xs) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid var(--gm-color-rule);
+  gap: var(--gm-space-md);
+  height: 100vh;
+  padding: var(--gm-space-lg) 0;
+  padding-inline-start: max(var(--gm-space-hair), env(safe-area-inset-left, 0px));
+  border-inline-end: 1px solid var(--gm-color-rule);
   background: var(--gm-color-ground);
 }
 
-/* The product: its mark (two offset squares, the twin) and its name (H-041). */
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gm-space-md);
-  padding-inline-end: var(--gm-space-gutter);
-  border-inline-end: 1px solid var(--gm-color-rule);
-  font-size: var(--gm-font-size-title);
-  font-weight: var(--gm-font-weight-brand);
-  line-height: var(--gm-line-height-title);
-  letter-spacing: -0.01em;
+.home,
+.item,
+.avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-color-ink-2);
+}
+
+.home {
+  margin-bottom: var(--gm-space-md);
 }
 
 .mark {
@@ -58,95 +72,181 @@
   stroke-width: 1.5;
 }
 
-/* It takes the row's free space (an empty box: nothing moves), so a control
-   that wraps to a row of its own can end at the right edge (.account). */
-.nav {
+.sections {
   display: flex;
-  flex-grow: 1;
-  flex-wrap: wrap;
-  gap: var(--gm-space-gutter);
+  flex-direction: column;
+  gap: var(--gm-space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
-.nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--gm-control-height);
-  padding: 0 var(--gm-space-cell);
-  border-radius: var(--gm-radius-md);
-  color: var(--gm-color-ink-2);
-  font-weight: var(--gm-font-weight-medium);
-  text-decoration: none;
+.item {
+  transition: background-color var(--gm-motion), color var(--gm-motion);
 }
 
-.nav a:hover {
+.item:hover {
   background: var(--gm-color-hover);
   color: var(--gm-color-ink);
 }
 
-.tools {
+/* The page's own section is raised, like a chosen segment. */
+.item[aria-current="page"] {
+  background: var(--gm-color-raised);
+  box-shadow: var(--gm-shadow-control);
+  color: var(--gm-color-ink);
+}
+
+/* Each section's name beside it on hover and keyboard focus; the link's own name is its aria-label. */
+.tip {
+  position: absolute;
+  inset-inline-start: calc(100% + var(--gm-space-md));
+  inset-block-start: 50%;
+  padding: var(--gm-space-xs) var(--gm-space-md);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity var(--gm-motion);
+}
+
+.item:hover .tip,
+.item:focus-visible .tip {
+  opacity: 1;
+}
+
+.foot {
+  margin-top: auto;
+}
+
+.avatar {
+  min-width: 0;
+  padding: 0;
+}
+
+.initials {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-accent-fill);
+  color: var(--gm-color-on-accent);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  letter-spacing: 0.02em;
+}
+
+/* The account and settings menu floats beside the rail. */
+.menu {
+  width: 280px;
+  max-width: calc(100vw - 2 * var(--gm-space-gutter));
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-raised);
+  box-shadow: var(--gm-shadow-overlay);
+}
+
+.menuBody {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-md) var(--gm-space-gutter);
-  margin-inline-start: auto;
-}
-
-/* The account (T-043 follow-up): the organization switcher (with several
-   organizations) and Sign out, after the language and theme, once there is
-   a session; signed out it is empty and takes no room. */
-.account {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-md) var(--gm-space-gutter);
-  margin-inline-start: auto;
-}
-
-.account:empty {
-  display: none;
-}
-
-/* Left-aligned with the strip's product name: one edge for the whole frame. */
-.main {
-  max-width: var(--gm-content-width);
-  margin: 0;
-  padding: var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
+  flex-direction: column;
   outline: none;
 }
 
-/* At or below 720 px the strip tightens: the small labels hide (ui/select.module.css). */
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-hair);
+  padding: var(--gm-space-lg) var(--gm-space-gutter);
+  border-bottom: 1px solid var(--gm-color-rule);
+  overflow-wrap: anywhere;
+}
+
+.who span {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-lg);
+  padding: var(--gm-space-lg) var(--gm-space-gutter);
+}
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
+}
+
+.settingLabel {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+}
+
+.signOut {
+  display: flex;
+  flex-direction: column;
+  padding: var(--gm-space-sm);
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.signOut:empty {
+  display: none;
+}
+
+.signOut button {
+  justify-content: flex-start;
+}
+
+/* The page beside the rail, left-aligned with one edge for every page. */
+.main {
+  min-width: 0;
+  max-width: var(--gm-content-width);
+  margin: 0;
+  padding: var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) var(--gm-space-2xl);
+  outline: none;
+}
+
+/* A phone: the rail becomes a bar across the top, the sections in a row, the account at the end. */
 @media (max-width: 720px) {
-  .header {
-    column-gap: var(--gm-space-lg);
+  .frame {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
   }
 
-  /* The strip stays one row on a phone: the mark and the link's padding give their room to the choices. */
-  .brand {
-    padding-inline-end: var(--gm-space-lg);
+  .rail {
+    flex-direction: row;
+    height: auto;
+    padding: var(--gm-space-xs) max(var(--gm-space-md), env(safe-area-inset-right, 0px)) var(--gm-space-xs) max(var(--gm-space-md), env(safe-area-inset-left, 0px));
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--gm-color-rule);
   }
 
-  .mark {
+  .home {
+    margin-bottom: 0;
+  }
+
+  .sections {
+    flex-direction: row;
+  }
+
+  .tip {
     display: none;
   }
 
-  .nav a {
-    padding: 0;
+  .foot {
+    margin-top: 0;
+    margin-inline-start: auto;
   }
 
-  .tools {
-    column-gap: var(--gm-space-md);
-  }
-
-  /* The strip's row has no room left on a phone: signed in, the account
-     takes a row of its own under it, ending at the same edge, and the first
-     row keeps the place it has signed out. */
-  .account {
-    flex-basis: 100%;
-    justify-content: flex-end;
-    column-gap: var(--gm-space-md);
-  }
-
-  .header:has(> .account:not(:empty)) {
-    padding-block: var(--gm-space-md);
+  .main {
+    padding: var(--gm-space-xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
   }
 }

@@ -17,6 +17,7 @@ import { ProblemView } from "../../app/_components/problem-view";
 import { Button } from "../../ui/button";
 import { PlayIcon } from "../../ui/icons";
 import { PageHeader } from "../../ui/page-header";
+import { RailModel } from "../../app/_components/rail";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
@@ -84,7 +85,8 @@ export function SimulateView({ scenario, version, onStarted }: {
 
   return (
     <>
-      <PageHeader trail={[{ href: `/models/${scenario.model_id}`, label: t("scenario.back") }]} title={scenario.name} />
+      <RailModel id={scenario.model_id} />
+      <PageHeader trail={[]} title={scenario.name} />
       <p className={styles.intro}>{t("scenario.summary", { version: String(version.version), model: version.ir.name, count: changes })}</p>
       {canEdit(role) ? (
         <section aria-labelledby="run-heading" className={styles.section}>

@@ -30,15 +30,17 @@ async function loadScenarios(api: ApiClient, modelId: string, signal: AbortSigna
   return { ok: true, data: { items, more }, requestId: versions.requestId, etag: null };
 }
 
-/** latestVersionId: the model's latest version, so a publish reads the list again. */
-export function ScenarioList({ modelId, latestVersionId }: { modelId: string; latestVersionId: string }) {
+/** latestVersionId: the model's latest version, so a publish reads the list again; empty: what shows when there is none (H-042: the Scenarios page says so). */
+export function ScenarioList({ modelId, latestVersionId, empty = null }: { modelId: string; latestVersionId: string; empty?: React.ReactNode }) {
   const api = useApi();
   const { t } = useI18n();
   const [remote, retry] = useRemote((signal) => loadScenarios(api, modelId, signal), api, `${modelId} ${latestVersionId}`);
   return (
     <RemoteView remote={remote} what="scenarios" onRetry={retry} headingLevel={2}>
       {({ items, more }) =>
-        items.length > 0 && (
+        items.length === 0 ? (
+          empty
+        ) : (
           <section aria-labelledby="scenarios-heading" className={styles.section}>
             <h2 id="scenarios-heading">{t("model.scenarios.title")}</h2>
             <ul className={styles.earlier}>

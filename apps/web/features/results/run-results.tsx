@@ -14,6 +14,7 @@ import { ProblemView } from "../../app/_components/problem-view";
 import { Loading, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
 import { PageHeader } from "../../ui/page-header";
+import { RailModel } from "../../app/_components/rail";
 import { ShownStatus, StatusRegion } from "../../ui/status";
 import { checkPair, pairPhase } from "../simulations/run-pair";
 import { LineKey, RunPairStatus, type RunSide } from "../simulations/run-status";
@@ -66,11 +67,9 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
     <RemoteView remote={scenario} what="scenario" onRetry={retryScenario}>
       {(s) => (
         <>
+          <RailModel id={s.model_id} />
           <PageHeader
-            trail={[
-              { href: `/models/${s.model_id}`, label: t("scenario.back") },
-              { href: `/scenarios/${s.id}`, label: t("runs.back") },
-            ]}
+            trail={[{ href: `/scenarios/${s.id}`, label: t("runs.back") }]}
             title={s.name}
             facts={phase === "completed" && pair.baseline && pair.scenario && !pair.refused ? [runFact("baseline", pair.baseline), runFact("scenario", pair.scenario)] : []}
           />

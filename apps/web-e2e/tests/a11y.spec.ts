@@ -52,7 +52,7 @@ for (const scheme of schemes) for (const locale of locales) {
       for (const v of signedInViews) {
         test(`${v.name} has no violation`, async ({ page }) => {
           await signInAs(page, v.subject, v.path, locale, { organization: v.organization });
-          await expect(page.getByRole("button", { name: locale === "en" ? "Sign out" : "登出" }), "signed in").toBeVisible();
+          await expect(page.getByRole("button", { name: locale === "en" ? "Account and settings" : "帳號與設定" }), "signed in").toBeVisible();
           await expect(page.locator("body")).toHaveCSS("background-color", sheet[scheme]);
           expect(await violations(page)).toEqual([]);
           const scroll = await page.evaluate(() => document.documentElement.scrollWidth);

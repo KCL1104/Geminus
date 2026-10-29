@@ -3,7 +3,8 @@
 // no disabled-forever control outside the component gallery (which shows
 // the disabled state on purpose); no two visible links to the same place
 // and no two visible buttons with the same name, except the pair the owner
-// is asked about; no side panel; and the app strip stays one 48 px row.
+// is asked about; no side panel; and the rail (H-042) is 56 px wide, or on
+// a phone one row across the top.
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { locales, open, routes, signedInViews, signInAs } from "./helpers";
@@ -37,9 +38,9 @@ async function controls(page: Page) {
         return !(el instanceof HTMLButtonElement && !el.disabled && reason && visible(reason) && (reason.textContent ?? "").trim() !== "");
       })
       .map((el) => (el.textContent ?? "").trim());
-    // The strip's rows: its parts (product, navigation, tools, account) that lie below every part before them.
-    const header = document.querySelector("header")!;
-    const parts = [...header.children].filter(visible).map((el) => el.getBoundingClientRect()).sort((a, b) => a.top - b.top);
+    // The rail's rows (H-042): its parts (the brand, a model's sections, the account) that lie below every part before them.
+    const rail = document.querySelector("nav")!;
+    const parts = [...rail.children].filter(visible).map((el) => el.getBoundingClientRect()).sort((a, b) => a.top - b.top);
     let rows = 0;
     let bottom = -Infinity;
     for (const r of parts) {
@@ -47,11 +48,22 @@ async function controls(page: Page) {
       bottom = Math.max(bottom, r.bottom);
     }
     const tops = parts.map((r) => Math.round(r.top));
-    return { links, buttons, primary, disabled: off.length, unexplained, asides: document.querySelectorAll("aside").length, strip: header.getBoundingClientRect().height, rows, firstTop: Math.min(...tops), lastTop: Math.max(...tops) };
+    const box = rail.getBoundingClientRect();
+    return { links, buttons, primary, disabled: off.length, unexplained, asides: document.querySelectorAll("aside").length, railWidth: box.width, railHeight: box.height, rows, firstTop: Math.min(...tops), lastTop: Math.max(...tops) };
   });
 }
 
 const repeated = (xs: string[]) => [...new Set(xs.filter((x, i) => xs.indexOf(x) !== i))];
+
+/** H-042: the rail is a 56 px column at the left, or on a phone one row across the top, signed in or out. */
+function railShape(c: { railWidth: number; railHeight: number; rows: number }, width: number) {
+  if (width === 390) {
+    expect(c.rows, "the rail is one row on a phone").toBe(1);
+    expect(c.railHeight, "the rail's row on a phone").toBeLessThanOrEqual(56);
+  } else {
+    expect(c.railWidth, "the rail's column").toBe(56);
+  }
+}
 
 /** The transition and animation durations in use on the page, and whether the page sees reduced motion. */
 async function motion(page: Page) {
@@ -86,8 +98,7 @@ for (const locale of locales) {
           expect(repeated(c.links), "links to the same place").toEqual(askedAbout[route] ?? []);
           expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
           expect(c.asides, "side panels").toBe(0);
-          expect(c.strip, "the app strip is one row").toBe(48);
-          expect(c.rows, "the app strip is one row").toBe(1);
+          railShape(c, width);
         });
       }
     });
@@ -106,7 +117,8 @@ for (const locale of locales) {
         test(`${v.name} keeps only the controls it needs`, async ({ page }) => {
           await signInAs(page, v.subject, v.path, locale, { organization: v.organization });
           const c = await controls(page);
-          expect(c.buttons, "signed in").toContain(locale === "en" ? "Sign out" : "登出");
+          // H-042: signed in, the rail's foot is the account (Sign out and the organizations are in its menu).
+          expect(c.buttons, "signed in").toContain(locale === "en" ? "Account and settings" : "帳號與設定");
           expect(c.links.filter((h) => h.startsWith("/auth/login")), "no sign-in while signed in").toEqual([]);
           expect(c.primary, "primary actions").toBeLessThanOrEqual(1);
           if (v.path.startsWith("/models/")) expect(c.unexplained, "blocked controls without their reason on screen").toEqual([]);
@@ -114,17 +126,7 @@ for (const locale of locales) {
           expect(repeated(c.links), "links to the same place").toEqual([]);
           expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
           expect(c.asides, "side panels").toBe(0);
-          if (width === 390) {
-            // A phone has no room left in the strip's row (8 to 14 px): the
-            // account takes one row of its own under it, and the first row
-            // stays as it is signed out (its parts from 8 px, the next row
-            // from 48 px).
-            expect(c.rows, "the strip's row and the account's").toBe(2);
-            expect([c.firstTop, c.lastTop, c.strip], "the first row as signed out, the account's under it").toEqual([8, 48, 89]);
-          } else {
-            expect(c.rows, "the app strip is one row").toBe(1);
-            expect(c.strip, "the app strip is one row").toBe(48);
-          }
+          railShape(c, width);
         });
       }
     });

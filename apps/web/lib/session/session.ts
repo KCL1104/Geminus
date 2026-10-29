@@ -2,11 +2,14 @@
 // short-lived login transaction between the redirect to the provider and its
 // callback. Both are sealed (seal.ts); this module fixes their names, shapes
 // and lifetimes and builds their Set-Cookie headers. Server-side only.
+import type { Profile } from "../auth/profile";
 import { safeReturnTo } from "../return-to";
 import { type SealKeys, seal, unseal } from "./seal";
 
 // The return-path rule is shared with the page's sign-in link (lib/return-to.ts).
 export { safeReturnTo };
+// Who signed in (H-042, lib/auth/profile.ts): a session sealed before H-042 has no profile at all.
+export type { Profile };
 
 export const SESSION_COOKIE = "__Host-geminus_session";
 export const LOGIN_COOKIE = "__Host-geminus_login";
@@ -24,6 +27,7 @@ export const SKEW_MS = 60_000;
 /** The longest access or refresh token a session holds (ASCII, no spaces). */
 export const MAX_TOKEN = 2048;
 
+
 export type Session = {
   accessToken: string;
   refreshToken: string | null;
@@ -31,6 +35,40 @@ export type Session = {
   accessExpiresAt: number;
   createdAt: number;
   lastSeenAt: number;
+  profile?: Profile | null;
+};
+
+/** The longest name and email a session keeps (characters). */
+export const MAX_NAME = 128;
+export const MAX_EMAIL = 254;
+// Characters that show nothing or reorder text are dropped from a name, so it cannot disguise itself.
+const hidden = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+
+/** A display name from a claim: a string with what shows nothing removed and spaces collapsed, at most MAX_NAME characters, or null. */
+export function cleanName(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.replace(hidden, "").replace(/\s+/g, " ").trim();
+  // Trimmed again after the cut, which can end on a space: isProfile wants the result clean as it is.
+  return s === "" ? null : [...s].slice(0, MAX_NAME).join("").trimEnd();
+}
+
+/** An email from a claim: one printable ASCII address with one @, at most MAX_EMAIL characters, or null. */
+export function cleanEmail(v: unknown): string | null {
+  return typeof v === "string" && v.length <= MAX_EMAIL && /^[\x21-\x3f\x41-\x7e]+@[\x21-\x3f\x41-\x7e]+$/.test(v) ? v : null;
+}
+
+/** The profile from an ID token's claims: its name (or nickname) and email, each cleaned, or null when neither is usable. */
+export function profileFromClaims(claims: Record<string, unknown>): Profile | null {
+  const name = cleanName(claims.name) ?? cleanName(claims.nickname);
+  const email = cleanEmail(claims.email);
+  return name === null && email === null ? null : { name, email };
+}
+
+const isProfile = (v: unknown): v is Profile | null => {
+  if (v === null) return true;
+  if (typeof v !== "object" || Array.isArray(v)) return false;
+  const p = v as Record<string, unknown>;
+  return Object.keys(p).length === 2 && (p.name === null || cleanName(p.name) === p.name) && (p.email === null || cleanEmail(p.email) === p.email);
 };
 
 export type Login = {
@@ -50,8 +88,10 @@ const time = (v: unknown): v is number => typeof v === "number" && Number.isSafe
 function isSession(v: unknown): v is Session {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return false;
   const s = v as Record<string, unknown>;
+  const keys = Object.keys(s).length;
   return (
-    Object.keys(s).length === 5 &&
+    // Five fields before H-042, six with the profile.
+    (keys === 5 || (keys === 6 && "profile" in s && isProfile(s.profile))) &&
     sessionToken(s.accessToken) &&
     (s.refreshToken === null || sessionToken(s.refreshToken)) &&
     time(s.accessExpiresAt) &&

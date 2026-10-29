@@ -56,7 +56,7 @@ Web (the Next.js server side, the BFF):
 | `BFF_OIDC_CLIENT_ID` | The Application's Client ID |
 | `BFF_OIDC_CLIENT_SECRET` | The Application's Client Secret (only in the secret manager) |
 | `BFF_OIDC_AUDIENCE` | The API Identifier of section 2 |
-| `BFF_OIDC_SCOPES` | Not set (default `openid offline_access`) |
+| `BFF_OIDC_SCOPES` | Not set (default `openid profile email offline_access`; H-042: `profile email` give the account menu its name and email) |
 | `SESSION_KEYS` | `<id>:<base64url of 32 bytes>`, see below (only in the secret manager) |
 
 Go API: `AUTH_OIDC_ISSUER` the same as above, `AUTH_OIDC_AUDIENCE` the API Identifier, `AUTH_OIDC_JWKS_URL` as above, `AUTH_OIDC_REQUIRE_AT_JWT=true` (ADR-017).

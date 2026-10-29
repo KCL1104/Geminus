@@ -118,3 +118,42 @@ export function AskIcon() {
     </svg>
   );
 }
+
+// The rail's sections and the settings (H-042), in the same set.
+export function CanvasIcon() {
+  return (
+    <svg {...common}>
+      <rect x="2" y="2.5" width="5" height="4" rx="1" {...line} />
+      <rect x="9" y="9.5" width="5" height="4" rx="1" {...line} />
+      <path d="M7 4.5h2.5a1.5 1.5 0 0 1 1.5 1.5v3.5" {...line} />
+    </svg>
+  );
+}
+
+export function BranchIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="4.5" cy="3.5" r="1.5" {...line} />
+      <circle cx="4.5" cy="12.5" r="1.5" {...line} />
+      <circle cx="11.5" cy="5.5" r="1.5" {...line} />
+      <path d="M4.5 5v6M11.5 7c0 3-7 2-7 4" {...line} />
+    </svg>
+  );
+}
+
+export function RunsIcon() {
+  return (
+    <svg {...common}>
+      <path d="M2.5 13.5h11M4.5 11V8M8 11V4M11.5 11V6.5" {...line} />
+    </svg>
+  );
+}
+
+export function GearIcon() {
+  return (
+    <svg {...common}>
+      <circle cx="8" cy="8" r="2.25" {...line} />
+      <path d="M8 1.75v1.5M8 12.75v1.5M1.75 8h1.5M12.75 8h1.5M3.6 3.6l1.05 1.05M11.35 11.35l1.05 1.05M3.6 12.4l1.05-1.05M11.35 4.65l1.05-1.05" {...line} />
+    </svg>
+  );
+}

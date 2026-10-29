@@ -85,7 +85,10 @@ describe("the proposal review page", () => {
     await settle();
     // The page names itself a review tool on sample data.
     expect(el.textContent).toContain(createTranslator(locale)("galleryProposal.intro"));
-    expect(el.querySelectorAll(`nav[aria-label="${createTranslator(locale)("galleryProposal.states")}"] a`).length).toBe(states.length);
+    // H-042: the samples are one menu; its button names the state shown.
+    const menu = el.querySelector("[data-state-menu]");
+    expect(menu?.textContent).toContain(createTranslator(locale)(`galleryProposal.state.${state}`));
+    expect(states).toHaveLength(15);
     expect(await violations()).toEqual([]);
   });
 });

@@ -146,12 +146,13 @@ func members(t *testing.T, p Proposal) map[string]bool {
 // state does, nothing more: a generating proposal only the server-bound
 // fields, needs_input no changes, invalid only its validation (nothing the
 // provider wrote), failed only its error (AI_SPEC §4); only a decided one
-// its decision record, and a conflicted one no comment (T-026, D-068).
+// its decision record, and a conflicted one no comment (T-026, D-068); every
+// state with an answer names the provider and model that wrote it (H-043).
 func TestPublicMatchesTheContract(t *testing.T) {
 	base := []string{"proposal_id", "organization_id", "model_id", "base_version_id", "mode", "status", "created_by", "created_at", "requires_confirmation"}
 	reviewed := append(slices.Clone(base), "summary", "assumptions", "risk_level", "confidence", "changes", "expected_effects", "validation",
-		"patch_hash", "dataset_bindings", "server_risk_level", "provider_risk_claim")
-	asked := append(slices.Clone(base), "summary", "assumptions", "questions")
+		"patch_hash", "dataset_bindings", "server_risk_level", "provider_risk_claim", "generated_by")
+	asked := append(slices.Clone(base), "summary", "assumptions", "questions", "generated_by")
 	decided := []string{"decided_by", "decided_at", "decision_comment"}
 	for _, c := range []struct {
 		status store.Status
@@ -165,7 +166,7 @@ func TestPublicMatchesTheContract(t *testing.T) {
 		{store.Approved, true, slices.Concat(reviewed, []string{"new_version_id"}, decided)},
 		{store.Rejected, true, slices.Concat(reviewed, decided)},
 		{store.Rejected, false, slices.Concat(asked, decided)},
-		{store.Invalid, false, append(slices.Clone(base), "validation")},
+		{store.Invalid, false, append(slices.Clone(base), "validation", "generated_by")},
 		{store.Failed, false, append(slices.Clone(base), "error")},
 	} {
 		r := row(c.status)

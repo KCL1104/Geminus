@@ -8,7 +8,7 @@
 // views are in a11y.spec.ts, simplicity.spec.ts and strings.spec.ts.
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { APP, focusIsVisible, open, PROVIDER, settled, signInAs, tenant } from "./helpers";
+import { APP, focusIsVisible, open, openAccount, PROVIDER, settled, signInAs, tenant } from "./helpers";
 
 type ApiCall = { method: string; path: string; org: string | null; cookie: string | null; hasAuth: boolean };
 type ProviderState = { revoked: string[]; logouts: number; apiCalls: ApiCall[]; refreshStates: Record<string, "live" | "spent" | "revoked"> };
@@ -37,10 +37,13 @@ test.describe("at 1280px", () => {
     await settled(page, "en");
 
     await expect(page.getByRole("link", { name: "SMT line 1" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
-    // One organization: no choice to make, no switcher.
+    // One organization: no choice to make; the account menu (H-042) has Sign out, the language and the theme, and no switcher.
     await expect(page.getByRole("heading", { name: "Choose an organization" })).toHaveCount(0);
-    await expect(page.locator("header [aria-haspopup=listbox]")).toHaveCount(2); // language and theme only
+    const menu = await openAccount(page);
+    await expect(menu.getByRole("button", { name: "Sign out" })).toBeVisible();
+    await expect(menu.getByRole("radiogroup")).toHaveCount(2);
+    await expect(menu.locator("[aria-haspopup=listbox]")).toHaveCount(0);
+    await page.keyboard.press("Escape");
 
     await page.getByRole("link", { name: "SMT line 1" }).click();
     await page.waitForURL(`${APP}/projects/${tenant.PRJ_LINE}`);
@@ -101,7 +104,10 @@ test.describe("at 1280px", () => {
     await expect(page.getByRole("heading", { name: "Choose an organization" })).toBeVisible();
     const before = (await providerState(request)).apiCalls;
     expect(before.at(-1)?.path, "nothing of a tenant before the choice").toBe("/v1/me");
-    await expect(page.locator("header [aria-haspopup=listbox]")).toHaveCount(2);
+    // While it asks, the page's list is the only way to choose: the account menu has no switcher yet.
+    const asking = await openAccount(page);
+    await expect(asking.locator("[aria-haspopup=listbox]")).toHaveCount(0);
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("listitem").filter({ hasText: "Line Works" })).toContainText("Owner");
     await expect(page.getByRole("listitem").filter({ hasText: "Test Bay" })).toContainText("Viewer");
 
@@ -116,7 +122,8 @@ test.describe("at 1280px", () => {
     await expect(page.getByRole("link", { name: "Burn-in bay" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Choose an organization" })).toHaveCount(0);
 
-    // The strip's switcher: a choice applies at once, on the same page.
+    // The account menu's switcher (H-042): a choice applies at once, on the same page.
+    await openAccount(page);
     const switcher = page.getByRole("button", { name: /Organization$/ });
     await expect(switcher).toHaveAccessibleName("Test Bay Organization");
     await switcher.click();
@@ -131,7 +138,7 @@ test.describe("at 1280px", () => {
     await signInAs(page, tenant.multi, "/projects", "en", { organization: tenant.LINE });
     await expect(page.getByRole("link", { name: "SMT line 1" })).toBeVisible();
     const before = await providerState(request);
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await (await openAccount(page)).getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL(`${APP}/`);
     const after = await providerState(request);
     expect(after.logouts).toBe(before.logouts + 1);
@@ -139,7 +146,7 @@ test.describe("at 1280px", () => {
     expect(after.refreshStates[after.revoked.at(-1) as string]).toBe("revoked");
     expect(await sessionCookie(page)).toBeUndefined();
     expect((await appCookies(page)).find((c) => c.name === "geminus_organization"), "the organization is forgotten").toBeUndefined();
-    await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Account and settings" })).toHaveCount(0);
     await page.goto("/projects");
     await settled(page, "en");
     await expect(page.getByRole("heading", { name: "Sign in required" })).toBeVisible();
@@ -159,7 +166,7 @@ test.describe("at 1280px", () => {
     await settled(page, "en");
     await expect(page.getByRole("heading", { name: "Sign in required" })).toBeVisible();
     await expect(page.getByRole("link", { name: "SMT line 1" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Sign out" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Account and settings" })).toHaveCount(0);
     expect(await sessionCookie(page), "the BFF cleared the ended session").toBeUndefined();
     await page.getByRole("link", { name: "Sign in", exact: true }).click();
     await page.waitForURL(`${APP}/projects`);
@@ -175,7 +182,7 @@ test.describe("at 1280px", () => {
       await expect(alert).toContainText("You do not have permission to do this");
       await expect(alert).toContainText("This sign-in has no access to any organization in Geminus.");
       await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+      await expect((await openAccount(page)).getByRole("button", { name: "Sign out" })).toBeVisible();
       expect((await providerState(request)).apiCalls.slice(before).map((c) => c.path)).toEqual(["/v1/me"]);
     });
   }
@@ -208,10 +215,17 @@ test.describe("with the keyboard only", () => {
     await expect(page.getByRole("link", { name: "Burn-in bay" })).toBeVisible();
     await page.locator("main").focus();
     await tabTo(page, "Burn-in bay");
-    // The strip: back from the page to its last control.
+    // The rail (H-042): back from the page to its last control, the account, then its menu's Sign out.
     await page.keyboard.press("Shift+Tab");
-    for (let i = 0; i < 6 && (await page.evaluate(() => (document.activeElement as HTMLElement | null)?.innerText?.trim())) !== "Sign out"; i++) {
+    for (let i = 0; i < 8 && (await page.evaluate(() => document.activeElement?.getAttribute("aria-label"))) !== "Account and settings"; i++) {
       await page.keyboard.press("Shift+Tab");
+    }
+    await expect(page.locator(":focus")).toHaveAttribute("aria-label", "Account and settings");
+    expect(await focusIsVisible(page)).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    for (let i = 0; i < 10 && (await page.evaluate(() => (document.activeElement as HTMLElement | null)?.innerText?.trim())) !== "Sign out"; i++) {
+      await page.keyboard.press("Tab");
     }
     await expect(page.locator(":focus")).toHaveText("Sign out");
     expect(await focusIsVisible(page)).toBe(true);

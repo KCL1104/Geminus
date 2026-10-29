@@ -121,7 +121,8 @@ async function check(el: HTMLElement, locale: Locale, offered: string[]) {
 
 for (const locale of locales) {
   const t = createTranslator(locale);
-  const back = t("proposal.back");
+  // H-042: no back link on the page; the rail is the way out, and its Projects link is always in the shell.
+  const back = t("nav.projects");
   describe(`${locale}: the proposal review keeps only the controls it needs (H-027)`, () => {
     const offered: Record<SampleState, string[]> = {
       ready: [t("proposal.approve.edit", { version: "2" }), t("proposal.reject"), back],

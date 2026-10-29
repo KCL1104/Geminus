@@ -143,7 +143,8 @@ describe("the scenario page: run the scenario and its baseline", () => {
     expect(text(el)).toContain("A what-if on version 3 of Board line (synthetic), with 1 change.");
     const field = (label: string) => ([...el.querySelectorAll("label")].find((l) => l.textContent === label) as HTMLLabelElement | undefined)?.control as HTMLInputElement | undefined;
     expect([field("Run length (minutes)")?.value, field("Warm-up (minutes)")?.value, field("Replications")?.value, field("Seed")?.value]).toEqual(["1440", "0", "5", "1"]);
-    expect(el.querySelector('a[href="/models/' + boardScenario.model_id + '"]')?.textContent).toBe(en["scenario.back"]);
+    // H-042: no link back to the model on the page: the rail's Canvas is that way.
+    expect(el.querySelector('a[href="/models/' + boardScenario.model_id + '"]')).toBeNull();
     expect(button(el, en["run.start"])?.getAttribute("data-variant")).toBe("run");
     expect(await violations()).toEqual([]);
   });
@@ -393,6 +394,45 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(text(done)).toContain(en["analysis.nextNote"]);
     expect(outcome(el)).toContain(en["analysis.done"]);
     expect(await violations()).toEqual([]);
+  });
+
+  // H-043: the explanation names the Meta model that wrote it, and an editor
+  // can have the AI write a suggested next experiment as a scenario
+  // proposal; it opens for review, nothing runs or is saved here.
+  it("names the model that wrote it and turns a suggested next experiment into a scenario proposal", async () => {
+    const PROPOSAL = "aip_01M4YDQK00TA0000000000H043";
+    const model = { id: boardScenario.model_id, organization_id: ORG, project_id: "prj_01M4YDQK00TA00000000000001", domain: "electronics_line",
+      name: "Board line", draft: { revision: 2, base_version_id: boardVersion.id, out_of_date: false }, latest_version: { id: boardVersion.id, version: 3 },
+      created_at: "2026-10-28T08:00:00Z" };
+    const byMeta = { ...explained, generated_by: { provider: "meta", model: "muse-spark-1.3" } };
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, byMeta), [`GET ${v1}/models/${model.id}`]: json(200, model),
+      [`POST ${v1}/models/${model.id}/ai-proposals`]: json(202, { proposal_id: PROPOSAL, status: "generating" }) });
+    nav.push.mockClear();
+    const { el } = await page(api, ANA);
+    await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
+    const done = section(el)!;
+    expect(text(done)).toContain(`Written by Muse Spark 1.3 (Meta) from these results. ${en["analysis.checked"]}`);
+    expect(text(done)).not.toContain(en["analysis.provenance"]);
+    const propose = [...done.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === en["analysis.proposeNamed"].replace("{name}", "Faster AOI"))!;
+    expect(text(propose)).toBe(en["analysis.propose"]);
+    expect(propose.getAttribute("data-variant")).toBe("ai");
+    expect(await violations()).toEqual([]);
+    await press(propose);
+    await waitFor(() => nav.push.mock.calls.length > 0, "the proposal page");
+    const post = api.calls.find((c) => c.method === "POST" && c.path.endsWith("/ai-proposals"))!;
+    expect(post.body).toEqual({ base_version_id: boardVersion.id, mode: "scenario", intent: "Faster AOI: AOI may become the next constraint.", output_locale: "en" });
+    expect(post.key).toMatch(/^[\x21-\x7e]{8,128}$/);
+    expect(nav.push.mock.calls).toEqual([[`/proposals/${PROPOSAL}`]]);
+  });
+
+  it("offers a viewer no next-experiment proposal (H-043)", async () => {
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, explained) });
+    const { el } = await page(api, ANA, viewer);
+    await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
+    expect([...section(el)!.querySelectorAll("button")].map((b) => text(b))).not.toContain(en["analysis.propose"]);
+    // Without generated_by (an analysis from before H-043) the note says "the AI" and names no model.
+    expect(text(section(el)!)).toContain(en["analysis.provenance"]);
+    expect(text(section(el)!)).not.toContain("Muse Spark");
   });
 
   it("says an ungrounded answer was not kept, shows nothing of it, and lets an editor ask again", async () => {

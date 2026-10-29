@@ -404,6 +404,9 @@ describe("model writes and versions (T-013)", () => {
     record("compareSimulations");
     await client.listSimulations(MODEL, { cursor: "next" });
     record("listSimulations");
+    await client.listProposals(MODEL, { cursor: "next" });
+    record("listProposals");
+    expect(Object.fromEntries(f.calls[seen.listProposals!]!.url.searchParams)).toEqual({ cursor: "next", limit: "100" });
     // A page of up to 100 runs after the cursor (T-057 review r1 L6).
     expect(Object.fromEntries(f.calls[seen.listSimulations!]!.url.searchParams)).toEqual({ cursor: "next", limit: "100" });
     await client.createAnalysis(SCENARIO_RUN, { baseline_run_id: BASELINE_RUN, output_locale: "en" }, "key-contract-4");

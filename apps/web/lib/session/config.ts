@@ -77,7 +77,8 @@ export function loadBffConfig(env: Record<string, string | undefined>): BffConfi
   const clientId = text("BFF_OIDC_CLIENT_ID", 256);
   const clientSecret = text("BFF_OIDC_CLIENT_SECRET", 512);
   const audience = text("BFF_OIDC_AUDIENCE", 512);
-  const scopes = (env.BFF_OIDC_SCOPES?.trim() || "openid offline_access").split(/\s+/);
+  // profile and email give the account menu the person's name and email (H-042).
+  const scopes = (env.BFF_OIDC_SCOPES?.trim() || "openid profile email offline_access").split(/\s+/);
   if (!scopes.includes("openid") || scopes.some((s) => !/^[\x21\x23-\x5b\x5d-\x7e]{1,64}$/.test(s)) || new Set(scopes).size !== scopes.length) {
     problems.push("BFF_OIDC_SCOPES must be distinct scope tokens including openid");
   }

@@ -44,9 +44,67 @@ type Proposal struct {
 	DecidedBy       *string `json:"decided_by,omitzero"`
 	DecidedAt       *string `json:"decided_at,omitzero"`
 	DecisionComment *string `json:"decision_comment,omitzero"`
+	// GeneratedBy is which provider and model wrote it (H-043), when the
+	// row has the provider's metadata.
+	GeneratedBy *GeneratedBy `json:"generated_by,omitzero"`
 	// SourceImage is the photo the proposal was asked for with (T-056), in
 	// every state; nil for a proposal asked for in words.
 	SourceImage *SourceImage `json:"source_image,omitzero"`
+}
+
+// GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
+// and model wrote an AI result and, for a photo, which segmenter read it and
+// how many objects it found. Only these come from the stored metadata:
+// never a credential label, cost, reservation, request ID, hash or latency.
+type GeneratedBy struct {
+	Provider  string              `json:"provider"`
+	Model     string              `json:"model,omitzero"`
+	Segmenter *GeneratedSegmenter `json:"segmenter,omitzero"`
+}
+
+// GeneratedSegmenter is GeneratedBy's segmenter.
+type GeneratedSegmenter struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model,omitzero"`
+	Objects  int    `json:"objects"`
+}
+
+var (
+	providerName = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
+	modelName    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$`)
+)
+
+// maxSegments is D-131 (c)'s limit on a photo's objects.
+const maxSegments = 64
+
+// FromMetadata is the GeneratedBy of a row's provider metadata (a proposal's
+// or an analysis's), or nil when it names no provider the contract can show
+// (a generating row's {} included). A model or segmenter outside the
+// contract's patterns is left out rather than shown.
+func FromMetadata(metadata []byte) *GeneratedBy {
+	var m struct {
+		Provider  string `json:"provider"`
+		Model     string `json:"model"`
+		Segmenter *struct {
+			Provider string `json:"provider"`
+			Model    string `json:"model"`
+			Segments int    `json:"segments"`
+		} `json:"segmenter"`
+	}
+	if len(metadata) == 0 || json.Unmarshal(metadata, &m) != nil || !providerName.MatchString(m.Provider) {
+		return nil
+	}
+	out := &GeneratedBy{Provider: m.Provider}
+	if modelName.MatchString(m.Model) {
+		out.Model = m.Model
+	}
+	if s := m.Segmenter; s != nil && providerName.MatchString(s.Provider) && s.Segments >= 0 && s.Segments <= maxSegments {
+		out.Segmenter = &GeneratedSegmenter{Provider: s.Provider, Objects: s.Segments}
+		if modelName.MatchString(s.Model) {
+			out.Segmenter.Model = s.Model
+		}
+	}
+	return out
 }
 
 // SourceImage is proposal.schema.json's source_image: what the server
@@ -75,6 +133,11 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		Mode: p.Mode, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
 	if im := p.Image; im != nil {
 		out.SourceImage = &SourceImage{MediaType: im.MediaType, Width: im.Width, Height: im.Height, SizeBytes: im.Size, ContentHash: im.SHA256}
+	}
+	// Which model answered, once there is an answer: not while generating,
+	// and not for a failure, whose resource holds only its error (AI_SPEC §4).
+	if p.Status != store.Generating && p.Status != store.Failed {
+		out.GeneratedBy = FromMetadata(p.ProviderMetadata)
 	}
 	needsInput := func() {
 		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions

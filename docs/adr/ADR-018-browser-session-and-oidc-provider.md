@@ -14,10 +14,10 @@ The original report lists the Auth provider as TBD ("managed OIDC", DECISIONS_AN
   - Endpoints: authorization, token, revocation and end-session come only from the deployment settings; there is no discovery at runtime. This matches SECURITY §3 "provider endpoints only from the deployment allowlist".
 - **The browser never gets any token.**
   - Access, refresh and ID tokens are never put anywhere JS can read: not localStorage, sessionStorage, IndexedDB, a JS-readable cookie or a response body.
-  - The ID token is used only after it is verified in the callback (`iss`, `aud`, `nonce`, `sub`) and is discarded right after.
+  - The ID token is used only after it is verified in the callback (`iss`, `aud`, `nonce`, `sub`) and is discarded right after. H-042: before it is discarded, its `name` (or `nickname`) and `email` claims are cleaned and kept as the session's profile, for the account menu; no other claim is kept.
 - **Session cookie.**
   - Attributes: `__Host-geminus_session`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, no `Domain`.
-  - Content: the access token, refresh token, expiry time and the session's absolute deadline, encrypted with AES-256-GCM; the AAD is the cookie name and the format version.
+  - Content: the access token, refresh token, expiry time and the session's absolute deadline, encrypted with AES-256-GCM; the AAD is the cookie name and the format version. H-042 adds the optional profile: a name with characters that show nothing or reorder text removed (at most 128 characters) and one printable email address (at most 254), or null. Only the server reads it; the layout passes just these two strings to the rail. A session sealed without it stays valid.
   - Keys: a current key and the previous key are kept at the same time, to support rotation; the keys come from the secret store.
   - Size: a cookie over 3.5 KB is an error; it is not split into chunks. If that happens, switch to a server-side session store, under a separate ADR.
 - **CSRF protection.**

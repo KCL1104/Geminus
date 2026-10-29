@@ -64,7 +64,8 @@ const reactFlow = [/^React Flow$/, /^React Flow attribution$/];
 const fixture = JSON.parse(readFileSync(join(import.meta.dirname, "../../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as {
   ir: { name: string; nodes: { id: string; name?: string }[]; resources: { name: string }[]; entity_types: { name: string }[]; calendars?: { id: string; name?: string }[] };
 };
-const tenantData = ["Line Works", "Test Bay", "SMT line 1", "Burn-in bay", fixture.ir.name, ...fixture.ir.nodes.map((n) => n.name ?? n.id), ...fixture.ir.resources.map((r) => r.name), ...fixture.ir.entity_types.map((e) => e.name), ...(fixture.ir.calendars ?? []).map((c) => c.name ?? c.id)];
+// The avatar shows the organization's initials when the fake gives no profile (H-042): "LW", "TB".
+const tenantData = ["LW", "TB", "Line Works", "Test Bay", "SMT line 1", "Burn-in bay", fixture.ir.name, ...fixture.ir.nodes.map((n) => n.name ?? n.id), ...fixture.ir.resources.map((r) => r.name), ...fixture.ir.entity_types.map((e) => e.name), ...(fixture.ir.calendars ?? []).map((c) => c.name ?? c.id)];
 
 for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
   test(`${locale}: the signed-in views' strings are the catalog's, the tenant's data or an accepted library string`, async ({ page }) => {

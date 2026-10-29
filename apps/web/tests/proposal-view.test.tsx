@@ -522,7 +522,8 @@ describe("the AI's words are data, never markup or links", () => {
     for (const words of [s.summary!, ...s.assumptions!, ...s.expected_effects!]) expect(page).toContain(words.replace(/\s+/g, " ").trim());
     expect(el.querySelectorAll("img, script, iframe, object, embed, svg[onload], [onerror], [onclick], [style*='url']")).toHaveLength(0);
     // The page's own links only: back to the model. Nothing the AI wrote became one.
-    expect([...el.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/models/${api.modelId}`]);
+    // No link at all on the page (H-042: the rail is the way back to the model).
+    expect([...el.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([]);
     for (const a of el.querySelectorAll("[href]")) expect(a.getAttribute("href")).not.toMatch(/evil|javascript:/i);
     // "Approve" in the AI's words is not an approval; the server's risk stands.
     expect(decisions(api)).toEqual([]);

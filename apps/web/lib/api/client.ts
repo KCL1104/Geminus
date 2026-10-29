@@ -25,6 +25,7 @@ import type {
   Proposal,
   ProposalAccepted,
   ProposalRequest,
+  Proposals,
   Publish,
   Reject,
   ResetDraft,
@@ -328,6 +329,11 @@ export function createApiClient(cfg: ClientConfig) {
       if (fields.output_locale !== undefined) form.append("output_locale", fields.output_locale);
       form.append("file", file, "photo");
       return call<ProposalAccepted>({ method: "POST", path: `/models/${modelId}/ai-proposals/image`, body: form, idempotencyKey: key, signal: opts.signal });
+    },
+    /** The model's AI proposals, oldest first, a page of up to 100 (H-042: the AI proposals page). */
+    async listProposals(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      return call<Proposals>({ method: "GET", path: `/models/${modelId}/ai-proposals`, query: { cursor: opts.cursor, limit: "100" }, signal: opts.signal });
     },
     /** A proposal as the server holds it: its state, and the server's validation and risk beside the AI's claim (T-025, D-027). */
     async getProposal(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {

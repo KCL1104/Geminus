@@ -3,7 +3,8 @@
    variables take the tokens. */
 .canvas {
   position: relative;
-  height: 560px;
+  /* Canvas first (H-042): as tall as the window allows under the page's header. */
+  height: clamp(480px, calc(100vh - 260px), 900px);
   background-color: var(--gm-color-ground);
   background-image: radial-gradient(var(--gm-color-rule-strong) 1.2px, transparent 1.2px);
   background-size: 22px 22px;

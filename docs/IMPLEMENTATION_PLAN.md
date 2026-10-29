@@ -6,7 +6,7 @@ SOURCE: the original report pp.47–50. Four engineers / 16 weeks is the baselin
 
 First fix the Model IR schema → Go domain types → validators → versioning → DES → API → React Flow → AI proposal → results → 3D. The base schema/DB/auth/CI and the frontend shell can proceed in parallel; do not finish a fancy UI first and then retrofit three different models.
 
-`planning/tasks.json` is the machine-readable task source, with 42 tasks, all not_started. It contains depends_on, requirement_ids, decision_gates, scope, planned_outputs, acceptance_tests, verification_commands, definition_of_done, completion_evidence. Task numbers are not the schedule order; for example, T-018 depends on proposal/inference interfaces with later numbers, so tasks must be chosen by the DAG.
+`planning/tasks.json` is the machine-readable task source: 57 tasks on 2026-10-29 (35 done, 5 in progress, 17 not started); it began with 42, all not_started. It contains depends_on, requirement_ids, decision_gates, scope, planned_outputs, acceptance_tests, verification_commands, definition_of_done, completion_evidence. Task numbers are not the schedule order; for example, T-018 depends on proposal/inference interfaces with later numbers, so tasks must be chosen by the DAG.
 
 ## 2. Milestones and dependency backbone
 

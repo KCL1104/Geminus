@@ -157,8 +157,9 @@ for (const locale of locales) {
   const t = catalogs[locale];
   describe(`${locale}: the scenario page and the results keep only the controls they need (H-027)`, () => {
     const states: [string, () => Promise<ReactNode>, Auth, Record<string, () => Response>, (el: HTMLElement) => boolean, string[]][] = [
-      ["the scenario, for an editor", scenarioPage, editor, scenarioAnswers, has("form"), [t["run.start"], t["scenario.back"]]],
-      ["the scenario, for a viewer", scenarioPage, viewer, scenarioAnswers, says(t["run.readOnly.viewer"]), [t["scenario.back"]]],
+      // H-042: the way back to the model is the rail; the shell's Projects link is always there.
+      ["the scenario, for an editor", scenarioPage, editor, scenarioAnswers, has("form"), [t["run.start"], t["nav.projects"]]],
+      ["the scenario, for a viewer", scenarioPage, viewer, scenarioAnswers, says(t["run.readOnly.viewer"]), [t["nav.projects"]]],
       ["the scenario, failed to load", scenarioPage, editor, { [`GET ${v1}/scenarios/${boardScenario.id}`]: unavailable }, has("[role=alert]"), [t.retry]],
       ["both runs queued", resultsView, editor, { ...scenarioAnswers, ...runs(boardBaselineRun({ status: "queued", progress: progress(1, 0) }), boardScenarioRun({ status: "queued", progress: progress(1, 0) })) }, says(t["runs.status.queued"]), [t["runs.cancel"], t["runs.back"]]],
       ["both running", resultsView, editor, { ...scenarioAnswers, ...runs(boardBaselineRun({ status: "running", progress: progress(2, 1) }), boardScenarioRun({ status: "running", progress: progress(2, 3) })) }, has("[role=progressbar]"), [t["runs.cancel"]]],

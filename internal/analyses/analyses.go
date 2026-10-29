@@ -268,6 +268,8 @@ type Record struct {
 	Analysis       jsontext.Value           `json:"analysis"`
 	CreatedAt      string                   `json:"created_at"`
 	Error          *proposals.ErrorEnvelope `json:"error"`
+	// GeneratedBy is which provider and model wrote it (H-043), once completed.
+	GeneratedBy *proposals.GeneratedBy `json:"generated_by,omitzero"`
 }
 
 // Get returns analysis id.
@@ -299,6 +301,7 @@ func public(a store.Analysis, requestID string) (Record, error) {
 	switch a.Status {
 	case store.Completed:
 		r.Analysis = jsontext.Value(a.Analysis)
+		r.GeneratedBy = proposals.FromMetadata(a.ProviderMetadata)
 	case store.Failed:
 		e, err := proposals.FailureError(a.Failure, requestID)
 		if err != nil {

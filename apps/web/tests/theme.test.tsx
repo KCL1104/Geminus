@@ -15,14 +15,6 @@ afterEach(() => {
   delete document.documentElement.dataset.theme;
 });
 
-const nameOf = (el: Element) => (el.getAttribute("aria-labelledby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent).join(" ");
-
-async function choose(el: HTMLElement, text: string): Promise<void> {
-  await press(el.querySelector("button"));
-  await settle();
-  await press([...document.querySelectorAll("[role=option]")].find((o) => o.textContent === text));
-  await settle();
-}
 
 describe("theme values", () => {
   it("are the system's, light and dark; only exactly light or dark is a choice", () => {
@@ -76,23 +68,28 @@ describe("theme values", () => {
 });
 
 describe("ThemeSwitcher", () => {
-  it("is a labelled Select that applies and remembers each choice", async () => {
+  // H-042: a three-way choice in the account menu (a radio group): each press applies and remembers.
+  const radios = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>("[role=radio]")];
+  const checked = (el: HTMLElement) => radios(el).find((r) => r.getAttribute("aria-checked") === "true")?.textContent;
+  const pick = async (el: HTMLElement, name: string) => {
+    await press(radios(el).find((r) => r.textContent === name));
+    await settle();
+  };
+
+  it("is a labelled three-way choice that applies and remembers each choice", async () => {
     const el = await mount(<ThemeSwitcher initial="system" />);
-    const trigger = el.querySelector("button")!;
-    expect(nameOf(trigger)).toBe("System Theme");
-    await press(trigger);
-    await settle();
-    expect([...document.querySelectorAll("[role=option]")].map((o) => o.textContent)).toEqual(["System", "Light", "Dark"]);
-    await press([...document.querySelectorAll("[role=option]")].find((o) => o.textContent === "Dark"));
-    await settle();
+    expect(el.querySelector("[role=radiogroup]")?.getAttribute("aria-label")).toBe("Theme");
+    expect(radios(el).map((r) => r.textContent)).toEqual(["System", "Light", "Dark"]);
+    expect(checked(el)).toBe("System");
+    await pick(el, "Dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(cookieTheme(document.cookie)).toBe("dark");
-    expect(trigger.textContent).toBe("Dark");
+    expect(checked(el)).toBe("Dark");
 
-    await choose(el, "Light");
+    await pick(el, "Light");
     expect([document.documentElement.dataset.theme, cookieTheme(document.cookie)]).toEqual(["light", "light"]);
 
-    await choose(el, "System");
+    await pick(el, "System");
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
     expect(document.cookie).not.toContain("geminus_theme");
     expect(await violations()).toEqual([]);
@@ -100,7 +97,14 @@ describe("ThemeSwitcher", () => {
 
   it("starts from the theme the server rendered, in the reader's language", async () => {
     const el = await mount(<ThemeSwitcher initial="dark" />, "zh-Hant");
-    expect(nameOf(el.querySelector("button")!)).toBe("深色 主題");
+    expect(checked(el)).toBe("深色");
+    expect(el.querySelector("[role=radiogroup]")?.getAttribute("aria-label")).toBe("主題");
+  });
+
+  it("starts from the remembered choice when the menu opens again later (H-042)", async () => {
+    document.cookie = "geminus_theme=light; Path=/";
+    const el = await mount(<ThemeSwitcher initial="dark" />);
+    expect(checked(el)).toBe("Light");
   });
 
   it("is read back in the browser for the page that replaces a failed layout", async () => {

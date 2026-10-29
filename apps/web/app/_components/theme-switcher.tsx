@@ -5,8 +5,8 @@
 // on the next page, so nothing flashes and nothing needs to re-render.
 import { useState, useSyncExternalStore } from "react";
 import { useI18n } from "../../lib/i18n/provider";
-import { cookieTheme, defaultTheme, parseTheme, type Theme, themeAttribute, themeCookieValue, themes } from "../../lib/theme/theme";
-import { Select } from "../../ui/select";
+import { cookieTheme, defaultTheme, parseTheme, type Theme, themeAttribute, themeCookie, themeCookieValue, themes } from "../../lib/theme/theme";
+import { Segmented } from "../../ui/segmented";
 
 /** Sets the document's theme attribute: none for the system's. */
 export function applyTheme(theme: Theme, root: HTMLElement = document.documentElement): void {
@@ -15,20 +15,25 @@ export function applyTheme(theme: Theme, root: HTMLElement = document.documentEl
   else root.dataset.theme = value;
 }
 
+/**
+ * The theme as a three-way choice in the account menu (H-042). The menu
+ * mounts it each time it opens, so it starts from the remembered choice
+ * when there is one, else from the page's.
+ */
 export function ThemeSwitcher({ initial }: { initial: Theme }) {
   const { t } = useI18n();
-  const [theme, setTheme] = useState(initial);
+  const [theme, setTheme] = useState<Theme>(() =>
+    typeof document !== "undefined" && new RegExp(`(?:^|;\\s*)${themeCookie}=`).test(document.cookie) ? cookieTheme(document.cookie) : initial,
+  );
   return (
-    <Select
-      variant="strip"
+    <Segmented
       label={t("theme.label")}
       value={theme}
       items={themes.map((th) => ({ id: th, label: t(`theme.${th}`) }))}
-      onChange={(id) => {
-        const next = parseTheme(id);
-        setTheme(next);
-        document.cookie = themeCookieValue(next, location.protocol === "https:");
-        applyTheme(next);
+      onChange={(next) => {
+        setTheme(parseTheme(next));
+        document.cookie = themeCookieValue(parseTheme(next), location.protocol === "https:");
+        applyTheme(parseTheme(next));
       }}
     />
   );

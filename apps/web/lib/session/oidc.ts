@@ -1,12 +1,13 @@
 // The BFF's OIDC client (ADR-018, T-043): Authorization Code with PKCE (S256),
 // state and nonce, through openid-client with the deployment's endpoints (no
 // discovery). The ID token is checked (signature, iss, aud, exp, nonce, sub)
-// and dropped; only the access and refresh tokens are kept, sealed in the
+// and dropped; only the access and refresh tokens and, from its claims, a
+// cleaned name and email (H-042, the account menu) are kept, sealed in the
 // session cookie. Server-side only.
 import { AsyncLocalStorage } from "node:async_hooks";
 import * as client from "openid-client";
 import type { BffConfig } from "./config";
-import { type Login, type Session, sessionToken } from "./session";
+import { type Login, profileFromClaims, type Session, sessionToken } from "./session";
 
 export type Oidc = {
   config: client.Configuration;
@@ -179,7 +180,8 @@ export async function finishLogin(o: Oidc, callback: URL, login: Login, now: num
     });
     const claims = tokens.claims();
     if (claims === undefined || typeof claims.sub !== "string" || claims.sub === "") throw new Error("the ID token has no subject");
-    return { ...(await fields(o, tokens, null, now)), createdAt: now, lastSeenAt: now };
+    // The person's name and email for the account menu (H-042); never the subject or any other claim.
+    return { ...(await fields(o, tokens, null, now)), createdAt: now, lastSeenAt: now, profile: profileFromClaims(claims) };
   } catch (e) {
     throw new OidcFailure("login", e instanceof Error ? e.message : "unknown error");
   }

@@ -221,6 +221,11 @@ function tenantGet(org, path) {
   if (path === `/v1/models/${model.id}/draft`) return [live.draft, { etag: `"draft-revision-${live.draft.revision}"` }];
   const v = live.versions.find((x) => path === `/v1/model-versions/${x.id}`);
   if (v) return [v, {}];
+  // The model's lists (H-042: the rail's Scenarios, AI proposals and Runs pages) in the server's order: versions newest first, proposals and runs oldest first.
+  if (path === `/v1/models/${model.id}/versions`) return [{ items: [...live.versions].reverse(), next_cursor: null }, {}];
+  if (live.versions.some((x) => path === `/v1/model-versions/${x.id}/scenarios`)) return [{ items: [], next_cursor: null }, {}];
+  if (path === `/v1/models/${model.id}/ai-proposals`) return [{ items: [...live.proposals.values()].map((x) => x.proposal), next_cursor: null }, {}];
+  if (path === `/v1/models/${model.id}/simulations`) return [{ items: [], next_cursor: null }, {}];
   const s = path.startsWith("/v1/ai-proposals/") ? live.proposals.get(path.slice("/v1/ai-proposals/".length)) : undefined;
   if (s) {
     if (s.proposal.status === "generating" && s.reads++ >= 1) s.proposal = s.answer;

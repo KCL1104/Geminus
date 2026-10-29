@@ -134,8 +134,8 @@ test("shows hostile words from the AI as text: no markup, no link, no decision",
   const band = page.locator("main header:has(h1)");
   for (const words of [p.summary!, ...p.assumptions!, ...p.expected_effects!]) await expect(article).toContainText(words);
   for (const scope of [article, band]) await expect(scope.locator("img, script, iframe, object, embed")).toHaveCount(0);
-  // The page's own link only: back to the model, in the band; none in the article.
-  expect(await band.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")))).toEqual(["/ui-gallery/editor"]);
+  // No link in the header or the article (H-042: the rail is the way back to the model).
+  expect(await band.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")))).toEqual([]);
   await expect(article.locator("a")).toHaveCount(0);
   await expect(band.locator("[data-proposal-status]")).toHaveText(en["proposal.status.ready"]);
   await expect(article.locator("[data-cell=server]")).toContainText(en["proposal.risk.level.high"]);
@@ -296,8 +296,8 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       ]);
       for (const c of posts) expect(c, c.path).toMatchObject({ org: tenant.LINE, cookie: null, hasAuth: true, key: expect.stringMatching(/^[\x21-\x7e]{8,128}$/) });
 
-      // Back to the model, from the keyboard: version 2 is the latest, and the draft moved onto it.
-      await keyTo(page, page.getByRole("link", { name: t["proposal.back"] }), "Shift+Tab");
+      // Back to the model by the rail's Canvas (H-042), from the keyboard: version 2 is the latest, and the draft moved onto it.
+      await keyTo(page, page.getByRole("link", { name: t["rail.canvas"] }), "Shift+Tab");
       await page.keyboard.press("Enter");
       await page.waitForURL(`${APP}/models/${tenant.MODEL}`);
       await settled(page, locale);
@@ -325,7 +325,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
     expect(posts.map((c) => c.path.replace(/aip_\w+/, "<id>"))).toEqual([`/v1/models/${tenant.MODEL}/ai-proposals`, "/v1/ai-proposals/<id>/reject"]);
     expect(posts[1]!.body).toEqual({ comment: "Not this quarter." });
-    await page.getByRole("link", { name: en["proposal.back"] }).click();
+    await page.getByRole("link", { name: en["rail.canvas"] }).click();
     await settled(page, "en");
     await expectBand(page, "1", domainIn(en));
   });

@@ -1,17 +1,11 @@
-/* The preview's sample-state links: one row, the current one in weight. */
-.states {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gm-space-xs) var(--gm-space-gutter);
+/* The gallery's sample-state menu (review surface only, H-042). */
+.menu {
   margin: 0 0 var(--gm-space-xl);
 }
 
-.states a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--gm-control-height);
-}
-
-.states a[aria-current="page"] {
-  font-weight: var(--gm-font-weight-strong);
+.group {
+  padding: var(--gm-space-sm) var(--gm-space-md) var(--gm-space-xs);
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
 }

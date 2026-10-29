@@ -149,7 +149,7 @@ The source is the code that reads the variable. Variables with "Yes" in the **Se
 | `BFF_OIDC_CLIENT_ID` | Yes | No | The Auth0 Application's Client ID |
 | `BFF_OIDC_CLIENT_SECRET` | Yes | Yes | The Auth0 Application's Client Secret |
 | `BFF_OIDC_AUDIENCE` | Yes | No | The same as `AUTH_OIDC_AUDIENCE` |
-| `BFF_OIDC_SCOPES` | No | No | Not set (default `openid offline_access`) |
+| `BFF_OIDC_SCOPES` | No | No | Not set (default `openid profile email offline_access`; H-042: `profile email` give the account menu its name and email) |
 | `SESSION_KEYS` | Yes | Yes | `<id>:<32 bytes base64url>` (generation and rotation in [Auth0 runbook](auth0.md) §4) |
 | `GEMINUS_UI_GALLERY` | No | No | The component gallery page, for browser checks only; **not set** when deploying |
 | `PORT`, `HOSTNAME` | No | No | Next's listener (the image defaults to 3000, 0.0.0.0) |

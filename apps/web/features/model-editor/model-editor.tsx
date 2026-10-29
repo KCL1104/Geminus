@@ -260,12 +260,21 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
   const publishable = publishReason === null && canPublish(session);
   const saveable = nextSave(session) !== null;
 
+  // H-042: the band shows a short state (a dot, the word, the revision); the
+  // status region keeps the sentence, read when it changes and named by Save.
   const statusLine = (
-    <p role="status" id={statusId} className={styles.status} data-draft-status={session.status}>
-      {t(`draft.status.${session.status}`)}
-      {gap}
-      {t("draft.revision", { revision: String(remote.revision) })}
-    </p>
+    <>
+      <p role="status" id={statusId} className={styles.status} data-draft-status={session.status}>
+        {t(`draft.status.${session.status}`)}
+        {gap}
+        {t("draft.revision", { revision: String(remote.revision) })}
+      </p>
+      <span className={styles.draft} data-state={session.status} aria-hidden="true">
+        <span className={styles.dot} />
+        {t(`draft.short.${session.status}`)}
+        <span className={styles.rev}>{t("draft.short.revision", { revision: String(remote.revision) })}</span>
+      </span>
+    </>
   );
 
   const band = (actions?: ReactNode) => (

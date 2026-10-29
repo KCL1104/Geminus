@@ -37,6 +37,8 @@ import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { ApproveIcon, CloseIcon } from "../../ui/icons";
 import { PageHeader } from "../../ui/page-header";
+import { useReader, useWriter } from "./generated-by";
+import { RailModel } from "../../app/_components/rail";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
@@ -106,6 +108,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const ids = { question: useId(), status: useId() };
 
   const p = page.proposal;
+  // H-043: which Meta model (or other provider) wrote it, and what read the photo.
+  const writer = useWriter(p.generated_by);
+  const reader = useReader(p.generated_by);
   const id = p.proposal_id;
 
   // While the AI writes it, read the proposal again; stop on any answer that is not generating, or a failure (until retried).
@@ -209,8 +214,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
 
   return (
     <>
+    <RailModel id={p.model_id} />
     <PageHeader
-      trail={[{ href: hrefs.model(p.model_id), label: t("proposal.back") }]}
+      trail={[]}
       title={<Words parts={title} />}
       facts={[
         {
@@ -221,6 +227,8 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
             </p>
           ),
         },
+        ...(writer === null ? [] : [{ label: t("ai.writtenBy"), value: writer }]),
+        ...(reader === null ? [] : [{ label: t("ai.photoReadBy"), value: reader }]),
       ]}
     />
     <article className={styles.page}>

@@ -2,7 +2,7 @@
 // Value shapes only: ranges, patterns and cross-field rules are enforced by the
 // schema and semantic validators, not by these types.
 import type { AnalysisOutput } from "./analysis-output";
-import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
+import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, GeneratedBy, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
 import type { ImportMapping } from "./import-mapping";
 import type { JsonPatch } from "./json-patch";
 import type { ModelIR } from "./model-ir";
@@ -208,6 +208,7 @@ export type AnalysisRecord = {
   analysis: AnalysisOutput | null;
   created_at: string;
   error: Error | null;
+  generated_by?: GeneratedBy;
 };
 
 export type SignedDownload = {

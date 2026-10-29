@@ -69,6 +69,10 @@ export const signedInViews: { name: string; subject: string; path: string; organ
   { name: "project", subject: tenant.editor, path: `/projects/${tenant.PRJ_LINE}` },
   { name: "model (editor)", subject: tenant.editor, path: `/models/${tenant.MODEL}` },
   { name: "model (viewer)", subject: tenant.viewer, path: `/models/${tenant.MODEL}` },
+  // H-042: the rail's other sections of the model.
+  { name: "model scenarios", subject: tenant.editor, path: `/models/${tenant.MODEL}/scenarios` },
+  { name: "model AI proposals", subject: tenant.editor, path: `/models/${tenant.MODEL}/proposals` },
+  { name: "model runs", subject: tenant.editor, path: `/models/${tenant.MODEL}/runs` },
   { name: "choose an organization", subject: tenant.multi, path: "/projects" },
   { name: "projects with the switcher", subject: tenant.multi, path: "/projects", organization: tenant.LINE },
   { name: "no access", subject: tenant.noMember, path: "/projects" },
@@ -130,4 +134,12 @@ export async function cellOverflow(page: Page): Promise<{ overlaps: string[]; cl
     }
     return { overlaps, clipped };
   });
+}
+
+/** H-042: opens the rail's account menu (signed in) and returns its dialog: who is signed in, the organizations, the language, the theme and Sign out. */
+export async function openAccount(page: Page, locale: Locale = "en") {
+  await page.getByRole("button", { name: locale === "en" ? "Account and settings" : "帳號與設定" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  return dialog;
 }
