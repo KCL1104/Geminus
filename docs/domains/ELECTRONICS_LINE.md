@@ -1,91 +1,91 @@
-# 電子組裝／測試線 Domain 規格（提案）
+# Electronics Assembly/Test Line Domain Spec (proposal)
 
-狀態：**APPROVED**（2026-10-20，owner H-018：「全都照建議」）。2026-10-19 由 T-046 phase 1 提出。依據：H-016、[ADR-025](../adr/ADR-025-p0-domain-electronics-line.md)、[PRD](../PRD.md) REQ-003／004／013／015／024／025、[TEST_PLAN](../TEST_PLAN.md) TEST-034–036。引擎的新 primitive 見 [ADR-026](../adr/ADR-026-line-flow-primitives.md)（D-047–D-057）；本文件自己的 decision 為 D-058–D-060（§10）。全部 decision 的狀態以 [DECISIONS_AND_TBD](../DECISIONS_AND_TBD.md) 與 `planning/decisions.json` 為準。
+Status: **APPROVED** (2026-10-20, owner H-018: 「全都照建議」 ("follow all the recommendations")). Proposed on 2026-10-19 by T-046 phase 1. Basis: H-016, [ADR-025](../adr/ADR-025-p0-domain-electronics-line.md), [PRD](../PRD.md) REQ-003/004/013/015/024/025, [TEST_PLAN](../TEST_PLAN.md) TEST-034–036. The engine's new primitives are in [ADR-026](../adr/ADR-026-line-flow-primitives.md) (D-047–D-057); this document's own decisions are D-058–D-060 (§10). The status of every decision is as recorded in [DECISIONS_AND_TBD](../DECISIONS_AND_TBD.md) and `planning/decisions.json`.
 
-**數字與來源。** 本文件所有數值都是 **synthetic 示意值**：只為了讓 template 能執行並展示行為，不是任何工廠的實測值，也不是「典型值」。關於工廠資料與工程師期待的說法來自 agent 的研究稿（未提交、未經驗證），只當輸入，不當事實。
+**Numbers and sources.** Every value in this document is a **synthetic illustrative value**: it exists only so the template can run and show behavior. It is not a measured value from any factory, and it is not a "typical value". Statements about factory data and about what engineers expect come from the agent's research draft (not committed, not verified). They are input only, not fact.
 
-## 1. 範圍
+## 1. Scope
 
-- **流動單位**：一片板子（entity type `board`）；機櫃變體為一個機櫃（`rack`，§4.3）。P0 不做拼板／分板（合併與拆分，ADR-026 延後項目），一個 entity 就是一片板子。
-- **站別**：SMT → AOI → ICT → FCT → 燒機 → 包裝出貨，含測試失敗 → 除錯 → 重測，與無法修復時的報廢。
-- **代表問題**（PRD §2）：目前 ICT 測試機 2 台、FCT 3 台、FCT 前緩衝 10 片；增加 1 台 ICT 或加大緩衝時，UPH、瓶頸站、WIP、utilization、阻塞時間與重測比例如何改變。
-- **P0 包含**（H-018 批准）：有限緩衝與阻塞、機台故障（有班表時只在上班時累積）、班表（含每班人數與例外日）、隨時間變化的投入（含整批投入表）、批次、換線與多產品（每個產品一個 source，D-055）、lognormal 與 Weibull（D-056）、模擬的通過比例、重測比例與報廢率（D-058）。Owner 的方向是盡量保留功能（H-017；它把換線與 lognormal／Weibull 列為 P0 提案，其餘原本延後的項目由 owner 決定，不批准任何 decision）。
-- **P0 不做**：PRD 已列為 P1 的優先權與派工規則（含依產品分組的換線排序）、服務中斷（preemption）、進階 routing；另有 agent 為收斂而延後的項目（§9）。搬運以 delay node 近似；作業員技能不建模；跨步驟持有 resource 見 §4.3。
+- **Unit of flow**: one board (entity type `board`); in the rack variant, one rack (`rack`, §4.3). P0 does not do panelization/depanelization (merge and split, an item ADR-026 defers); one entity is one board.
+- **Stations**: SMT → AOI → ICT → FCT → burn-in → packing and shipping, including test fail → debug → retest, and scrap when a board cannot be repaired.
+- **Representative question** (PRD §2): today there are 2 ICT testers, 3 FCT testers and a 10-board buffer before FCT. If we add 1 ICT tester or enlarge the buffer, how do UPH, the bottleneck station, WIP, utilization, blocking time and the retest ratio change?
+- **P0 includes** (approved in H-018): finite buffers and blocking; machine breakdowns (accumulated only on shift when there is a calendar); calendars (including per-shift staffing and exception days); time-varying release (including whole-batch release tables); batching; setups (changeovers) and multiple products (one source per product, D-055); lognormal and Weibull (D-056); and the simulated pass ratio, retest ratio and scrap rate (D-058). The owner's direction is to keep as much functionality as possible (H-017; it listed setups and lognormal/Weibull as P0 proposals, left the other originally deferred items for the owner to decide, and approved no decision).
+- **P0 excludes**: priority and dispatching rules, which the PRD already lists as P1 (including setup sequencing grouped by product); service interruption (preemption); advanced routing; and items the agent deferred to keep the scope converging (§9). Transport is approximated with delay nodes. Operator skills are not modeled. For holding a resource across steps, see §4.3.
 
-## 2. 站別與典型結構
+## 2. Stations and typical structure
 
-以下是 P0 的建模方式，不是對所有工廠的描述；實際產線的結構差異很大，T-027 的推論與使用者確認決定實際模型。
+This is how P0 models the line, not a description of every factory. Real lines differ a lot in structure; T-027's inference and the user's confirmation decide the actual model.
 
-| 站 | 做什麼（概述） | IR 表示（提案） | 用到的 primitive |
+| Station | What it does (overview) | IR representation (proposal) | Primitives used |
 |---|---|---|---|
-| SMT | 錫膏印刷、零件置放、迴焊等組成的一條線 | 一個 process，resource `smt_line`（整條線視為一個 server，線內各機台的平衡不建模） | 故障、班表；多產品時換線（§4.4） |
-| AOI | 自動光學檢查 | process（`aoi`）＋ decision（pass／fail）；fail 經 failure node 到人工修補，再進 ICT | 有限緩衝、故障、班表 |
-| ICT | 電路測試 | 首測 process 與重測 process 共用 `ict_tester`；fail → failure node → 除錯 → rework node → 重測 | 有限緩衝、故障、班表 |
-| FCT | 功能測試 | 同 ICT 的結構，resource `fct_tester` | 同上 |
-| 燒機 | 在 chamber 內長時間通電 | 批次 process（`burn_in_chamber`，min／max／max_wait） | 批次、故障；通常不受班表限制 |
-| 除錯／修補 | 人工判讀與修理 | process，resource `debug_operator`；decision 決定修好或報廢 | 班表 |
-| 包裝出貨 | 包裝、出貨 | process（`pack_station`）→ completed sink | 有限緩衝、班表 |
-| 緩衝 | 站間的 WIP 架或輸送帶 | 顯式 queue node，主線為有限 `capacity`；除錯與重測前為無限（D-050） | 有限緩衝 |
+| SMT | A line made of solder paste printing, component placement, reflow and so on | One process, resource `smt_line` (the whole line is treated as one server; the balance between machines inside the line is not modeled) | Breakdowns, calendar; setups with multiple products (§4.4) |
+| AOI | Automated optical inspection | process (`aoi`) + decision (pass/fail); fail goes through a failure node to manual touch-up, then into ICT | Finite buffer, breakdowns, calendar |
+| ICT | In-circuit test | The first-test process and the retest process share `ict_tester`; fail → failure node → debug → rework node → retest | Finite buffer, breakdowns, calendar |
+| FCT | Functional test | Same structure as ICT, resource `fct_tester` | Same as above |
+| Burn-in | Powered on for a long time in a chamber | Batch process (`burn_in_chamber`, min/max/max_wait) | Batching, breakdowns; usually not limited by a calendar |
+| Debug/touch-up | Manual diagnosis and repair | process, resource `debug_operator`; a decision decides repaired or scrapped | Calendar |
+| Packing and shipping | Packing, shipping | process (`pack_station`) → completed sink | Finite buffer, calendar |
+| Buffer | WIP racks or conveyors between stations | Explicit queue node; finite `capacity` on the main line; unlimited before debug and retest (D-050) | Finite buffer |
 
-**首測與重測分開。** IR 的 routing 沒有記憶，同一個 process 無法分辨首測與重測，所以 template 把重測建成另一個 process、與首測共用測試機（兩者依 resource-wise FIFO 排隊）。這讓首次良率可以直接由首測 decision 讀出（§5），也允許重測時間與良率和首測不同。
+**First test and retest are separate.** IR routing has no memory, so one process cannot tell a first test from a retest. The template therefore builds the retest as another process that shares the tester with the first test (both queue under resource-wise FIFO). This lets the first-pass yield be read directly from the first-test decision (§5), and it allows retest time and yield to differ from the first test.
 
-**除錯分站。** 除錯後必須回到「原來的」測試站，而機率路由無法依來源分流，所以 ICT 與 FCT 各有自己的除錯 process，共用 `debug_operator`。
+**Debug per station.** After debug a board must return to its "original" test station, and probability routing cannot split by origin. So ICT and FCT each have their own debug process, and they share `debug_operator`.
 
 ## 3. Catalog
 
-### 3.1 Node kinds（pack catalog → generic type）
+### 3.1 Node kinds (pack catalog → generic type)
 
-| Kind | Generic type | 說明 |
+| Kind | Generic type | Description |
 |---|---|---|
-| `board_release` | source | 投入；固定分布或 release schedule（D-053） |
-| `line_buffer` | queue | 站前緩衝；可有 `capacity`（D-049） |
-| `smt_station`、`aoi_station`、`ict_station`、`fct_station`、`pack_station` | process | 主線站別 |
-| `retest_station` | process | 重測，與首測共用測試機 |
-| `debug_station` | process | 除錯／修補，需要 `debug_operator` |
-| `burn_in_station` | process（batch） | 批次燒機（D-054） |
-| `test_result` | decision | 測試結果；恰有一條 flow 到 failure node（fail），其餘為 pass |
-| `debug_result` | decision | 修好或報廢 |
-| `defect_observation` | failure | 記錄測試不良（generic failure，不是機台故障） |
-| `rework_observation` | rework | 記錄修理後重入 |
-| `transport` | delay | 搬運或等待，不占 resource |
-| `shipped` | sink（completed） | 出貨 |
-| `scrap` | sink（abandoned） | 報廢；不計入產出 |
+| `board_release` | source | Release; fixed distribution or release schedule (D-053) |
+| `line_buffer` | queue | Buffer before a station; may have `capacity` (D-049) |
+| `smt_station`, `aoi_station`, `ict_station`, `fct_station`, `pack_station` | process | Main-line stations |
+| `retest_station` | process | Retest; shares the tester with the first test |
+| `debug_station` | process | Debug/touch-up; needs `debug_operator` |
+| `burn_in_station` | process (batch) | Batch burn-in (D-054) |
+| `test_result` | decision | Test result; exactly one flow to a failure node (fail), the rest are pass |
+| `debug_result` | decision | Repaired or scrapped |
+| `defect_observation` | failure | Records a test defect (a generic failure, not a machine breakdown) |
+| `rework_observation` | rework | Records re-entry after repair |
+| `transport` | delay | Transport or waiting; holds no resource |
+| `shipped` | sink (completed) | Shipping |
+| `scrap` | sink (abandoned) | Scrap; not counted in output |
 
 ### 3.2 Resource roles
 
-| Role | Type | 說明 |
+| Role | Type | Description |
 |---|---|---|
-| `smt_line` | machine | 一條 SMT 線（視為一個 server） |
-| `aoi` | machine | AOI 機台 |
-| `ict_tester` | machine | ICT 測試機 |
-| `fct_tester` | machine | FCT 測試機或測試治具 |
-| `burn_in_chamber` | machine | 燒機室；以批計（一批占一個 unit） |
-| `debug_operator` | human | 除錯／修補人員 |
-| `pack_station` | human | 包裝站 |
-| `test_slot` | machine | 機櫃變體的測試槽位（§4.3） |
-| `assembler` | human | 機櫃變體的組裝人員 |
-| `debug_engineer` | human | 機櫃變體的除錯工程師 |
-| `generic` | generic | 其他受限能力，沒有 domain 語義 |
+| `smt_line` | machine | One SMT line (treated as one server) |
+| `aoi` | machine | AOI machine |
+| `ict_tester` | machine | ICT tester |
+| `fct_tester` | machine | FCT tester or test fixture |
+| `burn_in_chamber` | machine | Burn-in chamber; counted per batch (one batch holds one unit) |
+| `debug_operator` | human | Debug/touch-up staff |
+| `pack_station` | human | Packing station |
+| `test_slot` | machine | Test slot in the rack variant (§4.3) |
+| `assembler` | human | Assembler in the rack variant |
+| `debug_engineer` | human | Debug engineer in the rack variant |
+| `generic` | generic | Other constrained capacity, with no domain semantics |
 
-Kernel 不依 role 字串決定行為（TWIN_IR_SPEC §2）；role 只給 pack 的 validation、指標與 UI 使用。
+The kernel does not decide behavior from role strings (TWIN_IR_SPEC §2); roles are used only by the pack's validation, metrics and UI.
 
-### 3.3 `domain_attributes` 慣例（提案）
+### 3.3 `domain_attributes` conventions (proposal)
 
-- 主線站與重測站的 process：`station`（站別 ID，如 `fct`）、`pass`（`first` 或 `retest`）。
-- `test_result` decision：`result_of`（被測的 process ID）。
-- 這些是 pack 的慣例，是不可信資料（UNTRUSTED_DATA）；generic kernel 不讀。
+- Processes of main-line stations and retest stations: `station` (station ID, such as `fct`), `pass` (`first` or `retest`).
+- `test_result` decision: `result_of` (the ID of the process under test).
+- These are pack conventions and are untrusted data (UNTRUSTED_DATA); the generic kernel does not read them.
 
-### 3.4 Pack 的 validation 規則（提案，T-051）
+### 3.4 Pack validation rules (proposal, T-051)
 
-1. 每個主線站 process 恰有一個 role 與站別相符的 primary resource（另可加作業員）。
-2. 每個 `test_result` decision 恰有一條 flow 到 failure node；沒有時該站的 FPY 為 unavailable，並回 warning。
-3. 首測與重測站共用同一個 primary resource。
-4. 示範 template 的參數都在 `metadata` 標 `synthetic: true`（UI 顯示 synthetic 標記）。
-5. Generic validator 的規則（含 `BLOCKING_CYCLE`）不在 pack 中重複。
+1. Each main-line station process has exactly one primary resource whose role matches the station (operators may be added).
+2. Each `test_result` decision has exactly one flow to a failure node; if not, that station's FPY is unavailable and a warning is returned.
+3. The first-test and retest stations share the same primary resource.
+4. All parameters of the demo template are marked `synthetic: true` in `metadata` (the UI shows a synthetic marker).
+5. The generic validator's rules (including `BLOCKING_CYCLE`) are not repeated in the pack.
 
-## 4. Full template（提案，synthetic）
+## 4. Full template (proposal, synthetic)
 
-### 4.1 拓樸
+### 4.1 Topology
 
 ```mermaid
 flowchart LR
@@ -112,301 +112,301 @@ flowchart LR
   BR -- 0.005 --> BF[burnin_fail] --> QFD
 ```
 
-Queue 名稱後的數字是 synthetic 的 `capacity`；沒有數字的 queue 為無限（`q_smt` 也是無限，所以 source 的 release backlog 不會出現在 template 中）。
+The number after a queue name is its synthetic `capacity`. A queue without a number is unlimited (`q_smt` is unlimited too, so the source's release backlog does not appear in the template).
 
-**死結檢查（D-050）。** Holder 的共用分量：{ict, ict_retest}（`ict_tester`）、{fct, fct_retest}（`fct_tester`）、{aoi_touchup, ict_debug, fct_debug}（`debug_operator`），其餘各自一個。阻塞邊：smt→aoi、aoi→ICT、除錯→ICT（經 `aoi_rework` 進 `q_ict`）、ICT→FCT、FCT→燒機、燒機→包裝。除錯前的 buffer 無限，所以沒有指向除錯分量的邊，圖無 cycle，通過。若把 `q_ict_debug` 改為有限，ICT 的失敗會被除錯區擋住（ICT→除錯），而除錯已能被 `q_ict` 擋住（除錯→ICT），形成 cycle 並被拒絕；`q_fct_debug` 改為有限時同理（FCT→除錯→ICT→FCT）。只把 `q_ict_retest` 改為有限則不會：它只增加已存在的「除錯→ICT」邊，沒有任何邊進入除錯分量。另外三個 D-050 規則：每個 bundle 只有一個 resource，R2（班表交集）、R3（故障 resource 的 units＝1）自然成立，R4（故障 resource 與夥伴的上班時間）也成立。
+**Deadlock check (D-050).** The shared components of holders: {ict, ict_retest} (`ict_tester`), {fct, fct_retest} (`fct_tester`), {aoi_touchup, ict_debug, fct_debug} (`debug_operator`); every other holder is its own component. Blocking edges: smt→aoi, aoi→ICT, debug→ICT (through `aoi_rework` into `q_ict`), ICT→FCT, FCT→burn-in, burn-in→packing. The buffers before debug are unlimited, so no edge points into the debug component; the graph has no cycle and passes. If `q_ict_debug` is made finite, ICT failures can be blocked by the debug area (ICT→debug), and debug can already be blocked by `q_ict` (debug→ICT); that forms a cycle and is rejected. The same holds when `q_fct_debug` is made finite (FCT→debug→ICT→FCT). Making only `q_ict_retest` finite does not: it only adds to the existing "debug→ICT" edge, and no edge enters the debug component. The other three D-050 rules: each bundle has only one resource, so R2 (calendar intersection) and R3 (units = 1 for a resource with breakdowns) hold trivially, and R4 (on-shift time of the resource with breakdowns and of its partners) also holds.
 
-### 4.2 參數（全部 synthetic）
+### 4.2 Parameters (all synthetic)
 
-時間單位為 minute。三角分布寫作 tri(min, mode, max)。
+The time unit is minute. Triangular distributions are written tri(min, mode, max).
 
-| Resource | Type | Capacity | 班表 | 故障 TTF | 故障 TTR |
+| Resource | Type | Capacity | Calendar | Breakdown TTF | Breakdown TTR |
 |---|---|---|---|---|---|
 | `smt_line` | machine | 1 | `two_shift_weekdays` | exponential(mean 600) | tri(10, 20, 90) |
 | `aoi` | machine | 1 | `two_shift_weekdays` | exponential(mean 1200) | tri(5, 10, 30) |
 | `ict_tester` | machine | 2 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 20, 60) |
 | `fct_tester` | machine | 3 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 30, 90) |
-| `burn_in_chamber` | machine | 6 | 無（24/7） | exponential(mean 10080) | tri(60, 120, 480) |
+| `burn_in_chamber` | machine | 6 | none (24/7) | exponential(mean 10080) | tri(60, 120, 480) |
 | `debug_operator` | human | 4 | `two_shift_weekdays` | — | — |
 | `pack_station` | human | 2 | `two_shift_weekdays` | — | — |
 
-TTF 以上班時間計（D-051 的時鐘只在上班時前進），所以 mean 600 是「上班 600 分鐘」約故障一次；燒機沒有班表，即日曆時間。
+TTF is counted in on-shift time (the D-051 clock advances only on shift), so mean 600 means about one breakdown per "600 on-shift minutes". Burn-in has no calendar, so its TTF is wall-clock time.
 
-| Process | 需要 | Service time |
+| Process | Needs | Service time |
 |---|---|---|
 | `smt` | smt_line ×1 | tri(0.9, 1.0, 1.4) |
 | `aoi` | aoi ×1 | tri(0.8, 0.9, 1.1) |
 | `aoi_touchup` | debug_operator ×1 | tri(3, 5, 10) |
-| `ict`、`ict_retest` | ict_tester ×1 | tri(1.8, 2.0, 2.6) |
+| `ict`, `ict_retest` | ict_tester ×1 | tri(1.8, 2.0, 2.6) |
 | `ict_debug` | debug_operator ×1 | tri(5, 10, 30) |
-| `fct`、`fct_retest` | fct_tester ×1 | tri(2.8, 3.2, 4.0) |
+| `fct`, `fct_retest` | fct_tester ×1 | tri(2.8, 3.2, 4.0) |
 | `fct_debug` | debug_operator ×1 | tri(10, 20, 60) |
-| `burn_in` | burn_in_chamber ×1（每批） | constant 240（每批）；batch min 20、max 40、max_wait 120 |
-| `pack_ship` | pack_station ×1（2 個 unit） | tri(0.8, 1.0, 1.5) |
+| `burn_in` | burn_in_chamber ×1 (per batch) | constant 240 (per batch); batch min 20, max 40, max_wait 120 |
+| `pack_ship` | pack_station ×1 (2 units) | tri(0.8, 1.0, 1.5) |
 
-- **班表** `two_shift_weekdays`：period 10080（一週），shifts 為週一至週五的 [360, 1320)＋d·1440（06:00–22:00，兩個 8 小時班相連、不含休息），t=0 為週一 00:00（model 本地時間，D-052）。
-- **投入**：`board_release` 的 release schedule（D-053），deterministic、period 10080，上述上班時段 rate 0.75／minute（45／小時），其餘 0。
-- **Routing 機率**：見 §4.1 的圖。
-- **產能粗估（review L7；未經引擎驗證）**：以上班時段的平均值估計，λ＝到站率（件／分）、w＝每件占用該 resource 的平均時間（含重測，分）、m＝unit 數、A≈MTTF／(MTTF＋MTTR)（上班時間的時間可用率），ρ＝λ·w／(m·A)。重測次數由 routing 機率的幾何級數算出：ICT 每件 0.054 次、FCT 每件 0.079 次（含燒機失敗回 FCT）。
+- **Calendar** `two_shift_weekdays`: period 10080 (one week); the shifts are [360, 1320) + d·1440 for Monday to Friday (06:00–22:00, two back-to-back 8-hour shifts with no break); t=0 is Monday 00:00 (model local time, D-052).
+- **Release**: `board_release` uses a release schedule (D-053): deterministic, period 10080, rate 0.75/minute (45/hour) in the on-shift periods above, and 0 otherwise.
+- **Routing probabilities**: see the diagram in §4.1.
+- **Rough capacity estimate (review L7; not verified with the engine)**: estimated from on-shift averages. λ = arrival rate (units/minute), w = mean time each unit holds the resource (including retests, minutes), m = number of units, A ≈ MTTF/(MTTF + MTTR) (time availability in on-shift time), ρ = λ·w/(m·A). Retest counts come from the geometric series of the routing probabilities: 0.054 per unit at ICT and 0.079 per unit at FCT (including burn-in failures that return to FCT).
 
-| 站 | λ | w | m | A | ρ | 說明 |
+| Station | λ | w | m | A | ρ | Note |
 |---|---|---|---|---|---|---|
 | SMT | 0.750 | 1.100 | 1 | 0.938 | 0.88 | |
 | AOI | 0.750 | 0.933 | 1 | 0.988 | 0.71 | |
-| ICT | 0.750 | 2.248 | 2 | 0.968 | 0.87 | 加 1 台後約 0.58 |
-| **FCT** | 0.749 | 3.596 | 3 | 0.954 | **0.94** | 最高，預期瓶頸 |
-| 燒機 | 0.749（含燒機失敗修好後重燒） | 6.0（每 chamber 每件，滿批 40 件／240 分） | 6 | 0.979 | 0.77（上班時段） | 24/7 運轉，全週平均約 0.36；下班時把白天的積壓做完 |
-| 除錯 | 0.750 | 3.50（修補、ICT 與 FCT 除錯合計） | 4 | — | 0.66 | |
-| 包裝 | 0.746 | 1.100 | 2 | — | 0.41 | 上班開始時要先清掉夜間燒機完成的板子 |
+| ICT | 0.750 | 2.248 | 2 | 0.968 | 0.87 | About 0.58 after adding 1 tester |
+| **FCT** | 0.749 | 3.596 | 3 | 0.954 | **0.94** | Highest; expected bottleneck |
+| Burn-in | 0.749 (including boards burned again after a burn-in failure is repaired) | 6.0 (per chamber per unit; a full batch is 40 units/240 minutes) | 6 | 0.979 | 0.77 (on-shift periods) | Runs 24/7; the whole-week average is about 0.36; it finishes the daytime backlog off shift |
+| Debug | 0.750 | 3.50 (touch-up, ICT debug and FCT debug combined) | 4 | — | 0.66 | |
+| Packing | 0.746 | 1.100 | 2 | — | 0.41 | At shift start it must first clear the boards that burn-in finished overnight |
 
-夜間與週末燒機仍在跑，完成的板子最多約 120（`q_burnin`）＋6×40（chamber 內）＝360 片，`q_pack` 的 400 容得下，所以 chamber 不會因包裝下班而整夜被擋；這是把原本的 4 個 chamber、`q_burnin` 80、`q_pack` 30、1 個包裝站改掉的原因（原設定下燒機與包裝才是限制）。FCT 每週約可做 3,820 片，週投入 3,600 片，餘裕約 6%；上游故障造成的 FCT 缺料會直接損失產出，所以「加大 FCT 前緩衝」應有可見的效果，而「加 1 台 ICT」因 ICT 不是瓶頸，效果應很小。這只是穩態平均的粗估，沒有計入阻塞、班次邊界與變異；T-051 要以引擎實測確認，必要時再調參數（CB-24 曾發現原 template 的 reviewer 過載），調整同樣標 synthetic。
-- 名稱提供 en 與 zh-Hant 兩語（ARCHITECTURE §7 的 TemplateProvider），ID 不變。
+Burn-in keeps running at night and on weekends. The finished boards are at most about 120 (`q_burnin`) + 6×40 (in the chambers) = 360, which fits in `q_pack`'s 400, so the chambers are not blocked all night while packing is off shift. That is why the original 4 chambers, `q_burnin` 80, `q_pack` 30 and 1 packing station were changed (under the original settings, burn-in and packing were the constraint). FCT can do about 3,820 boards per week against a weekly release of 3,600 boards, a margin of about 6%. FCT starvation caused by upstream breakdowns directly loses output, so "enlarge the buffer before FCT" should have a visible effect, while "add 1 ICT tester" should have a small effect because ICT is not the bottleneck. This is only a rough steady-state average; it does not account for blocking, shift boundaries or variability. T-051 must confirm it with engine runs and adjust the parameters if needed (CB-24 once found the original template's reviewer overloaded); any adjustment is marked synthetic as well.
+- Names are provided in two languages, en and zh-Hant (the TemplateProvider of ARCHITECTURE §7); IDs do not change.
 
-### 4.3 機櫃整合測試變體（AI 伺服器）
+### 4.3 Rack integration test variant (AI servers)
 
-| 站 | IR 表示（提案） | 參數（synthetic） |
+| Station | IR representation (proposal) | Parameters (synthetic) |
 |---|---|---|
-| 組裝 | process，`assembler` ×1（capacity 4） | tri(120, 180, 300) |
-| 系統測試 | process，`test_slot` ×1（capacity 12） | tri(240, 360, 720) |
-| 測試結果 | decision：pass 0.85／fail 0.15 → 除錯 | — |
-| 除錯 | process，`debug_engineer` ×1（capacity 3）；採下述近似時另加 `test_slot` ×1 | tri(60, 180, 600) |
-| 重測 | process，與系統測試共用 `test_slot` | 同系統測試 |
-| 包裝出貨 | process → shipped | tri(60, 90, 120) |
+| Assembly | process, `assembler` ×1 (capacity 4) | tri(120, 180, 300) |
+| System test | process, `test_slot` ×1 (capacity 12) | tri(240, 360, 720) |
+| Test result | decision: pass 0.85/fail 0.15 → debug | — |
+| Debug | process, `debug_engineer` ×1 (capacity 3); with the approximation below, also `test_slot` ×1 | tri(60, 180, 600) |
+| Retest | process, shares `test_slot` with system test | Same as system test |
+| Packing and shipping | process → shipped | tri(60, 90, 120) |
 
-限制：實務上機櫃常在測試槽內除錯（槽位在除錯期間仍被占用）；P0 的 resource 在每個 process 結束時釋放，無法跨步驟持有，所以除錯期間槽位會被釋放。這會高估槽位的可用時間；P0 的近似是把除錯建成同時需要 `test_slot` 與 `debug_engineer` 的 process（重新取得槽位，等待時間可能偏長），並在結果中標示此近似。跨步驟持有 resource 目前未排入 P0（§9）。長時間的測試也讓 finish-first（D-051、D-052）的低估更明顯。
+Limitation: in practice a rack is often debugged inside its test slot (the slot stays occupied during debug). In P0 a resource is released at the end of each process and cannot be held across steps, so the slot is released during debug. This overestimates slot availability. The P0 approximation builds debug as a process that needs both `test_slot` and `debug_engineer` (it reacquires a slot, so waits may come out too long), and the result marks this approximation. Holding a resource across steps is not scheduled for P0 for now (§9). Long tests also make the underestimate from finish-first (D-051, D-052) more visible.
 
-### 4.4 多產品與換線變體（synthetic）
+### 4.4 Multi-product and setup variant (synthetic)
 
-- 兩個產品族 `board_a`、`board_b`，各自一個 source，用 table 型投入（D-053）整批投入：`board_a` 每個平日 06:00（offset 360＋d·1440）投入 360 片，`board_b` 每個平日 14:00（840＋d·1440）投入 360 片；每天總量與 §4.2 相同（720 片）。其餘拓樸與 §4.1 相同（站別不分產品）。
-- `smt_line` 的 `setups`：A→B 與 B→A 皆 tri(15, 25, 45) minute，`initial` 為 `board_a`；其他 resource 沒有換線。整批投入加上 FIFO，每天約換線 2 次（約 57 分鐘），SMT 的 ρ 由 0.88 升到約 0.94，與 FCT 並列為限制；若改成兩種產品交錯投入，FIFO 下幾乎每片都要換線，SMT 會過載。依產品分組的派工屬 PRD P1。
-- 故障修復時間可改用 lognormal（例如 `smt_line` 的 TTR 為 lognormal(mean 25, cv 0.8)），示範 D-056；數值同樣是 synthetic。
-- 這個變體讓「SMT 換線時間減半」也成為可比較的 scenario（D-055 的分布可依 D-057 修改）。
+- Two product families, `board_a` and `board_b`, each with its own source, released in whole batches with table-type release (D-053): `board_a` releases 360 boards at 06:00 each weekday (offset 360 + d·1440), and `board_b` releases 360 boards at 14:00 each weekday (840 + d·1440). The daily total is the same as in §4.2 (720 boards). The rest of the topology is the same as §4.1 (stations do not differ by product).
+- `setups` of `smt_line`: A→B and B→A are both tri(15, 25, 45) minute, and `initial` is `board_a`; other resources have no setups. Whole-batch release plus FIFO gives about 2 setups per day (about 57 minutes), which raises SMT's ρ from 0.88 to about 0.94, level with FCT as a constraint. If the two products were released interleaved, almost every board would need a setup under FIFO and SMT would be overloaded. Dispatching grouped by product is PRD P1.
+- Breakdown repair times can use lognormal instead (for example, TTR of `smt_line` as lognormal(mean 25, cv 0.8)) to demonstrate D-056; these values are synthetic as well.
+- This variant also makes "halve the SMT setup time" a comparable scenario (D-055 distributions can be changed under D-057).
 
-## 5. Domain 指標（REQ-015）
+## 5. Domain metrics (REQ-015)
 
-**符號。** 每個 replication r 的量測視窗 [W, H]，T＝H−W（tick）。Resource ρ：capacity C；班表容量 S(t)（沒有班表時 S≡C）；停機 unit 數 D(t)（沒有故障時 0）；使用中 unit 數 U(t)（現行 `in_use`）；其中被 blocked entity 持有的 K(t)（沒有有限 buffer 時 0）與換線中的 Z(t)（沒有 setups 時 0），處理中 P(t)＝U(t)−K(t)−Z(t)；可用的排班容量 A(t)＝min(S(t), C−D(t))。積分都在 [W, H]。除非另註，指標是每個 replication 一個值，跨 replications 以現行 MetricSummary 彙整（population＝replication，Student-t CI，SIMULATION_SPEC §5）。
+**Notation.** For each replication r, the measurement window is [W, H], and T = H−W (ticks). For a resource ρ: capacity C; calendar capacity S(t) (S≡C without a calendar); number of down units D(t) (0 without breakdowns); number of units in use U(t) (current `in_use`); of these, K(t) are held by blocked entities (0 without finite buffers) and Z(t) are in setup (0 without setups); processing P(t) = U(t)−K(t)−Z(t); available scheduled capacity A(t) = min(S(t), C−D(t)). All integrals are over [W, H]. Unless noted otherwise, each metric has one value per replication and is aggregated across replications with the current MetricSummary (population = replication, Student-t CI, SIMULATION_SPEC §5).
 
-**站別的 primary resource**：§3.4 規則 1 的 resource；指標以它代表該站。
+**Primary resource of a station**: the resource of §3.4 rule 1; metrics use it to represent the station.
 
-| 指標 | 公式 | 需要的語義資料 | Unavailable（暫定 reason） |
+| Metric | Formula | Semantic data needed | Unavailable (provisional reason) |
 |---|---|---|---|
-| UPH（日曆小時） | UPHᵣ＝Nᵣ ／ (T／3,600,000)，Nᵣ＝視窗內進入 completed sink 的件數（現行 throughput） | completed sink（`shipped`） | 沒有 completed sink：`NO_COMPLETED_SINK` |
-| UPH（排班小時） | Nᵣ ／ (L／3,600,000)，L＝線班表在 [W, H] 內的上班時間（不乘 capacity） | 線班表＝主線站中有 calendar 者共用的那一個 calendar；沒有 calendar 的站（例如 24/7 的燒機）不影響 | 沒有任何主線站有 calendar，或用了兩個以上不同的 calendar：`NO_COMMON_LINE_CALENDAR`；L＝0：`NO_SCHEDULED_TIME_IN_WINDOW` |
-| 首次良率 FPY（站） | 模型輸入：首測 `test_result` 的 pass flow 機率和（＝1−fail flow 機率）；觀測值見 §7 | `pass: first` 的站與其 `test_result`（§3.3） | 找不到首測 decision 或 fail flow：`TEST_RESULT_NOT_IDENTIFIED` |
-| Rolled throughput yield | 主線各測試站（AOI、ICT、FCT、燒機）FPY 的乘積（模型輸入） | 同上，每個測試站都可辨識 | 任一站 unavailable：同上 |
-| 模擬的首測通過比例（站） | passᵣ ／ (passᵣ＋failᵣ)，首測 `test_result` 的 pass 與 fail flow 在視窗內的通過次數 | IR `metrics[]` 對這些 flow 宣告 `flow_count`（D-058） | 未宣告：`FLOW_COUNT_NOT_DECLARED`；視窗內沒有首測：`NO_TEST_ATTEMPT_IN_WINDOW` |
-| 重測比例（站） | 進入重測 buffer 的 flow 次數 ／ 首測次數 | 同上，另宣告進入重測 buffer 的 flow | 同上 |
-| 報廢率 | Nscrapᵣ ／ (Nᵣ＋Nscrapᵣ)，Nscrap＝進入 abandoned sink 的件數 | 對 `scrap` sink 宣告 `sink_count`（D-058） | 未宣告：`SINK_COUNT_NOT_DECLARED`；分母為 0：`NO_EXIT_IN_WINDOW` |
-| 線 WIP | ∫Nsys(t)dt ／ T，Nsys＝已建立、尚未離開的 entity 數（含 release backlog、等待、服務中、被擋、delay） | IR `metrics[]` 宣告 `system_wip`（D-058） | 未宣告：`WIP_NOT_DECLARED` |
-| 緩衝 WIP | 現行 `queue_length_mean` | — | 照現行 |
-| 阻塞比例（站） | ∫K(t)dt ／ (C·T)（primary resource） | 模型至少有一個有限 buffer（D-049） | 沒有有限 buffer：`NO_FINITE_BUFFERS`（模型假設無限緩衝，阻塞未建模） |
-| 平均阻塞時間（站） | 完整阻塞（開始 ≥ W、結束 ≤ H）的平均時間（minute） | 同上 | 同上；沒有完整阻塞：`NO_COMPLETED_BLOCK_IN_WINDOW` |
-| 停機比例（站） | ∫D(t)dt ／ (C·T) | resource 有 `breakdowns`（D-051） | `NO_BREAKDOWN_MODEL` |
-| 換線比例（站） | ∫Z(t)dt ／ (C·T) | resource 有 `setups`（D-055） | `NO_SETUP_MODEL` |
-| 換線次數（站） | 視窗內開始的換線數（每個 replication 一個值） | 同上 | 同上 |
-| Availability（站） | ∫A(t)dt ／ ∫S(t)dt（時間可用率） | 同上 | `NO_BREAKDOWN_MODEL`；∫S＝0：`NO_SCHEDULED_TIME_IN_WINDOW` |
-| 缺料（starved）比例（站） | ∫max(0, A(t)−U(t))dt ／ (C·T) | primary resource 只被該站（首測與重測）使用；這些 process 只需要它一個 resource、units＝1、不是批次 process | 共用 resource 或多 resource：`STARVATION_UNDEFINED_SHARED_RESOURCE`；units > 1：`STARVATION_UNDEFINED_MULTI_UNIT`；批次 process：`STARVATION_UNDEFINED_BATCH`；三者都改以「閒置比例」顯示同一公式 |
-| 下班比例（站） | 1 −（處理＋換線＋阻塞＋停機＋閒置），處理＝∫P／(C·T) | — | — |
-| Scheduled utilization（站） | ∫min(U, S)dt ／ ∫S dt（D-052） | resource 有 calendar | 沒有 calendar 時與 `utilization_mean` 相同，不另列；∫S＝0：`NO_SCHEDULED_TIME_IN_WINDOW` |
-| Overtime（站） | ∫max(U−S, 0)dt ／ 60,000（minute） | resource 有 calendar | 同上 |
-| Line balance | LBᵣ＝mean_s(w_s) ／ max_s(w_s)，w_s＝∫min(P, S)dt ／ ∫S dt（主線各站的 primary resource，每個 resource 只算一次） | 至少 2 個主線站可辨識 | 少於 2 站：`TOO_FEW_STATIONS`；max w＝0：`NO_PROCESSING_IN_WINDOW`；站的 role 缺：`STATION_ROLE_MISSING` |
+| UPH (wall-clock hours) | UPHᵣ = Nᵣ / (T/3,600,000), Nᵣ = number of units entering a completed sink in the window (current throughput) | completed sink (`shipped`) | No completed sink: `NO_COMPLETED_SINK` |
+| UPH (scheduled hours) | Nᵣ / (L/3,600,000), L = on-shift time of the line calendar within [W, H] (not multiplied by capacity) | Line calendar = the one calendar shared by the main-line stations that have a calendar; stations without a calendar (such as 24/7 burn-in) do not affect it | No main-line station has a calendar, or two or more different calendars are used: `NO_COMMON_LINE_CALENDAR`; L = 0: `NO_SCHEDULED_TIME_IN_WINDOW` |
+| First-pass yield FPY (station) | Model input: sum of the pass-flow probabilities of the first-test `test_result` (= 1 − fail-flow probability); for the observed value see §7 | Stations with `pass: first` and their `test_result` (§3.3) | First-test decision or fail flow not found: `TEST_RESULT_NOT_IDENTIFIED` |
+| Rolled throughput yield | Product of the FPYs of the main-line test stations (AOI, ICT, FCT, burn-in) (model input) | Same as above; every test station identifiable | Any station unavailable: same as above |
+| Simulated first-test pass ratio (station) | passᵣ / (passᵣ + failᵣ), the number of passes through the pass and fail flows of the first-test `test_result` in the window | IR `metrics[]` declares `flow_count` for these flows (D-058) | Not declared: `FLOW_COUNT_NOT_DECLARED`; no first test in the window: `NO_TEST_ATTEMPT_IN_WINDOW` |
+| Retest ratio (station) | Count of the flow into the retest buffer / number of first tests | Same as above, plus a declaration for the flow into the retest buffer | Same as above |
+| Scrap rate | Nscrapᵣ / (Nᵣ + Nscrapᵣ), Nscrap = number of units entering the abandoned sink | `sink_count` declared for the `scrap` sink (D-058) | Not declared: `SINK_COUNT_NOT_DECLARED`; denominator 0: `NO_EXIT_IN_WINDOW` |
+| Line WIP | ∫Nsys(t)dt / T, Nsys = number of entities created and not yet departed (including release backlog, waiting, in service, blocked, delay) | IR `metrics[]` declares `system_wip` (D-058) | Not declared: `WIP_NOT_DECLARED` |
+| Buffer WIP | Current `queue_length_mean` | — | As currently defined |
+| Blocking ratio (station) | ∫K(t)dt / (C·T) (primary resource) | The model has at least one finite buffer (D-049) | No finite buffer: `NO_FINITE_BUFFERS` (the model assumes unlimited buffers; blocking is not modeled) |
+| Mean blocking time (station) | Mean time (minute) of complete blocks (start ≥ W, end ≤ H) | Same as above | Same as above; no complete block: `NO_COMPLETED_BLOCK_IN_WINDOW` |
+| Down ratio (station) | ∫D(t)dt / (C·T) | The resource has `breakdowns` (D-051) | `NO_BREAKDOWN_MODEL` |
+| Setup ratio (station) | ∫Z(t)dt / (C·T) | The resource has `setups` (D-055) | `NO_SETUP_MODEL` |
+| Setup count (station) | Number of setups started in the window (one value per replication) | Same as above | Same as above |
+| Availability (station) | ∫A(t)dt / ∫S(t)dt (time availability) | Same as above | `NO_BREAKDOWN_MODEL`; ∫S = 0: `NO_SCHEDULED_TIME_IN_WINDOW` |
+| Starved ratio (station) | ∫max(0, A(t)−U(t))dt / (C·T) | The primary resource is used only by this station (first test and retest); these processes need only that one resource, with units = 1, and are not batch processes | Shared resource or multiple resources: `STARVATION_UNDEFINED_SHARED_RESOURCE`; units > 1: `STARVATION_UNDEFINED_MULTI_UNIT`; batch process: `STARVATION_UNDEFINED_BATCH`; in all three cases the same formula is shown as "idle ratio" instead |
+| Off-shift ratio (station) | 1 − (processing + setup + blocking + down + idle), processing = ∫P/(C·T) | — | — |
+| Scheduled utilization (station) | ∫min(U, S)dt / ∫S dt (D-052) | The resource has a calendar | Without a calendar it equals `utilization_mean` and is not listed separately; ∫S = 0: `NO_SCHEDULED_TIME_IN_WINDOW` |
+| Overtime (station) | ∫max(U−S, 0)dt / 60,000 (minute) | The resource has a calendar | Same as above |
+| Line balance | LBᵣ = mean_s(w_s) / max_s(w_s), w_s = ∫min(P, S)dt / ∫S dt (the primary resource of each main-line station, each resource counted once) | At least 2 main-line stations identifiable | Fewer than 2 stations: `TOO_FEW_STATIONS`; max w = 0: `NO_PROCESSING_IN_WINDOW`; station role missing: `STATION_ROLE_MISSING` |
 
-說明：
+Notes:
 
-- **六種狀態的比例相加為 1**：處理 P、換線 Z、阻塞 K、停機 D、閒置 max(0, A−U)、下班（其餘）。Finish-first 讓 U 可能暫時超過 A（overtime 或尚未停機的故障），此時閒置為 0、下班比例相應變小；因為 U＋D ≤ C 恆成立，下班比例不會小於 0。
-- **閒置只在特定條件下才叫缺料（review L6）**：專用、單一 resource、units＝1、不是批次 process 的站，若有可用的 unit 閒置而 buffer 有件，dispatch 會在同一 tick 授予，所以在事件邊界上閒置必然是 buffer 空。其他情形閒置不等於缺料：共用 resource 或多 resource bundle 可能在等別的 resource（D-038 (m)）；units > 1 的 request 可能在等湊足 unit；批次 process 的 chamber 可能在等湊批（buffer 有件但未就緒）。
-- **資料來源（D-058）**：U 的積分即現行 utilization；K、Z、D、S、A 與 min(U,S)、min(P,S)、max(0, A−U)、max(U−S, 0) 的積分都是每個 replication、每個 resource 的 Result 成員（D-058 列出），只在模型用到對應功能時出現；Collector 由 observation 的階梯函數直接積分（整數 tick），不能由各功能的彙總值事後推出（例如 ∫min(P,S) 與 ∫max(0, A−U) 都需要同時知道各量）。線班表的上班時間 L 不在 Result 中：pack 由 IR 的 calendar 與 `measurement_window` 以整數運算算出。
-- **候選瓶頸**：w_s 最大的站（同值取 node ID 較小者），在 UI 顯示為「工作比例最高的站」；這是常見的判讀方式，不是證明。
-- **不稱 OEE**：P0 不計算 OEE。Utilization 不是 OEE；availability 只是時間可用率，沒有 performance（理想 cycle time）與 quality 因子。UI 與 AI analyst 都不得把任何指標標為 OEE。
-- **FPY 是輸入**：機率路由下，模擬出來的首測通過比例只是輸入機率加上抽樣誤差，不是預測；P0 把它當模型輸入顯示，並在 §7 與觀測值比對。宣告 `flow_count` 後的「模擬的首測通過比例」與「重測比例」只用來檢查模型的行為與輸入一致，UI 要如此標示。
-- **沒有的功能不填 0**：模型沒有故障、有限緩衝、換線或班表時，對應指標回 unavailable 並說明模型的假設，而不是顯示 100% availability 或 0 阻塞（REQ-015：不捏造）。
-- Lead time、queue wait、utilization、failure／rework count 沿用現行定義；lead time 從投入（arrival）起算，含 release backlog。
+- **The six state ratios sum to 1**: processing P, setup Z, blocking K, down D, idle max(0, A−U), and off-shift (the rest). Finish-first lets U temporarily exceed A (overtime, or a breakdown whose unit has not gone down yet); then idle is 0 and the off-shift ratio shrinks accordingly. Because U + D ≤ C always holds, the off-shift ratio never goes below 0.
+- **Idle is called starvation only under specific conditions (review L6)**: at a station with a dedicated single resource, units = 1 and no batch process, if an available unit is idle while the buffer has units, dispatch grants it in the same tick, so at event boundaries idle necessarily means the buffer is empty. In other cases idle is not starvation: a shared resource or a multi-resource bundle may be waiting for another resource (D-038 (m)); a request with units > 1 may be waiting to gather enough units; a batch process's chamber may be waiting to fill a batch (the buffer has units, but they are not ready).
+- **Data sources (D-058)**: the integral of U is the current utilization. The integrals of K, Z, D, S, A and of min(U,S), min(P,S), max(0, A−U), max(U−S, 0) are all Result members per replication and per resource (listed in D-058), present only when the model uses the corresponding feature. The Collector integrates them directly from the step functions of the observations (integer ticks); they cannot be derived afterwards from the per-feature aggregates (for example, ∫min(P,S) and ∫max(0, A−U) both need the quantities at the same time). The line calendar's on-shift time L is not in the Result: the pack computes it with integer arithmetic from the IR's calendar and `measurement_window`.
+- **Candidate bottleneck**: the station with the largest w_s (on ties, the one with the smaller node ID), shown in the UI as "the station with the highest work ratio". This is a common reading, not a proof.
+- **Not called OEE**: P0 does not compute OEE. Utilization is not OEE; availability is only time availability, without the performance (ideal cycle time) and quality factors. Neither the UI nor the AI analyst may label any metric as OEE.
+- **FPY is an input**: under probability routing, the simulated first-test pass ratio is only the input probability plus sampling error, not a prediction. P0 shows it as a model input and compares it with observed values in §7. After `flow_count` is declared, the "simulated first-test pass ratio" and the "retest ratio" are used only to check that the model behaves consistently with its inputs, and the UI must label them so.
+- **Missing features are not filled with 0**: when the model has no breakdowns, finite buffers, setups or calendars, the corresponding metric returns unavailable and states the model's assumption, rather than showing 100% availability or 0 blocking (REQ-015: no fabrication).
+- Lead time, queue wait, utilization and failure/rework count keep their current definitions; lead time starts at release (arrival) and includes the release backlog.
 
-## 6. Station event log 的 canonical fields（import mapping）
+## 6. Canonical fields of the station event log (import mapping)
 
-兩種紀錄。對應的 canonical-event 欄位中，`end_timestamp`、`shift` 與 `product` 是 D-059 新增的 optional 欄位（T-046 phase 2 已加入 `canonical-event.schema.json`；fixtures `valid-canonical-event-station.json`、`valid-canonical-event-downtime.json`；T-017 已把它們加入 mapping 的 target field（D-070 (a)，PROPOSED），見 TWIN_IR_SPEC §7）。
+There are two kinds of records. Among the corresponding canonical-event fields, `end_timestamp`, `shift` and `product` are optional fields added by D-059 (T-046 phase 2 added them to `canonical-event.schema.json`; fixtures `valid-canonical-event-station.json` and `valid-canonical-event-downtime.json`; T-017 added them to the mapping's target fields (D-070 (a), PROPOSED), see TWIN_IR_SPEC §7).
 
-**作業紀錄**（一片板子在一站的一次作業或測試）：
+**Operation record** (one operation or test of one board at one station):
 
-| 邏輯欄位 | 必填 | canonical-event | 說明 |
+| Logical field | Required | canonical-event | Description |
 |---|---|---|---|
-| serial | 是 | `case_id` | 板子或機櫃的序號 |
-| station | 是 | `stage` | 站別；mapping 時由使用者對應到 IR 的站 |
-| record type | 是 | `event_type` | pack 詞彙：`operation`；CSV 沒有此欄時需要常數 transform（CB-28）：T-017 沒有實作，owner 於 H-021 決定另立 D-073（APPROVED，H-024，T-052 前；D-070 (b)、CB-43 (e)） |
-| equipment | 建議 | `resource_id` | 機台、測試機或 chamber 的 ID；用於推論 capacity 與停機對應 |
-| start | 是 | `timestamp` | RFC 3339 含 offset；沒有時區的時間一律拒絕（TWIN_IR_SPEC §7） |
-| end | 是（推論需要） | `end_timestamp`（新增） | ≥ start |
-| result | 測試站必填 | `outcome` | `pass`／`fail`；其他值為 data-quality issue |
-| shift | 選填 | `shift`（新增） | 班別標籤，只用於 §7 的分組 |
-| duration | 選填 | `duration_ms` | 與 end−start 不一致時為 data-quality issue（TWIN_IR_SPEC §7） |
-| product／family | 多產品時必填 | `product`（新增，D-059） | 對應到 IR 的 entity type；推論換線與各產品的 cycle time 需要它（D-055） |
-| operator ID | **不匯入** | — | 個人資料；mapping 時保持未對應，不進 dataset、prompt 或 telemetry（詞彙中沒有對應的 field；放進 metadata 無法由 T-017 辨認，CB-43 (f)） |
+| serial | Yes | `case_id` | Serial number of the board or rack |
+| station | Yes | `stage` | Station; during mapping the user maps it to the IR's station |
+| record type | Yes | `event_type` | Pack vocabulary: `operation`. When the CSV has no such column, a constant transform is needed (CB-28): T-017 did not implement it, and the owner decided in H-021 to open D-073 for it (APPROVED, H-024, before T-052; D-070 (b), CB-43 (e)) |
+| equipment | Recommended | `resource_id` | ID of the machine, tester or chamber; used to infer capacity and to match downtime |
+| start | Yes | `timestamp` | RFC 3339 with offset; a time without a time zone is always rejected (TWIN_IR_SPEC §7) |
+| end | Yes (needed for inference) | `end_timestamp` (new) | ≥ start |
+| result | Required at test stations | `outcome` | `pass`/`fail`; other values are a data-quality issue |
+| shift | Optional | `shift` (new) | Shift label, used only for grouping in §7 |
+| duration | Optional | `duration_ms` | A data-quality issue when inconsistent with end−start (TWIN_IR_SPEC §7) |
+| product/family | Required with multiple products | `product` (new, D-059) | Maps to the IR's entity type; inferring setups and per-product cycle times needs it (D-055) |
+| operator ID | **Not imported** | — | Personal data. It stays unmapped during mapping and never enters a dataset, prompt or telemetry (the vocabulary has no field for it; if put in metadata, T-017 cannot recognize it, CB-43 (f)) |
 
-**停機紀錄**（一台設備的一段停機）：`case_id`＝設備 ID（canonical-event 要求 case_id），`event_type`＝`downtime`，`resource_id`＝設備 ID，`stage`＝站別，`timestamp`＝停機開始，`end_timestamp`＝恢復，`outcome`＝原因碼（選填）。計畫停機（休息、保養）若有原因碼可辨識，推論時排除於故障之外。
+**Downtime record** (one downtime period of one piece of equipment): `case_id` = equipment ID (canonical-event requires case_id), `event_type` = `downtime`, `resource_id` = equipment ID, `stage` = station, `timestamp` = downtime start, `end_timestamp` = recovery, `outcome` = reason code (optional). Planned downtime (breaks, maintenance), if a reason code identifies it, is excluded from breakdowns during inference.
 
-**Data-quality 檢查（提案；T-052 實作了詞彙與必填欄位的規則，為 import validation 的 warning，見 §12 與 D-118）**：end < start；同一 serial 的作業時間重疊；同一設備的作業數超過推論的 capacity；serial 的站別順序與拓樸不符；停機與作業在同一設備上重疊（停機中仍有作業）；觀測期間內的資料缺口。研究稿指出微小停機常未被記錄、彙總的 OEE 不足以建模故障（未驗證）；因此 P0 只用逐筆停機紀錄估計故障參數，缺少時 `breakdowns` 由使用者輸入或回 needs_input，不從 OEE 反推。
+**Data-quality checks (proposal; T-052 implemented the vocabulary and required-field rules as import validation warnings, see §12 and D-118)**: end < start; overlapping operation times for the same serial; more operations on one piece of equipment than its inferred capacity; a serial's station order inconsistent with the topology; downtime and operations overlapping on the same equipment (operations during downtime); data gaps within the observation period. The research draft says that micro-stops are often not recorded and that aggregate OEE is not enough to model breakdowns (not verified). So P0 estimates breakdown parameters only from per-event downtime records; without them, `breakdowns` is entered by the user or needs_input is returned, and it is never back-derived from OEE.
 
-**可推導的量（T-027 的範圍，此處只作參考）**：各站 service time 樣本＝end−start（empirical dataset）；首測與重測以 serial＋station 依 start 排序區分；routing 機率與 FPY 由 result 計數；TTR＝恢復−停機開始（日曆時間）；TTF＝上次恢復到下次停機開始之間的上班時間（有班表的設備，對應 D-051 只在上班時前進的時鐘；以日曆間隔估計會把夜間與週末算進去，使上班時的故障率被低估，例如 `two_shift_weekdays` 下只有約 48%），沒有班表的設備為日曆時間（只在產線上班時運轉的設備，即使沒有作業員夥伴，也要給它產線的 calendar：否則 R4 不會提醒，而以日曆間隔估計的 TTF 又會低估上班時的故障率；review round 4 L1）；release rate 由第一站的 start 依時段計數；換線時間：同一設備上相鄰兩件的 product 不同時，前一件 end 到下一件 start 的間隔（含可能的閒置，只能當上限，需使用者確認）；設備並行數由同時進行的作業推估 capacity。推論結果一律經 proposal 與人類批准（D-009），不直接改 Twin。
+**Derivable quantities (T-027's scope, for reference only here)**: service-time samples per station = end−start (empirical dataset); first test and retest are told apart by serial + station, sorted by start; routing probabilities and FPY are counted from the results; TTR = recovery − downtime start (wall-clock time); TTF = on-shift time between the previous recovery and the next downtime start for equipment with a calendar (matching D-051's clock that advances only on shift; estimating from wall-clock intervals counts nights and weekends and underestimates the on-shift breakdown rate, for example to only about 48% under `two_shift_weekdays`), and wall-clock time for equipment without a calendar (equipment that runs only while the line is on shift must be given the line's calendar even without an operator partner: otherwise R4 does not warn, and a TTF estimated from wall-clock intervals underestimates the on-shift breakdown rate; review round 4 L1); the release rate is counted from the first station's start per time period; setup time is the interval from the previous unit's end to the next unit's start when two adjacent units on the same equipment have different products (it may include idle time, so it is only an upper bound and needs the user's confirmation); equipment concurrency estimates capacity from simultaneous operations. Inference results always go through a proposal and human approval (D-009); they never change the Twin directly.
 
-**時間對應。** Model 時間沒有時區。比對與推論時，使用者指定一個 anchor（例如 model t=0 ＝ 某個含 offset 的 RFC 3339 時刻，且為班表 period 的起點）；跨 DST 變換的視窗在 P0 回 data-quality issue。
+**Time mapping.** Model time has no time zone. For comparison and inference, the user specifies an anchor (for example, model t=0 = a specific RFC 3339 instant with offset, which is also the start of the calendar period). In P0, a window that crosses a DST change returns a data-quality issue.
 
-## 7. 模擬與觀測的比對（REQ-025）
+## 7. Comparing simulation with observation (REQ-025)
 
-只在 baseline run 有連結的觀測 dataset 時進行；以下是 D-060 的提案。
+This is done only when the baseline run has a linked observed dataset. The following is the D-060 proposal.
 
-| 量 | 觀測 | 模擬 | 類別 |
+| Quantity | Observed | Simulated | Class |
 |---|---|---|---|
-| 線產出／期（日、週，或班） | 視窗內在最後一站（包裝出貨）完成作業的 serial 數 ÷ 期數 | 每個 replication 的 throughput ÷ 期數 | **輸出比對** |
-| 站別 queue wait（mean） | 本站 start − 該 serial 上一站 end（含搬運與上游阻塞，與模擬的定義不完全相同，標「近似」） | 現行 queue wait ＋ 上游阻塞（有有限 buffer 時） | 輸出比對（近似） |
-| Lead time（mean） | 投入（第一站 start，或 log 中的投入事件）到出貨的時間 | lead time（從 arrival 起算，含 SMT 前等待；起點不同時標「近似」） | 輸出比對（近似） |
-| 站別 cycle time（mean／p50／p95） | end − start | 模型的 service time 分布 | **輸入一致性** |
-| FPY（站） | 首次作業 pass 的 serial ÷ 有作業的 serial | 模型輸入（§5） | 輸入一致性 |
-| Availability、MTBF、MTTR（站） | 停機紀錄（排班時間內） | 模型的 TTF／TTR 與模擬的 availability | 輸入一致性 |
+| Line output per period (day, week, or shift) | Number of serials that completed an operation at the last station (packing and shipping) within the window ÷ number of periods | Each replication's throughput ÷ number of periods | **Output comparison** |
+| Station queue wait (mean) | This station's start − that serial's end at the previous station (includes transport and upstream blocking, so it is not exactly the simulation's definition; marked "approximate") | Current queue wait + upstream blocking (when there are finite buffers) | Output comparison (approximate) |
+| Lead time (mean) | Time from release (the first station's start, or a release event in the log) to shipping | lead time (counted from arrival, includes the wait before SMT; marked "approximate" when the start points differ) | Output comparison (approximate) |
+| Station cycle time (mean/p50/p95) | end − start | The model's service-time distribution | **Input consistency** |
+| FPY (station) | Serials whose first operation passed ÷ serials with an operation | Model input (§5) | Input consistency |
+| Availability, MTBF, MTTR (station) | Downtime records (within scheduled time) | The model's TTF/TTR and the simulated availability | Input consistency |
 
-- **「輸入一致性」不是驗證**：比的是模型參數是否與資料相符；只有「輸出比對」能說明模型行為與觀測接近。UI 分兩區顯示。
-- **誤差的呈現**：觀測值 o；各 replication 的模擬值 xᵣ；顯示模擬平均 x̄、模擬範圍（R ≥ 20 時為 Type 7 的 2.5% 與 97.5% 分位，否則為 min–max，並標明用哪一種）、絕對誤差 x̄−o、相對誤差 (x̄−o)／o（o＝0 時為 null，reason `OBSERVED_ZERO`），以及 o 是否落在模擬範圍內。模型在 IR `metrics[]` 宣告 `period_throughput`（period 與比較的期相同，D-058）時另做逐期比較：每一期的觀測值對該期模擬的 replication 範圍，並以圖呈現；沒有宣告時只有每期平均。
-- **In-sample 與 hold-out**：若模型的參數（empirical dataset 或推論來源）取自涵蓋該觀測視窗的資料，標為 **in-sample**，並說明這不是驗證；建議以前幾週推論、最後一週比對（T-052 的 synthetic 資料應提供這種切分）。
-- **Unavailable（暫定 reason）**：沒有連結的觀測 dataset：`NO_OBSERVED_DATA`；觀測視窗少於一期：`OBSERVED_WINDOW_TOO_SHORT`；需要的欄位未 mapping（例如沒有 result）：`OBSERVED_FIELD_MISSING`；兩邊視窗不是整數期或無法以 anchor 對齊：`OBSERVED_WINDOW_NOT_ALIGNED`；模擬端指標 unavailable：`SIMULATED_METRIC_UNAVAILABLE`。
-- **不宣稱已校準**：不給「通過／不通過」的判定，不自動調整模型參數；AI analyst 只能引用這些數字並以 proposal 建議修改（REQ-016、D-016）。示範資料一律標 synthetic。
+- **"Input consistency" is not validation**: it checks whether the model's parameters match the data. Only "output comparison" can show that model behavior is close to observation. The UI shows the two in separate sections.
+- **Presenting the error**: observed value o; simulated value per replication xᵣ. Show the simulated mean x̄, the simulated range (the Type 7 2.5% and 97.5% quantiles when R ≥ 20, otherwise min–max, stating which one is used), the absolute error x̄−o, the relative error (x̄−o)/o (null when o = 0, reason `OBSERVED_ZERO`), and whether o falls within the simulated range. When the model declares `period_throughput` in IR `metrics[]` (with the same period as the compared period, D-058), a per-period comparison is also done: each period's observed value against that period's simulated replication range, shown as a chart. Without the declaration there is only the per-period average.
+- **In-sample and hold-out**: if the model's parameters (empirical datasets or inference sources) come from data that covers the observed window, mark the comparison **in-sample** and state that it is not validation. The recommendation is to infer from the first few weeks and compare against the last week (T-052's synthetic data should provide such a split).
+- **Unavailable (provisional reasons)**: no linked observed dataset: `NO_OBSERVED_DATA`; observed window shorter than one period: `OBSERVED_WINDOW_TOO_SHORT`; a needed field is not mapped (for example, no result): `OBSERVED_FIELD_MISSING`; the two windows are not whole periods or cannot be aligned with the anchor: `OBSERVED_WINDOW_NOT_ALIGNED`; the simulated metric is unavailable: `SIMULATED_METRIC_UNAVAILABLE`.
+- **No claim of calibration**: no "pass/fail" verdict is given, and model parameters are not adjusted automatically. The AI analyst may only cite these numbers and suggest changes through a proposal (REQ-016, D-016). Demo data is always marked synthetic.
 
-## 8. 示範流程（研究稿的提案，作為輸入）
+## 8. Demo flow (proposal from the research draft, used as input)
 
-1. 上傳一週 synthetic 的 station log（T-052 以固定 seed 從已知的 ground-truth 模型產生）。
-2. Mapping 與 validation → 凍結 dataset → AI 提出站別、cycle time 分布、良率與重測迴圈、緩衝的 proposal → 工程師審核批准（D-009）。
-3. Baseline：UPH、候選瓶頸、WIP、utilization、阻塞與缺料比例，以及模擬與觀測的每週產出比對（§7）。
-4. Scenario：「ICT +1 台」與「FCT 前緩衝加大」，比較並由 analyst 解釋。第二個 scenario 需要 D-057（buffer capacity 可在 scenario 中修改）；若 D-057 不批准，它必須發布新版本，與 baseline 不可比較（SIMULATION_SPEC §7）。
+1. Upload one week of synthetic station log (T-052 generates it with a fixed seed from a known ground-truth model).
+2. Mapping and validation → freeze the dataset → the AI proposes stations, cycle-time distributions, yield and retest loops, and buffers → an engineer reviews and approves (D-009).
+3. Baseline: UPH, candidate bottleneck, WIP, utilization, blocking and starved ratios, and the weekly output comparison between simulation and observation (§7).
+4. Scenarios: "ICT +1 tester" and "larger buffer before FCT", compared and explained by the analyst. The second scenario needs D-057 (buffer capacity can be changed in a scenario); if D-057 is not approved, it must publish a new version, which is not comparable with the baseline (SIMULATION_SPEC §7).
 
-## 9. 延後與限制
+## 9. Deferred items and limitations
 
-- **PRD 已列為 P1、維持 P1**：服務中斷（故障、交班、換線的 preemption）；優先權與派工規則（含依產品分組的換線排序）；進階 routing；MES／CFX 等 connectors。
-- **Agent 依 H-017 的方向建議納入 P0（待 owner 決定）**：每班不同人數與例外日（D-052）、投入表（D-053）、模擬的首測通過比例、重測比例、報廢率與逐期比較（D-058 的宣告式 generic metrics）。
-- **建議在核心完成後另立任務**：capacity 0 的 buffer；拼板／分板；跨步驟持有 resource（機櫃在槽內除錯）；忙碌時間的故障時鐘；做不完就不開始；AGV 與搬運系統（P0 以 delay）。各項的成本與理由見 ADR-026 Consequences 的表。
-- **不建模**：作業員技能；設備在 SMT 線內的細部平衡。
+- **Listed as P1 in the PRD, stays P1**: service interruption (preemption for breakdowns, shift change and setups); priority and dispatching rules (including setup sequencing grouped by product); advanced routing; connectors such as MES/CFX.
+- **The agent recommends including these in P0, following H-017's direction (pending the owner's decision)**: different staffing per shift and exception days (D-052), release tables (D-053), and the simulated first-test pass ratio, retest ratio, scrap rate and per-period comparison (D-058's declarative generic metrics).
+- **Recommended as separate tasks after the core is done**: buffers with capacity 0; panelization/depanelization; holding a resource across steps (a rack debugged in its slot); a breakdown clock that runs on busy time; not starting work that cannot be finished; AGVs and transport systems (P0 uses delay). The cost and rationale of each are in the table under ADR-026 Consequences.
+- **Not modeled**: operator skills; the detailed balance of equipment inside the SMT line.
 
-## 10. 本文件提出的 decisions
+## 10. Decisions proposed by this document
 
-### D-058 電子產線指標的資料來源與 Result 位置（gate：T-051）
+### D-058 Data sources and Result location of the electronics line metrics (gate: T-051)
 
-**問題。** Pack 的 `ComputeMetrics` 只看到 Result，看不到站別角色（domain_attributes、resource role）、班表與 routing 機率；電子產線的指標要放在 Result 的哪裡、需要哪些 generic 統計？
+**Question.** The pack's `ComputeMetrics` sees only the Result, not station roles (domain_attributes, resource role), calendars or routing probabilities. Where in the Result do the electronics line metrics go, and which generic statistics are needed?
 
-**選項。**
-- A：新增 optional interface（例如 `ModelMetricsProvider`：`ComputeModelMetrics(ir, result)`，ir 為 engine 實際執行的 effective IR），比照 `TemplateProvider`，DomainPack 的 method set 不變；pack 的指標寫入 Result 新的 optional `metrics.domain` map（空時省略），`metrics.dora` 不動（Software Delivery 的結果與 digest 不變）；Result 另有下列 generic 成員，只在模型用到對應功能時出現（D-047），pack 只由它們與 IR 計算 §5 的指標；FPY 是模型輸入，不是 run 結果。後果：既有模型的結果不變；指標在 result_digest 中，analyst 可以引用；generic kernel 仍不讀 domain 屬性。
+**Options.**
+- A: Add an optional interface (for example `ModelMetricsProvider`: `ComputeModelMetrics(ir, result)`, where ir is the effective IR the engine actually ran), modeled on `TemplateProvider`, so the DomainPack method set does not change. The pack's metrics go into a new optional `metrics.domain` map in the Result (omitted when empty); `metrics.dora` is untouched (Software Delivery results and digests do not change). The Result also gains the following generic members, present only when the model uses the corresponding feature (D-047); the pack computes the §5 metrics only from them and the IR; FPY is a model input, not a run result. Consequences: results of existing models do not change; the metrics are in result_digest and the analyst can cite them; the generic kernel still does not read domain attributes.
 
-  **每個 replication、每個 resource**（review M3；`replication_summaries[i].resource_states[<resource ID>]`，名稱已於 T-046 phase 2 定案（`simulation.schema.json#/$defs/ResourceState`，每組成員以 `dependentRequired` 同時出現）；值為 [W, H] 內的整數 tick 積分或次數）：
+  **Per replication, per resource** (review M3; `replication_summaries[i].resource_states[<resource ID>]`; the names were finalized in T-046 phase 2 (`simulation.schema.json#/$defs/ResourceState`; each group of members appears together through `dependentRequired`); values are integer-tick integrals or counts within [W, H]):
 
-  | 成員 | 內容 | 出現條件 |
+  | Member | Content | Present when |
   |---|---|---|
-  | `in_use_ticks` | ∫U | 物件存在時都有 |
-  | `blocked_ticks` | ∫K | 模型有有限 buffer |
-  | `setup_ticks`、`setups_started`、`setups_completed`、`completed_setup_ticks` | ∫Z、換線次數、完整換線的次數與總時間 | resource 有 setups |
-  | `down_ticks`、`breakdowns_started`、`repairs_completed`、`completed_repair_ticks` | ∫D、停機次數、完整修復的次數與總時間 | resource 有 breakdowns |
-  | `scheduled_ticks`、`scheduled_in_use_ticks`、`overtime_ticks` | ∫S、∫min(U,S)、∫max(U−S, 0) | resource 有 calendar |
-  | `available_ticks`、`idle_ticks` | ∫A、∫max(0, A−U) | resource 有 breakdowns 或 calendar |
-  | `scheduled_processing_ticks` | ∫min(P,S) | 上面任一功能適用於該 resource |
+  | `in_use_ticks` | ∫U | Always, when the object exists |
+  | `blocked_ticks` | ∫K | The model has finite buffers |
+  | `setup_ticks`, `setups_started`, `setups_completed`, `completed_setup_ticks` | ∫Z, number of setups, number and total time of complete setups | The resource has setups |
+  | `down_ticks`, `breakdowns_started`, `repairs_completed`, `completed_repair_ticks` | ∫D, number of downtimes, number and total time of complete repairs | The resource has breakdowns |
+  | `scheduled_ticks`, `scheduled_in_use_ticks`, `overtime_ticks` | ∫S, ∫min(U,S), ∫max(U−S, 0) | The resource has a calendar |
+  | `available_ticks`, `idle_ticks` | ∫A, ∫max(0, A−U) | The resource has breakdowns or a calendar |
+  | `scheduled_processing_ticks` | ∫min(P,S) | Any feature above applies to the resource |
 
-  沒有任何功能的 resource 不出現在 `resource_states`：其處理＝utilization、閒置＝1−utilization，pack 由現行 `resource_utilization` 得出。
+  A resource with none of these features does not appear in `resource_states`: its processing = utilization and idle = 1−utilization, which the pack derives from the current `resource_utilization`.
 
-  **每個 replication、每個 node**：`replication_summaries[i].blocking[<node ID>]`（模型有有限 buffer 時，對可能被擋的 node）：阻塞次數、完整阻塞的次數與總 tick、∫被擋 entity 數（`blocks_started`、`blocks_completed`、`completed_block_ticks`、`blocked_entity_ticks`）；`replication_summaries[i].batches[<process ID>]`（批次 process）：開始的批數與成員總數（`batches_started`、`members_started`）。T-046 phase 2 另依 D-049 的統計清單加入 `replication_summaries[i].buffers[<queue ID>].full_ticks`（有限 buffer 滿的 tick 數，D-063 (b)）。
+  **Per replication, per node**: `replication_summaries[i].blocking[<node ID>]` (when the model has finite buffers, for nodes that can be blocked): number of blocks, number and total ticks of complete blocks, and ∫number of blocked entities (`blocks_started`, `blocks_completed`, `completed_block_ticks`, `blocked_entity_ticks`); `replication_summaries[i].batches[<process ID>]` (batch processes): number of batches started and total members (`batches_started`, `members_started`). T-046 phase 2 also added, per the D-049 statistics list, `replication_summaries[i].buffers[<queue ID>].full_ticks` (the number of ticks a finite buffer is full, D-063 (b)).
 
-  **宣告式 generic metrics**（只在 IR `metrics[]` 宣告時計算；`metrics.additional_metrics[<metric id>]` 為跨 replication 的 summary，`replication_summaries[i].declared[<metric id>]` 為每個 replication 的值）：`system_wip`（∫Nsys／T）、`flow_count`（指定 flow 在視窗內的通過次數）、`sink_count`（指定 sink 的進入件數，含 abandoned）、`period_throughput`（指定 period 的每期 completed 件數陣列，視窗須為整數期）。這三種計數是 agent 依 H-017 的方向新增的建議（原本延後，待 owner 決定）。細則（review N5）：`flow_count` 在路由解析時計數，與 routing draw 及 failure／rework observation 同時（D-049），之後該 entity 被擋不影響計數；`period_throughput` 的期從 W 起算，H−W 不是 period 的整數倍時 unavailable（reason 暫定 `WINDOW_NOT_WHOLE_PERIODS`）；宣告的 metric ID 不得與內建的 `additional_metrics` key（例如 `replication_mean_lead_time_minutes`）相同，validator 回 `DUPLICATE_ID`（path `/metrics/<i>/id`）。IR `metrics[]` 其餘既有類型與 Result 的對應仍屬 T-029（CB-22）。
+  **Declarative generic metrics** (computed only when declared in IR `metrics[]`; `metrics.additional_metrics[<metric id>]` is the cross-replication summary and `replication_summaries[i].declared[<metric id>]` is the per-replication value): `system_wip` (∫Nsys/T), `flow_count` (number of passes through the given flow in the window), `sink_count` (number of units entering the given sink, including abandoned), `period_throughput` (array of completed units per period for the given period; the window must be whole periods). These three counts are suggestions the agent added following H-017's direction (originally deferred, pending the owner's decision). Details (review N5): `flow_count` counts at routing resolution, at the same time as the routing draw and the failure/rework observation (D-049); a later block of that entity does not affect the count. `period_throughput` periods start at W; when H−W is not a whole multiple of the period, it is unavailable (provisional reason `WINDOW_NOT_WHOLE_PERIODS`). A declared metric ID must not equal a built-in `additional_metrics` key (for example `replication_mean_lead_time_minutes`); the validator returns `DUPLICATE_ID` (path `/metrics/<i>/id`). Mapping the other existing IR `metrics[]` types to the Result still belongs to T-029 (CB-22).
 
-  線班表的上班時間 L 不放進 Result，由 pack 以 IR 的 calendar 與 `measurement_window` 算出（整數 tick）。
-- B：維持 `ComputeMetrics(result)`，由 engine 把站別角色寫進 Result。後果：generic kernel 要讀 domain_attributes，違反 ADR-010；不採用。
-- C：指標只在 UI／analyst 端由 IR＋Result 計算，不進 Result。後果：不在 digest 中、analyst 的 evidence 無法引用（REQ-016），兩處實作容易不一致。
+  The line calendar's on-shift time L is not put into the Result; the pack computes it from the IR's calendar and `measurement_window` (integer ticks).
+- B: Keep `ComputeMetrics(result)` and have the engine write station roles into the Result. Consequence: the generic kernel would read domain_attributes, which violates ADR-010; not adopted.
+- C: Compute the metrics only on the UI/analyst side from IR + Result, not in the Result. Consequences: they are not in the digest, the analyst's evidence cannot cite them (REQ-016), and the two implementations easily diverge.
 
-**建議：A。**
+**Recommendation: A.**
 
-### D-059 Station event log 的 canonical fields（gate：電子產線的 T-017 mapping、T-027 inference 與 T-052 之前）
+### D-059 Canonical fields of the station event log (gate: before the electronics line's T-017 mapping, T-027 inference and T-052)
 
-**問題。** 現行 canonical-event 一筆只有一個時間，沒有結束時間與班別；停機紀錄沒有 serial；這些怎麼對應？
+**Question.** The current canonical-event has only one time per record, with no end time and no shift, and downtime records have no serial. How do these map?
 
-**選項。**
-- A：canonical-event 新增 optional `end_timestamp`（RFC 3339，≥ timestamp，與 duration_ms 並存時要一致）、`shift`（字串 ≤ 64）與 `product`（字串 ≤ 128，mapping 時對應到 entity type；多產品時必填，D-055）；pack 定義 `event_type`（`operation`、`downtime`）與 `outcome`（`pass`、`fail`、原因碼）詞彙；停機紀錄的 `case_id` 用設備 ID；operator ID 不匯入（§6）。後果：大多數一列一筆作業的匯出可以直接 mapping；schema 是 additive 變更。
-- B：不改 schema：每筆作業拆成 start 與 end 兩個 event，班別放 `metadata`。後果：使用者要先自行轉檔；`metadata` 沒有 transform（CB-28）。
-- C：沿用 `duration_ms`，新增「兩欄相減」的 transform。後果：transform 需要參數（CB-28 目前不支援），且失去結束時刻的原值。
+**Options.**
+- A: Add optional `end_timestamp` (RFC 3339, ≥ timestamp, must agree with duration_ms when both are present), `shift` (string ≤ 64) and `product` (string ≤ 128, mapped to an entity type during mapping; required with multiple products, D-055) to canonical-event. The pack defines the vocabularies of `event_type` (`operation`, `downtime`) and `outcome` (`pass`, `fail`, reason codes). Downtime records use the equipment ID as `case_id`. Operator ID is not imported (§6). Consequences: most exports with one operation per row can be mapped directly; the schema change is additive.
+- B: Do not change the schema: split each operation into two events, start and end, and put the shift in `metadata`. Consequences: users must convert their files first; `metadata` has no transform (CB-28).
+- C: Keep `duration_ms` and add a "subtract one column from another" transform. Consequences: the transform needs parameters (CB-28 does not support them yet), and the original end instant is lost.
 
-**建議：A。** 常數 transform（CSV 沒有 event_type 欄時）屬 CB-28，由 T-017 決定。
+**Recommendation: A.** The constant transform (when the CSV has no event_type column) belongs to CB-28 and is decided by T-017.
 
-### D-060 模擬與觀測比對的指標與誤差（gate：T-052）
+### D-060 Metrics and error for comparing simulation with observation (gate: T-052)
 
-**問題。** REQ-025 要比哪些量、誤差怎麼呈現、什麼時候 unavailable？
+**Question.** Which quantities does REQ-025 compare, how is the error presented, and when is it unavailable?
 
-**選項。**
-- A：§7 的做法：以每期平均比較「輸出比對」與「輸入一致性」兩類量，顯示模擬平均、replication 範圍、絕對與相對誤差、是否落在範圍內；標示 in-sample／hold-out；不給通過判定、不自動校準。後果：誠實呈現模型與資料的差距，不製造「已驗證」的印象；逐期序列延後。
-- B：只並列觀測與模擬數字，不算誤差。後果：最簡單；使用者要自己判讀，REQ-025 的「誤差」沒有做到。
-- C：統計檢定（t-test、KS 等）給通過／不通過。後果：給人「已驗證」的錯覺；一週的觀測只是一個樣本，檢定沒有意義。
+**Options.**
+- A: The §7 approach: compare the two classes of quantities, "output comparison" and "input consistency", using per-period averages; show the simulated mean, the replication range, the absolute and relative error, and whether the value falls within the range; mark in-sample/hold-out; give no pass verdict and do no automatic calibration. Consequences: it honestly shows the gap between model and data without creating an impression of "validated"; per-period series are deferred.
+- B: Only show the observed and simulated numbers side by side, without computing an error. Consequences: simplest; users must interpret it themselves, and REQ-025's "error" is not delivered.
+- C: Statistical tests (t-test, KS, etc.) giving pass/fail. Consequences: gives a false sense of "validated"; one week of observation is only one sample, so the tests are meaningless.
 
-**建議：A。**
+**Recommendation: A.**
 
-## 11. T-051 的實作（hackathon 切片，2026-10-26，H-029）
+## 11. T-051 implementation (hackathon slice, 2026-10-26, H-029)
 
-本節記錄 T-051 hackathon 切片已實作的部分；批准文字沒有寫到的細節為 D-117（**PROPOSED**），驗證見 [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md)。T-051 的其餘範圍（宣告式 metrics 等）尚未實作，見該報告。
+This section records what the T-051 hackathon slice has implemented. Details the approval text does not cover are D-117 (**PROPOSED**); validation is in [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md). The rest of T-051's scope (declarative metrics and so on) is not implemented yet; see that report.
 
-**Pack。** `internal/domainpack/electronicsline`，domain `electronics_line`，由 `internal/packs` 與 software delivery 範例 pack 一起註冊。Catalog 為 §3.1、§3.2（測試對照本文件的兩個表）；規則為 §3.4：規則 1 `STATION_RESOURCE_INVALID`（error）、規則 3 `RETEST_RESOURCE_MISMATCH`（error）、規則 2 `TEST_RESULT_NOT_IDENTIFIED`（warning），不能用的 `station`／`pass`／`result_of` 為 `DOMAIN_ATTRIBUTES_INVALID`（warning）；規則 4 由範本的測試確認（`metadata.synthetic: true`、`source: "synthetic, for demonstration"`）；規則 5：generic validator 的規則不重複。`InferFromEvents` 在 T-027 前回 `ErrUnavailable`。
+**Pack.** `internal/domainpack/electronicsline`, domain `electronics_line`, registered by `internal/packs` together with the software delivery example pack. The catalogs are §3.1 and §3.2 (tests compare against this document's two tables). The rules are §3.4: rule 1 `STATION_RESOURCE_INVALID` (error), rule 3 `RETEST_RESOURCE_MISMATCH` (error), rule 2 `TEST_RESULT_NOT_IDENTIFIED` (warning); an unusable `station`/`pass`/`result_of` is `DOMAIN_ATTRIBUTES_INVALID` (warning); rule 4 is confirmed by the template's tests (`metadata.synthetic: true`, `source: "synthetic, for demonstration"`); rule 5: the generic validator's rules are not repeated. `InferFromEvents` returns `ErrUnavailable` until T-027.
 
-**範本 `electronics_assembly_test_line`。** §4.1 的拓樸（41 個 node、47 條 flow）、§4.2 的參數，加上 §4.4 的兩個產品族與 SMT 換線，全部是 synthetic 示意值（不是任何工廠的實測值）：
+**Template `electronics_assembly_test_line`.** The §4.1 topology (41 nodes, 47 flows) and the §4.2 parameters, plus the two product families and the SMT setups of §4.4. All are synthetic illustrative values (not measured values from any factory):
 
-| 項目 | 範本中的值 | 來源 |
+| Item | Value in the template | Source |
 |---|---|---|
-| 投入 | `release_a`（`board_a`）平日 06:00、`release_b`（`board_b`）平日 14:00 各 360 片，table、period 10080 | §4.4 |
-| 班表 `two_shift_weekdays` | 週一至週五 06:00–14:00 `early`、14:00–22:00 `late`（§4.2 的 [360, 1320)＋d·1440 拆成兩個有 label 的班，S(t) 不變） | §4.2；label 為 D-117 (g) |
-| SMT 線 `smt_line` | 1 台、班表、TTF exp(600)、TTR tri(10, 20, 90)；換線 A↔B tri(15, 25, 45)，initial `board_a`；service tri(0.9, 1.0, 1.4)；印刷、SPI、置件、迴焊視為一個 server（§2） | §4.2、§4.4 |
-| AOI `aoi_machine`（role `aoi`） | 1 台、TTF exp(1200)、TTR tri(5, 10, 30)、service tri(0.8, 0.9, 1.1)；良率 0.97，不良經修補（`debug_operator`，tri(3, 5, 10)）進 ICT | §4.1、§4.2 |
-| ICT `ict_tester` | 2 台、TTF exp(900)、TTR tri(10, 20, 60)；首測與重測 tri(1.8, 2.0, 2.6)；良率 0.95、重測 0.90；除錯 tri(5, 10, 30)，修好 0.97、其餘報廢 | 同上 |
-| FCT `fct_tester` | 3 台、TTF exp(900)、TTR tri(10, 30, 90)；首測與重測 tri(2.8, 3.2, 4.0)；良率 0.93、重測 0.90；除錯 tri(10, 20, 60)，修好 0.95 | 同上 |
-| 燒機 `burn_in_chamber` | 6 個 chamber、24/7、TTF exp(10080)、TTR tri(60, 120, 480)；批次 min 20、max 40、max_wait 120，每批 constant 240；良率 0.995，不良回 FCT 除錯 | 同上 |
-| 除錯 `debug_operator`、包裝 `pack_station` | 4 人、2 站，班表；`shift_capacity` 兩班皆等於 capacity（數字不變，供 D-057 的每班人數 scenario） | §4.2；D-117 (g) |
-| 緩衝 | `q_aoi` 20、`q_ict` 10、`q_fct` 10、`q_burnin` 120、`q_pack` 400；SMT 前、修補、除錯與重測前為無限 | §4.1 |
-| 2D 位置 | 主線在第一列（x 由左往右），各站的修補、除錯與重測迴圈在下方；process 依 x、再依 y 排序即 Marey 圖的列順序（SMT、AOI、修補、ICT、ICT 除錯、ICT 重測、FCT、FCT 除錯、FCT 重測、燒機、包裝） | D-117 (g) |
+| Release | `release_a` (`board_a`) at 06:00 on weekdays and `release_b` (`board_b`) at 14:00 on weekdays, 360 boards each, table, period 10080 | §4.4 |
+| Calendar `two_shift_weekdays` | Monday to Friday 06:00–14:00 `early`, 14:00–22:00 `late` (the [360, 1320) + d·1440 of §4.2 split into two labeled shifts; S(t) unchanged) | §4.2; the labels are D-117 (g) |
+| SMT line `smt_line` | 1 line, calendar, TTF exp(600), TTR tri(10, 20, 90); setup A↔B tri(15, 25, 45), initial `board_a`; service tri(0.9, 1.0, 1.4); printing, SPI, placement and reflow treated as one server (§2) | §4.2, §4.4 |
+| AOI `aoi_machine` (role `aoi`) | 1 machine, TTF exp(1200), TTR tri(5, 10, 30), service tri(0.8, 0.9, 1.1); yield 0.97, defects go through touch-up (`debug_operator`, tri(3, 5, 10)) into ICT | §4.1, §4.2 |
+| ICT `ict_tester` | 2 testers, TTF exp(900), TTR tri(10, 20, 60); first test and retest tri(1.8, 2.0, 2.6); yield 0.95, retest 0.90; debug tri(5, 10, 30), repaired 0.97, the rest scrapped | Same as above |
+| FCT `fct_tester` | 3 testers, TTF exp(900), TTR tri(10, 30, 90); first test and retest tri(2.8, 3.2, 4.0); yield 0.93, retest 0.90; debug tri(10, 20, 60), repaired 0.95 | Same as above |
+| Burn-in `burn_in_chamber` | 6 chambers, 24/7, TTF exp(10080), TTR tri(60, 120, 480); batch min 20, max 40, max_wait 120, constant 240 per batch; yield 0.995, defects return to FCT debug | Same as above |
+| Debug `debug_operator`, packing `pack_station` | 4 people, 2 stations, calendar; `shift_capacity` equals capacity in both shifts (numbers unchanged; there for D-057 per-shift staffing scenarios) | §4.2; D-117 (g) |
+| Buffers | `q_aoi` 20, `q_ict` 10, `q_fct` 10, `q_burnin` 120, `q_pack` 400; unlimited before SMT, touch-up, debug and retest | §4.1 |
+| 2D positions | The main line is in the first row (x from left to right); each station's touch-up, debug and retest loops are below it; processes sorted by x, then by y, give the row order of the Marey chart (SMT, AOI, touch-up, ICT, ICT debug, ICT retest, FCT, FCT debug, FCT retest, burn-in, packing) | D-117 (g) |
 
-名稱有 en 與 zh-Hant 兩語（`templates/*.zh-Hant.names.json`），ID 與其他內容在兩個語言中相同。
+Names come in two languages, en and zh-Hant (`templates/*.zh-Hant.names.json`); IDs and all other content are the same in both languages.
 
-**以引擎確認 §4.2 的粗估。** 範本以 des-go-0.5.0 執行（horizon 28 天、warmup 7 天、5 個 replication、seed 2026；結果的 digest 鎖在 `internal/domainpack/electronicsline/testdata/template-run-lock.json`，是 engine 輸出的 regression lock，不是獨立 oracle）：量測的 21 天內平均出貨 10,756 片（每週約 3,585 片，投入 3,600 片，WIP 未持續累積）；上班時間的工作比例（§5 的 w_s）FCT 0.898 最高，其次 ICT 0.843、SMT 0.825、AOI 0.701、包裝 0.411、燒機 0.365（24/7），與 §4.2「FCT 為預期瓶頸」一致；SMT 換線每天約 2 次（21 天 30 次）；燒機平均批量 39.2 片。這些是 synthetic 模型的模擬輸出，不是工廠的數字；參數沒有因此調整。
+**Confirming the §4.2 estimate with the engine.** The template runs on des-go-0.5.0 (horizon 28 days, warmup 7 days, 5 replications, seed 2026; the result's digest is locked in `internal/domainpack/electronicsline/testdata/template-run-lock.json`, a regression lock on engine output, not an independent oracle). Over the measured 21 days, an average of 10,756 boards shipped (about 3,585 per week against a release of 3,600; WIP did not keep accumulating). The on-shift work ratio (w_s of §5) is highest at FCT, 0.898, followed by ICT 0.843, SMT 0.825, AOI 0.701, packing 0.411 and burn-in 0.365 (24/7), consistent with §4.2's "FCT is the expected bottleneck". SMT setups are about 2 per day (30 in 21 days). The mean burn-in batch size is 39.2 boards. These are simulation outputs of a synthetic model, not factory numbers; the parameters were not adjusted because of them.
 
-**指標（`metrics.domain`）。** 線的 key 為名稱，站的 key 為 `<名稱>.<首測的 node ID>`；每個 replication 一個值，跨 replication 以 Result 其他統計相同的方式彙整（population replication、mean、Type 7、Student-t CI）。本 build：
+**Metrics (`metrics.domain`).** Line metric keys are the metric name; station metric keys are `<name>.<first-test node ID>`. Each has one value per replication and is aggregated across replications the same way as the Result's other statistics (population replication, mean, Type 7, Student-t CI). This build:
 
-| 指標 | 範圍 | 單位 | 本 build |
+| Metric | Scope | Unit | This build |
 |---|---|---|---|
-| `uph`、`uph_scheduled` | 線 | entity_per_hour | 可用（沒有 completed sink、沒有共用的線班表或視窗內沒有上班時間時 unavailable） |
-| `rolled_throughput_yield_input`、`fpy_input` | 線、測試站 | ratio | 可用（模型輸入；找不到測試結果時 `TEST_RESULT_NOT_IDENTIFIED`）。直通率依線的順序（AOI、ICT、FCT、燒機）每個測試站別乘一次 FPY；同一站別的多個首測是並聯的 cell，只算一次：FPY 在 routing 容差 1e-9 內相同時取 node 順序第一個首測的值，不同時 `PARALLEL_TEST_YIELDS_DIFFER`（D-117 (c)，PROPOSED；review r1 M1）。`fpy_input` 每個首測一個 |
-| `line_balance`、`work_ratio` | 線、站 | ratio | 可用；line balance 每個 primary resource 一次（並聯 cell 共用測試機時只算一次） |
-| `processing_ratio`、`setup_ratio`、`blocking_ratio`、`down_ratio`、`idle_ratio`、`off_shift_ratio` | 站 | ratio | 可用；模型沒有換線、有限緩衝、故障時分別為 `NO_SETUP_MODEL`、`NO_FINITE_BUFFERS`、`NO_BREAKDOWN_MODEL` |
-| `starved_ratio` | 站 | ratio | 專用、單一 resource、units 1、非批次的站可用，否則為 §5 的 `STARVATION_UNDEFINED_*`（以 `idle_ratio` 顯示同一公式） |
-| `availability`、`setups_started`、`mean_blocking_minutes` | 站 | ratio、count、minute | 可用（同上的條件；沒有完整阻塞時 `NO_COMPLETED_BLOCK_IN_WINDOW`） |
-| `scheduled_utilization`、`overtime_minutes` | 有 calendar 的站 | ratio、minute | 可用；沒有 calendar 的站不列（§5） |
-| `batches_started`、`mean_batch_size`、`batch_fill_ratio` | 站 | count、entity、ratio | 批次站可用；其他站 `NO_BATCH_MODEL` |
-| `line_wip`、`scrap_rate`、`simulated_first_pass_ratio`、`retest_ratio` | 線、測試站 | entity、ratio | **unavailable**（`WIP_NOT_DECLARED`、`SINK_COUNT_NOT_DECLARED`、`FLOW_COUNT_NOT_DECLARED`）：需要 D-058 的宣告式 metrics，本 build 仍以 `PRIMITIVE_NOT_SUPPORTED` 拒絕宣告 |
+| `uph`, `uph_scheduled` | Line | entity_per_hour | Available (unavailable when there is no completed sink, no shared line calendar, or no on-shift time in the window) |
+| `rolled_throughput_yield_input`, `fpy_input` | Line, test station | ratio | Available (model input; `TEST_RESULT_NOT_IDENTIFIED` when a test result cannot be found). The rolled throughput yield multiplies one FPY per test station kind, in line order (AOI, ICT, FCT, burn-in). Several first tests of the same station kind are parallel cells and count once: when their FPYs are equal within the routing tolerance 1e-9, the value of the first first-test in node order is used; when they differ, `PARALLEL_TEST_YIELDS_DIFFER` (D-117 (c), PROPOSED; review r1 M1). `fpy_input` has one value per first test |
+| `line_balance`, `work_ratio` | Line, station | ratio | Available; line balance counts each primary resource once (parallel cells that share a tester count once) |
+| `processing_ratio`, `setup_ratio`, `blocking_ratio`, `down_ratio`, `idle_ratio`, `off_shift_ratio` | Station | ratio | Available; when the model has no setups, finite buffers or breakdowns, respectively `NO_SETUP_MODEL`, `NO_FINITE_BUFFERS`, `NO_BREAKDOWN_MODEL` |
+| `starved_ratio` | Station | ratio | Available for stations with a dedicated single resource, units 1 and no batching; otherwise §5's `STARVATION_UNDEFINED_*` (the same formula is shown as `idle_ratio`) |
+| `availability`, `setups_started`, `mean_blocking_minutes` | Station | ratio, count, minute | Available (same conditions as above; `NO_COMPLETED_BLOCK_IN_WINDOW` when there is no complete block) |
+| `scheduled_utilization`, `overtime_minutes` | Stations with a calendar | ratio, minute | Available; stations without a calendar are not listed (§5) |
+| `batches_started`, `mean_batch_size`, `batch_fill_ratio` | Station | count, entity, ratio | Available for batch stations; other stations `NO_BATCH_MODEL` |
+| `line_wip`, `scrap_rate`, `simulated_first_pass_ratio`, `retest_ratio` | Line, test station | entity, ratio | **unavailable** (`WIP_NOT_DECLARED`, `SINK_COUNT_NOT_DECLARED`, `FLOW_COUNT_NOT_DECLARED`): they need D-058's declarative metrics, whose declarations this build still rejects with `PRIMITIVE_NOT_SUPPORTED` |
 
-UI 的標籤（kind 與指標名稱，en 與 zh-Hant）在 `apps/web/messages` 的 `domain.electronics_line.*`。P0 不計算 OEE，任何指標都不稱 OEE。
+The UI labels (kinds and metric names, en and zh-Hant) are in `domain.electronics_line.*` in `apps/web/messages`. P0 does not compute OEE, and no metric is called OEE.
 
-**Review r1 的修正（M1，2026-10-26）。** 原本的直通率對每個 `pass: first` 的測試 process 各乘一次 FPY：範本加一個並聯的 FCT cell（兩個 cell 的 FPY 都是 0.93）時得到 0.97·0.95·0.93·0.93·0.995＝0.79302032325，而不是 §5 的串聯值 0.97·0.95·0.93·0.995＝0.852710025，且 pack 的規則沒有任何 issue。現在依上表的規則每個站別一次；並聯 cell 的 FPY 不同時，該站別沒有單一 FPY（要以 routing 份額加權，pack 不推導），直通率 unavailable。Pack 不分析 routing：同一站別的兩個首測若其實是串聯（不是 §2 的結構），也當作並聯 cell。範本每個測試站別只有一個首測，且首測的 node 順序就是線的順序，乘積與修正前逐位元相同，`testdata/template-run-lock.json` 的 digest 不變。驗證見 [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md) 的「Review round 1 fixes」。
+**Review r1 fix (M1, 2026-10-26).** The original rolled throughput yield multiplied one FPY for each test process with `pass: first`. When a parallel FCT cell was added to the template (both cells with FPY 0.93), it gave 0.97·0.95·0.93·0.93·0.995 = 0.79302032325 instead of §5's series value 0.97·0.95·0.93·0.995 = 0.852710025, and the pack's rules raised no issue. Now it is once per station kind, by the rule in the table above. When parallel cells have different FPYs, that station kind has no single FPY (it would need weighting by routing share, which the pack does not derive), and the rolled throughput yield is unavailable. The pack does not analyze routing: two first tests of the same station kind that are actually in series (not the §2 structure) are also treated as parallel cells. The template has only one first test per test station kind, and the node order of the first tests is the line order, so the product is bit-for-bit identical to before the fix and the digest in `testdata/template-run-lock.json` is unchanged. Validation: "Review round 1 fixes" in [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md).
 
-## 12. T-052 的實作（hackathon 切片，2026-10-26，H-029）
+## 12. T-052 implementation (hackathon slice, 2026-10-26, H-029)
 
-本節記錄 T-052 hackathon 切片已實作的部分；批准文字沒有寫到的細節為 D-118（**PROPOSED**），驗證見 [checks/T-052_VALIDATION.md](../../checks/T-052_VALIDATION.md)。T-052 的其餘範圍（D-073 的 transform、commit 之後的 dataset 與 run 的連結等）見該報告。
+This section records what the T-052 hackathon slice has implemented. Details the approval text does not cover are D-118 (**PROPOSED**); validation is in [checks/T-052_VALIDATION.md](../../checks/T-052_VALIDATION.md). The rest of T-052's scope (D-073's transform, linking datasets and runs after commit, and so on) is in that report.
 
-**Synthetic 資料（§8 的第 1 步）。** [`testdata/datasets/electronics-line`](../../testdata/datasets/electronics-line/README.md)：一週的 station log（22,739 列，2,626,641 bytes，每列 `synthetic=true`）、ground-truth model（本 pack 的範本 §11）與產生方式、7 個負向 fixture。`scripts/gen-electronics-line-data` 以 engine 的 Observer 記錄範本的 replication 0（seed 52），不另寫一套模擬；同一 seed 得到同一 bytes（SHA-256 釘在測試），engine 對該 replication 在同一視窗自己的計數（出貨、測試失敗、修理、各機台的停機、SMT 換線）等於 log 的。時間以 2026-09-28T00:00+08:00 為 model time 0（§6 的 anchor）。
+**Synthetic data (step 1 of §8).** [`testdata/datasets/electronics-line`](../../testdata/datasets/electronics-line/README.md): one week of station log (22,739 rows, 2,626,641 bytes, every row `synthetic=true`), the ground-truth model (this pack's template, §11) and how the data was generated, and 7 negative fixtures. `scripts/gen-electronics-line-data` records the template's replication 0 (seed 52) with the engine's Observer, without writing a separate simulation. The same seed gives the same bytes (SHA-256 pinned in a test), and the engine's own counts for that replication in the same window (shipped, test failures, repairs, downtime per machine, SMT setups) equal the log's. Time uses 2026-09-28T00:00+08:00 as model time 0 (the anchor of §6).
 
-**§6 的資料品質規則。** Import 的 validation 以 import 綁定的 base version 為詞彙，對每個合法的列檢查 D-059 的規則，結果為 warning（D-072 (b)），import 仍 VALIDATED：`EVENT_TYPE_UNKNOWN`、`EVENT_STAGE_MISSING`、`EVENT_STAGE_UNKNOWN`、`EVENT_END_MISSING`、`EVENT_OUTCOME_MISSING`（測試站）、`EVENT_OUTCOME_UNKNOWN`、`EVENT_PRODUCT_MISSING`（多產品）、`EVENT_PRODUCT_UNKNOWN`（D-118 (b)）。end 早於 start 仍是 D-072 (b) 的 invalid row。§6 列的跨列檢查（serial 的作業重疊、超過 capacity、站序、停機中仍有作業、資料缺口）尚未實作。
+**The data-quality rules of §6.** Import validation uses the base version the import is bound to as its vocabulary and checks the D-059 rules on every valid row. The results are warnings (D-072 (b)), and the import stays VALIDATED: `EVENT_TYPE_UNKNOWN`, `EVENT_STAGE_MISSING`, `EVENT_STAGE_UNKNOWN`, `EVENT_END_MISSING`, `EVENT_OUTCOME_MISSING` (test stations), `EVENT_OUTCOME_UNKNOWN`, `EVENT_PRODUCT_MISSING` (multiple products), `EVENT_PRODUCT_UNKNOWN` (D-118 (b)). An end earlier than start is still a D-072 (b) invalid row. The cross-row checks listed in §6 (overlapping operations of a serial, exceeding capacity, station order, operations during downtime, data gaps) are not implemented yet.
 
-**§7 的比對。** `electronicsline.CompareObserved`（以 `internal/results/observed` 計算）：線的每週與每日產出（輸出比對）、各測試站的 FPY 與各站的平均 cycle time（輸入一致性），D-060 的模擬平均、replication 範圍、絕對與相對誤差、是否在範圍內，資料不足時為 §7 的 reason（D-118 (d)）。對 synthetic 資料（標示 `model_generated`：資料由被比對的同一個 model 產生，不是 in-sample 也不是 hold-out，這只檢查 pipeline；見下面的 review r1）：
+**The comparison of §7.** `electronicsline.CompareObserved` (computed with `internal/results/observed`): the line's weekly and daily output (output comparison), FPY per test station and mean cycle time per station (input consistency); D-060's simulated mean, replication range, absolute and relative error, and whether the value is within range; when data is insufficient, the §7 reason (D-118 (d)). For the synthetic data (marked `model_generated`: the data was produced by the same model it is compared with, so it is neither in-sample nor hold-out, and this only checks the pipeline; see review r1 below):
 
-| 量 | 觀測（log） | 模擬（seed 2026，5 個 replication，horizon 14 天、warmup 7 天） | 說明 |
+| Quantity | Observed (log) | Simulated (seed 2026, 5 replications, horizon 14 days, warmup 7 days) | Note |
 |---|---|---|---|
-| `line_output_per_week` | 3,588 | 平均 3,613，範圍（min–max）3,555–3,677，絕對誤差 25，相對 0.70%，在範圍內 | 以 generator 的 seed（52）、1 個 replication 時模擬即 log，誤差 0 |
-| `first_pass_yield.fct` | 0.9399 | 模型輸入 0.93 | 輸入一致性 |
-| `mean_cycle_minutes.fct` | 3.328 | 模型 tri(2.8, 3.2, 4.0) 的平均 3.333 | 輸入一致性；log 的時間截到整秒 |
+| `line_output_per_week` | 3,588 | Mean 3,613, range (min–max) 3,555–3,677, absolute error 25, relative 0.70%, within range | With the generator's seed (52) and 1 replication, the simulation is the log and the error is 0 |
+| `first_pass_yield.fct` | 0.9399 | Model input 0.93 | Input consistency |
+| `mean_cycle_minutes.fct` | 3.328 | Mean 3.333 of the model's tri(2.8, 3.2, 4.0) | Input consistency; log times are truncated to whole seconds |
 
-這些是 synthetic 模型與它自己產生的資料的數字，不是工廠的數字；不給通過判定，也不調整模型（D-060）。
+These are numbers from a synthetic model and from data it produced itself, not factory numbers. No pass verdict is given, and the model is not adjusted (D-060).
 
-**Review r1 的修正（2026-10-26；D-118 (d) 仍為 PROPOSED）。**
+**Review r1 fixes (2026-10-26; D-118 (d) is still PROPOSED).**
 
-- **視窗沒有觀測資料（M1）**：原本只有整個 event 清單為空時輸出比對才回 `NO_OBSERVED_DATA`；給一個 log 沒有涵蓋的視窗，觀測端「視窗內 end 的作業數」就成了 0 或一半，結果卻是 available（log 之後的一週：觀測 0、模擬 3,613；兩週而 log 只涵蓋第二週：觀測 1,794、相對誤差 +101.4%），違反 D-060 的「沒有觀測資料時 unavailable」與 AGENTS.md §2。現在 `line_output_per_week`、`line_output_per_day` 要求視窗 [From, To) 的每個 unit（lcm(期, model 循環)；本範本為一週，每日產出也以週為單位）內至少有一個 log 的 event **開始**（任何紀錄類型，作業或停機），否則為 `NO_OBSERVED_DATA`。部分涵蓋也是 `NO_OBSERVED_DATA`，不是 `OBSERVED_WINDOW_TOO_SHORT`：§7 的 TOO_SHORT 指視窗本身短於一期，這裡視窗夠長、缺的是其中某個 unit 的資料。檢查在對齊之後（unit 只對對齊的視窗有定義），在 `NO_COMPLETED_SINK` 與 `OBSERVED_FIELD_MISSING` 之前。輸入一致性（FPY、cycle）是視窗內 event 的比例與平均、不是每期的計數，不套用此規則；視窗內沒有該量的 event 時為 `NO_OBSERVED_DATA`（原本即如此，現在有測試）。限制：一個 event 就算涵蓋該 unit；更完整的做法是由呼叫者傳入 dataset 的觀測期間、要求 [From, To) 在其中，需要 T-018 之後的 dataset metadata（T-052 其餘範圍）。
-- **以 end 計數（L1）**：一個手寫 event 的測試讓包裝作業跨過視窗的起點與終點，證明出貨記在它 end 的那一週，每片只算一次。
-- **標示（coordinator 對問題 4 與 I2 的決定）**：由被比對的同一個 model 產生的資料不得標 hold-out；`observed.Sample` 新增 `model_generated`（`observed.ModelGenerated`），pack 的測試與 API test 都用它（比對還沒有 API 或 UI；之後顯示這份資料的比對時也標它）。`Sample` 是 Go 內部的值，沒有 schema 或 OpenAPI contract；比對的數字不變（上表）。
+- **No observed data in the window (M1)**: originally the output comparison returned `NO_OBSERVED_DATA` only when the whole event list was empty. For a window the log did not cover, the observed "number of operations ending in the window" became 0 or half, yet the result was available (the week after the log: observed 0, simulated 3,613; two weeks with the log covering only the second: observed 1,794, relative error +101.4%). That violated D-060's "unavailable when there is no observed data" and AGENTS.md §2. Now `line_output_per_week` and `line_output_per_day` require at least one log event to **start** (any record type, operation or downtime) in every unit of the window [From, To) (unit = lcm(period, model cycle); one week for this template, so daily output is also checked in weekly units); otherwise the result is `NO_OBSERVED_DATA`. Partial coverage is also `NO_OBSERVED_DATA`, not `OBSERVED_WINDOW_TOO_SHORT`: §7's TOO_SHORT means the window itself is shorter than one period, while here the window is long enough and the data for one of its units is missing. The check runs after alignment (units are defined only for an aligned window) and before `NO_COMPLETED_SINK` and `OBSERVED_FIELD_MISSING`. Input consistency (FPY, cycle) is a ratio and mean over the events in the window, not a per-period count, so this rule does not apply to it; when the window has no events for the quantity, it is `NO_OBSERVED_DATA` (as before; now with a test). Limitation: one event is enough to cover a unit. A more complete approach is for the caller to pass the dataset's observation period and require [From, To) to lie within it; that needs the dataset metadata after T-018 (the rest of T-052's scope).
+- **Counting by end (L1)**: a test with a handwritten event makes a packing operation span both the window's start and its end, and shows that the shipment is recorded in the week of its end and each board counts only once.
+- **Labeling (the coordinator's decision on question 4 and I2)**: data produced by the same model it is compared with must not be marked hold-out. `observed.Sample` gains `model_generated` (`observed.ModelGenerated`), which the pack's tests and the API test use (the comparison has no API or UI yet; when the comparison of this data is shown later, it is marked as well). `Sample` is an internal Go value with no schema or OpenAPI contract; the comparison numbers do not change (table above).
 
-## 13. T-056：照片的概念（2026-10-26，H-033；D-131 PROPOSED）
+## 13. T-056: photo concepts (2026-10-26, H-033; D-131 PROPOSED)
 
-Pack 實作 `domainpack.PhotoVocabulary`：segmenter 在產線照片或平面圖中依序尋找 8 個概念（T-055 的 `provider.SegmentRequest`：至多 8 個、小寫英文名詞片語、每個概念一次呼叫、一張 SAM 影像）：`smt line`、`aoi machine`、`ict tester`、`fct tester`、`packing station`（§2 的各站，依產線順序）、`conveyor belt`（站與站之間的輸送帶，即 §3.1 的 line buffer），以及畫出的平面圖的形狀 `rectangle`（畫成方框的工作站）與 `arrow`（流向）。這是 pack 的靜態資料，不是 tenant 的；vision model 依影像與這些物件提出工作站與流向（平面圖的方框由影像中它的標籤判斷是哪一站，標籤是資料），新步驟不多於框數、數字只能沿用 base 已有的值（`review.Photo`），2D 位置由編輯器排列。Demo 影像為 `scripts/gen-photo-demo` 畫的 synthetic 平面圖（`testdata/photos/`），不是任何工廠的照片。
+The pack implements `domainpack.PhotoVocabulary`: the segmenter looks for 8 concepts, in order, in a line photo or floor plan (T-055's `provider.SegmentRequest`: at most 8, lowercase English noun phrases, one call per concept, one SAM image): `smt line`, `aoi machine`, `ict tester`, `fct tester`, `packing station` (the stations of §2, in line order), `conveyor belt` (the conveyor between stations, i.e. the line buffer of §3.1), and the shapes of a drawn floor plan, `rectangle` (a workstation drawn as a box) and `arrow` (flow direction). This is the pack's static data, not the tenant's. The vision model proposes workstations and flows from the image and these objects (which station a floor-plan box is gets decided from its label in the image; the label is data). New steps may not outnumber the boxes, numbers may only reuse values the base already has (`review.Photo`), and the editor arranges the 2D positions. The demo image is a synthetic floor plan drawn by `scripts/gen-photo-demo` (`testdata/photos/`), not a photo of any factory.
 
-**第一次 live 之後的調整（2026-10-27；D-131 (h)，PROPOSED）。** 原本的 8 個概念為 `smt line`、`aoi machine`、`ict tester`、`fct tester`、`burn-in chamber`、`packing station`、`conveyor belt`、`workstation`。第一次 live 照片 smoke（run `01M5XDJ3T0TTGE55K3A3JVK29N`）中 SAM 3.1 在 demo 平面圖上對 8 個概念都回答、但 0 個框，server 回 needs_input，judge 沒有執行。SAM 找的是短名詞片語所指的東西（Meta 的文件以一張六個正方形的圖中 `square` 找到 6 個為例），細分領域的名詞是它已知的弱點，所以加入平面圖的形狀 `rectangle` 與 `arrow`；為了維持 8 個（每個概念一張影像，SAM 的花費仍至多 USD 0.02），去掉 demo 沒有的 `burn-in chamber` 與 `workstation`（平面圖上它們也是標字的方框，由 `rectangle` 找到、由標籤判斷）。照片的 prompt template 改為 `photo-0.2.0`；照片規則不變。措辭仍要以 live 確認：`make ai-smoke-photo-live` 可用 `AI_SMOKE_PHOTO_CONCEPTS`（或 `-concepts`）改問其他概念，只在 smoke，worker 從不讀。
+**Adjustment after the first live run (2026-10-27; D-131 (h), PROPOSED).** The original 8 concepts were `smt line`, `aoi machine`, `ict tester`, `fct tester`, `burn-in chamber`, `packing station`, `conveyor belt`, `workstation`. In the first live photo smoke (run `01M5XDJ3T0TTGE55K3A3JVK29N`), SAM 3.1 answered all 8 concepts on the demo floor plan but with 0 boxes; the server returned needs_input, and the judge did not run. SAM looks for the things a short noun phrase refers to (Meta's documentation gives the example of finding 6 with `square` in an image of six squares), and fine-grained domain nouns are a known weakness, so the floor-plan shapes `rectangle` and `arrow` were added. To stay at 8 (one image per concept, so SAM spend is still at most USD 0.02), `burn-in chamber` and `workstation`, which the demo does not have, were removed (on the floor plan they are also labeled boxes, found by `rectangle` and identified by their label). The photo prompt template changed to `photo-0.2.0`; the photo rules did not change. The wording still needs live confirmation: `make ai-smoke-photo-live` can ask about other concepts with `AI_SMOKE_PHOTO_CONCEPTS` (or `-concepts`), only in the smoke; the worker never reads it.

@@ -35,7 +35,7 @@
 
 ## 範本：`electronics_assembly_test_line`
 
-完整的值、來源與 2D 位置見 [ELECTRONICS_LINE §11](../docs/domains/ELECTRONICS_LINE.md#11-t-051-的實作hackathon-切片2026-10-26h-029)。全部參數是 **synthetic, for demonstration**：取自已批准的 ELECTRONICS_LINE §4.1、§4.2、§4.4（H-018）的示意值，不是任何工廠的實測值或「典型值」；範本的 `metadata` 記 `synthetic: true`、`source: "synthetic, for demonstration"`、來源與 8 條假設，由範本建立的 model 保留這些標記（但不是 fixture）。
+完整的值、來源與 2D 位置見 [ELECTRONICS_LINE §11](../docs/domains/ELECTRONICS_LINE.md#11-t-051-implementation-hackathon-slice-2026-10-26-h-029)。全部參數是 **synthetic, for demonstration**：取自已批准的 ELECTRONICS_LINE §4.1、§4.2、§4.4（H-018）的示意值，不是任何工廠的實測值或「典型值」；範本的 `metadata` 記 `synthetic: true`、`source: "synthetic, for demonstration"`、來源與 8 條假設，由範本建立的 model 保留這些標記（但不是 fixture）。
 
 - **步驟（11 個 process）**：SMT 線（印刷、SPI、置件、迴焊視為一個 server，§2）→ AOI →（不良 3%：修補）→ ICT →（不良 5%：除錯 → 重測，或報廢）→ FCT →（不良 7%：除錯 → 重測，或報廢）→ 燒機（批次 20–40 片、等待上限 120 分、每批 240 分）→（不良 0.5%：回 FCT 除錯）→ 包裝出貨。另有 11 個 buffer（`q_aoi` 20、`q_ict` 10、`q_fct` 10、`q_burnin` 120、`q_pack` 400，其餘無限）、8 個 decision、4 個 failure、3 個 rework、出貨與報廢兩個 sink、兩個 source。
 - **Resource（7 個）**：`smt_line` 1、`aoi_machine` 1、`ict_tester` 2、`fct_tester` 3、`burn_in_chamber` 6（24/7）、`debug_operator` 4、`pack_station` 2；前五個有 exponential TTF／triangular TTR 的故障（上班時間計，D-051）。
