@@ -63,7 +63,7 @@ The e2e run before the review fixes also found two problems of its own, fixed in
 
 ## 5. Deliberately not changed, and limits
 
-- **Screenshot baselines.** The 32 baselines (`/`, `/projects`, `/no-such-page`, `/ui-gallery`) are stale since H-041 and change again with the rail. CI's `update_screenshots` re-shoots them for the owner to approve before they are committed; until then CI's screenshot comparison fails.
+- **Screenshot baselines.** The 32 baselines (`/`, `/projects`, `/no-such-page`, `/ui-gallery`) are stale since H-041 and change again with the rail. CI's `update_screenshots` re-shot them (run 40895058314 on 8abef1f, every job green); the owner looked at them and approved them on 2026-10-29, and they are committed.
 - **List order.** The lists show the server's order (oldest first, like the project and model lists); paging beyond 100 is still not built, and the page says so.
 - **Who read the photo.** "Photo read by SAM 3.1" shows only when the proposal's stored metadata records the segmenter; otherwise only the writer shows.
 - **Live AI.** Live NOT RUN until the deploy below: which provider the deployment uses, and whether "Propose as a scenario" answers, are checked there.
