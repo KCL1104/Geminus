@@ -11,11 +11,12 @@ export type RunField = "horizon" | "warmup" | "replications" | "seed";
 export type RunForm = Record<RunField, string>;
 export type FormIssue = "required" | "number" | "positive" | "warmup" | "replications" | "seed";
 
-const oneDay: Readonly<Record<ModelTimeUnit, string>> = { second: "86400", minute: "1440", hour: "24", day: "1" };
+// A week (H-047): a day cuts off work that takes hours, such as an 8-hour burn-in.
+const oneWeek: Readonly<Record<ModelTimeUnit, string>> = { second: "604800", minute: "10080", hour: "168", day: "7" };
 
-/** One day of the model's time unit, no warm-up, 5 replications, seed 1. */
+/** One week of the model's time unit, no warm-up, 5 replications, seed 1. */
 export function defaultRunForm(unit: ModelTimeUnit): RunForm {
-  return { horizon: oneDay[unit], warmup: "0", replications: "5", seed: "1" };
+  return { horizon: oneWeek[unit], warmup: "0", replications: "5", seed: "1" };
 }
 
 const decimal = /^\d+(\.\d+)?$/;

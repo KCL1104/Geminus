@@ -1,13 +1,17 @@
 {
-  "about": "The demo's what-if scenarios on the electronics assembly and test line template (owner's request of 2026-10-29: several ready what-ifs on the same line). Each change names its target by ID and the value it expects to replace; deploy/demo/seed-whatifs.cjs turns them into scenario patches that test every value first. Synthetic data only.",
+  "about": "The demo's what-if scenarios on the electronics assembly and test line template (owner's request of 2026-10-29: several ready what-ifs on the same line; H-047: the fourth FCT tester works the researched template's bottleneck, and the debug crew changes per shift, which is what the engine staffs). Each change names its target by ID and the value it expects to replace; deploy/demo/seed-whatifs.cjs turns them into scenario patches that test every value first. Synthetic data only.",
   "scenarios": [
     {
-      "name": "Third ICT tester",
-      "changes": [{ "resource": "ict_tester", "path": ["capacity"], "from": 2, "to": 3 }]
+      "name": "Fourth FCT tester",
+      "changes": [{ "resource": "fct_tester", "path": ["capacity"], "from": 3, "to": 4 }]
     },
     {
       "name": "One more debug operator",
-      "changes": [{ "resource": "debug_operator", "path": ["capacity"], "from": 4, "to": 5 }]
+      "changes": [
+        { "resource": "debug_operator", "path": ["capacity"], "from": 4, "to": 5 },
+        { "resource": "debug_operator", "path": ["shift_capacity", "early"], "from": 4, "to": 5 },
+        { "resource": "debug_operator", "path": ["shift_capacity", "late"], "from": 4, "to": 5 }
+      ]
     },
     {
       "name": "Burn-in batches of 48",

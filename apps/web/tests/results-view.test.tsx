@@ -142,7 +142,7 @@ describe("the scenario page: run the scenario and its baseline", () => {
     expect(el.querySelector("h1")?.textContent).toBe(boardScenario.name);
     expect(text(el)).toContain("A what-if on version 3 of Board line (synthetic), with 1 change.");
     const field = (label: string) => ([...el.querySelectorAll("label")].find((l) => l.textContent === label) as HTMLLabelElement | undefined)?.control as HTMLInputElement | undefined;
-    expect([field("Run length (minutes)")?.value, field("Warm-up (minutes)")?.value, field("Replications")?.value, field("Seed")?.value]).toEqual(["1440", "0", "5", "1"]);
+    expect([field("Run length (minutes)")?.value, field("Warm-up (minutes)")?.value, field("Replications")?.value, field("Seed")?.value]).toEqual(["10080", "0", "5", "1"]);
     // H-042: no link back to the model on the page: the rail's Canvas is that way.
     expect(el.querySelector('a[href="/models/' + boardScenario.model_id + '"]')).toBeNull();
     expect(button(el, en["run.start"])?.getAttribute("data-variant")).toBe("run");
@@ -158,7 +158,7 @@ describe("the scenario page: run the scenario and its baseline", () => {
     await press(button(el, en["run.start"]));
     await waitFor(() => nav.push.mock.calls.length > 0, "navigation");
     const posts = api.calls.filter((c) => c.method === "POST");
-    const config = { horizon: { value: 1440, unit: "minute" }, warmup: { value: 0, unit: "minute" }, replications: 5, seed: 1, trace_level: "sampled" };
+    const config = { horizon: { value: 10080, unit: "minute" }, warmup: { value: 0, unit: "minute" }, replications: 5, seed: 1, trace_level: "sampled" };
     expect(posts.map((p) => p.body)).toEqual([
       { model_version_id: boardVersion.id, name: "Baseline for Second ICT fixture", scenario_patch: [], config },
       { model_version_id: boardVersion.id, name: "Second ICT fixture", scenario_id: boardScenario.id, config },

@@ -15,11 +15,11 @@ const scenario = fixture("valid-manual-scenario.json") as Scenario;
 const failed = fixture("valid-run-failed.json") as Run;
 
 describe("the run settings", () => {
-  it("start at one day of the model's time unit, no warm-up, 5 replications and seed 1", () => {
-    expect(defaultRunForm("minute")).toEqual({ horizon: "1440", warmup: "0", replications: "5", seed: "1" });
-    expect(defaultRunForm("second").horizon).toBe("86400");
-    expect(defaultRunForm("hour").horizon).toBe("24");
-    expect(defaultRunForm("day").horizon).toBe("1");
+  it("start at one week of the model's time unit (H-047), no warm-up, 5 replications and seed 1", () => {
+    expect(defaultRunForm("minute")).toEqual({ horizon: "10080", warmup: "0", replications: "5", seed: "1" });
+    expect(defaultRunForm("second").horizon).toBe("604800");
+    expect(defaultRunForm("hour").horizon).toBe("168");
+    expect(defaultRunForm("day").horizon).toBe("7");
   });
 
   it("become the run config in the model's unit, with a sampled trace for the chart", () => {
