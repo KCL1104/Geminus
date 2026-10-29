@@ -87,6 +87,16 @@ func Refused(err error) error {
 	switch {
 	case errors.As(err, &re):
 		return &httpapi.Error{Code: httpapi.RequestValidationFailed, Message: "the proposal request is not acceptable", Details: details(re.Issues)}
+	case errors.As(err, &ue) && ue.Research:
+		// Web research is off for this deployment's provider (H-046 (2)):
+		// the proposals' code for its availability, and the code the worker
+		// would fail the call with.
+		code, message := httpapi.AIProviderNotConfigured, "web research is not available with this deployment's AI provider; ask without research"
+		if ue.Availability == PolicyNotApproved {
+			code, message = httpapi.AIPolicyNotApproved, "web research is off until the owner approves it for this deployment's AI provider; ask without research"
+		}
+		return &httpapi.Error{Code: code, Message: message, Details: []httpapi.Detail{{Path: "/research",
+			Reason: "this deployment's provider may not search the web for the request", Code: CodeResearchUnsupported}}}
 	case errors.As(err, &ue):
 		if ue.Availability == PolicyNotApproved {
 			return httpapi.Errorf(httpapi.AIPolicyNotApproved, "AI assistance is off until the owner approves its model, quota and data policy")

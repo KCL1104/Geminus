@@ -155,7 +155,7 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 // its own: T-053 I5, the T-056 follow-up) and the object storage, when one
 // is configured.
 func handlerOptions(ai config.APIAI, store objects.Store) []api.Option {
-	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai))}
+	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai)), api.WithResearchAI(researchAvailability(ai))}
 	if store != nil {
 		opts = append(opts, api.WithObjects(store))
 	}
@@ -182,6 +182,27 @@ func aiAvailability(ai config.APIAI) proposals.Availability {
 // it is read, with the code the worker would fail it with.
 func photoAvailability(ai config.APIAI) proposals.Availability {
 	return availability(ai.Vision.Provider, ai.Vision.LiveEnabled())
+}
+
+// researchAvailability is whether new proposals that ask for web research
+// are accepted (H-046 (2)): with the fake (it researches with fixed test
+// pages), or a live provider that is on whose recorded approval names
+// research for both proposal roles (aiapproval.Approval.AllowsResearch: the
+// H-029 record since H-046); a Meta provider that is off or whose approval
+// names no research is PolicyNotApproved; any other (the Claude adapter has
+// no web search, or AI is off) NotConfigured. Decided from the settings
+// alone, as aiAvailability is; the worker's adapter checks the same
+// approval again before any I/O.
+func researchAvailability(ai config.APIAI) proposals.Availability {
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		return proposals.Available
+	case ai.LiveEnabled() && ai.Approval.AllowsResearch("modeler") && ai.Approval.AllowsResearch("scenario"):
+		return proposals.Available
+	case ai.Provider == config.AIProviderMeta:
+		return proposals.PolicyNotApproved
+	}
+	return proposals.NotConfigured
 }
 
 // availability is a path's: available with the fake or a live provider that

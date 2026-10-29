@@ -90,10 +90,25 @@ type UnavailableError struct {
 	// (Service.Photo; the T-056 follow-up), details[0].code
 	// CodeImageUnsupported.
 	Photo bool
+	// Research: the request asks for web research, refused because this
+	// deployment's provider may not search for it (Service.Research, H-046
+	// (2)), details[0].code CodeResearchUnsupported.
+	Research bool
 }
+
+// CodeResearchUnsupported: the request asks for web research and this
+// deployment's provider may not search for it (Service.Research), so the
+// worker would refuse the call; the code the job would fail it with
+// (provider.CodeResearchUnsupported, as internal/proposals/generator writes
+// it).
+const CodeResearchUnsupported = "AI_RESEARCH_UNSUPPORTED"
 
 func (e *UnavailableError) Error() string {
 	switch {
+	case e.Research && e.Availability == PolicyNotApproved:
+		return "proposals: web research is not approved for this deployment's provider (AI_POLICY_NOT_APPROVED, AI_RESEARCH_UNSUPPORTED)"
+	case e.Research:
+		return "proposals: this deployment's provider does not research (AI_PROVIDER_NOT_CONFIGURED, AI_RESEARCH_UNSUPPORTED)"
 	case e.Photo && e.Availability == PolicyNotApproved:
 		return "proposals: the photo path is not approved (AI_POLICY_NOT_APPROVED, AI_IMAGE_UNSUPPORTED)"
 	case e.Photo:
@@ -121,6 +136,12 @@ type Service struct {
 	// D-044); nil when object storage is disabled, so a photo is refused
 	// (503) and a proposal in words is not affected.
 	Objects objects.Store
+	// Research is whether this deployment's provider may search the web for
+	// both proposal roles (H-046 (2); cmd/api derives it from the settings
+	// the worker's live gate reads and the approval's data policy, never
+	// from a key); the zero value refuses every request that asks for
+	// research, whatever AI says of proposals without it.
+	Research Availability
 }
 
 // The roles each operation requires (x-required-roles, planning/api-operations.json).
@@ -148,6 +169,8 @@ type CreateRequest struct {
 	Intent        string          `json:"intent"`
 	Context       *RequestContext `json:"context,omitzero"`
 	OutputLocale  string          `json:"output_locale,omitzero"`
+	// Research: the person asks for web research first (H-046 (2)).
+	Research bool `json:"research,omitzero"`
 }
 
 // RequestContext is ProposalRequest.context.
@@ -197,6 +220,9 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if s.AI != Available {
 			return &UnavailableError{Availability: s.AI}
 		}
+		if req.Research && s.Research != Available {
+			return &UnavailableError{Availability: s.Research, Research: true}
+		}
 		p, err := s.prepare(ctx, tx, m, modelID, req)
 		if err != nil {
 			return err
@@ -204,16 +230,26 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if p, err = store.Insert(ctx, tx, p); err != nil {
 			return err
 		}
+		// The job carries the person's choice of research (H-046 (2)): the
+		// frozen input every attempt reads; absent for a proposal without.
+		payload := map[string]any{"proposal_id": p.ID, "request_id": requestID}
+		if req.Research {
+			payload["research"] = true
+		}
 		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.ModelProposal,
-			Resource: jobs.Resource{AIProposalID: p.ID}, Payload: map[string]any{"proposal_id": p.ID, "request_id": requestID}}, s.policy()); err != nil {
+			Resource: jobs.Resource{AIProposalID: p.ID}, Payload: payload}, s.policy()); err != nil {
 			return err
 		}
 		// IDs, the mode, the language and a count: never the intent
-		// (customer prose) or the selected IDs (SECURITY §9).
+		// (customer prose) or the selected IDs (SECURITY §9); whether the
+		// person asked for research (H-046 (2)).
+		meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
+			"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}
+		if req.Research {
+			meta["research"] = true
+		}
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID,
-			Metadata: map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
-				"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}}); err != nil {
+			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID, Metadata: meta}); err != nil {
 			return err
 		}
 		data, err := json.Marshal(Accepted{ProposalID: p.ID, Status: string(store.Generating)})

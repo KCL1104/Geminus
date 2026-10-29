@@ -169,6 +169,8 @@ var providerMessages = map[provider.Code]string{
 	// T-053: refused before any provider call.
 	provider.CodeQuotaExceeded:    "a live AI spend limit was reached; no provider call was made",
 	provider.CodeSpendUnavailable: "the live AI spend ledger could not reserve for the call; no provider call was made",
+	// H-046 (2): refused before any provider call.
+	provider.CodeResearchUnsupported: "web research is not available with this deployment's AI provider; no provider call was made",
 }
 
 // providerFailure is the job failure of a provider error.
@@ -184,10 +186,12 @@ func providerFailure(err error) error {
 	return failure("AI_"+strings.ToUpper(string(pe.Code)), message, pe.Retryable())
 }
 
-// payload is the job's reference (internal/proposals Create).
+// payload is the job's reference (internal/proposals Create). Research is
+// the person's choice of web research (H-046 (2)): absent is false.
 type payload struct {
 	ProposalID string `json:"proposal_id"`
 	RequestID  string `json:"request_id"`
+	Research   bool   `json:"research"`
 }
 
 // started is what an attempt read under the lease.
@@ -244,10 +248,15 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	attr := provider.Attribution{TargetType: "ai_proposal", TargetID: p.ProposalID, RequestID: p.RequestID}
 	var gen generation
 	var err error
-	if st.proposal.Image != nil {
+	switch {
+	case st.proposal.Image != nil && p.Research:
+		// A photo is never researched (createImageProposal takes no
+		// research): a job that says so is not one this server queued.
+		return failure(InputInvalid, "the job asks for research on a photo proposal", false)
+	case st.proposal.Image != nil:
 		gen, err = h.generatePhoto(ctx, org, st, attr) // T-056: asked for with a photo
-	} else {
-		gen, err = h.generate(ctx, org, st, attr)
+	default:
+		gen, err = h.generateAsked(ctx, org, st, attr, p.Research)
 	}
 	if err != nil {
 		return failed(err, gen)
@@ -265,7 +274,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		if now.Status != store.Generating {
 			return failure(InputInvalid, "the proposal is "+string(now.Status)+", not generating", false)
 		}
-		g, err := generated(outcome, call, gen.manifest)
+		g, err := generatedWith(outcome, call, gen.manifest, gen.sources)
 		if err != nil {
 			return err
 		}
@@ -333,6 +342,9 @@ type generation struct {
 	// photo is a photo proposal's image and segmenter call (T-056); nil
 	// for a proposal asked for in words.
 	photo *photoCall
+	// sources are the pages a research call opened that the answer relied
+	// on (provider.FilterSources, H-046 (2)).
+	sources []provider.WebSource
 }
 
 // generate builds the context, reads and verifies the base's dataset
@@ -342,6 +354,12 @@ type generation struct {
 // after a paid call (D-061 (c)); the binding stage after the call reads
 // the copies, never storage.
 func (h *Handler) generate(ctx context.Context, org string, st started, attr provider.Attribution) (generation, error) {
+	return h.generateAsked(ctx, org, st, attr, false)
+}
+
+// generateAsked is generate as the person asked: with web research first
+// when research is set (H-046 (2)).
+func (h *Handler) generateAsked(ctx context.Context, org string, st started, attr provider.Attribution, research bool) (generation, error) {
 	pr, v := st.proposal, st.version
 	var ir model.ModelIR
 	if err := model.Decode(v.IR, &ir); err != nil {
@@ -366,6 +384,7 @@ func (h *Handler) generate(ctx context.Context, org string, st started, attr pro
 		Pool:              aicontext.Pool{OrganizationID: org, ProposalID: pr.ID, IDs: pool},
 		OutputLocale:      pr.OutputLocale,
 		Budget:            h.cfg.Budget,
+		Research:          research,
 	})
 	if err != nil {
 		if aicontext.CodeOf(err) == aicontext.TooLarge {
@@ -399,13 +418,15 @@ func (h *Handler) generate(ctx context.Context, org string, st started, attr pro
 		}
 		return generation{meta: &meta}, providerFailure(err)
 	}
+	// The review never sees the sources (res.Output has none): what a page
+	// says changes neither the validation nor the risk (H-046 (2)).
 	outcome, err := review.Review(review.Input{Mode: mode, Base: v.IR, Pool: pool, Pack: pack, Output: res.Output})
 	if err != nil {
 		h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
 		return generation{meta: &meta}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
 	}
 	if outcome.Status != review.Ready {
-		return generation{outcome: outcome, meta: &meta, manifest: manifest}, nil
+		return generation{outcome: outcome, meta: &meta, manifest: manifest, sources: res.Sources}, nil
 	}
 	// The dataset binding stage: every empirical distribution of the
 	// candidate is bound in the base version's manifest, and the snapshots
@@ -420,7 +441,7 @@ func (h *Handler) generate(ctx context.Context, org string, st started, attr pro
 		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
 		return generation{meta: &meta}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
 	}
-	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: &meta, manifest: manifest}, nil
+	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: &meta, manifest: manifest, sources: res.Sources}, nil
 }
 
 // withoutIR rewrites the binding stage's /ir/... paths as paths into the
@@ -444,9 +465,25 @@ func optional(s string) *string {
 }
 
 // generated is the row content of an outcome: what its state holds, and
-// the call's metadata (no prompt, no answer, no key; AI_SPEC §10).
+// the call's metadata (no prompt, no answer, no key; AI_SPEC §10). A
+// research call's kept sources (H-046 (2)) go with the metadata, as
+// "sources", for the states that keep what the provider wrote
+// (needs_input, ready); an invalid outcome keeps none.
 func generated(o review.Outcome, meta provider.Metadata, manifest []model.DatasetBinding) (store.Generated, error) {
-	metadata, err := json.Marshal(meta)
+	return generatedWith(o, meta, manifest, nil)
+}
+
+// generatedWith is generated with a research call's kept sources.
+func generatedWith(o review.Outcome, meta provider.Metadata, manifest []model.DatasetBinding, sources []provider.WebSource) (store.Generated, error) {
+	type withSources struct {
+		provider.Metadata `json:",inline"`
+		Sources           []provider.WebSource `json:"sources,omitzero"`
+	}
+	row := withSources{Metadata: meta}
+	if meta.WebSearch != nil && (o.Status == review.NeedsInput || o.Status == review.Ready) {
+		row.Sources = sources
+	}
+	metadata, err := json.Marshal(row)
 	if err != nil {
 		return store.Generated{}, err
 	}
@@ -543,6 +580,12 @@ func auditMeta(m provider.Metadata) map[string]any {
 	// T-053: what a metered call cost and the reservation it was charged to.
 	if m.SpendReservation != "" {
 		out["cost_nano_usd"], out["spend_reservation_id"], out["spend_unsettled"] = m.CostNanoUSD, m.SpendReservation, m.SpendUnsettled
+	}
+	// H-046 (2): a research call's web search, by its counts only: never a
+	// query, a page or a URL.
+	if w := m.WebSearch; w != nil {
+		out["web_search_queries"], out["web_search_calls"], out["web_search_pages"] = w.Queries, w.ToolCalls, w.PagesOpened
+		out["sources_kept"], out["sources_dropped"] = w.SourcesKept, w.SourcesDropped
 	}
 	return out
 }

@@ -42,7 +42,8 @@ const (
 	ReasonIncomplete Reason = "record_incomplete"
 	// ReasonPolicyUnsupported: the data policy is not one this build
 	// enforces (synthetic data and user-typed text only, for the proposal
-	// roles only, no raw prompt or response in logs).
+	// roles only, no raw prompt or response in logs; web research only for
+	// the proposal roles of a Meta record, H-046 (2)).
 	ReasonPolicyUnsupported Reason = "policy_unsupported"
 	// ReasonBudgetMissing: no positive monthly budget.
 	ReasonBudgetMissing Reason = "budget_missing"
@@ -116,6 +117,12 @@ const (
 // covers; its job is not built yet (T-027).
 var liveRoles = []string{"modeler", "scenario", "analyst"}
 
+// researchRoles are the prompt roles a data policy may let use the
+// provider's web search (H-046 (2), 2026-10-29): the proposal roles, whose
+// search the intent the person typed drives. Never the analyst (its context
+// is results computed from data) or the importer (D-112 kept).
+var researchRoles = []string{"modeler", "scenario"}
+
 // DataPolicy is what the provider may receive and what may be kept of it.
 type DataPolicy struct {
 	// Inputs is what the provider may receive: InputsSyntheticAndUserText.
@@ -124,6 +131,11 @@ type DataPolicy struct {
 	Roles []string
 	// LogsKeepRawText: logs may keep raw prompts or responses. H-018: no.
 	LogsKeepRawText bool
+	// ResearchRoles are the prompt roles whose calls may use the provider's
+	// built-in web search (H-046 (2): Meta's search grounding, so the
+	// description the person typed is used for the provider's web
+	// searches), among researchRoles and Roles; none for no research.
+	ResearchRoles []string
 }
 
 // Confirmation is an owner's statement as recorded: who, when (a calendar
@@ -194,6 +206,17 @@ func (p DataPolicy) rolesOK() bool {
 	return len(p.Roles) > 0 && !slices.ContainsFunc(p.Roles, func(role string) bool { return !slices.Contains(liveRoles, role) })
 }
 
+// researchOK reports whether the data policy's research roles are proposal
+// roles it serves, each once (none is fine).
+func (p DataPolicy) researchOK() bool {
+	for i, role := range p.ResearchRoles {
+		if !slices.Contains(researchRoles, role) || !slices.Contains(p.Roles, role) || slices.Contains(p.ResearchRoles[:i], role) {
+			return false
+		}
+	}
+	return true
+}
+
 // anthropicGap: H-018's rules (T-053). Both provider organizations'
 // credentials, synthetic data and user-typed text only (no image), the
 // Console spend limits and the retention arrangement confirmed.
@@ -202,7 +225,8 @@ func (r Record) anthropicGap() Reason {
 	case r.ID == "" || r.Model == "" || r.SegmentationModel != "" || r.ApprovedBy == "" || r.ApprovedAt == "" || r.Source == "" ||
 		!slices.Equal(r.Credentials, []string{"org-a", "org-b"}):
 		return ReasonIncomplete
-	case r.DataPolicy.Inputs != InputsSyntheticAndUserText || r.DataPolicy.LogsKeepRawText || !r.DataPolicy.rolesOK():
+	case r.DataPolicy.Inputs != InputsSyntheticAndUserText || r.DataPolicy.LogsKeepRawText || !r.DataPolicy.rolesOK() ||
+		len(r.DataPolicy.ResearchRoles) > 0: // the Anthropic adapter has no web search (H-046 (2))
 		return ReasonPolicyUnsupported
 	case r.MonthlyBudgetUSD <= 0:
 		return ReasonBudgetMissing
@@ -228,7 +252,7 @@ func (r Record) metaGap() Reason {
 	case !slices.Contains(metaStandardModels, r.Model) || (r.SegmentationModel != "" && !slices.Contains(metaStandardSegmenters, r.SegmentationModel)):
 		return ReasonModelNotStandard
 	case (p.Inputs != InputsSyntheticAndUserText && p.Inputs != InputsSyntheticDemoImagesAndUserText) || p.LogsKeepRawText || !p.rolesOK() ||
-		(r.SegmentationModel != "" && p.Inputs != InputsSyntheticDemoImagesAndUserText):
+		!p.researchOK() || (r.SegmentationModel != "" && p.Inputs != InputsSyntheticDemoImagesAndUserText):
 		return ReasonPolicyUnsupported
 	case r.MonthlyBudgetUSD <= 0:
 		return ReasonBudgetMissing
@@ -240,6 +264,7 @@ func (r Record) metaGap() Reason {
 
 func (r Record) clone() Record {
 	r.DataPolicy.Roles = slices.Clone(r.DataPolicy.Roles)
+	r.DataPolicy.ResearchRoles = slices.Clone(r.DataPolicy.ResearchRoles)
 	r.Credentials = slices.Clone(r.Credentials)
 	return r
 }
@@ -315,14 +340,25 @@ var h018 = Record{
 // 走 live (Recommended)」: D-112 approved, the analyst's results of
 // synthetic demo data may be sent; the importer stays off), live only on
 // T-030's independently reviewed code (H-029 (4)).
+//
+// Research: H-046 (2), 2026-10-29, the owner chose 「要 這個也可以平行做吧？」
+// for "yes, and approve the data policy change": the modeler and scenario
+// proposals may use the Meta Model API's built-in web_search tool (Search
+// grounding), so the description the person typed is used for Meta's web
+// search; the proposal shows the sources it used and the server keeps only
+// the ones the call opened; the server still validates, computes the risk
+// and a person approves; spend stays under the existing caps. The analyst
+// and the importer never research. Live only on independently reviewed
+// code (H-046: one independent review).
 var h029 = Record{
 	ID:                "H-029",
 	Provider:          "meta",
 	Model:             "muse-spark-1.3",
 	SegmentationModel: "sam-3.1",
 	DataPolicy: DataPolicy{
-		Inputs: InputsSyntheticDemoImagesAndUserText,
-		Roles:  []string{"modeler", "scenario", "analyst"},
+		Inputs:        InputsSyntheticDemoImagesAndUserText,
+		Roles:         []string{"modeler", "scenario", "analyst"},
+		ResearchRoles: []string{"modeler", "scenario"}, // H-046 (2)
 	},
 	MonthlyBudgetUSD: 100,
 	Credentials:      []string{"meta"},
@@ -405,6 +441,13 @@ func (a Approval) MonthlyBudgetUSD() int64 {
 // AllowsRole reports whether live AI may serve the prompt role.
 func (a Approval) AllowsRole(role string) bool {
 	return a.Valid() && role != "" && slices.Contains(a.rec.DataPolicy.Roles, role)
+}
+
+// AllowsResearch reports whether a live call of the prompt role may use
+// the provider's web search (H-046 (2)): the data policy names research
+// for the role, which it also serves.
+func (a Approval) AllowsResearch(role string) bool {
+	return a.AllowsRole(role) && slices.Contains(a.rec.DataPolicy.ResearchRoles, role)
 }
 
 // Provider is the provider the approval covers ("anthropic", "meta");

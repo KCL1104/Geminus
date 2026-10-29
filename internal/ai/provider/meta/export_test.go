@@ -12,10 +12,21 @@ import (
 
 // NewForTest points the Muse Spark backend at a local test server.
 // Test-only: no production code can change the provider URL. It serves
-// every role and takes images (SetRoles and SetImages narrow it): its zero
-// Approval names none.
+// every role, takes images and researches for the proposal roles (SetRoles,
+// SetImages and SetResearch narrow it): its zero Approval names none.
 func NewForTest(cfg Config, baseURL string, client *http.Client) (*Backend, error) {
-	return newBackend(cfg, baseURL, client, func(string) bool { return true }, true)
+	b, err := newBackend(cfg, baseURL, client, func(string) bool { return true }, true)
+	if err != nil {
+		return nil, err
+	}
+	b.research = func(string) bool { return true }
+	return b, nil
+}
+
+// SetResearch makes the backend research only for roles, as an approval's
+// data policy would (H-046 (2)).
+func SetResearch(b *Backend, roles ...string) {
+	b.research = func(role string) bool { return slices.Contains(roles, role) }
 }
 
 // NewSegmenterForTest points the SAM backend at a local test server.
@@ -76,10 +87,11 @@ func ParseSegmentation(text, concept string) (int, int, []provider.Segment, erro
 }
 
 const (
-	BillingCooldown     = billingCooldown
-	QuoteOverheadTokens = quoteOverheadTokens
-	ContextWindowTokens = contextWindowTokens
-	MaxResponseBytes    = maxResponseBytes
+	BillingCooldown      = billingCooldown
+	QuoteOverheadTokens  = quoteOverheadTokens
+	ContextWindowTokens  = contextWindowTokens
+	MaxResponseBytes     = maxResponseBytes
+	ResearchMaxToolCalls = researchMaxToolCalls
 )
 
 var ProductionURL = productionURL

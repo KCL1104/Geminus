@@ -210,7 +210,7 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 	case !reservationID.MatchString(r.ID):
 		return ErrNotFound
 	case s.NanoUSD < 0 || u.InputTokens < 0 || u.OutputTokens < 0 || u.CacheCreationInputTokens < 0 || u.CacheReadInputTokens < 0 ||
-		s.UnknownAttempts < 0:
+		s.UnknownAttempts < 0 || s.ServerToolCalls < 0:
 		return errors.New("aispend: a settlement has no negative amount or count")
 	case s.Outcome != provider.SpendUsage && s.Outcome != provider.SpendNone && s.Outcome != provider.SpendUnknown:
 		return errors.New("aispend: a settlement says how its amount was found")
@@ -283,6 +283,11 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 			"cache_read_tokens": u.CacheReadInputTokens, "unknown_attempts": s.UnknownAttempts, "credential_label": s.Credential}
 		if s.InferenceGeo != "" {
 			meta["inference_geo"] = s.InferenceGeo
+		}
+		// H-046 (2): a research call's web search steps, priced in the
+		// settled amount; absent for a call without research.
+		if s.ServerToolCalls > 0 {
+			meta["web_search_calls"] = s.ServerToolCalls
 		}
 		// What was billed is recorded even above the reservation (the
 		// ledger never under-records); the event says so (review round 1,

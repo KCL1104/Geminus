@@ -18,6 +18,9 @@ func TestTemplates(t *testing.T) {
 		// T-056: the photo proposal's template (role modeler).
 		"photo": {"ID_ALLOCATION_POOL", "IMAGE", "SEGMENT_CONCEPTS", "SEGMENTS", "CONTEXT_OMISSIONS", "UNTRUSTED_DATA", "OUTPUT_LOCALE",
 			"needs_input", "views", "capacity"},
+		// H-046 (2): the research rules a research proposal's system text
+		// adds after its role's (internal/ai/aicontext).
+		"research": {"RESEARCH_MODE: on", "USER_INTENT", "CURRENT_MODEL_IR", "untrusted_data", "needs_input", "sources"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {

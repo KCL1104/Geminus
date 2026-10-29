@@ -31,8 +31,9 @@ func TestTheH029Record(t *testing.T) {
 		Model:             "muse-spark-1.3",
 		SegmentationModel: "sam-3.1",
 		DataPolicy: aiapproval.DataPolicy{
-			Inputs: aiapproval.InputsSyntheticDemoImagesAndUserText,
-			Roles:  []string{"modeler", "scenario", "analyst"}, // H-038
+			Inputs:        aiapproval.InputsSyntheticDemoImagesAndUserText,
+			Roles:         []string{"modeler", "scenario", "analyst"}, // H-038
+			ResearchRoles: []string{"modeler", "scenario"},            // H-046 (2)
 		},
 		MonthlyBudgetUSD: 100,
 		Credentials:      []string{"meta"},
@@ -63,13 +64,20 @@ func TestTheH029Record(t *testing.T) {
 	if !a.AllowsRole("modeler") || !a.AllowsRole("scenario") || !a.AllowsRole("analyst") || a.AllowsRole("importer") {
 		t.Error("roles")
 	}
+	// H-046 (2): the proposal roles may use Meta's web search; the analyst
+	// and the importer never, nor a role the record does not name.
+	if !a.AllowsResearch("modeler") || !a.AllowsResearch("scenario") || a.AllowsResearch("analyst") || a.AllowsResearch("importer") ||
+		a.AllowsResearch("") || a.AllowsResearch("photo") {
+		t.Error("research roles")
+	}
 	// H-018 covers no image and no segmentation model.
 	h018, ok := aiapproval.Recorded("H-018")
-	if !ok || h018.Provider() != "anthropic" || h018.AllowsImages() || h018.SegmentationModel() != "" {
+	if !ok || h018.Provider() != "anthropic" || h018.AllowsImages() || h018.SegmentationModel() != "" ||
+		h018.AllowsResearch("modeler") || h018.AllowsResearch("scenario") {
 		t.Errorf("H-018: %+v %v", h018, ok)
 	}
 	var zero aiapproval.Approval
-	if zero.Provider() != "" || zero.SegmentationModel() != "" || zero.AllowsImages() {
+	if zero.Provider() != "" || zero.SegmentationModel() != "" || zero.AllowsImages() || zero.AllowsResearch("modeler") {
 		t.Error("the zero Approval names something")
 	}
 	for _, id := range []string{"H-033", "H-031", "h-029", "H-029 ", "meta"} {
@@ -103,22 +111,35 @@ func TestMetaGapReasons(t *testing.T) {
 		"text only, no segmentation": {func(r *aiapproval.Record) {
 			r.SegmentationModel, r.DataPolicy.Inputs = "", aiapproval.InputsSyntheticAndUserText
 		}, ""},
-		"muse spark 1.2":           {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2" }, ""},
-		"no model":                 {func(r *aiapproval.Record) { r.Model = "" }, aiapproval.ReasonIncomplete},
-		"no approver":              {func(r *aiapproval.Record) { r.ApprovedBy = "" }, aiapproval.ReasonIncomplete},
-		"no source":                {func(r *aiapproval.Record) { r.Source = "" }, aiapproval.ReasonIncomplete},
-		"the Anthropic labels":     {func(r *aiapproval.Record) { r.Credentials = []string{"org-a", "org-b"} }, aiapproval.ReasonIncomplete},
-		"two keys":                 {func(r *aiapproval.Record) { r.Credentials = []string{"meta", "meta-b"} }, aiapproval.ReasonIncomplete},
-		"no key":                   {func(r *aiapproval.Record) { r.Credentials = nil }, aiapproval.ReasonIncomplete},
-		"contributor":              {func(r *aiapproval.Record) { r.Model = "muse-spark-1.3-contributor" }, aiapproval.ReasonModelNotStandard},
-		"contributor 1.2":          {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2-contributor" }, aiapproval.ReasonModelNotStandard},
-		"another spelling":         {func(r *aiapproval.Record) { r.Model = "Muse-Spark-1.3" }, aiapproval.ReasonModelNotStandard},
-		"a Claude model":           {func(r *aiapproval.Record) { r.Model = "claude-opus-5-5" }, aiapproval.ReasonModelNotStandard},
-		"another segmenter":        {func(r *aiapproval.Record) { r.SegmentationModel = "sam-3" }, aiapproval.ReasonModelNotStandard},
-		"segmentation, text only":  {func(r *aiapproval.Record) { r.DataPolicy.Inputs = aiapproval.InputsSyntheticAndUserText }, aiapproval.ReasonPolicyUnsupported},
-		"customer data":            {func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_photos" }, aiapproval.ReasonPolicyUnsupported},
-		"raw text in logs":         {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
-		"importer role":            {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"modeler", "importer"} }, aiapproval.ReasonPolicyUnsupported},
+		"muse spark 1.2":          {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2" }, ""},
+		"no model":                {func(r *aiapproval.Record) { r.Model = "" }, aiapproval.ReasonIncomplete},
+		"no approver":             {func(r *aiapproval.Record) { r.ApprovedBy = "" }, aiapproval.ReasonIncomplete},
+		"no source":               {func(r *aiapproval.Record) { r.Source = "" }, aiapproval.ReasonIncomplete},
+		"the Anthropic labels":    {func(r *aiapproval.Record) { r.Credentials = []string{"org-a", "org-b"} }, aiapproval.ReasonIncomplete},
+		"two keys":                {func(r *aiapproval.Record) { r.Credentials = []string{"meta", "meta-b"} }, aiapproval.ReasonIncomplete},
+		"no key":                  {func(r *aiapproval.Record) { r.Credentials = nil }, aiapproval.ReasonIncomplete},
+		"contributor":             {func(r *aiapproval.Record) { r.Model = "muse-spark-1.3-contributor" }, aiapproval.ReasonModelNotStandard},
+		"contributor 1.2":         {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2-contributor" }, aiapproval.ReasonModelNotStandard},
+		"another spelling":        {func(r *aiapproval.Record) { r.Model = "Muse-Spark-1.3" }, aiapproval.ReasonModelNotStandard},
+		"a Claude model":          {func(r *aiapproval.Record) { r.Model = "claude-opus-5-5" }, aiapproval.ReasonModelNotStandard},
+		"another segmenter":       {func(r *aiapproval.Record) { r.SegmentationModel = "sam-3" }, aiapproval.ReasonModelNotStandard},
+		"segmentation, text only": {func(r *aiapproval.Record) { r.DataPolicy.Inputs = aiapproval.InputsSyntheticAndUserText }, aiapproval.ReasonPolicyUnsupported},
+		"customer data":           {func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_photos" }, aiapproval.ReasonPolicyUnsupported},
+		"raw text in logs":        {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
+		"importer role":           {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"modeler", "importer"} }, aiapproval.ReasonPolicyUnsupported},
+		// H-046 (2): research for the proposal roles only, each a role the
+		// record serves, each once; none is a complete record too.
+		"no research":           {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = nil }, ""},
+		"modeler research only": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler"} }, ""},
+		"analyst research": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler", "analyst"} },
+			aiapproval.ReasonPolicyUnsupported},
+		"importer research": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"importer"} }, aiapproval.ReasonPolicyUnsupported},
+		"research for a role not served": {func(r *aiapproval.Record) {
+			r.DataPolicy.Roles, r.DataPolicy.ResearchRoles = []string{"modeler"}, []string{"modeler", "scenario"}
+		}, aiapproval.ReasonPolicyUnsupported},
+		"research named twice": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler", "modeler"} },
+			aiapproval.ReasonPolicyUnsupported},
+		"research of another role": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"Modeler"} }, aiapproval.ReasonPolicyUnsupported},
 		"no role":                  {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
 		"no budget":                {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = 0 }, aiapproval.ReasonBudgetMissing},
 		"retention not confirmed":  {func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} }, aiapproval.ReasonRetentionUnconfirmed},
@@ -142,6 +163,9 @@ func TestMetaGapReasons(t *testing.T) {
 		"Meta's arrangement":     {func(r *aiapproval.Record) { r.Retention.Arrangement = aiapproval.RetentionMetaStandard }, aiapproval.ReasonRetentionUnconfirmed},
 		"the Meta label":         {func(r *aiapproval.Record) { r.Credentials = []string{"meta"} }, aiapproval.ReasonIncomplete},
 		"no spend-limit confirm": {func(r *aiapproval.Record) { r.SpendLimits = aiapproval.Confirmation{} }, aiapproval.ReasonSpendLimitsUnconfirmed},
+		// H-046 (2): the Anthropic adapter has no web search, so no
+		// Anthropic record may name research.
+		"research": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler"} }, aiapproval.ReasonPolicyUnsupported},
 	} {
 		r := complete(t)
 		c.mutate(&r)

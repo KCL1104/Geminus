@@ -86,7 +86,13 @@ type Prompt struct {
 	// at most MaxImagesPerPrompt, each made by NewImage. Seal checks them
 	// and seals their type, digest and size into InputHash; the client
 	// hands them only to a backend that takes images (ImageInput).
-	Images     []Image
+	Images []Image
+	// Research: the call may use the provider's web search (H-046 (2)):
+	// only a proposal role's prompt without images, and the client hands it
+	// only to a Researcher that accepts the role. Sealed into InputHash
+	// (left out of the hash when false, so a prompt without research hashes
+	// as before).
+	Research   bool
 	Disclosure Disclosure
 	// InputHash is "sha256:<hex>" of the JCS form of the organization,
 	// role, template version, locale, system text and rendered user
@@ -148,6 +154,9 @@ func Seal(p Prompt) (Prompt, error) {
 	}
 	if len(p.Images) > MaxImagesPerPrompt {
 		return fail("more than %d images", MaxImagesPerPrompt)
+	}
+	if p.Research && (!p.Role.Researches() || len(p.Images) > 0) {
+		return fail("research is for a proposal role's prompt without images")
 	}
 	out := p
 	out.Images = nil
@@ -216,7 +225,8 @@ func (p Prompt) hash() (string, error) {
 		System          string        `json:"system"`
 		User            string        `json:"user"`
 		Images          []imageRef    `json:"images,omitzero"`
-	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User(), images})
+		Research        bool          `json:"research,omitzero"`
+	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User(), images, p.Research})
 	if err != nil {
 		return "", err
 	}
@@ -229,7 +239,7 @@ func (p Prompt) Verify() error {
 		return fmt.Errorf("%w: not sealed", ErrInvalidPrompt)
 	}
 	again, err := Seal(Prompt{OrganizationID: p.OrganizationID, Role: p.Role, TemplateVersion: p.TemplateVersion, Locale: p.Locale,
-		System: p.System, Blocks: p.Blocks, Images: p.Images})
+		System: p.System, Blocks: p.Blocks, Images: p.Images, Research: p.Research})
 	if err != nil {
 		return err
 	}

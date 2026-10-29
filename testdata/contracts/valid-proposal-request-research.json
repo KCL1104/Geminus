@@ -1,0 +1,12 @@
+{
+  "base_version_id": "mv_01M4YDQK00TA00000000000001",
+  "mode": "edit",
+  "intent": "把 ICT 測試機從 2 台增加為 3 台，其他不要動。",
+  "context": {
+    "selected_entity_ids": [
+      "ict_tester"
+    ]
+  },
+  "output_locale": "zh-Hant",
+  "research": true
+}

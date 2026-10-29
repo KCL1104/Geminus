@@ -44,6 +44,13 @@ type ProposalInput struct {
 	Pool              Pool
 	OutputLocale      string
 	Budget            provider.Budget
+	// Research: the person asked for web research first (H-046 (2)). The
+	// research template (prompts/research) follows the role's in the system
+	// text, the prompt's template version names both
+	// ("<role>-x.y.z+research-x.y.z"), and the prompt is sealed with
+	// Research, so the client hands it only to a backend that may search.
+	// Without it the prompt is exactly what it was before research existed.
+	Research bool
 }
 
 func modeRules(mode provider.Mode) string {
@@ -339,6 +346,14 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 	}
 	modeText := " in mode " + string(in.Mode)
 	system := text + serverRules(role, modeText, loc) + modeRules(in.Mode) + indexRule + domainRules(in.Domain)
+	if in.Research {
+		research, rversion, err := template("research")
+		if err != nil {
+			return provider.ProposalContext{}, err
+		}
+		system += "\n" + research
+		version += "+" + rversion
+	}
 
 	levels := []int{levelFull, levelNoExtras, levelSlice, levelIndex}
 	if len(selected) == 0 {
@@ -411,6 +426,13 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 		p, err := assemble(in.Scope.OrganizationID, role, loc, system, version, blocks, om, z)
 		if err != nil {
 			return provider.ProposalContext{}, err
+		}
+		if in.Research {
+			// Sealed again with Research, which the hash covers.
+			p.Research = true
+			if p, err = provider.Seal(p); err != nil {
+				return provider.ProposalContext{}, err
+			}
 		}
 		if fits(p, in.Budget) {
 			return provider.ProposalContext{OrganizationID: in.Scope.OrganizationID, Mode: in.Mode, Prompt: p}, nil

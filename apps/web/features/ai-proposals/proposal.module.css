@@ -159,6 +159,50 @@ ul.words {
   color: var(--gm-color-ink-2);
 }
 
+/* H-046 (2): the pages the AI read, one per hairline row like the changes: the
+   page's title as a link (the global link style), then its site in Ink 3. A
+   long title or address wraps; the page never scrolls sideways at 390 px. */
+.sources {
+  margin: 0 0 var(--gm-space-lg);
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.sources > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-hair);
+  padding: var(--gm-space-sm) 0;
+  border-bottom: 1px solid var(--gm-color-rule);
+  overflow-wrap: anywhere;
+}
+
+.sources a svg {
+  display: inline-block;
+  margin-inline-start: var(--gm-space-xs);
+  vertical-align: -2px;
+  color: var(--gm-color-ink-3);
+}
+
+.site {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* Read by a screen reader, not shown: the link's own "opens in a new tab". */
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
 /* Added: a Graphite Ink tag; removed: Error Red on the default chrome (DESIGN.md Chips). */
 .tag {
   padding: 0 var(--gm-space-sm);
@@ -292,6 +336,19 @@ ul.words {
 }
 
 .askMode p {
+  margin: 0;
+}
+
+/* H-046 (2): the opt-in to research on the web, its line under it, as the mode's hint sits under the mode. */
+.askResearch {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
+  margin: 0 0 var(--gm-space-gutter);
+}
+
+.askResearch p {
   margin: 0;
 }
 

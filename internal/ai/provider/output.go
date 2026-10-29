@@ -8,15 +8,18 @@ import "github.com/kcl1104/geminus/internal/model"
 // as the provider's claim, which can raise the server's risk but never lower
 // it (D-027). Changes is untrusted until the server validates it (T-025).
 type ProposalOutput struct {
-	Status               string      `json:"status"` // "proposed" or "needs_input"
-	Summary              string      `json:"summary"`
-	Assumptions          []string    `json:"assumptions"`
-	RiskLevel            string      `json:"risk_level,omitzero"`
-	Confidence           *float64    `json:"confidence,omitzero"`
-	Changes              model.Patch `json:"changes,omitzero"`
-	ExpectedEffects      []string    `json:"expected_effects,omitzero"`
-	Questions            []string    `json:"questions,omitzero"`
-	RequiresConfirmation bool        `json:"requires_confirmation"`
+	Status          string      `json:"status"` // "proposed" or "needs_input"
+	Summary         string      `json:"summary"`
+	Assumptions     []string    `json:"assumptions"`
+	RiskLevel       string      `json:"risk_level,omitzero"`
+	Confidence      *float64    `json:"confidence,omitzero"`
+	Changes         model.Patch `json:"changes,omitzero"`
+	ExpectedEffects []string    `json:"expected_effects,omitzero"`
+	Questions       []string    `json:"questions,omitzero"`
+	// Sources are the pages a research call says it relied on (H-046 (2)):
+	// untrusted claims; only FilterSources decides what is kept.
+	Sources              []SourceClaim `json:"sources,omitzero"`
+	RequiresConfirmation bool          `json:"requires_confirmation"`
 }
 
 // MappingOutput is ai-mapping.schema.json: column mapping suggestions,

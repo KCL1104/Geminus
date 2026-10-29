@@ -10,6 +10,14 @@
 // field for a mapping, an analysis without claims. No randomness, no clock,
 // no I/O. Its answers still go through provider.Client, which checks them
 // against the full output schema like any other.
+//
+// Research (H-046 (2)): the fake accepts a research prompt of a proposal
+// role (provider.Researcher) and searches nothing: it reports the fixed web
+// search of ResearchSteps (two searches and the two pages of
+// ResearchSources opened), and its safe answer names those two pages and
+// one it did not open, so the client's filter keeps two and drops one. A
+// scripted answer names what it names; ScriptResearch replaces the steps.
+// The pages are example.com addresses (RFC 2606): never a real source.
 package fake
 
 import (
@@ -39,14 +47,50 @@ type Answer struct {
 
 // Backend is the fake. The zero value is not usable; call New.
 type Backend struct {
-	mu     sync.Mutex
-	script map[provider.Role]map[string]Answer
-	seen   []provider.Request
+	mu       sync.Mutex
+	script   map[provider.Role]map[string]Answer
+	research map[string]provider.Research
+	seen     []provider.Request
 }
+
+var _ provider.Researcher = (*Backend)(nil)
 
 // New returns an empty fake.
 func New() *Backend {
-	return &Backend{script: map[provider.Role]map[string]Answer{}}
+	return &Backend{script: map[provider.Role]map[string]Answer{}, research: map[string]provider.Research{}}
+}
+
+// ResearchSources are the fixed pages the fake's research opens (H-046
+// (2)): test pages, never a real source.
+var ResearchSources = []provider.SourceClaim{
+	{URL: "https://example.com/geminus-fake-research/smt-line-balancing", Title: "Fake research page: SMT line balancing (test data)"},
+	{URL: "https://example.com/geminus-fake-research/reflow-oven-throughput", Title: "Fake research page: reflow oven throughput (test data)"},
+}
+
+// notOpened is the page the fake's safe research answer names without
+// having opened it: the client's filter drops it.
+const notOpened = "https://example.com/geminus-fake-research/not-opened"
+
+// ResearchSteps is the fake's web search of a research call: two searches
+// and the two ResearchSources pages opened.
+func ResearchSteps() provider.Research {
+	r := provider.Research{Queries: 2, ToolCalls: 2 + len(ResearchSources)}
+	for _, s := range ResearchSources {
+		r.Opened = append(r.Opened, s.URL)
+	}
+	return r
+}
+
+// AcceptsResearch: the fake researches for the proposal roles (H-046 (2)).
+func (b *Backend) AcceptsResearch(role provider.Role) bool { return role.Researches() }
+
+// ScriptResearch makes a research call whose key block is key report r as
+// its web search instead of ResearchSteps.
+func (b *Backend) ScriptResearch(key string, r provider.Research) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	r.Opened = slices.Clone(r.Opened)
+	b.research[key] = r
 }
 
 func (b *Backend) Name() string { return "fake" }
@@ -124,10 +168,21 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	}
 	b.mu.Lock()
 	a, scripted := b.script[req.Prompt.Role][key]
+	steps, stepsScripted := b.research[key]
 	b.mu.Unlock()
 	// No usage: the fake runs no model and counts no tokens, and bytes
 	// reported as tokens would mislead usage and quota records (review L8).
 	resp := provider.Response{Model: "fake"}
+	if req.Prompt.Research {
+		if !b.AcceptsResearch(req.Prompt.Role) || len(req.Prompt.Images) > 0 {
+			return provider.Response{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
+		}
+		resp.Research = ResearchSteps()
+		if stepsScripted {
+			resp.Research = steps
+			resp.Research.Opened = slices.Clone(steps.Opened)
+		}
+	}
 	switch {
 	case scripted && a.Err != nil:
 		return resp, a.Err
@@ -156,11 +211,16 @@ func defaultAnswer(p provider.Prompt, blocks map[string]jsontext.Value) ([]byte,
 	}
 	switch p.Role {
 	case provider.RoleModeler, provider.RoleScenario:
+		var sources []provider.SourceClaim
+		if p.Research {
+			sources = append(slices.Clone(ResearchSources), provider.SourceClaim{URL: notOpened, Title: "A page the fake did not open"})
+		}
 		return json.Marshal(provider.ProposalOutput{
 			Status:               "needs_input",
 			Summary:              pick("The deterministic fake provider has no scripted answer for this request.", "測試用的確定性回答器沒有這個請求的預設回答。"),
 			Assumptions:          []string{},
 			Questions:            []string{pick("Which change should the proposal make?", "這個提案應該做什麼修改？")},
+			Sources:              sources,
 			RequiresConfirmation: true,
 		})
 	case provider.RoleImporter:

@@ -5,7 +5,8 @@
 // exercised as against the Go API. It keeps what the server keeps for these
 // flows: versions, the model's draft, proposals and scenarios. It answers
 // createProposal with 202 generating and the sample's answer a few reads
-// later; createImageProposal (T-056) likewise, with the photo sample's
+// later (with research: true, also the sources and searches of a
+// researched answer, H-046 (2)); createImageProposal (T-056) likewise, with the photo sample's
 // answer, after the checks a client can meet (a multipart form whose last
 // part is the file, a PNG or JPEG by its first bytes, at most 5 MiB);
 // approveProposal as T-026 does (decided: PROPOSAL_ALREADY_DECIDED;
@@ -21,7 +22,7 @@ import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { applyPatch } from "../../../features/model-editor/patch";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
-import { ORG, otherChange, proposalId, readyEdit, readyFromPhoto, readyScenario, REQUEST, type SampleState, samplePhoto, sampleFor, scenarioId, USER, versionId } from "./samples";
+import { ORG, otherChange, proposalId, readyEdit, readyFromPhoto, readyScenario, REQUEST, researched, type SampleState, samplePhoto, sampleFor, scenarioId, USER, versionId } from "./samples";
 
 const PROJECT = "prj_01M4YDQK00E1ECTR0N1C500000";
 const CLOCK = "2026-10-26T09:30:00Z";
@@ -196,7 +197,8 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
       return once(key, `create:${canonical(req)}`, () => {
         if (req.base_version_id !== latest().id) return { status: 409, body: { error: { code: "MODEL_VERSION_CONFLICT", message: "base_version_id is not the model's latest version", details: [{ path: "/base_version_id", reason: "not the model's latest version" }], request_id: REQUEST } }, keep: false };
         const id = proposalId(proposals.size + 1);
-        const answer = req.mode === "scenario" ? readyScenario(id) : readyEdit(id);
+        // H-046 (2): asked with web research on, the answer names the model, its searches and the pages it read.
+        const answer = { ...(req.mode === "scenario" ? readyScenario(id) : readyEdit(id)), ...(req.research === true ? researched : {}) };
         const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true };
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };

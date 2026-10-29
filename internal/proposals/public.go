@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
@@ -50,6 +51,9 @@ type Proposal struct {
 	// SourceImage is the photo the proposal was asked for with (T-056), in
 	// every state; nil for a proposal asked for in words.
 	SourceImage *SourceImage `json:"source_image,omitzero"`
+	// Sources are the pages a research call opened and the answer relied
+	// on (H-046 (2)), in the states that keep what the provider wrote.
+	Sources []provider.WebSource `json:"sources,omitzero"`
 }
 
 // GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
@@ -60,6 +64,15 @@ type GeneratedBy struct {
 	Provider  string              `json:"provider"`
 	Model     string              `json:"model,omitzero"`
 	Segmenter *GeneratedSegmenter `json:"segmenter,omitzero"`
+	// WebSearch: the call ran with research on (H-046 (2)).
+	WebSearch *GeneratedWebSearch `json:"web_search,omitzero"`
+}
+
+// GeneratedWebSearch is GeneratedBy's web_search: how many searches the
+// call made and how many of the answer's sources the server did not keep.
+type GeneratedWebSearch struct {
+	Queries        int `json:"queries"`
+	SourcesDropped int `json:"sources_dropped"`
 }
 
 // GeneratedSegmenter is GeneratedBy's segmenter.
@@ -77,6 +90,10 @@ var (
 // maxSegments is D-131 (c)'s limit on a photo's objects.
 const maxSegments = 64
 
+// maxQueries bounds the queries GeneratedBy shows (common.schema.json):
+// a count outside it leaves web_search out rather than shown.
+const maxQueries = 10000
+
 // FromMetadata is the GeneratedBy of a row's provider metadata (a proposal's
 // or an analysis's), or nil when it names no provider the contract can show
 // (a generating row's {} included). A model or segmenter outside the
@@ -90,6 +107,7 @@ func FromMetadata(metadata []byte) *GeneratedBy {
 			Model    string `json:"model"`
 			Segments int    `json:"segments"`
 		} `json:"segmenter"`
+		WebSearch *provider.WebSearch `json:"web_search"`
 	}
 	if len(metadata) == 0 || json.Unmarshal(metadata, &m) != nil || !providerName.MatchString(m.Provider) {
 		return nil
@@ -103,6 +121,36 @@ func FromMetadata(metadata []byte) *GeneratedBy {
 		if modelName.MatchString(s.Model) {
 			out.Segmenter.Model = s.Model
 		}
+	}
+	if w := m.WebSearch; w != nil && w.Queries >= 0 && w.Queries <= maxQueries && w.SourcesDropped >= 0 && w.SourcesDropped <= provider.MaxSources {
+		out.WebSearch = &GeneratedWebSearch{Queries: w.Queries, SourcesDropped: w.SourcesDropped}
+	}
+	return out
+}
+
+// SourcesOf are the sources a row's provider metadata keeps (H-046 (2):
+// "sources", written by the generator from provider.FilterSources), checked
+// again as the contract states them: only with a web search, at most
+// provider.MaxSources, each URL as provider.SourceURL writes it and each
+// title as provider.SourceTitle does; anything else is left out rather
+// than shown.
+func SourcesOf(metadata []byte) []provider.WebSource {
+	var m struct {
+		WebSearch *provider.WebSearch  `json:"web_search"`
+		Sources   []provider.WebSource `json:"sources"`
+	}
+	if len(metadata) == 0 || json.Unmarshal(metadata, &m) != nil || m.WebSearch == nil {
+		return nil
+	}
+	var out []provider.WebSource
+	for _, s := range m.Sources {
+		if len(out) == provider.MaxSources {
+			break
+		}
+		if s.URL == "" || provider.SourceURL(s.URL) != s.URL || provider.SourceTitle(s.Title) != s.Title {
+			continue
+		}
+		out = append(out, s)
 	}
 	return out
 }
@@ -141,6 +189,7 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 	}
 	needsInput := func() {
 		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions
+		out.Sources = SourcesOf(p.ProviderMetadata)
 	}
 	reviewed := func() error {
 		changes, err := hashing.Canonical(p.Patch)
@@ -155,6 +204,7 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		out.Changes, out.PatchHash, out.Validation, out.Confidence = changes, p.PatchHash, validation, p.Confidence
 		out.ServerRiskLevel, out.ProviderRiskClaim, out.RiskLevel = p.ServerRisk, p.ProviderRisk, p.Risk
 		out.DatasetBindings = nonNil(p.DatasetBindings)
+		out.Sources = SourcesOf(p.ProviderMetadata)
 		return nil
 	}
 	// decision is the record of who decided and when (0001 and 0013 require
@@ -281,6 +331,9 @@ var errorCodes = map[string]string{
 	"PHOTO_STORAGE_FAILED": "SERVICE_UNAVAILABLE",
 	"PHOTO_NOT_SUPPORTED":  "REQUEST_VALIDATION_FAILED",
 	"AI_IMAGE_UNSUPPORTED": "AI_PROVIDER_NOT_CONFIGURED",
+	// H-046 (2): the configured provider does not research (the API
+	// refuses such a request first; a worker set up otherwise refuses it).
+	"AI_RESEARCH_UNSUPPORTED": "AI_PROVIDER_NOT_CONFIGURED",
 }
 
 // FailureError is failureError for the other AI jobs' resources (T-030's
