@@ -19,25 +19,25 @@
 // on a digital twin before the real line, sees the results screen, and can
 // sign in; scrolling, they follow the loop step by step, see which Meta
 // model does what, the templates' industries, and the safety rules.
-// FIRST VIEWPORT: the promise as the page's h1, the how in one paragraph,
-// the one primary action under it, then the results page itself at the
-// content width.
+// FIRST VIEWPORT: the product's name and mark, the promise as the page's
+// h1, the how in one paragraph, the one primary action under it, then the
+// results' key metrics as a framed screenshot.
 // FORM: the decision record (candidate 7 of 7; seed 7d827b6e).
 import type { MessageKey, Translator } from "../../lib/i18n/translate";
+import shell from "../../ui/shell.module.css";
 import { LandingAction } from "./cta";
 import styles from "./landing.module.css";
 import { Shot, type ShotName } from "./shot";
 
-type Actor = "you" | "muse" | "sam" | "search" | "geminus" | "engine";
+type Actor = "you" | "muse" | "sam" | "geminus" | "engine";
 
 /** Who acts in a step, as a pill: a Meta model with its provider, Geminus's server, the engine or the person. */
 function ActorPill({ actor, t }: { actor: Actor; t: Translator }) {
-  if (actor === "muse" || actor === "sam" || actor === "search") {
-    const name = actor === "muse" ? t("ai.model.muse-spark-1.3") : actor === "sam" ? t("ai.model.sam-3.1") : t("landing.actor.search");
+  if (actor === "muse" || actor === "sam") {
     return (
       <li className={styles.actor} data-kind="ai">
         <span className={styles.provider}>{t("ai.provider.meta")}</span>{" "}
-        <span>{name}</span>
+        <span>{actor === "muse" ? t("ai.model.muse-spark-1.3") : t("ai.model.sam-3.1")}</span>
       </li>
     );
   }
@@ -64,8 +64,9 @@ const steps: StepProps[] = [
   },
   { id: "propose", title: "landing.step.propose.title", body: "landing.step.propose.body", actors: ["muse", "sam", "geminus"] },
   {
+    // Muse Spark's own proposal from the live demo (review round 1, M2): it names the model that wrote it.
     id: "approve", title: "landing.step.approve.title", body: "landing.step.approve.body", actors: ["you"],
-    shot: { name: "proposal", alt: "landing.shot.proposal.alt", caption: "landing.shot.proposal.caption" },
+    shot: { name: "proposed", alt: "landing.shot.proposed.alt", caption: "landing.shot.proposed.caption" },
   },
   {
     id: "simulate", title: "landing.step.simulate.title", body: "landing.step.simulate.body", actors: ["you", "engine", "geminus"],
@@ -78,11 +79,10 @@ const steps: StepProps[] = [
 ];
 
 function Step({ step, t }: { step: StepProps; t: Translator }) {
-  const heading = `landing-step-${step.id}`;
   return (
     <li className={styles.step} data-layout={step.shot?.beside ? "beside" : undefined}>
       <div className={styles.stepText}>
-        <h3 id={heading}>{t(step.title)}</h3>
+        <h3>{t(step.title)}</h3>
         <p>{t(step.body)}</p>
         <ul className={styles.who} aria-label={t("landing.who")}>
           {step.actors.map((a) => (
@@ -95,10 +95,11 @@ function Step({ step, t }: { step: StepProps; t: Translator }) {
   );
 }
 
-const models: { name: (t: Translator) => string; body: MessageKey }[] = [
-  { name: (t) => t("ai.model.muse-spark-1.3"), body: "landing.meta.muse" },
-  { name: (t) => t("ai.model.sam-3.1"), body: "landing.meta.sam" },
-  { name: (t) => t("landing.actor.search"), body: "landing.meta.search" },
+/** Meta's models, and the one tool of the Meta Model API that Muse Spark uses (review round 1, M1: a tool, not a model). */
+const meta: { name: MessageKey; kind: MessageKey; body: MessageKey }[] = [
+  { name: "ai.model.muse-spark-1.3", kind: "ai.provider.meta", body: "landing.meta.muse" },
+  { name: "ai.model.sam-3.1", kind: "ai.provider.meta", body: "landing.meta.sam" },
+  { name: "landing.meta.searchName", kind: "landing.meta.tool", body: "landing.meta.search" },
 ];
 
 const industries: { name: MessageKey; detail?: MessageKey }[] = [
@@ -122,6 +123,14 @@ export function Landing({ t }: { t: Translator }) {
     <div className={styles.landing}>
       <section className={styles.hero} aria-labelledby="landing-title">
         <div className={styles.heroText}>
+          {/* The product's name and mark (review round 1, M3): the rail shows the mark only. */}
+          <p className={styles.brand}>
+            <svg className={shell.mark} width="22" height="22" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <rect x="0.75" y="0.75" width="12.5" height="12.5" rx="3.5" className={shell.markFront} />
+              <rect x="6.75" y="6.75" width="12.5" height="12.5" rx="3.5" className={shell.markBack} />
+            </svg>
+            {t("app.name")}
+          </p>
           <h1 id="landing-title">{t("landing.title")}</h1>
           <p className={styles.intro}>{t("landing.lede")}</p>
           <LandingAction />
@@ -144,18 +153,17 @@ export function Landing({ t }: { t: Translator }) {
         <h2 id="landing-meta">{t("landing.meta.title")}</h2>
         <p className={styles.intro}>{t("landing.meta.intro")}</p>
         <dl className={styles.facts}>
-          {models.map((m) => (
+          {meta.map((m) => (
             <div key={m.body} className={styles.pair}>
               <dt>
-                <span>{m.name(t)}</span>{" "}
-                <span className={styles.provider}>{t("ai.provider.meta")}</span>
+                <span>{t(m.name)}</span>{" "}
+                <span className={styles.provider}>{t(m.kind)}</span>
               </dt>
               <dd>{t(m.body)}</dd>
             </div>
           ))}
         </dl>
         <p className={styles.note}>{t("landing.meta.named")}</p>
-        <Shot name="proposed" t={t} altKey="landing.shot.proposed.alt" captionKey="landing.shot.proposed.caption" />
       </section>
 
       <section className={styles.section} aria-labelledby="landing-industries">

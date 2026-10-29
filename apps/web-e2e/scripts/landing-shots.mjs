@@ -2,8 +2,8 @@
 //
 // The landing (apps/web/app/page.tsx, features/landing/) shows real screens
 // of the product. This script makes them: it opens the app's review pages
-// (the component gallery's editor, proposal and results pages: the real
-// views on the synthetic sample board line, no AI called), crops each to
+// (the component gallery's editor and results pages: the real views on the
+// synthetic sample board line, no AI called), crops each to
 // the product's own view, in the light and the dark theme, at 2x, and
 // writes WebP at 1x and 2x under apps/web/public/landing/. Two screens
 // exist only on the live demo (the AI's explanation and a scenario it then
@@ -102,6 +102,7 @@ const round = (box) => ({ x: Math.floor(box.x), y: Math.floor(box.y), width: Mat
 const screens = {
   // The model page: the sample line on the 2D canvas (moved to AOI, its touch-up loop and ICT), the request to the AI written beside it.
   async canvas(page) {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`${base}/ui-gallery/editor?state=clean`);
     await settle(page);
     const pane = await page.locator(".react-flow__pane").boundingBox();
@@ -124,36 +125,25 @@ const screens = {
     });
     return pad({ ...box, height: end - box.y + 8 }, 16);
   },
-  // A scenario the AI proposed: its summary and change, Geminus's own check of the risk beside the AI's, and the decision.
-  async proposal(page) {
-    await page.goto(`${base}/ui-gallery/proposal?state=scenario`);
-    await settle(page);
-    const box = await viewBox(page);
-    // Down to the end of "What the AI assumed": the expectations below repeat the summary's point.
-    const end = await page.evaluate(() => {
-      const h = [...document.querySelectorAll("h2")].find((el) => el.textContent.trim() === "What the AI assumed");
-      return h.closest("section").getBoundingClientRect().bottom + scrollY;
-    });
-    return pad({ ...box, height: end - box.y }, 16);
-  },
-  // The results: the median lead time, the whole line's metrics and the run settings (version, seed, engine).
+  // The results, for the first view (review round 1, M3): the Key metrics card from its heading, the
+  // median lead time sentence and the whole line's first rows, without the run IDs. At 1040 px the
+  // run settings panel follows the main column, so the card takes the width.
   async results(page) {
+    await page.setViewportSize({ width: 1040, height: 900 });
     await page.goto(`${base}/ui-gallery/results`);
     await settle(page);
-    return page.evaluate(() => {
+    const box = await page.evaluate(() => {
       const card = [...document.querySelectorAll("h2")].find((el) => el.textContent.trim() === "Key metrics").closest("section");
-      const facts = [...document.querySelectorAll("h2")].find((el) => el.textContent.trim() === "Run settings").closest("section, div");
-      const note = card.previousElementSibling;
-      const group = [...card.querySelectorAll("th, td")].find((el) => el.textContent.trim() === "Resources");
-      const top = (note ?? card).getBoundingClientRect().top;
-      const left = card.getBoundingClientRect().left;
-      const right = facts.getBoundingClientRect().right;
-      const bottom = group.getBoundingClientRect().top;
-      return { x: left - 16, y: top + scrollY - 16, width: right - left + 32, height: bottom - top + 16 };
+      const next = [...card.querySelectorAll("tr")].find((tr) => tr.textContent.trim().startsWith("Lead time, mean of replication means"));
+      const r = card.getBoundingClientRect();
+      // 6 px above the card (not the note above it), down to the row line before that row.
+      return { x: r.left - 16, y: r.top + scrollY - 6, width: r.width + 32, height: next.getBoundingClientRect().top - r.top + 6 };
     });
+    return box;
   },
   // The Marey chart: every sampled board's path through the steps, baseline dashed, scenario solid.
   async marey(page) {
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`${base}/ui-gallery/results`);
     await settle(page);
     return pad(await cardBox(page, "Work items through the steps"), 16);

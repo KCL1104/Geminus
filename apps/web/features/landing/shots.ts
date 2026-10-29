@@ -19,31 +19,17 @@ export const shots = {
       ]
     }
   },
-  "proposal": {
-    "width": 1208,
-    "height": 601,
-    "themes": {
-      "light": [
-        "proposal-light-1208.webp",
-        "proposal-light-2416.webp"
-      ],
-      "dark": [
-        "proposal-dark-1208.webp",
-        "proposal-dark-2416.webp"
-      ]
-    }
-  },
   "results": {
-    "width": 1136,
-    "height": 667,
+    "width": 968,
+    "height": 348,
     "themes": {
       "light": [
-        "results-light-1136.webp",
-        "results-light-2272.webp"
+        "results-light-968.webp",
+        "results-light-1936.webp"
       ],
       "dark": [
-        "results-dark-1136.webp",
-        "results-dark-2272.webp"
+        "results-dark-968.webp",
+        "results-dark-1936.webp"
       ]
     }
   },

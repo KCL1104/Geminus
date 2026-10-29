@@ -27,11 +27,11 @@ for (const scheme of schemes) {
       const requested = watchPictures(page);
       await open(page, "/", locale);
       const shown = await loadPictures(page);
-      expect(shown).toHaveLength(6);
+      expect(shown).toHaveLength(5);
       for (const p of shown) expect(p).toMatch(/^\/landing\/[a-z]+(-light|-dark)?-\d+\.webp$/);
-      // The gallery's four screens in the theme on screen; the live demo's two exist in the light theme only.
+      // The gallery's three screens in the theme on screen; the live demo's two exist in the light theme only.
       const other = scheme === "dark" ? "-light-" : "-dark-";
-      expect(shown.filter((p) => p.includes(scheme === "dark" ? "-dark-" : "-light-"))).toHaveLength(4);
+      expect(shown.filter((p) => p.includes(scheme === "dark" ? "-dark-" : "-light-"))).toHaveLength(3);
       expect(requested.filter((u) => u.includes(other)), "the other theme's pictures are not fetched").toEqual([]);
       expect(requested.filter((u) => !u.startsWith(`${APP}/`)), "pictures from elsewhere").toEqual([]);
       for (const img of await page.locator("main img").all()) {
@@ -47,12 +47,27 @@ test("a theme chosen in the menu swaps the screens at once", async ({ page }) =>
   await page.emulateMedia({ colorScheme: "light" });
   await open(page, "/", "en");
   const hero = () => page.locator("main figure").first().locator("img:visible");
-  await expect(hero()).toHaveAttribute("src", "/landing/results-light-1136.webp");
+  await expect(hero()).toHaveAttribute("src", "/landing/results-light-968.webp");
   await page.getByRole("button", { name: "Settings" }).click();
   await page.getByRole("radiogroup", { name: "Theme" }).getByRole("radio", { name: "Dark" }).click();
   await page.keyboard.press("Escape");
-  await expect(hero()).toHaveAttribute("src", "/landing/results-dark-1136.webp");
+  await expect(hero()).toHaveAttribute("src", "/landing/results-dark-968.webp");
   await expect.poll(() => hero().evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+});
+
+// Review round 1, L6: the live demo's light-only screens are dimmed in the dark theme; a remembered
+// dark theme over a light system fetches no light picture.
+test("a remembered dark theme: the first picture in dark, the light ones never fetched, the live screens dimmed", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  const requested = watchPictures(page);
+  await open(page, "/", "en", "dark");
+  const hero = page.locator("main figure").first().locator("img:visible");
+  await expect(hero).toHaveAttribute("src", "/landing/results-dark-968.webp");
+  await expect.poll(() => hero.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+  await loadPictures(page);
+  expect(requested.filter((u) => u.includes("-light-")), "the other theme's pictures are not fetched").toEqual([]);
+  for (const img of await page.locator('main figure[data-live] img').all()) await expect(img).toHaveCSS("filter", "brightness(0.82)");
+  for (const img of await page.locator('main figure:not([data-live]) img:visible').all()) await expect(img).toHaveCSS("filter", "none");
 });
 
 test("signed out: the one action is the sign-in, which comes back to the projects", async ({ page }) => {

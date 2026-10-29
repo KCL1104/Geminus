@@ -83,6 +83,8 @@ describe("the landing's content (H-048)", () => {
   it.each(["en", "zh-Hant"] as const)("%s: the promise, the loop in five steps, the Meta models, the industries and the safety rules, in order", async (locale) => {
     const c = catalogs[locale];
     const el = await page(auth.signedOut, locale);
+    // Review round 1, M3: the product's name stands above the promise.
+    expect(text(el.querySelector("section p")!)).toBe(c["app.name"]);
     expect(text(el.querySelector("h1")!)).toBe(c["landing.title"]);
     expect([...el.querySelectorAll("h2")].map(text)).toEqual([c["landing.loop.title"], c["landing.meta.title"], c["landing.industries.title"], c["landing.safe.title"]]);
     expect([...el.querySelectorAll("ol > li h3")].map(text)).toEqual(
@@ -101,7 +103,11 @@ describe("the landing's content (H-048)", () => {
     // A Meta model's pill has the accent's edge (the AI), Geminus's the ink (its own check).
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="ai"]')).toHaveLength(2);
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="server"]')).toHaveLength(1);
-    expect([...el.querySelectorAll("dl")[0]!.querySelectorAll("dt")].map(text)).toEqual(["Muse Spark 1.3", "SAM 3.1", c["landing.actor.search"]].map((n) => `${n} ${meta}`));
+    // Review round 1, M1: two Meta models, and web search as a tool of the Meta Model API that Muse Spark uses, not a model.
+    expect([...el.querySelectorAll("dl")[0]!.querySelectorAll("dt")].map(text)).toEqual([`Muse Spark 1.3 ${meta}`, `SAM 3.1 ${meta}`, `${c["landing.meta.searchName"]} ${c["landing.meta.tool"]}`]);
+    // Review round 1, M2: the decision's screen is Muse Spark's own proposal from the live demo, which names its writer.
+    expect([...el.querySelectorAll("ol > li")][2]!.querySelector("img")?.getAttribute("src")).toBe("/landing/proposed-1188.webp");
+    expect([...el.querySelectorAll("ol > li")][2]!.querySelector("figcaption")?.textContent).toBe(c["landing.shot.proposed.caption"]);
     for (const k of ["landing.industry.electronics", "landing.industry.shoes", "landing.industry.food", "landing.industry.carton", "landing.industry.warehouse"] as const) expect(text(el)).toContain(c[k]);
     expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dt")].map(text)).toEqual(
       (["proposes", "checks", "person", "versions", "synthetic"] as const).map((k) => c[`landing.safe.${k}`]),
@@ -142,7 +148,7 @@ describe("the landing's pictures (H-048)", () => {
   const names = Object.keys(shots) as ShotName[];
 
   it("are the committed screens, at the sizes the page says, 1x and 2x per theme of the gallery's screens", () => {
-    expect(names.sort()).toEqual(["canvas", "explained", "marey", "proposal", "proposed", "results"]);
+    expect(names.sort()).toEqual(["canvas", "explained", "marey", "proposed", "results"]);
     const used = new Set<string>();
     for (const name of names) {
       const s = shots[name] as { width: number; height: number; themes: Record<string, string[]> };
@@ -175,7 +181,21 @@ describe("the landing's pictures (H-048)", () => {
     }
     // Both themes' pictures of a screen share its alt text; CSS shows one (landing.module.css).
     const results = imgs.filter((i) => /\/landing\/results-/.test(i.getAttribute("src")!));
-    expect(results.map((i) => i.getAttribute("src"))).toEqual(["/landing/results-light-1136.webp", "/landing/results-dark-1136.webp"]);
+    expect(results.map((i) => i.getAttribute("src"))).toEqual(["/landing/results-light-968.webp", "/landing/results-dark-968.webp"]);
     expect(new Set(results.map((i) => i.alt)).size).toBe(1);
+    // Review round 1, L9: each screen is framed as a screenshot, its caption a bar above the picture.
+    for (const figure of el.querySelectorAll("figure")) expect(figure.firstElementChild?.tagName).toBe("FIGCAPTION");
+    // L6: the two live-demo screens (light only) are marked so the dark theme can dim them.
+    expect([...el.querySelectorAll('figure[data-live] img')].map((i) => i.getAttribute("src"))).toEqual(["/landing/proposed-1188.webp", "/landing/explained-408.webp"]);
+  });
+
+  // Review round 1, L5, left as it is: a picture that is not lazy makes React put a preload link in
+  // the head ahead of the CSP nonce meta (layout.test.tsx pins the head), so the first view's stays lazy.
+  it("puts nothing in the head: no preload of a picture ahead of the CSP nonce meta", async () => {
+    const { default: Home } = await import("../app/page");
+    const out = renderToStaticMarkup(<I18nProvider locale="en">{await Home()}</I18nProvider>);
+    expect(out).toMatch(/^<div class="[^"]*"><section/);
+    expect(out).not.toContain('rel="preload"');
+    expect(out).not.toContain('loading="eager"');
   });
 });

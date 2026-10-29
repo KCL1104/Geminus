@@ -13,7 +13,7 @@ The start page `/` (H-048). Persuade, inside the Operate product: the visitor de
 
 - Audience: the Meta Global AI Developer Hackathon's judges first (Impact 30%, Use of Meta AI tooling 25%, Demo 25%, Technical depth 20%), then anyone who opens the app. English first; zh-Hant is the translation.
 - Job: understand in one view what Geminus does (try a change on a factory's digital twin before touching the real line), see it is real, and sign in.
-- Proof: real product screens only (gallery review pages on the synthetic sample line, both themes; two live-demo crops for Muse Spark's own explanation and the scenario it proposed). No invented figures, customers or claims; every number is from the synthetic demo.
+- Proof: real product screens only, framed as screenshots (gallery review pages on the synthetic sample line in both themes: the results' key metrics, the canvas with a request to the AI, the Marey chart; two live-demo crops of Muse Spark's own scenario proposal and explanation). No invented figures, customers or claims; every number is from the synthetic demo.
 - Constraints: the app's design system unchanged (five sizes, tokens, hairlines, three shadows, no gradient or animation; tests/design-rules.test.ts); one primary action (H-027); no credentials anywhere (the judge account is in the submission only); CSP img-src 'self'; 390 px with no horizontal scroll.
 
 ## Direction and memorable moment
@@ -22,6 +22,6 @@ The decision record: the loop as a numbered list, each step naming who acts (you
 
 ## Open
 
-- The live-demo crops exist in the light theme only.
-- The web-search step describes H-046's feature, built in parallel; if it does not ship, its row and pill must go.
-- The four new industries (H-045) are named only; their templates are built in parallel.
+- The live-demo crops exist in the light theme only (dimmed in dark).
+- The web-search row describes H-046's feature (a tool of the Meta Model API that Muse Spark uses), built in parallel; if it does not ship, the row must go.
+- The four new industries (H-045) are named only, under the parallel work's current names; their templates are built in parallel.
