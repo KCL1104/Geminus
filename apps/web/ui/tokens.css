@@ -98,6 +98,9 @@
   --gm-radius-lg: 8px;
 
   --gm-content-width: 1152px;
+  /* The main region's side gutters (ui/shell.module.css); a header band reaches past them to the window's edges (H-040). */
+  --gm-gutter-start: max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
+  --gm-gutter-end: max(var(--gm-space-gutter), env(safe-area-inset-right, 0px));
 
   /* Density: 32 px controls (34 px inputs) by default, 24 px (the WCAG 2.2
      2.5.8 minimum) when <html data-density="compact">. On <html>, so it

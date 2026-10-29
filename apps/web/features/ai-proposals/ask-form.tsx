@@ -12,8 +12,9 @@
 // also offer a photo of the line (T-056, PhotoForm), blocked for the same
 // reason. The line under the field also says that what is typed or uploaded
 // goes to an AI service, so only synthetic data belongs there (T-057, H-035
-// (1)); the field and the photo button name it as their description. What to
-// make, its hint and the buttons share one row (H-039: the editor starts higher).
+// (1)); the field and the photo button name it as their description. The form
+// stands at the top of the editor's side panel (H-040): the field, what to
+// make with its hint, then the buttons.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -22,6 +23,7 @@ import { useApi } from "../../lib/api/provider";
 import type { Model, ProposalRequest } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
+import { SendIcon } from "../../ui/icons";
 import { TextField } from "../../ui/field";
 import { Select } from "../../ui/select";
 import { StatusRegion } from "../../ui/status";
@@ -87,7 +89,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
       <h2 id={headingId}>{t("ask.title")}</h2>
       <TextField
         multiline
-        rows={2}
+        rows={3}
         label={t("ask.intent")}
         description={t("ask.intentHint", { version: String(latest.version) })}
         notice={{ id: noticeId, text: t("ask.dataNotice") }}
@@ -100,7 +102,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         isInvalid={missing}
         errorMessage={t("ask.intentRequired")}
       />
-      <div className={styles.askRow}>
+      <div className={styles.askMode}>
         <Select
           label={t("ask.mode")}
           items={[
@@ -111,7 +113,9 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           onChange={(id) => setMode(id === "scenario" ? "scenario" : "edit")}
         />
         <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
-        <Button blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
+      </div>
+      <div className={styles.askRow}>
+        <Button icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>
         {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}

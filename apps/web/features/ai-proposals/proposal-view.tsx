@@ -35,6 +35,8 @@ import { canEdit, useAuth } from "../../lib/auth/session";
 import type { Approval, ErrorCode, Proposal, ValidationIssue } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
+import { ApproveIcon, CloseIcon } from "../../ui/icons";
+import { PageHeader } from "../../ui/page-header";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
@@ -206,10 +208,22 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const hasContent = p.changes !== undefined && p.status !== "needs_input";
 
   return (
+    <>
+    <PageHeader
+      trail={[{ href: hrefs.model(p.model_id), label: t("proposal.back") }]}
+      title={<Words parts={title} />}
+      facts={[
+        {
+          label: t("band.status"),
+          value: (
+            <p role="status" id={ids.status} className={styles.state} data-proposal-status={p.status}>
+              {statusText}
+            </p>
+          ),
+        },
+      ]}
+    />
     <article className={styles.page}>
-      <h1>
-        <Words parts={title} />
-      </h1>
       <p className={styles.meta}>
         {t("proposal.asked", { date: dateTime(p.created_at), version: String(baseVersion) })}
         {gap}
@@ -225,12 +239,6 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           })}
         </p>
       )}
-      <p>
-        <Link href={hrefs.model(p.model_id)}>{t("proposal.back")}</Link>
-      </p>
-      <p role="status" id={ids.status} className={styles.state} data-proposal-status={p.status}>
-        {statusText}
-      </p>
       {p.status === "generating" && <p>{t("proposal.generatingHint")}</p>}
       {approvable && (
         <p>{t(p.mode === "edit" ? "proposal.effect.edit" : "proposal.effect.scenario", { version: String(p.mode === "edit" ? baseVersion + 1 : baseVersion) })}</p>
@@ -407,7 +415,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
               </p>
               <div className={styles.actions}>
                 {/* Worded apart from Approve, so a second Enter is not taken for the first (H-039). */}
-                <Button ref={confirmRef} variant="primary" onPress={() => void approve()}>
+                <Button ref={confirmRef} variant="primary" icon={<ApproveIcon />} onPress={() => void approve()}>
                   {p.mode === "edit" ? t("proposal.approve.confirm.edit", { version: String(baseVersion + 1) }) : t("proposal.approve.confirm.scenario")}
                 </Button>
                 <Button
@@ -428,7 +436,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
               </p>
               <TextField multiline label={t("proposal.reject.reason")} description={t("proposal.reject.reasonHint")} value={reason} onChange={setReason} maxLength={2000} />
               <div className={styles.actions}>
-                <Button ref={confirmRef} variant="danger" onPress={() => void reject()}>
+                <Button ref={confirmRef} variant="danger" icon={<CloseIcon />} onPress={() => void reject()}>
                   {t("proposal.reject.confirm")}
                 </Button>
                 <Button
@@ -457,6 +465,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
                   <Button
                     ref={approveRef}
                     variant="primary"
+                    icon={<ApproveIcon />}
                     onPress={() => {
                       setProblem(null);
                       setDecision("confirmApprove");
@@ -469,6 +478,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
                 <Button
                   ref={rejectRef}
                   variant="danger"
+                  icon={<CloseIcon />}
                   onPress={() => {
                     setProblem(null);
                     setDecision("confirmReject");
@@ -484,6 +494,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
         </section>
       )}
     </article>
+    </>
   );
 }
 

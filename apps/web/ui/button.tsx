@@ -1,5 +1,5 @@
 "use client";
-import type { Ref } from "react";
+import type { ReactNode, Ref } from "react";
 import { Button as AriaButton, type ButtonProps as AriaButtonProps } from "react-aria-components";
 import styles from "./button.module.css";
 import { cx } from "./cx";
@@ -18,12 +18,14 @@ export type ButtonProps = Omit<AriaButtonProps, "className"> & {
    * screen beside it.
    */
   blocked?: boolean;
+  /** A 16 px line icon before the label (ui/icons.tsx); decorative, the label names the button. */
+  icon?: ReactNode;
   className?: string;
   ref?: Ref<HTMLButtonElement>;
 };
 
 /** React Aria's button (type="button" unless set): press, keyboard and focus behaviour included. */
-export function Button({ variant = "secondary", className, blocked = false, onPress, ...props }: ButtonProps) {
+export function Button({ variant = "secondary", className, blocked = false, onPress, icon, children, ...props }: ButtonProps) {
   return (
     <AriaButton
       {...props}
@@ -32,6 +34,13 @@ export function Button({ variant = "secondary", className, blocked = false, onPr
       data-blocked={blocked || undefined}
       data-variant={variant}
       className={cx(styles.button, className)}
-    />
+    >
+      {icon === undefined ? children : (
+        <>
+          {icon}
+          {children as ReactNode}
+        </>
+      )}
+    </AriaButton>
   );
 }

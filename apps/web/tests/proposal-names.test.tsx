@@ -163,8 +163,12 @@ async function page(sample: SampleState, opts: Opts) {
   return { el, api };
 }
 
-const markup = '<img src=x onerror="alert(1)"><a href="javascript:alert(1)">Approve</a> <script>alert(2)</script> [ok](javascript:alert(3)) https://evil.example/x';
+// Its <button><svg aria-hidden="true"> has the very shape of the app's own icons (H-040), which hostile() leaves out: as text it makes no element.
+const markup = '<img src=x onerror="alert(1)"><a href="javascript:alert(1)">Approve</a> <script>alert(2)</script> <button><svg aria-hidden="true"></svg></button> [ok](javascript:alert(3)) https://evil.example/x';
 const hostileElements = "img, script, iframe, object, embed, svg, [onerror], [onclick], [style*='url']";
+/** What became an element on the page, but the app's own icons drawn in its labelled buttons (H-040): nothing the AI wrote. */
+const hostile = (root: Element) =>
+  [...root.querySelectorAll(hostileElements)].filter((e) => !(e.matches('button > svg[aria-hidden="true"]') && (e.parentElement?.textContent ?? "").trim() !== ""));
 
 describe("on the page, the AI's names, assumptions and questions are text (L1)", () => {
   it("a ready proposal: names in the diff, the summary, assumptions and expectations stay text; no link or markup appears", async () => {
@@ -179,8 +183,9 @@ describe("on the page, the AI's names, assumptions and questions are text (L1)",
         expected_effects: [markup],
       },
     });
-    const article = el.querySelector("article")!;
-    expect(article.querySelectorAll(hostileElements)).toHaveLength(0);
+    // The whole page, the header band included (H-040: the way back to the model is there).
+    const article = el;
+    expect(hostile(article)).toHaveLength(0);
     expect([...article.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual([`/models/${api.modelId}`]);
     const changes = el.querySelector('[data-section="changes"]')!;
     expect(lines(changes)).toEqual([
@@ -198,9 +203,9 @@ describe("on the page, the AI's names, assumptions and questions are text (L1)",
 
   it("a proposal that needs input: its questions stay text, controls in them shown", async () => {
     const { el } = await page("needs_input", { proposal: { questions: [markup, "Which batch‮?84 ro 02"] } });
-    const article = el.querySelector("article")!;
+    const article = el;
     expect([...el.querySelector('[data-section="questions"]')!.querySelectorAll("li")].map((li) => li.textContent)).toEqual([markup, "Which batch⟨U+202E⟩?84 ro 02"]);
-    expect(article.querySelectorAll(hostileElements)).toHaveLength(0);
+    expect(hostile(article)).toHaveLength(0);
     expect(article.querySelectorAll("a")).toHaveLength(1);
     expect(rawCharacters(article)).toEqual([]);
   });

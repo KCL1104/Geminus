@@ -8,6 +8,7 @@ import type { Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Button } from "../../ui/button";
+import { CloseIcon } from "../../ui/icons";
 import { type CancelProblem, isActive, runProblem } from "./run-pair";
 import styles from "./simulations.module.css";
 
@@ -90,7 +91,7 @@ export function RunPairStatus({ baseline, scenario, canCancel, cancelling, cance
         </>
       )}
       {active && canCancel && (
-        <Button onPress={() => { if (!cancelling) onCancel(); }}>{t("runs.cancel")}</Button>
+        <Button icon={<CloseIcon />} onPress={() => { if (!cancelling) onCancel(); }}>{t("runs.cancel")}</Button>
       )}
     </section>
   );

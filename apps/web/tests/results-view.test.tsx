@@ -772,7 +772,10 @@ describe("the runs, from queued to the results", () => {
     const el = await runResults(api, editor, "zh-Hant");
     await waitFor(() => el.querySelector("table") !== null, "the results");
     const zh = catalogs["zh-Hant"];
-    expect([...el.querySelectorAll("h2")].map((h) => h.textContent)).toEqual(expect.arrayContaining([zh["runs.title"], zh["compare.title"], zh["marey.title"], zh["facts.title"]]));
+    expect([...el.querySelectorAll("h2")].map((h) => h.textContent)).toEqual(expect.arrayContaining([zh["compare.title"], zh["marey.title"], zh["facts.title"]]));
+    // Completed, each run's state is in the header band (H-040), not in a Runs section.
+    expect([...el.querySelectorAll("header dl dt")].map((d) => d.textContent)).toEqual([zh["runs.baseline"], zh["runs.scenario"]]);
+    expect(el.querySelector('[aria-labelledby="runs-heading"]')).toBeNull();
     expect(text(el)).toContain("前置時間中位數 29.14 分鐘 → 19.77 分鐘：縮短 32.2%。");
     expect(await violations()).toEqual([]);
   });

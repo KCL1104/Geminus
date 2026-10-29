@@ -1,6 +1,7 @@
 /* A list of things to open (projects, models): one row each, the name as
    the link, rows divided by hairlines. */
 .list {
+  max-width: var(--gm-content-width);
   margin: 0 0 var(--gm-space-gutter);
   padding: 0;
   border: 1px solid var(--gm-color-rule);

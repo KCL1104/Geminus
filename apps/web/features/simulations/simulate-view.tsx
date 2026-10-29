@@ -15,6 +15,8 @@ import type { ModelVersion, Scenario } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Button } from "../../ui/button";
+import { PlayIcon } from "../../ui/icons";
+import { PageHeader } from "../../ui/page-header";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
@@ -82,11 +84,8 @@ export function SimulateView({ scenario, version, onStarted }: {
 
   return (
     <>
-      <h1>{scenario.name}</h1>
-      <p>{t("scenario.summary", { version: String(version.version), model: version.ir.name, count: changes })}</p>
-      <p>
-        <Link href={`/models/${scenario.model_id}`}>{t("scenario.back")}</Link>
-      </p>
+      <PageHeader trail={[{ href: `/models/${scenario.model_id}`, label: t("scenario.back") }]} title={scenario.name} />
+      <p className={styles.intro}>{t("scenario.summary", { version: String(version.version), model: version.ir.name, count: changes })}</p>
       {canEdit(role) ? (
         <section aria-labelledby="run-heading" className={styles.section}>
           <h2 id="run-heading">{t("run.title")}</h2>
@@ -104,7 +103,7 @@ export function SimulateView({ scenario, version, onStarted }: {
                 <ProblemView problem={failure.problem} headingLevel={3} />
               </>
             )}
-            <Button type="submit" variant="run">
+            <Button type="submit" variant="run" icon={<PlayIcon />}>
               {t("run.start")}
             </Button>
             <StatusRegion message={starting ? t("run.starting") : null} />

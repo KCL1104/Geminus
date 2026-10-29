@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import { Menu, MenuItem, MenuTrigger, Popover } from "react-aria-components";
 import { Button } from "./button";
 import { ChevronDownIcon } from "./icons";
@@ -12,10 +13,10 @@ export type MenuEntry = { id: string; label: string };
  * arrow keys move, Enter or a click acts, Escape closes and focus returns to
  * the button. React Aria names the list by its button.
  */
-export function ActionMenu({ label, items, onAction }: { label: string; items: MenuEntry[]; onAction: (id: string) => void }) {
+export function ActionMenu({ label, items, onAction, icon }: { label: string; items: MenuEntry[]; onAction: (id: string) => void; icon?: ReactNode }) {
   return (
     <MenuTrigger>
-      <Button>
+      <Button icon={icon}>
         {label}
         <ChevronDownIcon />
       </Button>

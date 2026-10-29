@@ -39,12 +39,14 @@
   gap: var(--gm-space-sm);
   min-height: var(--gm-control-height);
   padding: 0 var(--gm-space-md) 0 var(--gm-control-padding-x);
-  border: 1px solid var(--gm-color-edge);
+  /* The Select's button is a key like every button (H-040). */
+  border: 1px solid var(--gm-color-rule);
+  border-bottom-color: var(--gm-color-edge);
   border-radius: var(--gm-radius-md);
   background: var(--gm-color-raised);
   color: var(--gm-color-ink);
   cursor: pointer;
-  transition: background-color var(--gm-motion);
+  transition: background-color var(--gm-motion), border-color var(--gm-motion);
 }
 
 .trigger svg {
@@ -52,10 +54,12 @@
 }
 
 .trigger[data-hovered] {
+  border-color: var(--gm-color-ink-2);
   background: var(--gm-color-hover);
 }
 
 .trigger[data-pressed] {
+  border-color: var(--gm-color-ink-2);
   background: var(--gm-color-press);
 }
 

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useApi } from "../../lib/api/provider";
+import { PageHeader } from "../../ui/page-header";
 import { useI18n } from "../../lib/i18n/provider";
 import list from "../../ui/list.module.css";
 import { MorePages, RemoteView, RequireSession } from "../_components/states";
@@ -40,7 +41,7 @@ export default function ProjectsPage() {
   const { t } = useI18n();
   return (
     <>
-      <h1>{t("projects.title")}</h1>
+      <PageHeader trail={[]} title={t("projects.title")} />
       <RequireSession>
         <Projects />
       </RequireSession>

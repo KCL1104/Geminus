@@ -85,7 +85,7 @@ describe("the proposal review page", () => {
     await settle();
     // The page names itself a review tool on sample data.
     expect(el.textContent).toContain(createTranslator(locale)("galleryProposal.intro"));
-    expect(el.querySelectorAll("nav a").length).toBe(states.length);
+    expect(el.querySelectorAll(`nav[aria-label="${createTranslator(locale)("galleryProposal.states")}"] a`).length).toBe(states.length);
     expect(await violations()).toEqual([]);
   });
 });

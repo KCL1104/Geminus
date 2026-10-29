@@ -88,6 +88,12 @@ async function choose(el: Element, label: string, option: string) {
 }
 const creates = (api: ProposalStandIn) => api.calls.filter((c) => c.method === "POST" && c.path.endsWith("/ai-proposals"));
 
+/** The header band's latest version and domain (H-040). */
+const band = (el: Element) => {
+  const dds = [...el.querySelectorAll("header dl dd")];
+  return [dds[0]?.querySelector("data")?.getAttribute("value"), dds[1]?.textContent];
+};
+
 describe("asking the AI for a change on the model page", () => {
   it("offers a text field, what to make and a send button, and keeps Publish the one primary action", async () => {
     const { el } = await modelPage();
@@ -190,9 +196,9 @@ describe("asking the AI for a change on the model page", () => {
     await waitFor(() => el.querySelector("[data-ask] [role=alert]") !== null, "the conflict");
     expect(text(ask(el).querySelector("[role=alert]"))).toContain(en("error.MODEL_VERSION_CONFLICT"));
     expect(created).toEqual([]);
-    expect(text(el)).toContain(en("model.summary", { version: "1", domain: en("domain.electronics_line.name") }));
+    expect(band(el)).toEqual(["1", en("domain.electronics_line.name")]);
     await press(button(ask(el), en("ask.reload")));
-    await waitFor(() => text(el).includes(en("model.summary", { version: "2", domain: en("domain.electronics_line.name") })), "the reload");
+    await waitFor(() => band(el)[0] === "2", "the reload");
     expect(fieldOf(ask(el), en("ask.intent")).value).toBe("Burn-in batches of 48 boards");
     await press(button(ask(el), en("ask.send")));
     await waitFor(() => created.length === 1, "the proposal");
@@ -256,7 +262,7 @@ describe("the loop: ask, review, approve, and the model page reads the new versi
     // Back on the model page: read again, version 2, the burn-in step's batch as approved.
     unmountAll();
     const again = await modelPage({ api });
-    expect(text(again.el)).toContain(en("model.summary", { version: "2", domain: en("domain.electronics_line.name") }));
+    expect(band(again.el)).toEqual(["2", en("domain.electronics_line.name")]);
     expect([...again.el.querySelectorAll(".react-flow__node")].map((n) => n.getAttribute("data-id")).sort()).toEqual(ids);
     expect(ids).toEqual(sampleLine.nodes.map((n) => n.id).sort());
     const n = again.el.querySelector<HTMLElement>('.react-flow__node[data-id="burn_in"]')!;

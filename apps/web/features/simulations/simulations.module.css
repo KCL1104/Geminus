@@ -1,6 +1,7 @@
 /* Running a scenario and its baseline (T-032, DESIGN.md): one form, the
    two runs as a list divided by hairlines, a progress track on Inset Well. */
 .section {
+  max-width: var(--gm-content-width);
   margin: 0 0 var(--gm-space-xl);
 }
 

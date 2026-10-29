@@ -23,6 +23,7 @@ import type { Model } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import type { MessageKey } from "../../lib/i18n/translate";
 import { Button } from "../../ui/button";
+import { CameraIcon } from "../../ui/icons";
 import { StatusRegion } from "../../ui/status";
 import styles from "./proposal.module.css";
 
@@ -98,7 +99,7 @@ export function PhotoForm({ model, blockedReason, reasonId, noticeId, onCreated 
 
   const describedBy = [blockedReason !== null ? reasonId : null, hintId, noticeId].filter(Boolean).join(" ");
   const choose = (
-    <Button blocked={blockedReason !== null} aria-describedby={describedBy}>
+    <Button icon={<CameraIcon />} blocked={blockedReason !== null} aria-describedby={describedBy}>
       {t("photo.choose")}
     </Button>
   );

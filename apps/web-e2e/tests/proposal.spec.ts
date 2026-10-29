@@ -36,6 +36,13 @@ async function tabTo(page: Page, name: string) {
   throw new Error(`Tab never reached ${name}`);
 }
 
+/** The model page's header band (H-040): its latest version and domain. */
+async function expectBand(page: Page, version: string, domain: string) {
+  const band = page.locator("main header:has(h1) dl");
+  await expect(band.locator("dd data").first()).toHaveAttribute("value", version);
+  await expect(band).toContainText(domain);
+}
+
 test("approves an edit with the keyboard only: confirm in place, then the outcome, focused and announced", async ({ page }) => {
   await open(page, "/ui-gallery/proposal", "en");
   const approve = fill(en["proposal.approve.edit"], { version: "2" });
@@ -123,11 +130,14 @@ test("shows hostile words from the AI as text: no markup, no link, no decision",
   await open(page, "/ui-gallery/proposal?state=hostile", "en");
   const p = sampleFor("hostile").proposal;
   const article = page.locator("article");
+  // The header band (H-040) holds the title, the way back and the status: it is checked as the article is.
+  const band = page.locator("main header:has(h1)");
   for (const words of [p.summary!, ...p.assumptions!, ...p.expected_effects!]) await expect(article).toContainText(words);
-  await expect(article.locator("img, script, iframe, object, embed")).toHaveCount(0);
-  // The page's own link only: back to the model.
-  expect(await article.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")))).toEqual(["/ui-gallery/editor"]);
-  await expect(article.locator("[data-proposal-status]")).toHaveText(en["proposal.status.ready"]);
+  for (const scope of [article, band]) await expect(scope.locator("img, script, iframe, object, embed")).toHaveCount(0);
+  // The page's own link only: back to the model, in the band; none in the article.
+  expect(await band.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")))).toEqual(["/ui-gallery/editor"]);
+  await expect(article.locator("a")).toHaveCount(0);
+  await expect(band.locator("[data-proposal-status]")).toHaveText(en["proposal.status.ready"]);
   await expect(article.locator("[data-cell=server]")).toContainText(en["proposal.risk.level.high"]);
   // The names in its patch (review round 1, M1, L1): text, each in its own
   // <bdi>, with what hides or reorders text shown; no raw format or control
@@ -136,7 +146,7 @@ test("shows hostile words from the AI as text: no markup, no link, no decision",
   const isolated = await changes.locator("bdi").evaluateAll((bs) => bs.map((b) => b.textContent));
   for (const name of Object.values(hostileNames)) expect(isolated, name).toContain(visible(name));
   expect(isolated).toContain(HOSTILE_TESTER);
-  expect(await article.evaluate((a) => /[\p{Cf}\p{Cs}\p{Zl}\p{Zp}\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u.test(a.textContent ?? "")), "no raw hidden character").toBe(false);
+  for (const scope of [article, band]) expect(await scope.evaluate((a) => /[\p{Cf}\p{Cs}\p{Zl}\p{Zp}\u0000-\u0008\u000B-\u001F\u007F-\u009F]/u.test(a.textContent ?? "")), "no raw hidden character").toBe(false);
   expect(await violations(page)).toEqual([]);
 });
 
@@ -237,7 +247,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     test(`${locale}: asks on the model page, reviews the proposal, approves the edit with the keyboard and sees version 2`, async ({ page, request }) => {
       const t = catalogs[locale];
       await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, locale);
-      await expect(page.getByText(fill(t["model.summary"], { version: "1", domain: domainIn(t) }))).toBeVisible();
+      await expectBand(page, "1", domainIn(t));
       expect(await violations(page), "the model page").toEqual([]);
       const before = (await apiCalls(request)).length;
 
@@ -291,7 +301,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       await page.keyboard.press("Enter");
       await page.waitForURL(`${APP}/models/${tenant.MODEL}`);
       await settled(page, locale);
-      await expect(page.getByText(fill(t["model.summary"], { version: "2", domain: domainIn(t) }))).toBeVisible();
+      await expectBand(page, "2", domainIn(t));
       await expect(page.locator("[data-draft-status]")).toContainText(fill(t["draft.revision"], { revision: String(fixture.revision + 1) }));
       expect(await violations(page), "the model on version 2").toEqual([]);
     });
@@ -317,6 +327,6 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     expect(posts[1]!.body).toEqual({ comment: "Not this quarter." });
     await page.getByRole("link", { name: en["proposal.back"] }).click();
     await settled(page, "en");
-    await expect(page.getByText(fill(en["model.summary"], { version: "1", domain: domainIn(en) }))).toBeVisible();
+    await expectBand(page, "1", domainIn(en));
   });
 });

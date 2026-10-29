@@ -18,6 +18,7 @@ import { canEdit, useAuth } from "../../lib/auth/session";
 import type { AnalysisOutput, AnalysisRecord, ErrorCode, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
+import { AskIcon } from "../../ui/icons";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { formatAbsolute, formatRelative } from "./format";
@@ -80,7 +81,7 @@ function AskForm({ baseline, scenario, onAnalysis }: Pick<Props, "baseline" | "s
       <p className={styles.note}>{t("analysis.intro")}</p>
       <TextField label={t("analysis.question")} description={t("analysis.questionHint")} value={question} onChange={setQuestion} multiline maxLength={10000} />
       {problem && <ProblemView problem={problem} headingLevel={3} />}
-      <Button type="submit">{t("analysis.ask")}</Button>
+      <Button type="submit" icon={<AskIcon />}>{t("analysis.ask")}</Button>
       <StatusRegion message={sending ? t("analysis.asking") : null} />
     </form>
   );

@@ -9,7 +9,7 @@
 // is unsaved. One primary action (Publish); the step panel is the Add step
 // menu over the canvas; the properties panel is the one secondary panel.
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { ReadOnlyNotice } from "../../app/_components/states";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -24,7 +24,9 @@ import { useSelectedEntity } from "../../lib/state/use-selection";
 import { Button } from "../../ui/button";
 import { Callout } from "../../ui/callout";
 import { ConfirmDialog } from "../../ui/dialog";
+import { CloseIcon, FitIcon, PlusIcon, PublishIcon, SaveIcon } from "../../ui/icons";
 import { ActionMenu } from "../../ui/menu";
+import { type Fact, PageHeader } from "../../ui/page-header";
 import { StatusRegion } from "../../ui/status";
 import { Canvas, READABLE_ZOOM } from "./canvas";
 import { addStep, connectionsOf, connectSteps, deleteStep, disconnect, type EditResult, moveStep, nodeTypes, renameStep, stepLabel } from "./edits";
@@ -71,9 +73,13 @@ type EditorProps = {
   dispatch: (e: DraftEvent) => void;
   /** Loads the model and its draft again (after a publish). */
   reloadPage: () => Promise<Problem | null>;
+  /** The page's header band (H-040): the way back and the model's facts; the editor adds the draft and its actions. */
+  header: { trail: { href: string; label: string }[]; facts: Fact[] };
+  /** The AI request (T-031), at the top of the side panel above the step's properties (H-040). */
+  ask?: ReactNode;
 };
 
-function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
+function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorProps) {
   const api = useApi();
   const { role } = useAuth();
   const { t, gap } = useI18n();
@@ -262,11 +268,17 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
     </p>
   );
 
+  const band = (actions?: ReactNode) => (
+    <PageHeader trail={header.trail} title={model.name} facts={[...header.facts, { label: t("band.draft"), value: statusLine }]} actions={actions} />
+  );
+
   if (!wide) {
     return (
       <section aria-label={t("editor.label")} className={styles.editor}>
-        <div className={styles.bar}>{statusLine}</div>
+        {band()}
         <Callout tone="info">{t("editor.narrow")}</Callout>
+        {/* A phone edits no topology, but the AI can still be asked (review M4). */}
+        {ask}
       </section>
     );
   }
@@ -277,34 +289,34 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
 
   return (
     <section aria-label={t("editor.label")} className={styles.editor}>
-      <div className={styles.bar}>
-        {statusLine}
-        {canEdit(role) && (
-          <div className={styles.actions}>
+      {band(
+        canEdit(role) && (
+          <>
             {publishReason !== null && (
               <p id={reasonId} className={styles.reason}>
                 {publishReason}
               </p>
             )}
             {pending.length > 0 && session.status !== "saving" && (
-              <Button variant="danger" onPress={() => setDialog({ kind: "discard" })}>
+              <Button variant="danger" icon={<CloseIcon />} onPress={() => setDialog({ kind: "discard" })}>
                 {t("draft.discard")}
               </Button>
             )}
-            <Button ref={saveRef} blocked={!saveable} aria-describedby={saveable ? undefined : statusId} onPress={save}>
+            <Button ref={saveRef} icon={<SaveIcon />} blocked={!saveable} aria-describedby={saveable ? undefined : statusId} onPress={save}>
               {t("editor.save")}
             </Button>
             <Button
               variant="primary"
+              icon={<PublishIcon />}
               blocked={!publishable}
               aria-describedby={publishReason === null ? undefined : reasonId}
               onPress={() => setDialog({ kind: "publish" })}
             >
               {t("editor.publish")}
             </Button>
-          </div>
-        )}
-      </div>
+          </>
+        ),
+      )}
 
       <ReadOnlyNotice role={role} />
       {remote.out_of_date && <Callout tone="warning">{t("draft.outOfDate")}</Callout>}
@@ -325,11 +337,11 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
             {/* 3D is a read-only projection (T-033): no step is added or fitted there. */}
             {editable && view === "2d" && (
               <div ref={addRef}>
-                <ActionMenu label={t("editor.addStep")} items={addable.map((type) => ({ id: type, label: t(`editor.type.${type}`) }))} onAction={(id) => add(id as (typeof nodeTypes)[number])} />
+                <ActionMenu label={t("editor.addStep")} icon={<PlusIcon />} items={addable.map((type) => ({ id: type, label: t(`editor.type.${type}`) }))} onAction={(id) => add(id as (typeof nodeTypes)[number])} />
               </div>
             )}
             {view === "2d" && (
-              <Button variant="quiet" onPress={() => void flow.fitView({ padding: 0.1 })}>
+              <Button variant="quiet" icon={<FitIcon />} onPress={() => void flow.fitView({ padding: 0.1 })}>
                 {t("editor.fit")}
               </Button>
             )}
@@ -370,6 +382,8 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
             onGo={focusStep}
           />
         </div>
+        <div className={styles.side}>
+        {ask}
         <Properties
           key={node?.id ?? ""}
           ir={working}
@@ -384,6 +398,7 @@ function Editor({ model, session, dispatch, reloadPage }: EditorProps) {
           onDisconnect={remove}
           onDelete={() => node && setDialog({ kind: "delete", id: node.id })}
         />
+        </div>
       </div>
 
       <ConfirmDialog

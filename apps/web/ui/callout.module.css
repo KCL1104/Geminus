@@ -1,6 +1,7 @@
 /* A note (DESIGN.md Notes): text in Graphite Ink in every tone; the tone is
    the edge and the wash, never a side stripe. */
 .callout {
+  max-width: var(--gm-content-width);
   margin: 0 0 var(--gm-space-gutter);
   padding: var(--gm-space-cell) var(--gm-space-lg);
   border: 1px solid var(--gm-color-rule);

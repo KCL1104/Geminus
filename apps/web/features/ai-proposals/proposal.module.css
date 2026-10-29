@@ -225,9 +225,25 @@ ul.words {
   flex-basis: 100%;
 }
 
-/* The model page's entry point: one form, its field, what to make and the send button. */
+/* The model page's entry point (H-040: the top of the editor's side panel): one form, its field, what to make and the send button. */
 .ask {
   margin: 0 0 var(--gm-space-xl);
+}
+
+.ask h2 {
+  margin-top: 0;
+}
+
+.askMode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
+  margin: var(--gm-space-gutter) 0;
+}
+
+.askMode p {
+  margin: 0;
 }
 
 .askRow {

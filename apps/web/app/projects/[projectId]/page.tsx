@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { use } from "react";
 import { useApi } from "../../../lib/api/provider";
+import { PageHeader } from "../../../ui/page-header";
 import { useI18n } from "../../../lib/i18n/provider";
 import list from "../../../ui/list.module.css";
 import { MorePages, RemoteView, RequireSession } from "../../_components/states";
@@ -40,7 +41,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
   const { t } = useI18n();
   return (
     <>
-      <h1>{t("models.title")}</h1>
+      <PageHeader trail={[]} title={t("models.title")} />
       <RequireSession>
         <Models projectId={projectId} />
       </RequireSession>

@@ -41,6 +41,13 @@
   white-space: nowrap;
 }
 
+/* Full-width punctuation keeps its full width in a heading cell: Chromium
+   trims a closing "）" at a line's end yet still lays the line out wider than
+   the cell (zh-Hant at 1280 px beside the side panel, H-040). */
+.table th {
+  text-spacing-trim: space-all;
+}
+
 /* The metrics table's own scroll region (a phone): the table keeps a
    readable width and the page itself never scrolls sideways. */
 .scroll {
@@ -341,4 +348,53 @@
 .facts dd {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+/* H-040: the comparison beside one side panel (the AI's explanation, the
+   frozen settings), divided by Control Edge; one column below 1100 px. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+  gap: var(--gm-space-split);
+  align-items: start;
+}
+
+.main,
+.side {
+  min-width: 0;
+}
+
+.side {
+  padding-inline-start: var(--gm-space-xl);
+  border-inline-start: 1px solid var(--gm-color-edge);
+}
+
+.side > :first-child {
+  margin-top: 0;
+}
+
+.side h2 {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    padding: var(--gm-space-xl) 0 0;
+    border-inline-start: 0;
+    border-top: 1px solid var(--gm-color-edge);
+  }
+}
+
+/* The two run IDs, one per line: they do not break inside the side panel. */
+.ids {
+  display: flex;
+  flex-direction: column;
+}
+
+.ids code {
+  font-size: var(--gm-font-size-label);
 }

@@ -8,7 +8,6 @@
 // page, so either request waits while the editor has edits the page would
 // lose. Under the editor, the model's scenarios lead back to their runs
 // and results.
-import Link from "next/link";
 import { useEffect, useReducer } from "react";
 import { RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
@@ -61,21 +60,31 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
       {() =>
         page && (
           <>
-            <h1>{page.model.name}</h1>
-            <p>
-              <Link href={`/projects/${page.model.project_id}`}>{t("model.back")}</Link>
-            </p>
-            <p>{t("model.summary", { version: String(page.model.latest_version.version), domain: domainName(page.model.domain, t) })}</p>
-            {onProposal && canEdit(role) && (
-              <AskForm
-                model={page.model}
-                blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
-                onCreated={onProposal}
-                onReload={reloadPage}
-                photo={PHOTO_DOMAINS.includes(page.model.domain)}
-              />
-            )}
-            <ModelEditor model={page.model} session={page.session} dispatch={dispatch} reloadPage={reloadPage} />
+            <ModelEditor
+              model={page.model}
+              session={page.session}
+              dispatch={dispatch}
+              reloadPage={reloadPage}
+              header={{
+                trail: [{ href: `/projects/${page.model.project_id}`, label: t("model.back") }],
+                facts: [
+                  { label: t("band.latest"), value: <data value={page.model.latest_version.version}>{page.model.latest_version.version}</data> },
+                  { label: t("band.domain"), value: domainName(page.model.domain, t) },
+                ],
+              }}
+              ask={
+                onProposal &&
+                canEdit(role) && (
+                  <AskForm
+                    model={page.model}
+                    blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
+                    onCreated={onProposal}
+                    onReload={reloadPage}
+                    photo={PHOTO_DOMAINS.includes(page.model.domain)}
+                  />
+                )
+              }
+            />
             <ScenarioList modelId={page.model.id} latestVersionId={page.model.latest_version.id} />
           </>
         )

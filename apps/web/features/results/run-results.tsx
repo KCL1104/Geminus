@@ -5,7 +5,6 @@
 // outcome is a status message (ADR-021: in the page, no toast). The runs
 // must be this scenario's and a baseline (patch []), or nothing of them is
 // shown (run-pair.ts checkPair).
-import Link from "next/link";
 import { useCallback } from "react";
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
@@ -14,9 +13,10 @@ import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { Loading, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
+import { PageHeader } from "../../ui/page-header";
 import { ShownStatus, StatusRegion } from "../../ui/status";
 import { checkPair, pairPhase } from "../simulations/run-pair";
-import { RunPairStatus } from "../simulations/run-status";
+import { LineKey, RunPairStatus, type RunSide } from "../simulations/run-status";
 import { useRunPair } from "../simulations/use-run-pair";
 import { loadResults } from "./load";
 import { ResultsView } from "./results-view";
@@ -43,7 +43,20 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
 }) {
   const api = useApi();
   const { role } = useAuth();
-  const { t } = useI18n();
+  const { t, gap } = useI18n();
+  // Completed, each run's state is in the header band's provenance row (H-040); until then the Runs section
+  // says it, with progress, failures and cancel (each thing once).
+  const runFact = (side: RunSide, run: Run) => ({
+    label: t(`runs.${side}`),
+    icon: <LineKey side={side} />,
+    value: (
+      <>
+        {t("runs.status.completed")}
+        {gap}
+        {t("runs.progress", { done: String(run.progress.completed_replications), count: run.progress.total_replications })}
+      </>
+    ),
+  });
   const [scenario, retryScenario] = useRemote((signal) => api.getScenario(scenarioId, { signal }), api, scenarioId);
   const accept = useCallback((b: Run, s: Run) => checkPair(scenarioId, b, s), [scenarioId]);
   const pair = useRunPair(api, baselineId, scenarioRunId, { pollMs, accept });
@@ -53,10 +66,14 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
     <RemoteView remote={scenario} what="scenario" onRetry={retryScenario}>
       {(s) => (
         <>
-          <h1>{s.name}</h1>
-          <p>
-            <Link href={`/scenarios/${s.id}`}>{t("runs.back")}</Link>
-          </p>
+          <PageHeader
+            trail={[
+              { href: `/models/${s.model_id}`, label: t("scenario.back") },
+              { href: `/scenarios/${s.id}`, label: t("runs.back") },
+            ]}
+            title={s.name}
+            facts={phase === "completed" && pair.baseline && pair.scenario && !pair.refused ? [runFact("baseline", pair.baseline), runFact("scenario", pair.scenario)] : []}
+          />
           {pair.refused ? (
             <ProblemView problem={pair.refused} />
           ) : (
@@ -67,7 +84,8 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
                 </RemoteView>
               )}
               {phase === "loading" && !pair.problem && <Loading what="runs" />}
-              {pair.baseline && pair.scenario && (
+              {/* Completed, the band says so; the section stays for progress, failures and cancel. */}
+              {pair.baseline && pair.scenario && phase !== "completed" && (
                 <RunPairStatus
                   baseline={pair.baseline}
                   scenario={pair.scenario}

@@ -304,7 +304,8 @@ describe("the editor on the model page", () => {
     const post = api.calls.find((c) => c.method === "POST")!;
     expect(post).toMatchObject({ path: `/api/v1/models/${SAMPLE_MODEL_ID}/versions`, ifMatch: '"draft-revision-3"', body: { expected_base_version_id: "mv_01M4YDQK00E1ECTR0N1C500001" } });
     expect(outcome(el)).toBe("Version 2 published.");
-    expect(el.textContent).toContain("Latest version 2");
+    // The header band's latest version (H-040).
+    expect(el.querySelector("header dl dd data")?.getAttribute("value")).toBe("2");
     // Nothing changed since the new version: Publish is blocked again, with that reason.
     expect(document.getElementById(button(en["editor.publish"]).getAttribute("aria-describedby")!)?.textContent).toBe("No changes since version 2.");
   });

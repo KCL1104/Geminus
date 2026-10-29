@@ -33,7 +33,7 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
   const { config: sc } = scenario;
   const facts: [string, React.ReactNode][] = [
     [t("facts.version"), t("facts.versionValue", { version: String(version) })],
-    [t("facts.runs"), <><code>{baseline.id}</code>{" · "}<code>{scenario.id}</code></>],
+    [t("facts.runs"), <span key="ids" className={styles.ids}><code>{baseline.id}</code><code>{scenario.id}</code></span>],
     [t("facts.horizon"), both(span(bc.horizon), span(sc.horizon), sameSpan(bc.horizon, sc.horizon))],
     [t("facts.warmup"), both(span(bc.warmup), span(sc.warmup), sameSpan(bc.warmup, sc.warmup))],
     [t("facts.replications"), both(number(bc.replications), number(sc.replications), bc.replications === sc.replications)],
@@ -97,8 +97,10 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
   const { replications: br } = baseline.run.config;
   const caption = br === scenario.run.config.replications ? t("compare.summary.caption", { count: br }) : t("compare.summary.captionMixed");
 
+  // H-040: the comparison on the left, the AI's explanation and the frozen settings in the side panel.
   return (
-    <>
+    <div className={styles.layout}>
+      <div className={styles.main}>
       {!comparison.comparable && (
         <Callout tone="warning" heading={t("compare.incomparable.heading")}>
           <p>{t("compare.incomparable.body")}</p>
@@ -128,14 +130,17 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
           <MetricsTable rows={rows} />
         </div>
       </section>
-      {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
       <LineIn3D data={data} />
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}
         scenario={{ trace: scenario.trace, endTick: scenario.result.measurement_window.horizon_ticks }}
       />
-      <Facts baseline={baseline.run} scenario={scenario.run} version={version.version} />
-    </>
+      </div>
+      <div className={styles.side}>
+        {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
+        <Facts baseline={baseline.run} scenario={scenario.run} version={version.version} />
+      </div>
+    </div>
   );
 }
