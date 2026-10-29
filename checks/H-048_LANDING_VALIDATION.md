@@ -116,3 +116,7 @@ Independent review of `670d999`: no High, 3 Medium, 10 Low.
 | L8: about 600 px empty under step 5's text at 1280 | Fixed: the step's text is sticky beside the tall explanation, so it stays level with the screen while the page scrolls past it (static on a phone). |
 | L9: screens at 1:1 with real buttons look clickable | Fixed: each picture is framed as a screenshot, a window on the Overlay shadow whose title bar (Well, a Rule line under it, Ink 2 at Label) is the caption, so the buttons sit inside a picture. |
 | L10: 390 px miniatures | Left, as asked; noted in §7. |
+
+### Verification of round 1 (independent reviewer, 2026-10-30)
+
+M1, M2 and M3 are fixed in b6c5b56 and nothing new is High or Medium. The reviewer rebuilt the app, re-ran `npx vitest run tests/landing.test.tsx tests/layout.test.tsx` (exit 0, 39 tests) and served it: no external request, no console error, no response of 400 or more, no image preload in the head, no horizontal overflow at 390 or 1280 px. Left as Low: the zh-Hant industry names still differ from the template catalog (reconciled at the merge with H-045), step 1's "third ICT tester" example beside step 3's FCT proposal, the logo mark's SVG duplicated from the rail and shown twice at 390 px, and phone-width miniatures.
