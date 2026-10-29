@@ -299,9 +299,12 @@ func (c *SegmentClient) Segment(ctx context.Context, req SegmentRequest) (out Se
 	out = Segmentation{Metadata: SegmentMetadata{Provider: c.backend.Name(), Role: req.Role, ImageDigest: req.Image.Digest,
 		Concepts: len(req.Concepts)}}
 	meta := &out.Metadata
+	// The clock starts before the deadline is set, so a call that times out
+	// reports at least its timeout (CI saw 47 ms for a 50 ms timeout when the
+	// goroutine was descheduled between the two).
+	start := time.Now()
 	callCtx, cancel := context.WithTimeout(ctx, c.budget.Timeout)
 	defer cancel()
-	start := time.Now()
 	// out is the named result, so this write reaches what the caller gets:
 	// every return below has already copied out into it when the deferred
 	// call runs (the first live photo smoke reported 0 while the write

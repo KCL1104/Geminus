@@ -1,27 +1,27 @@
-/* The header band (H-040, DESIGN.md Layout): Pale Shell from edge to edge
-   under the strip, ending in Control Edge where the sheet begins. */
+/* The page's header (H-040, H-041; DESIGN.md Layout): on the page's ground,
+   the trail in Secondary ink, the title at Display, the provenance as pills,
+   and the actions at the right, level with the pills. */
 .band {
-  margin: calc(-1 * var(--gm-space-xl)) calc(-1 * var(--gm-gutter-end)) var(--gm-space-xl) calc(-1 * var(--gm-gutter-start));
-  padding: var(--gm-space-group) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) 0 max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
-  border-bottom: 1px solid var(--gm-color-edge);
-  background: var(--gm-color-ground);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--gm-space-gutter) var(--gm-space-xl);
+  margin: 0 0 var(--gm-space-xl);
 }
 
-/* A page with the band takes the window's width, so the band reaches both edges; text, lists, notes and
-   sections keep the reading width (--gm-content-width), the editor and the results' two columns the window's. */
+/* A page with the header takes the window's width (the editor and the
+   results' two columns use it); text, lists, notes and sections keep the
+   reading width (--gm-content-width). */
 :global(main):has(.band) {
   max-width: none;
 }
 
-.titleRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--gm-space-xs) var(--gm-space-md);
-  padding-bottom: var(--gm-space-group);
+.text {
+  flex: 1 1 420px;
+  min-width: 0;
 }
 
-.titleRow h1 {
+.text h1 {
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -29,16 +29,16 @@
 .trail {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--gm-space-md);
-  margin: 0;
+  gap: var(--gm-space-sm);
+  margin: 0 0 var(--gm-space-sm);
   padding: 0;
   list-style: none;
-  color: var(--gm-color-ink-2);
+  color: var(--gm-color-ink-3);
 }
 
 .trail li {
   display: flex;
-  gap: var(--gm-space-md);
+  gap: var(--gm-space-sm);
 }
 
 /* The separator is drawn, not read: its alternative text is empty. */
@@ -49,60 +49,49 @@
 
 .trail a {
   color: var(--gm-color-ink-2);
+  text-decoration: none;
 }
 
 .trail a:hover {
   color: var(--gm-color-ink);
+  text-decoration: underline;
 }
 
-/* The provenance row: 44 px, its groups divided by hairline verticals, the actions at the right edge. */
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-md) var(--gm-space-gutter);
-  min-height: 44px;
-  padding: var(--gm-space-sm) 0;
-  border-top: 1px solid var(--gm-color-rule);
-}
-
+/* The provenance as pills: a label in tertiary ink, the value in ink. */
 .facts {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-md) 0;
-  margin: 0;
+  gap: var(--gm-space-md);
+  margin: var(--gm-space-lg) 0 0;
 }
 
 .fact {
-  display: flex;
-  align-items: baseline;
+  display: inline-flex;
+  align-items: center;
   gap: var(--gm-space-sm);
-  padding: 0 var(--gm-space-group);
-  border-inline-start: 1px solid var(--gm-color-rule);
-}
-
-.fact:first-child {
-  padding-inline-start: 0;
-  border-inline-start: 0;
-}
-
-.fact dt {
-  color: var(--gm-color-ink-3);
+  min-height: 26px;
+  padding: 0 var(--gm-space-cell);
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-sheet);
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
 }
 
+.fact dt {
+  color: var(--gm-color-ink-3);
+}
+
 .fact dd {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--gm-space-sm);
   margin: 0;
-  font-weight: var(--gm-font-weight-strong);
+  color: var(--gm-color-ink);
+  font-weight: var(--gm-font-weight-medium);
 }
 
 .fact dd svg {
-  align-self: center;
   color: var(--gm-color-ink-2);
 }
 
@@ -115,26 +104,4 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--gm-space-md);
-  margin-inline-start: auto;
-}
-
-/* A phone: the groups become a two-column grid, the actions a row under them. */
-@media (max-width: 720px) {
-  .facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--gm-space-md) var(--gm-space-gutter);
-    width: 100%;
-  }
-
-  .fact {
-    flex-direction: column;
-    gap: 0;
-    padding: 0;
-    border: 0;
-  }
-
-  .actions {
-    margin-inline-start: 0;
-  }
 }

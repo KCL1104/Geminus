@@ -65,7 +65,7 @@ function LineIn3D({ data }: { data: ResultsData }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
-    <details className={styles.more} onToggle={(e) => setOpen(e.currentTarget.open)}>
+    <details className={styles.card3d} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>{t("twin3d.results")}</summary>
       {open && <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />}
     </details>

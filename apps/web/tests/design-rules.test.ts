@@ -1,9 +1,10 @@
 // T-045 / H-027 ("簡潔"): the simplicity rules of DESIGN.md that a source
 // scan can check. Every stylesheet but ui/tokens.css takes its colours,
 // type sizes, spacing, corners, shadows and motion from the tokens; nothing
-// is decorated (no gradient, no keyframe animation, no shadow on anything
-// that does not float, no border thicker than a hairline, so no side
-// stripe); and no component writes a colour inline. The rules that need a
+// is decorated (no gradient but the canvas's dot grid, no keyframe
+// animation, no shadow but the three shadow tokens and two state rings
+// (H-041), no border thicker than a hairline, so no side stripe); and no
+// component writes a colour inline. The rules that need a
 // rendered page (one primary action per view, no duplicate controls,
 // visible focus) are checked in tests/simplicity.test.tsx and in the
 // browser (apps/web-e2e/tests/simplicity.spec.ts).
@@ -78,22 +79,22 @@ describe("simplicity rules (H-027) in the stylesheets", () => {
     expect(offenders.map(where)).toEqual([]);
   });
 
-  it("has no gradient and no animation; transitions are the motion token", () => {
+  it("has no gradient but the canvas's dot grid, and no animation; transitions are the motion token", () => {
     // (The reduced-motion rule in ui/base.css may shorten durations; it starts nothing.)
-    expect(all.filter((d) => /gradient\(/.test(d.value) || /^animation(-name)?$/.test(d.prop)).map(where)).toEqual([]);
+    // The one gradient draws the 2D canvas's dots (H-041), in a token colour.
+    const dots = "features/model-editor/canvas.module.css: background-image: radial-gradient(var(--gm-color-rule-strong) 1.2px, transparent 1.2px)";
+    expect(all.filter((d) => /gradient\(/.test(d.value) || /^animation(-name)?$/.test(d.prop)).map(where)).toEqual([dots]);
     for (const f of sheets) expect(readFileSync(f, "utf8"), f).not.toMatch(/@keyframes/);
     const transitions = all.filter((d) => d.prop === "transition");
     expect(transitions.length).toBeGreaterThan(0);
     for (const t of transitions) expect(t.value.split(",").every((p) => /^\s*[a-z-]+ var\(--gm-motion\)\s*$/.test(p)), where(t)).toBe(true);
   });
 
-  it("casts a shadow only from what floats over the work, besides the invalid-field ring", () => {
+  it("casts shadows only from the three shadow tokens, besides the invalid-field and selected-step rings (H-041)", () => {
     const shadows = all.filter((d) => d.prop === "box-shadow");
-    expect(shadows.map((d) => `${d.file}: ${d.value}`).sort()).toEqual([
-      "ui/dialog.module.css: var(--gm-shadow-overlay)",
-      "ui/field.module.css: inset 0 0 0 1px var(--gm-color-error)",
-      "ui/select.module.css: var(--gm-shadow-overlay)",
-    ]);
+    expect(shadows.length).toBeGreaterThan(5);
+    const allowed = /^(var\(--gm-shadow-(card|control|overlay)\)|none|inset 0 0 0 1px var\(--gm-color-error\)|0 0 0 3px var\(--gm-color-accent-wash\), var\(--gm-shadow-control\))$/;
+    expect(shadows.filter((d) => !allowed.test(d.value)).map(where)).toEqual([]);
   });
 
   it("draws borders as 1 px hairlines: no thicker border, so no side stripe", () => {
@@ -107,7 +108,7 @@ describe("simplicity rules (H-027) in the stylesheets", () => {
     const sizes = all.filter((d) => d.prop === "font-size" || d.prop === "font");
     expect(sizes.filter((d) => !/^(var\(--gm-font-size-[\w-]+\)|inherit)$/.test(d.value)).map(where)).toEqual([]);
     const radii = all.filter((d) => /radius/.test(d.prop));
-    expect(radii.filter((d) => !/^(var\(--gm-radius-(sm|md|lg)\)|0)$/.test(d.value)).map(where)).toEqual([]);
+    expect(radii.filter((d) => !/^(var\(--gm-radius-(sm|md|lg|full)\)|0)$/.test(d.value)).map(where)).toEqual([]);
   });
 
   it("takes every margin, padding, gap and offset from the spacing scale", () => {

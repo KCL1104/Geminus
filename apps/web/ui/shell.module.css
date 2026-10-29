@@ -1,7 +1,7 @@
-/* The app shell (T-045, DESIGN.md Navigation): a 48 px app strip on the
-   Pale Shell (the product, the main navigation, the language and theme
-   choices), then one main region on the white sheet. Nothing else is in
-   the frame: no secondary panel until a view needs one (H-027). */
+/* The app shell (T-045, DESIGN.md Navigation, H-041): a 48 px app strip on
+   the page's ground (the brand mark and name, the main navigation, the
+   language and theme choices), then one main region where the page's cards
+   sit. Nothing else is in the frame (H-027). */
 .skip {
   position: absolute;
   top: var(--gm-space-md);
@@ -31,13 +31,31 @@
   background: var(--gm-color-ground);
 }
 
+/* The product: its mark (two offset squares, the twin) and its name (H-041). */
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-md);
   padding-inline-end: var(--gm-space-gutter);
   border-inline-end: 1px solid var(--gm-color-rule);
-  font-size: var(--gm-font-size-headline);
+  font-size: var(--gm-font-size-title);
   font-weight: var(--gm-font-weight-brand);
-  line-height: var(--gm-line-height-headline);
+  line-height: var(--gm-line-height-title);
   letter-spacing: -0.01em;
+}
+
+.mark {
+  flex: none;
+}
+
+.markFront {
+  fill: var(--gm-color-accent-fill);
+}
+
+.markBack {
+  fill: var(--gm-color-ground);
+  stroke: var(--gm-color-ink);
+  stroke-width: 1.5;
 }
 
 /* It takes the row's free space (an empty box: nothing moves), so a control
@@ -53,13 +71,16 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--gm-control-height);
+  padding: 0 var(--gm-space-cell);
+  border-radius: var(--gm-radius-md);
+  color: var(--gm-color-ink-2);
   font-weight: var(--gm-font-weight-medium);
   text-decoration: none;
 }
 
 .nav a:hover {
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
+  background: var(--gm-color-hover);
+  color: var(--gm-color-ink);
 }
 
 .tools {
@@ -89,7 +110,7 @@
 .main {
   max-width: var(--gm-content-width);
   margin: 0;
-  padding: var(--gm-space-xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
+  padding: var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
   outline: none;
 }
 
@@ -99,8 +120,17 @@
     column-gap: var(--gm-space-lg);
   }
 
+  /* The strip stays one row on a phone: the mark and the link's padding give their room to the choices. */
   .brand {
     padding-inline-end: var(--gm-space-lg);
+  }
+
+  .mark {
+    display: none;
+  }
+
+  .nav a {
+    padding: 0;
   }
 
   .tools {

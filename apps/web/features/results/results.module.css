@@ -2,8 +2,17 @@
    with the scenario column in its wash and result figures at 15 px, and the
    timetable sheet: hairline rows, the minor and major time grid, dashed
    graphite baseline and solid green scenario lines. */
+/* Each part of the results is a card on the page (H-041). */
 .section {
-  margin: 0 0 var(--gm-space-xl);
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.section > h2:first-child {
+  margin: 0 0 var(--gm-space-gutter);
 }
 
 /* The spoken summary leads, in Figure size (DESIGN.md Words around it). */
@@ -12,8 +21,12 @@
   line-height: var(--gm-line-height-title);
 }
 
-/* The median lead time sentence sits on its caption. */
+/* The median lead time sentence sits on its caption, at Headline (H-041). */
 .lead {
+  font-size: var(--gm-font-size-headline);
+  font-weight: var(--gm-font-weight-medium);
+  line-height: var(--gm-line-height-headline);
+  letter-spacing: -0.02em;
   margin-bottom: var(--gm-space-xs);
 }
 
@@ -167,13 +180,12 @@
   font-weight: var(--gm-font-weight-strong);
 }
 
-/* The interval beneath its mean, narrowed before it is made smaller. */
+/* The interval beneath its mean. */
 .ci {
   display: block;
   color: var(--gm-color-ink-2);
   font-size: var(--gm-font-size-title);
   line-height: var(--gm-line-height-title);
-  font-stretch: 87.5%;
 }
 
 .reason,
@@ -215,7 +227,7 @@
 .chart {
   width: 100%;
   margin: 0 0 var(--gm-space-md);
-  border-top: 1px solid var(--gm-color-edge);
+  border-top: 1px solid var(--gm-color-rule);
   background: var(--gm-color-sheet);
 }
 
@@ -245,7 +257,6 @@
 .axisTitle {
   fill: var(--gm-color-ink-3);
   font-size: var(--gm-font-size-label);
-  font-stretch: 87.5%;
 }
 
 .rowLabel {
@@ -288,6 +299,19 @@
 /* Each step's measures, under the key metrics: one click away (H-027). */
 .more {
   margin: 0 0 var(--gm-space-md);
+}
+
+/* The 3D view's disclosure is a card too; its summary is the card's one line. */
+.card3d {
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.card3d > summary {
+  font-weight: var(--gm-font-weight-medium);
 }
 
 /* The AI's explanation (T-030): the form, then its text in lists, each
@@ -355,7 +379,7 @@
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
-  gap: var(--gm-space-split);
+  gap: var(--gm-space-section);
   align-items: start;
 }
 
@@ -365,8 +389,11 @@
 }
 
 .side {
-  padding-inline-start: var(--gm-space-xl);
-  border-inline-start: 1px solid var(--gm-color-edge);
+  position: sticky;
+  top: var(--gm-space-gutter);
+  /* Never taller than the window: it scrolls inside itself (review M4). */
+  max-height: calc(100vh - 2 * var(--gm-space-gutter));
+  overflow-y: auto;
 }
 
 .side > :first-child {
@@ -383,9 +410,7 @@
   }
 
   .side {
-    padding: var(--gm-space-xl) 0 0;
-    border-inline-start: 0;
-    border-top: 1px solid var(--gm-color-edge);
+    position: static;
   }
 }
 

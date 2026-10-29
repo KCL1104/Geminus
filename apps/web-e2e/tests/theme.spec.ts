@@ -64,9 +64,9 @@ test("the fonts come from the app's own origin, and the Chinese face only for wh
   await open(page, "/", "zh-Hant");
   expect(fonts.length).toBeGreaterThan(0);
   expect(fonts.filter((u) => !u.startsWith(`${origin}/_next/static/media/`))).toEqual([]);
-  expect(fonts.some((u) => /archivo-latin-standard-normal/.test(u))).toBe(true);
+  expect(fonts.some((u) => /geist-latin-wght-normal/.test(u))).toBe(true);
   const chinese = fonts.filter((u) => /noto-sans-tc-\d+-wght-normal/.test(u));
   expect(chinese.length).toBeGreaterThan(0);
   expect(chinese.length).toBeLessThan(40);
-  expect(await page.evaluate(() => document.fonts.check('13.5px "Archivo Variable"'))).toBe(true);
+  expect(await page.evaluate(() => document.fonts.check('13px "Geist Variable"'))).toBe(true);
 });

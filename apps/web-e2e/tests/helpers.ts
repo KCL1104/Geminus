@@ -15,8 +15,8 @@ export const locales: Locale[] = ["en", "zh-Hant"];
 /** The system colour schemes the app follows when the reader chose no theme (H-013). */
 export const schemes = ["light", "dark"] as const;
 export type Scheme = (typeof schemes)[number];
-/** What DESIGN.md's Timetable White (the sheet) computes to in each theme. */
-export const sheet = { light: "rgb(255, 255, 255)", dark: "rgb(23, 23, 23)" } as const;
+/** What DESIGN.md's Ground (the page under the cards, H-041) computes to in each theme. */
+export const sheet = { light: "rgb(250, 250, 250)", dark: "rgb(10, 10, 10)" } as const;
 
 /** The routes there are; pages that need a session show their signed-out state. */
 export const routes = [

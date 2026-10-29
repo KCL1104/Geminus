@@ -1,9 +1,10 @@
-// T-045 / REQ-023 / H-013 / H-027: the design tokens (ui/tokens.css) are
-// DESIGN.md's, value for value, in the light and the gray-black dark theme;
+// T-045 / REQ-023 / H-027 / H-041: the design tokens (ui/tokens.css) are
+// DESIGN.md's, value for value, in the light and the near-black dark theme;
 // every colour pair components use meets WCAG 2.2 AA in both; the palette
-// is the neutrals, the scenario green and the warning and error signals
-// only; type, spacing and corners are DESIGN.md's scales; the fonts are
-// self-hosted OFL faces with real fallbacks; compact density keeps 24 px.
+// is the neutrals, the accent (the AI, selection and focus), the scenario
+// green and the warning and error signals only; type, spacing and corners
+// are DESIGN.md's scales; the fonts are self-hosted OFL faces with real
+// fallbacks; compact density keeps 24 px.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -85,10 +86,10 @@ function chroma(value: string): number {
   return Math.hypot(A, B);
 }
 
-// The only hues (H-027 rule 3, DESIGN.md Colors): the scenario green (also
-// a passed check) and the warning and error signals. Everything else is a
-// graphite or paper neutral.
-const hueFamilies = /^--gm-color-(scenario|warning|error)(-|$)/;
+// The only hues (H-027 rule 3, H-041; DESIGN.md Colors): the accent (the AI,
+// selection, focus), the scenario green (also a passed check) and the
+// warning and error signals. Everything else is a neutral.
+const hueFamilies = /^--gm-color-(accent|scenario|warning|error)(-|$)/;
 const colourTokens = (m: Map<string, string>) => [...m].filter(([n]) => n.startsWith("--gm-color-"));
 
 // Text (WCAG 1.4.3, 4.5:1) and the surfaces each sits on in components.
@@ -112,6 +113,13 @@ const textPairs: [string, string][] = [
   ["--gm-color-on-scenario", "--gm-color-scenario"],
   ["--gm-color-ink-2", "--gm-color-scenario-wash"],
   ["--gm-color-ink-3", "--gm-color-scenario-wash"],
+  // H-041: the accent as text and its wash, the AI button's label, the tertiary ink on raised cards.
+  ["--gm-color-accent", "--gm-color-sheet"],
+  ["--gm-color-accent", "--gm-color-ground"],
+  ["--gm-color-accent", "--gm-color-accent-wash"],
+  ["--gm-color-on-accent", "--gm-color-accent-fill"],
+  ["--gm-color-ink", "--gm-color-accent-wash"],
+  ["--gm-color-ink-3", "--gm-color-raised"],
 ];
 // Control boundaries against the surfaces controls sit on, the focus ring
 // and the checked box (WCAG 1.4.11, 3:1). A hovered control's own fill is
@@ -126,6 +134,10 @@ const nonTextPairs: [string, string][] = [
   ["--gm-color-scenario", "--gm-color-sheet"],
   ["--gm-color-baseline", "--gm-color-sheet"],
   ["--gm-color-scenario", "--gm-color-scenario-wash"],
+  // H-041: the focus ring and a selected step's border are the accent.
+  ["--gm-color-accent", "--gm-color-sheet"],
+  ["--gm-color-accent", "--gm-color-raised"],
+  ["--gm-color-accent", "--gm-color-ground"],
 ];
 
 function cssFiles(dir: string): string[] {
@@ -167,9 +179,9 @@ describe("design tokens", () => {
     expect(light.get("color-scheme")).toBe("light dark");
   });
 
-  it("keeps the dark neutrals gray-black, with no chroma (H-012)", () => {
+  it("keeps the dark neutrals gray-black, with no chroma (H-012); the hues' washes are tinted (H-041)", () => {
     for (const [name, value] of [...colourTokens(darkByChoice), ["--gm-shadow-overlay", darkByChoice.get("--gm-shadow-overlay")!] as const]) {
-      if (hueFamilies.test(name) && !/-wash$/.test(name)) continue;
+      if (hueFamilies.test(name)) continue;
       for (const c of value.match(/#[0-9a-f]{6}|rgba?\([^)]*\)/gi) ?? []) {
         const [r, g, b] = rgba(c);
         expect([r, g], `${name}: ${c}`).toEqual([b, b]);
@@ -177,29 +189,30 @@ describe("design tokens", () => {
     }
   });
 
-  it("has no hue but the scenario green and the warning and error signals (H-027)", () => {
+  it("has no hue but the accent, the scenario green and the warning and error signals (H-027, H-041)", () => {
     for (const [theme, m] of [["light", light], ["dark", darkByChoice]] as const) {
       for (const [name, value] of colourTokens(m)) {
         if (hueFamilies.test(name)) continue;
         expect(chroma(value), `${theme} ${name} ${value} is a neutral`).toBeLessThanOrEqual(0.012);
       }
     }
-    // The scenario green is the only green, and green is never the focus or a link colour.
-    expect(resolve("--gm-focus-ring")).toBe("2px solid #1b1d1f");
+    // The scenario green is the only green, and green is never the focus or a link colour: focus is the accent.
+    expect(resolve("--gm-focus-ring")).toBe("2px solid #6d4aff");
   });
 
   it("has DESIGN.md's five type sizes, spacing scale and corners", () => {
     const sizes = [...light].filter(([n]) => n.startsWith("--gm-font-size-")).map(([, v]) => parseFloat(v));
-    expect(new Set(sizes)).toEqual(new Set([12, 13.5, 15, 18, 22]));
+    expect(new Set(sizes)).toEqual(new Set([12, 13, 15, 20, 26]));
     expect(designSizes).toEqual(new Set(sizes));
     for (const [key, value] of designSpacing) expect(light.get(`--gm-space-${key}`), `space ${key}`).toBe(value);
     expect([...light].filter(([n]) => n.startsWith("--gm-space-")).length).toBe(designSpacing.size);
     for (const [key, value] of designRadii) expect(light.get(`--gm-radius-${key}`), `radius ${key}`).toBe(value);
   });
 
-  it("uses Archivo and Noto Sans TC with real fallbacks, and tabular figures", () => {
+  it("uses Geist, Geist Mono and Noto Sans TC with real fallbacks, and tabular figures (H-041)", () => {
     const stack = resolve("--gm-font-sans");
-    expect(stack).toMatch(/^"Archivo Variable", Archivo, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif$/);
+    expect(stack).toMatch(/^"Geist Variable", Geist, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif$/);
+    expect(resolve("--gm-font-mono")).toMatch(/^"Geist Mono Variable", "Geist Mono", ui-monospace, .*monospace$/);
     expect(resolve("--gm-font-features")).toBe('"tnum" 1, "lnum" 1');
   });
 
@@ -211,17 +224,17 @@ describe("design tokens", () => {
     }
   });
 
-  it("has a visible focus ring in Graphite Ink, which flips with the theme", () => {
+  it("has a visible focus ring in the accent, which lightens in dark (H-041)", () => {
     expect(parseInt(resolve("--gm-focus-width"), 10)).toBeGreaterThanOrEqual(2);
-    expect(resolve("--gm-focus-ring", "dark")).toBe("2px solid #ebebeb");
+    expect(resolve("--gm-focus-ring", "dark")).toBe("2px solid #9d8fff");
   });
 });
 
 describe("fonts", () => {
-  const packages = ["@fontsource-variable/archivo", "@fontsource-variable/noto-sans-tc"];
+  const packages = ["@fontsource-variable/geist", "@fontsource-variable/geist-mono", "@fontsource-variable/noto-sans-tc"];
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { dependencies: Record<string, string> };
 
-  it("are self-hosted from two OFL packages at exact versions, recorded in the notices", () => {
+  it("are self-hosted from three OFL packages at exact versions, recorded in the notices", () => {
     const notices = readFileSync(join(root, "../../docs/THIRD_PARTY_NOTICES.md"), "utf8");
     for (const p of packages) {
       expect(manifest.dependencies[p], p).toMatch(/^\d+\.\d+\.\d+$/);
@@ -235,7 +248,7 @@ describe("fonts", () => {
   it("load only from the app's origin: the package CSS names local files, ours no font service", () => {
     const styles = readFileSync(join(root, "ui/global-styles.ts"), "utf8");
     const imported = [...styles.matchAll(/^import "(@fontsource-variable\/[^"]+)";$/gm)].map((m) => m[1]!);
-    expect(imported).toEqual(["@fontsource-variable/archivo/standard.css", "@fontsource-variable/noto-sans-tc/wght.css"]);
+    expect(imported).toEqual(["@fontsource-variable/geist/wght.css", "@fontsource-variable/geist-mono/wght.css", "@fontsource-variable/noto-sans-tc/wght.css"]);
     for (const spec of imported) {
       const text = readFileSync(join(root, "node_modules", spec), "utf8");
       const urls = [...text.matchAll(/url\(([^)]+)\)/g)].map((m) => m[1]!);

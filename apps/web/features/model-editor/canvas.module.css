@@ -1,38 +1,40 @@
-/* The model canvas (DESIGN.md Canvas, Step node): a white sheet with no
-   grid, square steps with a hairline header, flow arrows in Secondary
-   Graphite with open chevrons. React Flow's variables take the tokens. */
+/* The model canvas (DESIGN.md Canvas, Step node; H-041): a dot grid on the
+   page's ground, steps as raised cards, flows in tertiary ink. React Flow's
+   variables take the tokens. */
 .canvas {
   position: relative;
-  height: 480px;
-  background: var(--gm-color-sheet);
+  height: 560px;
+  background-color: var(--gm-color-ground);
+  background-image: radial-gradient(var(--gm-color-rule-strong) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
 }
 
 .canvas :global(.react-flow) {
-  --xy-edge-stroke: var(--gm-color-ink-2);
+  --xy-edge-stroke: var(--gm-color-ink-3);
   --xy-edge-stroke-width: 1.5;
   --xy-edge-stroke-selected: var(--gm-color-ink);
   --xy-connectionline-stroke: var(--gm-color-ink);
   --xy-connectionline-stroke-width: 1.5;
   --xy-handle-background-color: var(--gm-color-edge);
-  --xy-attribution-background-color: var(--gm-color-sheet);
-  --xy-background-color: var(--gm-color-sheet);
+  --xy-attribution-background-color: transparent;
+  --xy-background-color: transparent;
   color: var(--gm-color-ink);
 }
 
-/* Steps are 4 px rectangles on Raised, flat: no shadow (DESIGN.md Elevation). */
+/* Steps are cards on the grid: 12 px corners, a hairline border, a hair of shadow (H-041). */
 .node {
-  width: 152px;
-  border: 1px solid var(--gm-color-edge);
-  border-radius: var(--gm-radius-sm);
-  background: var(--gm-color-raised);
+  width: 168px;
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-control);
   color: var(--gm-color-ink);
-  transition: border-color var(--gm-motion), background-color var(--gm-motion);
+  transition: border-color var(--gm-motion), box-shadow var(--gm-motion);
 }
 
 .name {
   overflow: hidden;
-  padding: var(--gm-space-cell) var(--gm-space-lg);
-  border-bottom: 1px solid var(--gm-color-rule);
+  padding: var(--gm-space-cell) var(--gm-space-lg) 0;
   font-weight: var(--gm-font-weight-strong);
   line-height: var(--gm-line-height-title);
   text-overflow: ellipsis;
@@ -40,16 +42,16 @@
 }
 
 .kind {
-  padding: var(--gm-space-sm) var(--gm-space-lg);
+  padding: var(--gm-space-xs) var(--gm-space-lg) var(--gm-space-cell);
   color: var(--gm-color-ink-3);
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
 }
 
-/* Selected: a Graphite Ink border on Selected Row Tint (no ring shadow: DESIGN.md Simplicity 4). */
+/* Selected: an accent border with the accent's wash around it (H-041: the accent marks selection). */
 .node[data-selected] {
-  border-color: var(--gm-color-ink);
-  background: var(--gm-color-selection-tint);
+  border-color: var(--gm-color-accent);
+  box-shadow: 0 0 0 3px var(--gm-color-accent-wash), var(--gm-shadow-control);
 }
 
 /* An issue's colour stays on the border when the step is selected too. */
@@ -81,13 +83,13 @@
 }
 
 .canvas :global(.react-flow__edge-textbg) {
-  fill: var(--gm-color-sheet);
+  fill: var(--gm-color-ground);
 }
 
 /* React Flow's attribution stays (ADR-021, H-009 (4)), legible in both themes. */
 .canvas :global(.react-flow__attribution) {
   padding: 0 var(--gm-space-sm);
-  background: var(--gm-color-sheet);
+  background: var(--gm-color-ground);
   font-size: var(--gm-font-size-label);
 }
 

@@ -12,13 +12,14 @@
     scrollbar-color: var(--gm-color-edge) transparent;
   }
 
-  /* One white sheet; the app strip lays the pale shell over it (ui/shell.module.css). */
+  /* The page is the ground; cards and the canvas are the sheet on it (H-041). */
   body {
     margin: 0;
-    background: var(--gm-color-sheet);
+    background: var(--gm-color-ground);
     color: var(--gm-color-ink);
     caret-color: var(--gm-color-ink);
-    accent-color: var(--gm-color-ink);
+    accent-color: var(--gm-color-accent);
+    -webkit-font-smoothing: antialiased;
     font-family: var(--gm-font-sans);
     font-size: var(--gm-font-size-body);
     font-weight: var(--gm-font-weight-regular);
@@ -36,7 +37,7 @@
     color: var(--gm-color-ink);
   }
 
-  /* Headings: weight, not size, carries most of the hierarchy (the Five Sizes Rule). */
+  /* Headings: a page's title at Display, tightly tracked; sections at Title and Body (H-041). */
   h1,
   h2,
   h3 {
@@ -45,13 +46,15 @@
   }
 
   h1 {
-    font-size: var(--gm-font-size-headline);
-    line-height: var(--gm-line-height-headline);
+    font-size: var(--gm-font-size-display);
+    line-height: var(--gm-line-height-display);
+    letter-spacing: -0.025em;
   }
 
   h2 {
     font-size: var(--gm-font-size-title);
     line-height: var(--gm-line-height-title);
+    letter-spacing: -0.01em;
   }
 
   h3 {
@@ -64,22 +67,23 @@
     margin: 0 0 var(--gm-space-lg);
   }
 
-  /* Links are Graphite Ink with a 1 px underline 3 px below; 2 px on hover. */
+  /* Links are ink with a quiet underline that darkens on hover. */
   a {
     color: var(--gm-color-ink);
+    text-decoration-color: var(--gm-color-edge);
     text-decoration-thickness: 1px;
     text-underline-offset: 3px;
   }
 
   a:hover {
-    text-decoration-thickness: 2px;
+    text-decoration-color: var(--gm-color-ink);
   }
 
-  /* One family: identifiers and paths are Archivo too, never monospace. */
+  /* Identifiers, hashes and code are Geist Mono (H-041). */
   code,
   kbd,
   samp {
-    font-family: inherit;
+    font-family: var(--gm-font-mono);
     font-size: inherit;
   }
 

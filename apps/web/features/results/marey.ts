@@ -318,7 +318,7 @@ export function timeTicks(endTick: number, plotWidth: number): TimeTicks {
   return make("day", Math.ceil(endTick / tickMs.day / max));
 }
 
-// Width estimates for row labels at 13.5 px Archivo (about 0.55 em) and a
+// Width estimates for row labels at 13 px Geist (about 0.57 em) and a
 // CJK face (1 em). An estimate, so the layout stays a pure function.
 const wide = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]/u;
 const charWidth = (c: string) => (wide.test(c) ? 13.5 : 7.4);

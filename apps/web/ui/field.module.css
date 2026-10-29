@@ -13,7 +13,7 @@
 }
 
 .label {
-  font-weight: var(--gm-font-weight-strong);
+  font-weight: var(--gm-font-weight-medium);
 }
 
 .area {
@@ -30,7 +30,6 @@
   background: var(--gm-color-raised);
   color: var(--gm-color-ink);
   font: inherit;
-  font-size: var(--gm-font-size-title);
   transition: border-color var(--gm-motion);
 }
 

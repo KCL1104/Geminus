@@ -25,7 +25,7 @@ npm --prefix apps/web-e2e test            # builds and starts apps/web on :3100 
 ## Screenshot baselines
 
 Rendering depends on the browser build and the fonts (the app serves
-Archivo and Noto Sans TC itself; system fallbacks still differ), so
+Geist, Geist Mono and Noto Sans TC itself; system fallbacks still differ), so
 baselines are made and compared in one environment only: CI's e2e job, in the pinned Playwright
 container. Elsewhere the screenshot tests report NOT RUN (they run only
 with `E2E_SCREENSHOTS=1`).

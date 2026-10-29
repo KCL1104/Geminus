@@ -1,6 +1,7 @@
-/* An instrument key (DESIGN.md Buttons, H-040): Raised fill, Rule sides
-   over a Control Edge bottom edge, a 16 px line icon before the label.
-   One primary per view (H-027). */
+/* Buttons (DESIGN.md Buttons, H-041): a raised key with a hairline border
+   and a hair of shadow, an optional 16 px line icon before the label; the
+   primary inverts (ink fill), the AI action is the accent, the run is the
+   scenario green. One primary per view (H-027). */
 .button {
   display: inline-flex;
   align-items: center;
@@ -9,10 +10,10 @@
   min-height: var(--gm-control-height);
   min-width: var(--gm-control-height);
   padding: 0 var(--gm-control-padding-x);
-  border: 1px solid var(--gm-color-rule);
-  border-bottom-color: var(--gm-color-edge);
+  border: 1px solid var(--gm-color-rule-strong);
   border-radius: var(--gm-radius-md);
   background: var(--gm-color-raised);
+  box-shadow: var(--gm-shadow-control);
   color: var(--gm-color-ink);
   font: inherit;
   font-weight: var(--gm-font-weight-medium);
@@ -25,23 +26,19 @@
   flex: none;
 }
 
-/* Hover draws the whole key in Secondary Graphite; press sinks it to the Press wash. */
 .button[data-hovered] {
-  border-color: var(--gm-color-ink-2);
   background: var(--gm-color-hover);
 }
 
 .button[data-pressed] {
-  border-color: var(--gm-color-ink-2);
   background: var(--gm-color-press);
 }
 
-/* The view's one main action: Graphite Ink, never a colour. */
+/* The view's one main action: the ink, inverted. */
 .button[data-variant="primary"] {
   border-color: var(--gm-color-ink);
   background: var(--gm-color-ink);
   color: var(--gm-color-on-ink);
-  font-weight: var(--gm-font-weight-strong);
 }
 
 .button[data-variant="primary"][data-hovered],
@@ -50,14 +47,26 @@
   background: var(--gm-color-ink-2);
 }
 
-/* Runs a scenario (DESIGN.md Run): Deep Scenario Green with an On Scenario
-   label. Only for a scenario run; green means scenario (The Green Means
-   Scenario Rule). Not the view's primary: that stays Graphite Ink. */
+/* Asks the AI (H-041): the accent, which marks the AI everywhere. */
+.button[data-variant="ai"] {
+  border-color: var(--gm-color-accent-fill);
+  background: var(--gm-color-accent-fill);
+  color: var(--gm-color-on-accent);
+}
+
+/* Hover keeps the fill (white on it stays 4.5:1) and draws the edge in the accent. */
+.button[data-variant="ai"][data-hovered],
+.button[data-variant="ai"][data-pressed] {
+  border-color: var(--gm-color-accent);
+  background: var(--gm-color-accent-fill);
+}
+
+/* Runs a scenario (DESIGN.md Run): the scenario green with its label. Only
+   for a scenario run; green means scenario. Not the view's primary. */
 .button[data-variant="run"] {
   border-color: var(--gm-color-scenario);
   background: var(--gm-color-scenario);
   color: var(--gm-color-on-scenario);
-  font-weight: var(--gm-font-weight-strong);
 }
 
 .button[data-variant="run"][data-hovered],
@@ -65,20 +74,20 @@
   border-color: var(--gm-color-ink);
 }
 
-/* Destroys or discards: an Error Red label on the default chrome. */
+/* Destroys or discards: an error-red label on the default key. */
 .button[data-variant="danger"] {
   color: var(--gm-color-error);
 }
 
-/* Low emphasis: no border or fill until hovered. */
+/* Low emphasis: no border, fill or shadow until hovered. */
 .button[data-variant="quiet"] {
   border-color: transparent;
   background: transparent;
+  box-shadow: none;
 }
 
 .button[data-variant="quiet"][data-hovered],
 .button[data-variant="quiet"][data-pressed] {
-  border-color: transparent;
   background: var(--gm-color-hover);
 }
 
@@ -86,6 +95,7 @@
 .button[data-blocked] {
   border-color: var(--gm-color-rule);
   background: var(--gm-color-well);
+  box-shadow: none;
   color: var(--gm-color-ink-4);
   cursor: not-allowed;
 }

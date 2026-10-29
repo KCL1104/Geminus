@@ -1,133 +1,143 @@
 ---
 name: Geminus
-description: Digital-twin modelling, simulation and decision support, drawn as a Marey graphic timetable.
+description: Digital-twin modelling, simulation and decision support, in a developer-tool look (H-041) with the Marey timetable's data grammar.
 colors:
-  ground: "#EDEDEA"
+  ground: "#FAFAFA"
   sheet: "#FFFFFF"
   panel: "#FFFFFF"
   raised: "#FFFFFF"
-  well: "#F3F3F1"
-  hover: "#F0F0ED"
-  press: "#E5E5E1"
-  time-grid: "#EDEDEA"
-  time-grid-major: "#D9D9D4"
-  rule: "#DADAD6"
-  edge: "#808387"
-  ink: "#1B1D1F"
-  ink-2: "#4D5155"
-  ink-3: "#62666A"
-  ink-4: "#9A9DA0"
+  well: "#F4F4F4"
+  hover: "#F2F2F2"
+  press: "#E8E8E8"
+  time-grid: "#F0F0F0"
+  time-grid-major: "#E3E3E3"
+  rule: "#EBEBEB"
+  rule-strong: "#E0E0E0"
+  edge: "#8A8A8A"
+  ink: "#0A0A0A"
+  ink-2: "#525252"
+  ink-3: "#6B6B6B"
+  ink-4: "#A3A3A3"
   on-ink: "#FFFFFF"
-  baseline: "#3F4347"
-  scenario: "#0B6B4B"
-  scenario-wash: "#E8F2ED"
+  baseline: "#6B6B6B"
+  scenario: "#08784E"
+  scenario-wash: "#E8F5EE"
   on-scenario: "#FFFFFF"
-  warning: "#8A4F00"
+  accent: "#6D4AFF"
+  accent-fill: "#6D4AFF"
+  accent-wash: "#F4F1FF"
+  on-accent: "#FFFFFF"
+  warning: "#955400"
   warning-mark: "#B26B00"
-  warning-wash: "#FDF3DD"
+  warning-wash: "#FDF3E1"
   warning-edge: "#D29A3A"
-  error: "#B3261E"
-  error-wash: "#FCEEEC"
-  error-edge: "#D9837D"
-  selection-tint: "#EFEFEC"
-  text-selection: "#D6D9DB"
-  avatar: "#3F4347"
+  error: "#C42430"
+  error-wash: "#FDEBEC"
+  error-edge: "#F0A6AB"
+  selection-tint: "#F0F0F0"
+  text-selection: "#DCDCDC"
+  avatar: "#0A0A0A"
   on-avatar: "#FFFFFF"
-  veil: "rgba(27,29,31,.36)"
-  ground-dark: "#111111"
-  sheet-dark: "#171717"
-  panel-dark: "#1B1B1B"
-  raised-dark: "#232323"
-  well-dark: "#0D0D0D"
-  hover-dark: "#2A2A2A"
-  press-dark: "#323232"
-  time-grid-dark: "#1F1F1F"
-  time-grid-major-dark: "#2E2E2E"
-  rule-dark: "#2E2E2E"
-  edge-dark: "#707070"
-  ink-dark: "#EBEBEB"
-  ink-2-dark: "#B5B5B5"
-  ink-3-dark: "#949494"
-  ink-4-dark: "#5E5E5E"
-  on-ink-dark: "#111111"
-  baseline-dark: "#C9C9C9"
-  scenario-dark: "#5CC79E"
-  scenario-wash-dark: "#242424"
-  on-scenario-dark: "#0F0F0F"
-  warning-dark: "#F0B44C"
-  warning-mark-dark: "#F0B44C"
-  warning-wash-dark: "#242424"
+  veil: "rgba(0,0,0,.4)"
+  ground-dark: "#0A0A0A"
+  sheet-dark: "#111111"
+  panel-dark: "#111111"
+  raised-dark: "#171717"
+  well-dark: "#161616"
+  hover-dark: "#1F1F1F"
+  press-dark: "#262626"
+  time-grid-dark: "#1A1A1A"
+  time-grid-major-dark: "#262626"
+  rule-dark: "#232323"
+  rule-strong-dark: "#2E2E2E"
+  edge-dark: "#6E6E6E"
+  ink-dark: "#EDEDED"
+  ink-2-dark: "#A1A1A1"
+  ink-3-dark: "#8A8A8A"
+  ink-4-dark: "#525252"
+  on-ink-dark: "#0A0A0A"
+  baseline-dark: "#A1A1A1"
+  scenario-dark: "#3DD68C"
+  scenario-wash-dark: "#0D281B"
+  on-scenario-dark: "#0A0A0A"
+  accent-dark: "#9D8FFF"
+  accent-fill-dark: "#6D4AFF"
+  accent-wash-dark: "#1B1735"
+  on-accent-dark: "#FFFFFF"
+  warning-dark: "#F5B14C"
+  warning-mark-dark: "#F5B14C"
+  warning-wash-dark: "#2A2010"
   warning-edge-dark: "#B07A1E"
-  error-dark: "#F07A70"
-  error-wash-dark: "#242424"
-  error-edge-dark: "#B5534B"
-  selection-tint-dark: "#262626"
-  text-selection-dark: "#3B3B3B"
-  avatar-dark: "#3A3A3A"
-  on-avatar-dark: "#FFFFFF"
-  veil-dark: "rgba(0,0,0,.62)"
+  error-dark: "#FF6B6B"
+  error-wash-dark: "#2C1416"
+  error-edge-dark: "#7D3438"
+  selection-tint-dark: "#1C1C1C"
+  text-selection-dark: "#333333"
+  avatar-dark: "#EDEDED"
+  on-avatar-dark: "#0A0A0A"
+  veil-dark: "rgba(0,0,0,.7)"
 typography:
   display:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
-    fontSize: "22px"
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontSize: "26px"
+    fontWeight: 600
+    lineHeight: "32px"
+    letterSpacing: "-0.025em"
+    fontFeature: '"tnum" 1, "lnum" 1'
+  headline:
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontSize: "20px"
     fontWeight: 600
     lineHeight: "28px"
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
-  headline:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
-    fontSize: "18px"
-    fontWeight: 600
-    lineHeight: "24px"
-    letterSpacing: "normal"
-    fontFeature: '"tnum" 1, "lnum" 1'
   title:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
     fontSize: "15px"
     fontWeight: 600
-    lineHeight: "20px"
+    lineHeight: "22px"
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
   figure:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
     fontSize: "15px"
     fontWeight: 400
-    lineHeight: "20px"
+    lineHeight: "22px"
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
   body:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
-    fontSize: "13.5px"
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontSize: "13px"
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
   control:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
-    fontSize: "13.5px"
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontSize: "13px"
     fontWeight: 500
-    lineHeight: 1.4
+    lineHeight: 1.5
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
   label:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
     fontSize: "12px"
     fontWeight: 400
-    lineHeight: 1.35
+    lineHeight: 1.4
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
   axis:
-    fontFamily: 'Archivo, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
+    fontFamily: 'Geist, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif'
     fontSize: "12px"
     fontWeight: 400
-    lineHeight: 1.35
+    lineHeight: 1.4
     letterSpacing: "normal"
     fontFeature: '"tnum" 1, "lnum" 1'
-    fontVariation: '"wdth" 87.5'
 rounded:
-  sm: "4px"
-  md: "6px"
-  lg: "8px"
+  sm: "6px"
+  md: "8px"
+  lg: "12px"
+  full: "999px"
 spacing:
   hair: "2px"
   xs: "4px"
@@ -200,19 +210,19 @@ components:
     textColor: "{colors.ink}"
     typography: "{typography.control}"
   segmented-item:
-    backgroundColor: "{colors.raised}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body}"
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-2}"
+    typography: "{typography.label}"
     padding: "0 10px"
-    height: "30px"
+    height: "26px"
   segmented-item-mode:
     padding: "0 16px"
-    height: "30px"
+    height: "26px"
   segmented-item-hover:
-    backgroundColor: "{colors.hover}"
+    textColor: "{colors.ink}"
   segmented-item-selected:
-    backgroundColor: "{colors.ink}"
-    textColor: "{colors.on-ink}"
+    backgroundColor: "{colors.raised}"
+    textColor: "{colors.ink}"
   input:
     backgroundColor: "{colors.raised}"
     textColor: "{colors.ink}"
@@ -285,7 +295,7 @@ components:
     padding: "0 16px"
     height: "44px"
   canvas:
-    backgroundColor: "{colors.sheet}"
+    backgroundColor: "{colors.ground}"
   canvas-caption:
     backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink-2}"
@@ -299,11 +309,11 @@ components:
     rounded: "{rounded.md}"
     padding: "3px"
   node:
-    backgroundColor: "{colors.raised}"
+    backgroundColor: "{colors.sheet}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.sm}"
-    width: "136px"
+    rounded: "{rounded.lg}"
+    width: "168px"
   node-header:
     padding: "0 12px"
     height: "39px"
@@ -343,7 +353,7 @@ components:
     backgroundColor: "{colors.panel}"
     textColor: "{colors.ink}"
     padding: "20px"
-    width: "400px"
+    width: "360px"
   compare-scenario-cell:
     backgroundColor: "{colors.scenario-wash}"
     textColor: "{colors.scenario}"
@@ -405,35 +415,32 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Graphic Timetable"**
+**Creative North Star: "A twin you operate like infrastructure" (H-041)**
 
-Geminus is drawn like Marey's graphic train timetable: time runs left to right, the steps of a process stand top to bottom, and every item moving through the process is a line through them. A line going flat is an item waiting in a queue; a steep line is an item moving. The interface is one white timetable sheet laid on a pale neutral shell and inked in graphite, with exactly two data inks: dashed graphite for the baseline and solid deep green for the scenario. Amber warnings, red errors and gray structure stay out of their way.
+The owner found the earlier Graphic Timetable world too plain ("太素了感覺根本沒有設計過的痕跡") and named the products whose craft Geminus should sit beside: Railway, Vercel / Geist and Figma / Framer (H-041, 2026-10-29). The app now looks like a developer tool of that family: a near-white page (near-black in dark) with white cards on it, hairline borders and a hair of shadow, Geist type with tight display tracking, status as pills, and one accent, a violet, that marks the AI, selection and focus. The 2D model is a design-tool canvas: a dot grid, steps as raised cards, the tools floating over it, an inspector at the right.
 
-The density is that of a working instrument for people who model all day and decide in 30 to 60 minute sittings: 13.5 px body text, 32 px controls, hairline rules, small corners, no decoration. Depth belongs only to what floats over the work (popovers, menus, drawers, dialogs, the palette, toasts); the sheet, the canvas objects and the panel are flat and separated by line. Provenance is part of the furniture: the version, draft, scenario and runs on screen are always named, and the canvas says whether it shows the editable draft or a read-only version.
+What did not change is the data grammar, which comes from Marey's graphic timetable: time runs left to right, the steps of a process stand top to bottom, and every item is a line through them, flat while it waits and steep while it moves. Exactly two data inks carry every comparison: dashed gray for the baseline and solid green for the scenario. Green means scenario (or a passed check) and nothing else; the accent never stands for a run.
 
-Dark is the same timetable on a gray-black slate with chalk ink. Its neutrals have zero chroma, the scenario green lightens to a chalk green, and the line grammar does not change. The theme follows the system by default; the person can switch it and the choice is remembered. The world refuses the category default for modelling tools: a dot-grid canvas of floating soft-shadow cards with one blue accent.
+The density is still that of a working instrument for people who model all day and decide in 30 to 60 minute sittings: 13 px body text, 32 px controls, 12 px card corners. Provenance is part of the furniture: the version, draft, scenario and runs on screen are always named. Dark is the same system on #0A0A0A with zero-chroma neutrals; the hues' washes are tinted. The theme follows the system by default (the owner's choice in H-041); the person can switch it and the choice is remembered.
 
-The system is domain-neutral. The prototype's example data is the Software Delivery example pack (steps such as Code review, CI, QA test and Deploy; time in eight-hour working days; lead time and throughput). The P0 domain is now the electronics assembly/test line (H-016, ADR-025), and its screens are not designed yet. Examples quoted below come from the prototype and are marked as such. Step and resource names, the time unit, metric names and domain icons come from the DomainPack; no component may assume one domain.
-
-This record is taken from the shipped workspace prototype (`checks/evidence/2026-10-19-T-045/prototypes/workspace.html`, finish review disposition ship, 2026-10-19). **Status: the owner adopted this system as the design basis, on the condition that the interface stays simple (H-027, 2026-10-26: "UI 都照建議，但我希望介面要是簡潔的"; "只保留所有應該要包含的按鈕功能等"). The owner confirmed the 32 re-skinned screenshot baselines, light and dark (H-028, TEST-033).** The Simplicity section below says how that is applied and checked; where this record and simplicity disagreed, the app takes the simpler choice, listed under Simplifications in the app. Token keys are the system's own names. Each color has a `-dark` sibling; components reference the light key, which resolves to its sibling in dark. The app's tokens (`apps/web/ui/tokens.css`) follow this record value for value under ADR-021's `--gm-*` custom properties (see Tokens in the app); `apps/web/tests/tokens.test.ts` fails when the two drift apart.
+The system is domain-neutral. Step and resource names, the time unit, metric names and domain icons come from the DomainPack; no component may assume one domain. The approved direction is recorded as three mocks in `checks/evidence/2026-10-29-h041-visual/`. **Status: adopted by the owner (H-041), on the standing condition that the interface keeps only what each view needs (H-027).** The Simplicity section below says how that is applied and checked. Token keys are the system's own names. Each color has a `-dark` sibling; components reference the light key, which resolves to its sibling in dark. The app's tokens (`apps/web/ui/tokens.css`) follow this record value for value under ADR-021's `--gm-*` custom properties; `apps/web/tests/tokens.test.ts` fails when the two drift apart. The sections from Compare Table onward describe the screens of the T-045 prototype and keep its structure; their colours, type and corners follow the tokens above. Names from the earlier world that remain in this record map to today's tokens: Graphite Ink and Chalk Ink → Ink; Secondary Graphite → Ink 2; Label Graphite → Ink 3; Disabled Graphite → Ink 4; Reverse Ink → On Ink; Control Edge → Edge; Hairline Rule → Rule; Timetable White and Slate → Sheet; Pale Shell → Ground; Inset Well → Well; Deep Scenario Green and Chalk Green → Scenario; Baseline Graphite → Baseline; Amber and Error names → Warning and Error. Selection and focus, which that world drew in Graphite Ink, are the Accent.
 
 **Key Characteristics:**
-- Two data inks with a fixed grammar: baseline dashed graphite, scenario solid deep green. The dash carries the difference; the hue confirms it.
-- One family, Archivo, with tabular lining figures everywhere, five sizes, and narrower widths before smaller sizes.
-- A flat white sheet, hairline rules, 4 to 8 px corners with capsules for resources and counts; shadows only on overlays.
-- Provenance always on screen; the mode's primary action sits beside the object it acts on.
-- A gray-black dark theme with zero-chroma neutrals; the default follows the system.
-- One palette and one line grammar across every projection of the model: the 2D canvas, the Marey strip, Compare, and the read-only 3D view (T-033).
-- Domain-neutral furniture: vocabulary, time unit, metrics and domain icons come from the DomainPack.
+- Two data inks with a fixed grammar: baseline dashed gray, scenario solid green. The dash carries the difference; the hue confirms it.
+- Geist for everything, Geist Mono for IDs, hashes and code, Noto Sans TC for Chinese; tabular figures; five sizes.
+- Cards on a page: 12 px corners, a hairline ring and a hair of shadow; pills for status and provenance.
+- One accent (violet) for the AI, selection and focus; green only for the scenario; amber and red only for signals.
+- Provenance always on screen; the page's primary action sits at the right of its header, level with the provenance.
+- A design-tool canvas: dot grid, card steps, floating tools, an inspector.
 
 ## Simplicity (H-027)
 
 The owner adopted this system on one condition: the interface is simple and clean (簡潔), and it keeps only the buttons and controls each view needs. Five working principles make that checkable; the tests that enforce them are named after each.
 
-1. **One primary action per view.** At most one Graphite Ink button on any screen; every other action is a default, quiet or danger button, or sits in a menu. A what-if run and a version action never share a slot (The Action Beside Its Object Rule). Checked: `apps/web/tests/simplicity.test.tsx` (every draft state, the gallery, failures, and the signed-in project list, project and model pages) and `apps/web-e2e/tests/simplicity.spec.ts` (every route as it renders signed out, both languages, 390 and 1280 px).
+1. **One primary action per view.** At most one primary (Ink) button on any screen; every other action is a default, quiet or danger button, or sits in a menu. A what-if run and a version action never share a slot (The Action Beside Its Object Rule). Checked: `apps/web/tests/simplicity.test.tsx` (every draft state, the gallery, failures, and the signed-in project list, project and model pages) and `apps/web-e2e/tests/simplicity.spec.ts` (every route as it renders signed out, both languages, 390 and 1280 px).
 2. **Only the controls a view needs.** Every visible button, link or field does something that is built and tested today, or is a step of a flow that has shipped. No placeholder, "coming soon" or disabled-forever control; no two controls for the same action on one view. A control a spec or a test requires (skip link, language, theme, retry, sign-in recovery) stays; one that looks redundant but is required is kept and asked about, not removed. Checked in the browser (`apps/web-e2e/tests/simplicity.spec.ts`, both languages, 390 and 1280 px) on every route as it renders signed out: no disabled control outside the gallery, no two visible buttons with the same name and no two visible links to the same place. Checked in unit tests (`apps/web/tests/simplicity.test.tsx`, both languages, each view together with the app shell's controls): no two buttons or links with the same name and no two links to the same place on the start, not-found and sign-in error pages, in every draft state (also a conflict whose reload failed), in a failed load, and on the signed-in project list, project and model pages, loaded and failed, with a fake API and session; there also nothing disabled outright and at most one primary, and a control blocked for now (the editor's Save draft and Publish on the model page) names visible, non-empty text as its reason by `aria-describedby` (the rule bars placeholder and disabled-forever controls, not an action waiting on its condition); the other signed-in pages block nothing. Since the app mounts the signed-in bootstrap (T-043 follow-up), the browser also checks the signed-in views, signed in through the BFF and the test provider: the project list, a project, the model with the editor (as editor and as viewer; the editor's blocked actions must show their reason), the choice of organization, the project list with the organization switcher, and no access; the unit tests add the signed-in strip and every state of the bootstrap. The one pair kept for the owner's decision (H-028 kept it) is listed in both tests.
 3. **Progressive disclosure.** What the current step does not need is collapsed or one click away: technical details and request IDs, legends, keyboard hints, provenance details. The app strip holds the product, the navigation, the language and the theme; once signed in also the account: Sign out, and the organization switcher for a user with several organizations (T-043 follow-up). Nothing else until a view has the function (no Find or mode switch yet). The sign-in is on the page that needs it (the sign-in-required notice), not in the strip. Checked by review; the problem view's technical details sit behind a "Details" disclosure (`app/_components/problem-view.tsx`).
-4. **No decoration.** No gradient, ornamental icon, extra border, heavy shadow or animation beyond this system's: borders are 1 px hairlines (no side stripes), shadows only on what floats (popover, dialog) plus the invalid-field ring, motion only as 180 ms state-colour transitions. The palette is the graphite and paper neutrals, the scenario green (also a passed check) and the warning and error signals; nothing else. Checked: `apps/web/tests/design-rules.test.ts` (no colour, size, spacing, corner, shadow or transition outside the tokens; no gradient or keyframes; no border over 1 px) and `tokens.test.ts` (no hue outside the three families; dark neutrals have no chroma); in the browser, `simplicity.spec.ts` (every transition is 180 ms on that curve, and none is longer than 0.01 ms under reduced motion).
+4. **No decoration.** No gradient, ornamental icon, extra border, heavy shadow or animation beyond this system's: borders are 1 px hairlines (no side stripes), shadows only from the three shadow tokens (card, control, overlay) plus the invalid-field and selected-step rings, motion only as 180 ms state-colour transitions. The palette is the zero-chroma neutrals, the accent (the AI, selection, focus), the scenario green (also a passed check) and the warning and error signals; nothing else (H-041). Checked: `apps/web/tests/design-rules.test.ts` (no colour, size, spacing, corner, shadow or transition outside the tokens; no gradient but the canvas's dot grid, no keyframes; no border over 1 px) and `tokens.test.ts` (no hue outside the four families; dark neutrals have no chroma); in the browser, `simplicity.spec.ts` (every transition is 180 ms on that curve, and none is longer than 0.01 ms under reduced motion).
 5. **Calm layout, plain words.** At most one secondary panel beside the main content; generous whitespace on one spacing scale; short, plain copy in English and Traditional Chinese, with no marketing language and no task IDs. Checked: the shell has one main region and no side panel (`layout.test.tsx`, `simplicity.spec.ts`); spacing only from the scale (`design-rules.test.ts`); copy by review (catalog changes are listed in `checks/T-045_VALIDATION.md`).
 
 ### Simplifications in the app
@@ -445,7 +452,7 @@ Where a component of this record was busier than the principles allow, the app i
 - **No entrance motion.** Overlays appear without the 4 px rise and fade; motion is only the 180 ms colour change of a control's state. The motion token is kept for the screens that need it (the playhead).
 - **No icons in notes yet.** A note's tone is its edge and wash, with Graphite Ink text and a heading; icons come with the authored icon set.
 - **No row hover in tables.** Rows show selection (Selected Row Tint) and focus (the ring), not the pointer; in dark, Control Edge on the Hover fill would fall below 3:1 for a checkbox in the row.
-- **Page headings are Headline, Title and Body.** A page's h1 is 18 px, h2 15 px, h3 13.5 px at 600; Display stays for full-screen Compare.
+- **Page headings are Display, Title and Body** (H-041). A page's h1 is 26 px (tracked -0.025em), h2 15 px, h3 13 px at 600.
 - **An action's outcome is a framed status.** The in-page status message (ADR-021: no toast) is the Outcome frame: 1 px Graphite Ink, ink text, no colour.
 - **The 2D editor (T-015 hackathon slice, H-027 Q2 flow).** The header band's provenance row (H-040) holds the draft's status and revision and ends in the actions (Discard my changes only while there are unsaved edits, Save draft, Publish version, the one primary); the latest version and the domain are groups of the same row, and the Scenario and Runs groups come with Simulate. A blocked Save draft or Publish stays focusable as `aria-disabled` with its reason beside it (Buttons, Disabled). The step panel is an Add step menu in the canvas tool bar (no key caps, pools, undo or redo yet); the canvas has no caption box, issues pill or zoom group (the 2D / 3D segment came with T-033, below): the status row says what the canvas shows, a Problems list under the canvas replaces the drawer, scroll or pinch zooms, Show all steps fits the line, and Tab reaches every step. A selected step is a Graphite Ink border on Selected Row Tint without the ring shadow (principle 4), and an issue's border colour stays on it. The side panel is the view's one secondary panel (principle 5), 360 px, as tall as the canvas column and scrolling inside itself: the AI request above the step's properties (H-040); the page with the editor takes the window's width, since a line runs wide. Connections are changed in a step's properties (and by dragging between handles), not as canvas objects, so Tab never stops on an edge.
 - **The 3D view (T-033 hackathon slice).** A 2D / 3D segment ends the editor's tool bar (the Segmented Controls' 2D / 3D size: 30 px items, 8 px sides, 12 px type; the focus ring drawn inside the item, Reverse Ink on the selected one). 3D replaces the canvas with a read-only stage on Timetable White under a Control Edge top rule, as wide as its column and as tall as the line's shape needs (within 240–520 px; H-039), the first view (52° pitch) holding every step in perspective and, on the results page, the tallest column playback can raise: steps as procedural boxes and cylinders where the 2D canvas puts them (no other layout), flows as Ink Graphite lines, steps in Control Edge, queues between Rule and Control Edge, sources and sinks in Baseline Graphite, the selected step in Graphite Ink; with a run's results (the results page's closed "See the line in 3D"), a process goes from Control Edge to Amber Edge with its resources' utilization and a queue rises with its mean length. No step is added, moved or fitted there; Add step and Show all steps leave the tool bar, and the Properties panel stays. A hover shows the step's name in a Raised chip; under the stage, one Label line names the selection and the controls (no legend panel, no buttons: drag, Shift+drag, the wheel; the arrows, + and −, 0, Escape). The palette is read from the tokens when the view opens and again when the theme changes. Without WebGL the stage is an info Callout and nothing else changes.
@@ -463,94 +470,66 @@ ADR-021 names every token `--gm-*` in `apps/web/ui/tokens.css`:
 | DESIGN.md | App token |
 |---|---|
 | `colors.<key>` and `<key>-dark` | `--gm-color-<key>`; dark values under `prefers-color-scheme: dark` (unless `data-theme="light"`) and under `:root[data-theme="dark"]` |
-| typography sizes 12, 13.5, 15, 18, 22 | `--gm-font-size-label`, `-body`, `-title`, `-headline`, `-display`, with `--gm-line-height-*` |
-| the family and figures | `--gm-font-sans` (`"Archivo Variable"`, `"Noto Sans TC Variable"`, then PingFang TC, Microsoft JhengHei, system-ui), `--gm-font-features` |
+| typography sizes 12, 13, 15, 20, 26 | `--gm-font-size-label`, `-body`, `-title`, `-headline`, `-display`, with `--gm-line-height-*` |
+| the families and figures | `--gm-font-sans` (`"Geist Variable"`, `"Noto Sans TC Variable"`, then PingFang TC, Microsoft JhengHei, system-ui), `--gm-font-mono` (`"Geist Mono Variable"`), `--gm-font-features` |
 | `spacing.<key>` | `--gm-space-<key>` |
-| `rounded.<key>` | `--gm-radius-<key>` |
-| Overlay shadow (light, dark) | `--gm-shadow-overlay` |
-| focus | `--gm-focus-ring` (2 px Graphite Ink) |
+| `rounded.<key>` | `--gm-radius-<key>` (`full` for pills) |
+| Card, control and overlay shadows (light, dark) | `--gm-shadow-card`, `--gm-shadow-control`, `--gm-shadow-overlay` |
+| focus | `--gm-focus-ring` (2 px accent) |
 | 180 ms `cubic-bezier(.2,.8,.2,1)` | `--gm-motion` |
 
-The theme follows the system unless the reader chose one; the choice is the cookie `geminus_theme` (`light` or `dark`; none means the system's), which the root layout renders as `<html data-theme>` so the first paint is already right, with no script and nothing for a CSP to allow. The fonts are self-hosted from `@fontsource-variable/archivo` and `@fontsource-variable/noto-sans-tc` (OFL-1.1, `docs/THIRD_PARTY_NOTICES.md`).
+The theme follows the system unless the reader chose one; the choice is the cookie `geminus_theme` (`light` or `dark`; none means the system's), which the root layout renders as `<html data-theme>` so the first paint is already right, with no script and nothing for a CSP to allow. The fonts are self-hosted from `@fontsource-variable/geist`, `@fontsource-variable/geist-mono` and `@fontsource-variable/noto-sans-tc` (OFL-1.1, `docs/THIRD_PARTY_NOTICES.md`).
 
 ## Colors
 
-Near-neutral paper and graphite, one data green, and a separate amber and red signal pair; dark is pure gray-black with chalk inks.
+Neutrals with no chroma, one accent, one data green, and an amber and red signal pair. Every text pair components use is at least 4.5:1 and every control boundary, data ink and the focus ring at least 3:1 against the surfaces they sit on, in both themes (`apps/web/tests/tokens.test.ts`).
 
-Light neutrals lean faintly warm (OKLCH hue about 106°, chroma at most 0.007) and the inks faintly cool (hue about 248°, chroma at most 0.009). Dark neutrals have no chroma at all. On the build, text contrast measured at least 4.93:1 in light and 5.18:1 in dark across 87 states (finish review), and Control Edge stayed at least 3.17:1 against every surface a control sat on there, in both themes. In the app the lowest is 3.06:1, in dark, for a selected table row's checkbox on Selected Row Tint (3.31:1 in light); `apps/web/tests/tokens.test.ts` holds Control Edge at 3:1 or more against Sheet, Ground, Raised, Panel and Selected Row Tint in both themes.
+### Neutrals
+- **Ground** (#FAFAFA; dark #0A0A0A): the page, the strip and the canvas's dot grid.
+- **Sheet** and **Panel** (#FFFFFF; dark #111111): cards, the workspace and the inspector.
+- **Raised** (#FFFFFF; dark #171717): buttons, inputs, the chosen segment, floating tools, overlays.
+- **Well**, **Hover**, **Press** (#F4F4F4, #F2F2F2, #E8E8E8; dark #161616, #1F1F1F, #262626): the segmented control's track, disabled keys, pointer feedback.
+- **Rule** and **Rule Strong** (#EBEBEB and #E0E0E0; dark #232323 and #2E2E2E): card rings and dividers; button and pill borders.
+- **Edge** (#8A8A8A; dark #6E6E6E): a boundary that identifies a control: inputs, checkboxes, the scrollbar.
+- **Ink** (#0A0A0A; dark #EDEDED), **Ink 2** (#525252; dark #A1A1A1), **Ink 3** (#6B6B6B; dark #8A8A8A), **Ink 4** (#A3A3A3; dark #525252): text from primary to disabled. **On Ink** (#FFFFFF; dark #0A0A0A) labels the primary button.
+- **Baseline** (#6B6B6B; dark #A1A1A1): the baseline run, always dashed.
 
-### Primary
-- **Graphite Ink** (#1B1D1F; dark Chalk Ink #EBEBEB): text; the primary button fill; toggled segments and toggle buttons; selection and focus rings; the playhead; skip links; the caret and native control accents. The interface's one action color. The prototype names focus and selection as their own properties; both resolve to Graphite Ink in both themes.
-- **Baseline Graphite** (#3F4347; dark #C9C9C9): the baseline run wherever it is drawn: dashed lines in the Marey strip, dashed utilisation bars on nodes, the dashed key in Compare headers, the strip and the provenance row, baseline ticks and intervals in the rugs.
-- **Reverse Ink** (#FFFFFF; dark #111111): text and icons on Graphite Ink: primary buttons, toggled segments, toasts, skip links, the playhead's time flag.
+### Accent
+- **Accent** (#6D4AFF; dark #9D8FFF), **Accent Fill** (#6D4AFF), **Accent Wash** (#F4F1FF; dark #1B1735), **On Accent** (#FFFFFF): the AI's actions (Send to the AI, Explain these results), a selected step's border and its wash, the focus ring, the brand mark.
 
-### Secondary
-- **Deep Scenario Green** (#0B6B4B; dark Chalk Green #5CC79E): the scenario run: solid lines in the strip, solid bars on nodes, scenario values (600) after the arrow, the scenario column header and figures in Compare, the run button, the scenario tag on changed steps, the branch icon in the provenance row. It also marks a passed check: the all-checks-pass note, the no-issues pill, the check in an outcome.
-- **Scenario Wash** (#E8F2ED; dark #242424): the scenario column in Compare and the passed-check note. In dark it is a neutral gray, not a green tint.
-- **On Scenario** (#FFFFFF; dark #0F0F0F): the label on the run button.
-
-### Tertiary
-- **Warning Amber** (#8A4F00; dark #F0B44C): warning text in chips, callouts, field warnings and the provenance row (a newer version exists: "v4 is newer" in the prototype).
-- **Amber Mark** (#B26B00; dark #F0B44C): warning icons. Non-text only (4.20:1 on white).
-- **Amber Wash** and **Amber Edge** (#FDF3DD and #D29A3A; dark #242424 and #B07A1E): fill and border of warning chips, callouts and notes; the leader line from a step to its callout.
-- **Error Red** (#B3261E; dark #F07A70): error text and icons, invalid field borders, danger button labels, failed-run messages, removed edges and the removed tag in a proposal diff.
-- **Error Wash** and **Error Edge** (#FCEEEC and #D9837D; dark #242424 and #B5534B): fill and border of error chips and notes.
-
-### Neutral
-- **Pale Shell** (#EDEDEA; dark #111111): the app strip and provenance row around the sheet.
-- **Timetable White** (#FFFFFF; dark Slate #171717): the canvas, the Marey strip and the canvas chrome boxes.
-- **Panel** (#FFFFFF; dark #1B1B1B): the side panel.
-- **Raised** (#FFFFFF; dark #232323): controls, nodes, pools and overlays.
-- **Inset Well** (#F3F3F1; dark #0D0D0D): disabled buttons, key caps, neutral notes, the run progress track and the distribution preview's fill.
-- **Hover** and **Press** (#F0F0ED and #E5E5E1; dark #2A2A2A and #323232): pointer feedback on controls, rows and options.
-- **Minor Time Grid** and **Major Time Grid** (#EDEDEA and #D9D9D4; dark #1F1F1F and #2E2E2E): the Marey time grid, a minor line every quarter of the time unit and a major line every unit, and the station line on the sink row. No other surface carries a grid.
-- **Hairline Rule** (#DADAD6; dark #2E2E2E): dividers between content: table rows, sections, overlay borders, provenance separators, the canvas chrome boxes, utilisation-bar tracks.
-- **Control Edge** (#808387; dark #707070): every boundary that identifies a control or a model object: buttons, inputs, segments, nodes, pools; also the panel's left edge, the provenance row's bottom edge, the strip's top edge, the Compare header rule, the rug axis and the scrollbar thumb.
-- **Secondary Graphite** (#4D5155; dark #B5B5B5): secondary text, units, captions, the change arrow, icons beside labels.
-- **Label Graphite** (#62666A; dark #949494): field and provenance labels, axis ticks, issue paths, palette group names, pool links.
-- **Disabled Graphite** (#9A9DA0; dark #5E5E5E): disabled text only.
-- **Selected Row Tint** (#EFEFEC; dark #262626): the selected row band in the Marey strip, the selected Compare row, the active palette option, the selected step on phone.
-- **Text Selection** (#D6D9DB; dark #3B3B3B): the `::selection` background under ink text.
-- **Avatar Graphite** and **On Avatar** (#3F4347 and #FFFFFF; dark #3A3A3A and #FFFFFF): the account avatar's fill and initials.
-- **Modal Veil** (rgba(27,29,31,.36); dark rgba(0,0,0,.62)): behind dialogs and the palette.
+### Scenario and signals
+- **Scenario** (#08784E; dark #3DD68C), **Scenario Wash** (#E8F5EE; dark #0D281B), **On Scenario** (#FFFFFF; dark #0A0A0A): the scenario run and a passed check, the run button.
+- **Warning** (#955400; dark #F5B14C) with its mark, wash and edge; **Error** (#C42430; dark #FF6B6B) with its wash and edge: signals only.
 
 ### Named Rules
-**The Two Inks Rule.** Baseline is dashed graphite and scenario is solid deep green, in every chart, bar, key and legend. The two inks are only 1.5:1 apart in light and 1.25:1 in dark, so the dash carries the difference and hue is the second cue, never the only one.
+**The Two Inks Rule.** Baseline is dashed gray and scenario is solid green, in every chart, bar, key and legend. The dash carries the difference; hue is the second cue, never the only one.
 
-**The Green Means Scenario Rule.** Green marks the scenario run or a passed check and nothing else: never brand, selection, links, focus or decoration. Selection and focus are Graphite Ink.
+**The Green Means Scenario Rule.** Green marks the scenario run or a passed check and nothing else: never brand, selection, links, focus or decoration.
 
-**The Gray-Black Rule.** Every dark neutral, from the inset well (#0D0D0D) to Chalk Ink (#EBEBEB), has zero chroma: no blue, no warm cast. In dark every wash collapses to one neutral gray (#242424) and hue lives only in ink and edge.
+**The Accent Means AI and Attention Rule.** The violet marks what the AI does, what is selected and where focus is. It is never a run and never a status.
 
 ## Typography
 
-**Display Font:** Archivo (variable: width 75–100, weight 400–700), with Noto Sans TC, PingFang TC, Microsoft JhengHei, system-ui
-**Body Font:** Archivo, the same family
-**Label/Mono Font:** none; key caps and figures are Archivo too
+**Font:** Geist (variable weight), with Noto Sans TC, PingFang TC, Microsoft JhengHei, system-ui
+**Mono:** Geist Mono, for IDs, hashes, seeds, engine versions and the JSON Patch
 
-**Character:** A plain grotesque with the sobriety of an engineering drawing and a real width axis, so a timetable can narrow its labels instead of shrinking them. Tabular lining figures (`"tnum" 1, "lnum" 1`, set on the body) make every column of numbers line up. Noto Sans TC is the CJK face for zh-Hant only; there is no second Latin family. Both faces are OFL.
+**Character:** A precise neo-grotesque from the developer-tool world the owner named, with tabular figures (`"tnum" 1, "lnum" 1`, set on the body) so every column of numbers lines up. Page titles are tightly tracked (-0.025em). All three faces are OFL.
 
 ### Hierarchy
-- **Display** (600, 22px, 28px): full-screen Compare only: the panel title, median figures, Δ and the rug median values.
-- **Headline** (600, 18px, 24px): panel and dialog titles, claim values in a proposal, the 3D placeholder title; the brand at 700 with -0.01em tracking; in full-screen Compare, metric, row and run names.
-- **Title** (600, 15px, 20px): popover and outcome headings, the phone's step-list heading and model title, rug headings in full screen.
-- **Figure** (400, 15px, 20px, tabular): every result number: Compare medians, node and step values, pool counts (at 600), inputs and steppers. The 90% interval under a median is set at 87.5% width in Secondary Graphite. The spoken summary above the Compare table shares this size and weight (line-height 1.35) and steps up to 18 px in full screen.
-- **Body** (400, 13.5px, 1.4): default text, node text (line-height 1.3), row labels, segmented items, notes.
-- **Control** (500, 13.5px, 1.4): buttons and links. Primary buttons and toggled segments use 600.
-- **Label** (400, 12px, 1.35): field and provenance labels, captions, units, help text. Chips, tags and table headers use 600; key caps and neutral tags 500.
-- **Axis** (400, 12px, 87.5% width): time numbers and labels on the Marey time axis.
+- **Display** (600, 26px, 32px, -0.025em): a page's title (h1).
+- **Headline** (500–600, 20px, 28px): the median lead time sentence on the results page, dialog titles, claim values in a proposal.
+- **Title** (600, 15px, 22px): card and section headings (h2), the brand.
+- **Body** and **Control** (400 and 500, 13px, 1.5): text, buttons, links, fields.
+- **Label** (400–500, 12px, 1.4): pills, captions, help, table headers, segment labels.
 
 ### Named Rules
-**The Five Sizes Rule.** Five sizes only: 12, 13.5, 15, 18 and 22 px. Hierarchy comes from weight (400, 500, 600) and from Graphite Ink against Secondary Graphite, never from a sixth size.
-
-**The Fifteen-Pixel Figure Rule.** A result number is never smaller than 15 px. Twelve pixels is for what the number is, not for the number.
-
-**The Narrow Before Small Rule.** When room runs out, Archivo narrows (87.5% for Compare row names at 1366 px and below and for the phone's timetable labels, 75% for intervals at 1366 px and below) before any size drops.
+**The Five Sizes Rule.** Five sizes only: 12, 13, 15, 20 and 26 px. Hierarchy comes from weight and from Ink against Ink 2 and Ink 3, never from a sixth size.
 
 ## Layout
 
 The frame is a 48 px app strip over a 44 px provenance row over the stage. Both rows sit on Pale Shell; the strip ends in a hairline and the provenance row ends in Control Edge, marking where the sheet begins. The strip holds the product and breadcrumb on the left, the Edit / Simulate / Review switch in the centre, and Find (with its key hint), language, theme and account on the right. The provenance row holds label and value groups divided by hairline verticals with 14 px either side (Version, Draft, Scenario, Runs) and ends at the right edge in the mode's actions: in Edit, Save draft and then Publish; in Simulate, the split run button. A blocked action's 12 px reason sits to its left. Review has no row action; its decision stays in the panel.
 
-In the app (H-040) every signed-in page opens with a header band under the strip, on Pale Shell from edge to edge and ending in Control Edge: the way back (the parents as links, Secondary Graphite, divided by a drawn "/"), then the page's title at Headline size, then the provenance row (44 px under a Rule hairline): 12 px Label Graphite labels before values at 600, groups divided by hairline verticals with 14 px either side, ending at the right edge in the page's actions with a blocked action's reason to their left. The model page's row holds the latest version, the domain and the draft (status and revision), then Save draft and Publish; a proposal's holds its status. A parent's link never repeats the strip's (Projects): the first parent is the project, the model or the scenario. On a phone the groups become a two-column grid and the actions a row under them.
+In the app every signed-in page opens with its header (H-040, restyled in H-041): on the page's ground, the way back (the parents as links in Ink 2, divided by a drawn "/"), the page's title at Display, then its provenance as pills (a 12 px label in Ink 3, the value in Ink), and at the right, level with the pills, the page's actions with a blocked action's reason to their left. The model page's pills are the latest version, the domain and the draft (status and revision), its actions Save draft and Publish; a proposal's pill is its status; the results' are the two runs once both have completed. A parent's link never repeats the strip's (Projects): the first parent is the project, the model or the scenario. The content under it is cards: 12 px corners, Sheet, a Rule ring and a hair of shadow, 20 px inside and 20 px apart. The strip is 48 px on Ground with the brand mark (two offset squares, the twin: one Accent Fill, one outlined in Ink) before the product's name. On a phone the mark is hidden and the navigation link loses its padding, so the strip stays one row in both languages.
 
 The stage is the canvas column beside a side panel 400 px wide (360 px at 1366 px and below), divided by Control Edge. The canvas column is the model canvas on Timetable White above the Marey strip (a 40 px header plus a 180 px timetable, 220 px in all, under a Control Edge top rule). Canvas chrome floats 16 px in from the canvas edges: top right, the 2D / 3D and zoom groups and the fit button. In Simulate and Review the caption takes the top left (at most 460 px). In Edit the tool bar takes the top left and the caption moves to the bottom left, after the issues pill. The panel pads 20 px, opens with its heading block 16 px above the first section, spaces sections 20 px apart and places a section's header 10 px above its content.
 
@@ -567,42 +546,36 @@ Breakpoints: at 1366 px and below the panel narrows to 360 px, the scrubber to 1
 
 ## Elevation & Depth
 
-The system is flat. The sheet, nodes, pools, the panel and notes sit on one plane and are separated by Hairline Rule and Control Edge, never by shadow. Only surfaces that float over the work carry a shadow, and they enter by fading in and rising 4 px over 180 ms. Two state rings are drawn with `box-shadow` but are not depth: the selection ring and the invalid-field ring.
+Cards lift a hair off the page; what floats over the work lifts more. Three shadows, all tokens:
 
-### Shadow Vocabulary
-- **Overlay** (`box-shadow: 0 1px 2px rgba(27,29,31,.10), 0 10px 28px rgba(27,29,31,.16)`): popovers, menus, the issues drawer, dialogs, the palette and toasts.
-- **Overlay, dark** (`box-shadow: 0 0 0 1px #3A3A3A, 0 12px 32px rgba(0,0,0,.6)`): the same surfaces in dark; the 1px ring gives an overlay the edge a shadow alone cannot on gray-black.
-- **Selection ring** (`box-shadow: 0 0 0 3px <Timetable White>, 0 0 0 5px <Graphite Ink>`): a selected node or pool, with its border in Graphite Ink. A state, not a depth.
-- **Invalid field** (`box-shadow: inset 0 0 0 1px <Error Red>`): doubles the red border on an invalid input.
+- **Card** (`0 0 0 1px <Rule>, 0 1px 2px rgba(0,0,0,.04)`; dark the ring only): cards, the workspace, lists.
+- **Control** (`0 1px 2px rgba(0,0,0,.05)`; dark `rgba(0,0,0,.4)`): buttons, the Select's button, the chosen segment, steps on the canvas.
+- **Overlay** (`0 0 0 1px rgba(0,0,0,.06), 0 8px 30px rgba(0,0,0,.12)`; dark `0 0 0 1px #2E2E2E, 0 12px 32px rgba(0,0,0,.6)`): popovers, menus, dialogs and the floating canvas tools.
 
-### Named Rules
-**The Overlays Only Rule.** Only what floats over the work casts a shadow. Nodes are never lifted; a node on a soft shadow is the category default this world refuses.
+Two rings are states, not depth: a selected step's (its Accent border inside a 3 px Accent Wash) and an invalid field's (an inset 1 px Error).
 
 ## Shapes
 
-Small corners and hairlines. Objects inside the sheet take 4 px (nodes, chips, neutral and removed tags, key caps, list rows and menu items); controls and containers take 6 px (buttons, inputs, segmented controls, notes, popovers, menus, toasts, the canvas caption and tool bar); the two modal surfaces, dialog and palette, take 8 px. Capsules, with the radius at half the height, mark counts and resources rather than steps: pools (44 px tall, 22 px radius), the issues pill (32, 16), scenario and added tags (20, 10), the mode count (18, 9), the progress bar (6, 3) and the round avatar.
-
-Borders are 1 px. Two pixels means "added" in a proposal diff (node, pool and edge in Graphite Ink). Dashes carry meaning and nothing else: the baseline (4 on, 2.5 off for short marks and bars; 5 on, 3 off for the long timetable lines) and removed edges (6 on, 4 off, in Error Red with a red cross). Flow arrows end in open chevrons.
+Corners: 6 px for tags and small parts and the segments inside a segmented control, 8 px for controls (buttons, inputs, the segmented control, notes), 12 px for cards, steps on the canvas, the workspace, dialogs and the floating tools, and full for pills (status, provenance, counts). Borders are 1 px. Dashes carry meaning and nothing else: the baseline, and removed edges in a proposal diff.
 
 ### Named Rules
-**The Square Steps, Round Resources Rule.** Steps are 4 px rectangles; resource pools are capsules. Shape alone tells a step from a pool on the canvas.
+**The Steps Are Cards Rule.** On the canvas a step is a 168 px card with its name at 600 and its kind in Ink 3; selection is the accent, an issue colours its border.
 
 ## Components
 
 ### Buttons
-Squared, quiet and exact: a button looks like a control, not a call to action. In the app it is an instrument key (H-040, the owner's choice of 2026-10-29): a light frame over a firmer bottom edge, with a line icon before the label of an action.
-- **Shape:** gently squared corners (6px), 32 px tall, 12 px side padding, a 1 px Rule border whose bottom edge is Control Edge (H-040), Raised fill, Control type (13.5 px, 500). The page's actions carry a 16 px icon from the authored set 6 px before the label (Add step, Show all steps, Send to the AI, From a photo, Save draft, Publish version, Discard, Approve, Reject, Run, Cancel, Explain); a choice, a retry or a confirmation's Cancel does not. The Select's button and the Add step menu are keys too.
-- **Primary:** Graphite Ink fill with a Reverse Ink 600 label; hover to Secondary Graphite. Publish, Approve, Save and the post-outcome next step.
-- **Run:** Deep Scenario Green fill with an On Scenario label, joined to a 30 px chevron segment ("More ways to run") by a hairline of On Scenario at 40%; hover brightens 8%. Used only to run a scenario.
-- **Hover / Focus:** the whole edge turns Secondary Graphite over the Hover wash (Press on press), 180 ms ease-out; focus is a 2 px Graphite Ink outline 2 px out.
-- **Quiet:** no border or fill until hover: dialog close, tool bar tools, toast close.
-- **Danger:** Error Red label on the default chrome (Reject proposal, Discard, Delete).
-- **Disabled:** Inset Well fill, Hairline border, Disabled Graphite label. A blocked action stays focusable as `aria-disabled` and its reason is on screen beside it and linked as its description.
-- **Toggled:** a pressed toggle fills Graphite Ink, like a selected segment.
-- **Link:** Graphite Ink with a 1 px underline 3 px below; 2 px on hover.
+A raised key (H-041): 32 px, 8 px corners, 12 px sides, a 1 px Rule Strong border, Raised fill and the Control shadow; Control type. The page's actions carry a 16 px line icon from the authored set 6 px before the label (Add step, Show all steps, Send to the AI, From a photo, Save draft, Publish version, Discard, Approve, Reject, Run, Cancel, Explain); a choice, a retry or a confirmation's Cancel does not.
+- **Primary:** the ink inverted: Ink fill, On Ink label; hover to Ink 2. One per view (Publish, Approve, the post-outcome next step).
+- **AI:** Accent Fill with an On Accent label: the actions that ask the AI (Send to the AI, Explain these results).
+- **Run:** Scenario fill with an On Scenario label; used only to run a scenario.
+- **Hover / Focus:** the Hover wash (Press on press), 180 ms; focus is a 2 px Accent outline 2 px out.
+- **Quiet:** no border, fill or shadow until hover: tools inside the floating canvas pill, Sign out.
+- **Danger:** an Error label on the default key (Reject, Discard, Delete).
+- **Disabled:** Well fill, Rule border, Ink 4 label, no shadow. A blocked action stays focusable as `aria-disabled` and its reason is on screen beside it and linked as its description.
+- **Link:** Ink with a 1 px underline in Edge 3 px below; Ink on hover.
 
 ### Segmented Controls
-One form for every one-of-n choice: the mode switch, language (EN / 中文), 2D / 3D, and field choices. A Control Edge outline with 6 px corners, Raised fill, 30 px items divided by Control Edge, 10 px item sides (16 px in the mode switch, 8 px and 12 px type in the 2D / 3D group); the selected item fills Graphite Ink with a 600 Reverse Ink label. The mode switch carries a capsule count of waiting proposals.
+One form for every one-of-n choice (2D / 3D and field choices): a Well track with a Rule ring and 8 px corners, 2 px inside; 26 px items at 12 px; the chosen item raised on it (Raised fill, Rule Strong border, the Control shadow, Ink at 600), the others in Ink 2.
 
 ### Chips
 - **Scenario tag:** 20 px capsule, 1 px Deep Scenario Green border, 12 px 600 green label ("S-2"), on steps the scenario changes.
@@ -614,7 +587,7 @@ One form for every one-of-n choice: the mode switch, language (EN / 中文), 2D 
 
 ### Cards / Containers
 The model canvas has no cards in the usual sense; its containers are steps and pools.
-- **Step node:** 4px corners, Raised fill, 1 px Control Edge, flat (see Elevation & Depth). A 39 px header (12 px inset, name at 600) above a hairline; the body is label (12 px) and value (15 px) pairs; utilisation is two square-ended strokes on 1 px Hairline tracks, dashed graphite baseline (2 px) above solid green scenario (2.5 px). A process step is 136 px wide (152 px while editing); sources and sinks run 116 to 140 px.
+- **Step node:** 12 px corners, Sheet fill, a 1 px Rule Strong border with the Control shadow (H-041; the app's steps are 168 px cards with the name at 600 over the kind in Ink 3). The prototype's step: a 39 px header (12 px inset, name at 600) above a hairline; the body is label (12 px) and value (15 px) pairs; utilisation is two square-ended strokes on 1 px Hairline tracks, dashed graphite baseline (2 px) above solid green scenario (2.5 px). A process step is 136 px wide (152 px while editing); sources and sinks run 116 to 140 px.
 - **States:** hover darkens the edge to Secondary Graphite; selected adds the selection ring and a Graphite Ink border; focus is a 2 px outline 4 px out (9 px when selected, clearing the ring); error turns the border Error Red; added is a 2 px Graphite Ink border.
 - **Resource pool:** a 44 px capsule; icon and name in Secondary Graphite, count at 15 px 600.
 - **Links:** flow arrows 1.5 px Secondary Graphite with open chevrons (Graphite Ink and 2 px when added); pool links 1 px Label Graphite with hollow end dots of 2.5 px radius; a warning leader in 1 px Amber Edge to a 32 px amber callout.
@@ -671,7 +644,7 @@ The signature: a string diagram in which a queue shows as a line going flat.
 ### Browser Surfaces and Icons
 - **Focus and selection:** a 2 px Graphite Ink outline, 2 px out (4 px on canvas objects, inset on the panel); the caret and native accents in Graphite Ink; text selection on Text Selection; thin scrollbars with a Control Edge thumb.
 - **Skip links:** hidden until focused, then a 6 px Graphite Ink button with a 600 Reverse Ink label at the top left.
-- **Key caps:** Archivo 12 px 500 in Secondary Graphite on Inset Well with a Hairline border and 4 px corners; never monospace.
+- **Key caps:** Geist Mono 12 px 500 in Ink 2 on Well with a Rule border and 6 px corners.
 - **Icons:** one authored SVG set, 16 px (13 px small, 12 px in tags), 1.5 px stroke, round caps and joins, drawn in currentColor.
 
 ## Do's and Don'ts
@@ -680,20 +653,20 @@ The signature: a string diagram in which a queue shows as a line going flat.
 - **Do** draw every baseline as dashed Baseline Graphite and every scenario as solid Deep Scenario Green, in charts, node bars, keys and legends alike (The Two Inks Rule).
 - **Do** write a change as baseline → scenario with the scenario value in green at 600, and give Δ, Δ% and the 90% interval beside the median.
 - **Do** keep the provenance row and the canvas caption on screen in every desktop mode, and label synthetic and sampled data where it is shown.
-- **Do** end the provenance row with the mode's primary action: Publish in Graphite Ink, a scenario run in Deep Scenario Green.
-- **Do** draw any boundary that identifies a control or a model object in Control Edge (at least 3:1); keep Hairline Rule for dividing content.
+- **Do** end the page's header with its primary action: Publish in Ink, a scenario run in Scenario green, an AI request in the accent.
+- **Do** draw an input's boundary in Edge (at least 3:1); a labelled button, a segment or a step may use Rule Strong with its shadow (H-041); keep Rule for dividing content.
 - **Do** keep a blocked action focusable as `aria-disabled` with its reason written beside it.
-- **Do** narrow Archivo to 87.5% or 75% before reducing a size, and step every role up one size for full-screen Compare.
+- **Do** let a table wrap a name before reducing a size, and step every role up one size for full-screen Compare.
 - **Do** animate state changes only, at 180 ms with `cubic-bezier(.2,.8,.2,1)`; under reduced motion, switch transitions off and let the playhead jump one time unit at a time.
 - **Do** take step names, resource names, the time unit, metric names and domain icons from the DomainPack.
 
 ### Don't:
 - **Don't** tell baseline and scenario apart by hue alone; the two inks are barely 1.5:1 apart.
 - **Don't** use green for brand, selection, links, focus or decoration; it means scenario or passed.
-- **Don't** let any blue or tinted neutral into the dark theme; its neutrals stay zero-chroma gray-black.
-- **Don't** put a dot grid or graph paper behind the model canvas, and don't float nodes on soft shadows; the only grid in the world is the Marey time grid.
+- **Don't** let a tinted neutral into either theme; neutrals stay zero-chroma. Only the hues' washes carry colour.
+- **Don't** put a grid anywhere but the model canvas's dots (H-041) and the Marey time grid.
 - **Don't** use Disabled Graphite for anything but disabled text.
-- **Don't** add a sixth type size, a second Latin family or a monospace face.
+- **Don't** add a sixth type size or a third family; Geist Mono is only for IDs, hashes and code.
 - **Don't** mark an active option or row with a colored stripe; use Selected Row Tint and weight.
 - **Don't** offer topology editing on a phone; the phone shows results and proposal review only.
 - **Don't** build one domain's vocabulary, units or icons into a component; the prototype's Software Delivery names are example data, not the system.

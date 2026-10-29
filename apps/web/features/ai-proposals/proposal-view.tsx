@@ -224,6 +224,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
       ]}
     />
     <article className={styles.page}>
+      <div className={styles.main}>
       <p className={styles.meta}>
         {t("proposal.asked", { date: dateTime(p.created_at), version: String(baseVersion) })}
         {gap}
@@ -280,29 +281,6 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
             ))}
           </ol>
           <p>{t("proposal.questionsHint")}</p>
-        </section>
-      )}
-
-      {(hasContent || p.status === "invalid") && (
-        <section className={styles.section} data-section="risk" aria-labelledby={`${id}-risk`}>
-          <h2 id={`${id}-risk`}>{t("proposal.risk")}</h2>
-          <div className={styles.claims}>
-            <div className={styles.authority} data-cell="server">
-              <h3>{t("proposal.risk.server")}</h3>
-              {p.server_risk_level && <p className={styles.level}>{t(`proposal.risk.level.${p.server_risk_level}`)}</p>}
-              <Checks issues={p.validation?.issues ?? []} valid={p.validation?.valid === true} version={baseVersion} />
-            </div>
-            {p.provider_risk_claim && (
-              <div className={styles.claim} data-cell="ai">
-                <h3>{t("proposal.risk.ai")}</h3>
-                <p className={styles.level}>{t(`proposal.risk.level.${p.provider_risk_claim}`)}</p>
-                {p.confidence !== undefined && <p>{t("proposal.risk.confidence", { percent: number(p.confidence, { style: "percent", maximumFractionDigits: 0 }) })}</p>}
-                <p className={styles.hint}>{t("proposal.risk.confidenceHint")}</p>
-              </div>
-            )}
-          </div>
-          {p.risk_level && <p>{t(`proposal.risk.counted.${p.risk_level}`)}</p>}
-          {p.status === "invalid" && <p>{t("proposal.askAgain")}</p>}
         </section>
       )}
 
@@ -398,11 +376,36 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
         </section>
       )}
 
-      {problem && <ProblemView problem={problem} />}
-
-      {(p.status === "ready" || p.status === "needs_input") && outcome === null && !canEdit(role) && (
-        <Callout tone="info">{t(role === null ? "proposal.readOnly.unknownRole" : "proposal.readOnly.viewer")}</Callout>
-      )}
+      </div>
+      {/* H-041: the risk and the decision beside the proposal, where the reviewer decides; a refused
+          decision's problem and the read-only note sit there too (review M3). */}
+      <div className={styles.aside}>
+        {problem && <ProblemView problem={problem} />}
+        {(p.status === "ready" || p.status === "needs_input") && outcome === null && !canEdit(role) && (
+          <Callout tone="info">{t(role === null ? "proposal.readOnly.unknownRole" : "proposal.readOnly.viewer")}</Callout>
+        )}
+        {(hasContent || p.status === "invalid") && (
+          <section className={styles.section} data-section="risk" aria-labelledby={`${id}-risk`}>
+            <h2 id={`${id}-risk`}>{t("proposal.risk")}</h2>
+            <div className={styles.claims}>
+              <div className={styles.authority} data-cell="server">
+                <h3>{t("proposal.risk.server")}</h3>
+                {p.server_risk_level && <p className={styles.level}>{t(`proposal.risk.level.${p.server_risk_level}`)}</p>}
+                <Checks issues={p.validation?.issues ?? []} valid={p.validation?.valid === true} version={baseVersion} />
+              </div>
+              {p.provider_risk_claim && (
+                <div className={styles.claim} data-cell="ai">
+                  <h3>{t("proposal.risk.ai")}</h3>
+                  <p className={styles.level}>{t(`proposal.risk.level.${p.provider_risk_claim}`)}</p>
+                  {p.confidence !== undefined && <p>{t("proposal.risk.confidence", { percent: number(p.confidence, { style: "percent", maximumFractionDigits: 0 }) })}</p>}
+                  <p className={styles.hint}>{t("proposal.risk.confidenceHint")}</p>
+                </div>
+              )}
+            </div>
+            {p.risk_level && <p>{t(`proposal.risk.counted.${p.risk_level}`)}</p>}
+            {p.status === "invalid" && <p>{t("proposal.askAgain")}</p>}
+          </section>
+        )}
 
       {decidable && (
         <section className={styles.decision} data-section="decision" aria-labelledby={`${id}-decision`}>
@@ -493,6 +496,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           <StatusRegion message={decision === "approving" ? t("proposal.approving") : decision === "rejecting" ? t("proposal.rejecting") : null} />
         </section>
       )}
+      </div>
     </article>
     </>
   );

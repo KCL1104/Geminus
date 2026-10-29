@@ -1,10 +1,44 @@
 /* The AI proposal review (T-031, DESIGN.md Proposal risk, Chips, Notes and
-   Outcomes, In-place confirmation): sections on the sheet divided by space,
-   the server's check in a Graphite Ink frame (the authority) beside the AI's
-   claim in a hairline frame, the changes as hairline rows with Added and
-   Removed tags, the decision under a Control Edge rule. */
+   Outcomes, In-place confirmation; H-041): sections as cards, the server's
+   check in an Ink frame (the authority) beside the AI's claim in a hairline
+   frame, the changes as hairline rows with Added and Removed tags, the risk
+   and the decision in a column beside the proposal. */
+/* H-041: the proposal on the left, its risk and the decision in a column
+   beside it that stays in view; one column below 1100 px. */
 .page {
-  max-width: 960px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: var(--gm-space-section);
+  align-items: start;
+  max-width: var(--gm-content-width);
+}
+
+.main,
+.aside {
+  min-width: 0;
+}
+
+/* Nothing to decide (generating, failed, decided, a viewer): one column. */
+.page:has(> .aside:empty) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.aside {
+  position: sticky;
+  top: var(--gm-space-gutter);
+  /* Never taller than the window: it scrolls inside itself (review M4). */
+  max-height: calc(100vh - 2 * var(--gm-space-gutter));
+  overflow-y: auto;
+}
+
+@media (max-width: 1100px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .aside {
+    position: static;
+  }
 }
 
 .meta {
@@ -22,8 +56,17 @@
   font-weight: var(--gm-font-weight-strong);
 }
 
+/* Each part of the proposal is a card (H-041). */
 .section {
-  margin: 0 0 var(--gm-space-xl);
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.section > h2:first-child {
+  margin-top: 0;
 }
 
 /* The AI's words and a person's comment: text as written, long words and addresses wrap. */
@@ -45,7 +88,7 @@ ul.words {
 
 .claims {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--gm-space-gutter);
   margin: 0 0 var(--gm-space-lg);
 }
@@ -137,14 +180,14 @@ ul.words {
   color: var(--gm-color-error);
 }
 
-/* The exact patch: Archivo like every other text (no monospace), wrapped so the page never scrolls sideways. */
+/* The exact patch in Geist Mono (H-041: code is monospace), wrapped so the page never scrolls sideways. */
 .patch pre {
   margin: 0 0 var(--gm-space-md);
   padding: var(--gm-space-cell) var(--gm-space-lg);
   border: 1px solid var(--gm-color-rule);
   border-radius: var(--gm-radius-md);
   background: var(--gm-color-well);
-  font-family: inherit;
+  font-family: var(--gm-font-mono);
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
   white-space: pre-wrap;
@@ -183,9 +226,15 @@ ul.words {
 }
 
 .decision {
-  margin: 0 0 var(--gm-space-xl);
-  padding-top: var(--gm-space-gutter);
-  border-top: 1px solid var(--gm-color-edge);
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.decision > h2:first-child {
+  margin-top: 0;
 }
 
 .confirm {

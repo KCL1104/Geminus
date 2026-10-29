@@ -150,14 +150,15 @@ T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and 
 
 ## Fonts served by the web app (T-045)
 
-`apps/web` serves two font families to the browser from its own origin (`ui/global-styles.ts`; the build copies the WOFF2 files into `/_next/static/media`). They come from npm packages pinned in `apps/web/package.json` and `package-lock.json`, with no install script. The subset files the browser downloads do not reliably carry the license text themselves (checked: no OFL string in the Archivo latin file or in two Noto Sans TC subsets), so the copyright and the license are recorded here.
+`apps/web` serves three font families to the browser from its own origin (`ui/global-styles.ts`; the build copies the WOFF2 files into `/_next/static/media`). They come from npm packages pinned in `apps/web/package.json` and `package-lock.json`, with no install script. The subset files the browser downloads do not reliably carry the license text themselves (checked for Archivo and Noto Sans TC in T-045; Geist and Geist Mono replaced Archivo in H-041, 2026-10-29), so the copyright and the license are recorded here.
 
 | Package | Version | Font | License | Copyright |
 |---|---|---|---|---|
-| @fontsource-variable/archivo 5.3.0 | 5.3.0 (2026-07-19) | Archivo, variable weight and width (latin, latin-ext, vietnamese) | OFL-1.1 | Copyright 2020 The Archivo Project Authors (https://github.com/Omnibus-Type/Archivo) |
+| @fontsource-variable/geist 5.3.0 | 5.3.0 (2026-07-19) | Geist, variable weight (latin, latin-ext, cyrillic, vietnamese) | OFL-1.1 | Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font) |
+| @fontsource-variable/geist-mono 5.3.0 | 5.3.0 (2026-07-19) | Geist Mono, variable weight (latin, latin-ext, cyrillic, vietnamese) | OFL-1.1 | Copyright 2024 The Geist Project Authors (https://github.com/vercel/geist-font) |
 | @fontsource-variable/noto-sans-tc 5.3.0 | 5.3.0 (2026-07-19) | Noto Sans TC, variable weight (Traditional Chinese, split by unicode-range) | OFL-1.1 | Google Inc. (the package's notice; Noto fonts, https://github.com/google/fonts) |
 
-The license, as both packages ship it:
+The license, as the packages ship it:
 
 ```text
 This Font Software is licensed under the SIL Open Font License, Version 1.1.

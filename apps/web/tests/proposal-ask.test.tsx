@@ -103,7 +103,8 @@ describe("asking the AI for a change on the model page", () => {
     expect(text(form)).toContain(en("ask.mode.edit"));
     expect(text(form)).toContain(en("ask.modeHint.edit", { version: "2" }));
     const send = button(form, en("ask.send"));
-    expect(send.getAttribute("data-variant")).toBe("secondary");
+    // The AI's own action takes the accent (H-041); Publish stays the one primary.
+    expect(send.getAttribute("data-variant")).toBe("ai");
     expect(el.querySelectorAll('[data-variant="primary"]')).toHaveLength(1);
     expect(await violations()).toEqual([]);
   });

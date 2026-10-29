@@ -1,16 +1,17 @@
 /*
- * Design tokens (T-045, ADR-021): the Marey design system of DESIGN.md
- * (H-013), kept simple (H-027). Every colour is DESIGN.md's, under its own
- * key as --gm-color-<key>; tests/tokens.test.ts checks that both themes
+ * Design tokens (T-045, ADR-021): the visual system of DESIGN.md (H-041, a
+ * developer-tool look on the level the owner named: Railway, Vercel/Geist,
+ * Figma/Framer), kept simple (H-027). Every colour is DESIGN.md's, under its
+ * own key as --gm-color-<key>; tests/tokens.test.ts checks that both themes
  * match DESIGN.md value for value, that every pair components use meets
  * WCAG 2.2 AA, and that no other file names a colour.
  *
- * Themes: light, and a gray-black dark whose neutrals have no chroma
- * (H-012). The theme follows the system unless the reader chose one; the
- * choice is the cookie geminus_theme, which the root layout renders as
- * <html data-theme>, so the first paint already has it (no script, no
- * flash). The dark values are written twice, for the system preference
- * and for the choice; the tokens test keeps the two blocks equal.
+ * Themes: light, and a near-black dark whose neutrals have no chroma. The
+ * theme follows the system unless the reader chose one; the choice is the
+ * cookie geminus_theme, which the root layout renders as <html data-theme>,
+ * so the first paint already has it (no script, no flash). The dark values
+ * are written twice, for the system preference and for the choice; the
+ * tokens test keeps the two blocks equal.
  *
  * Cascade layers: "base" holds element defaults (ui/base.css), "vendor" any
  * third-party stylesheet. CSS Modules are unlayered, so they win over both
@@ -21,62 +22,70 @@
 :root {
   color-scheme: light dark;
 
-  /* Colours, light (DESIGN.md colors). */
-  --gm-color-ground: #ededea;
+  /* Colours, light (DESIGN.md colors): a near-white page, white cards. */
+  --gm-color-ground: #fafafa;
   --gm-color-sheet: #ffffff;
   --gm-color-panel: #ffffff;
   --gm-color-raised: #ffffff;
-  --gm-color-well: #f3f3f1;
-  --gm-color-hover: #f0f0ed;
-  --gm-color-press: #e5e5e1;
-  --gm-color-time-grid: #ededea;
-  --gm-color-time-grid-major: #d9d9d4;
-  --gm-color-rule: #dadad6;
-  --gm-color-edge: #808387;
-  --gm-color-ink: #1b1d1f;
-  --gm-color-ink-2: #4d5155;
-  --gm-color-ink-3: #62666a;
-  --gm-color-ink-4: #9a9da0;
+  --gm-color-well: #f4f4f4;
+  --gm-color-hover: #f2f2f2;
+  --gm-color-press: #e8e8e8;
+  --gm-color-time-grid: #f0f0f0;
+  --gm-color-time-grid-major: #e3e3e3;
+  --gm-color-rule: #ebebeb;
+  --gm-color-rule-strong: #e0e0e0;
+  --gm-color-edge: #8a8a8a;
+  --gm-color-ink: #0a0a0a;
+  --gm-color-ink-2: #525252;
+  --gm-color-ink-3: #6b6b6b;
+  --gm-color-ink-4: #a3a3a3;
   --gm-color-on-ink: #ffffff;
-  --gm-color-baseline: #3f4347;
-  --gm-color-scenario: #0b6b4b;
-  --gm-color-scenario-wash: #e8f2ed;
+  --gm-color-baseline: #6b6b6b;
+  --gm-color-scenario: #08784e;
+  --gm-color-scenario-wash: #e8f5ee;
   --gm-color-on-scenario: #ffffff;
-  --gm-color-warning: #8a4f00;
+  --gm-color-accent: #6d4aff;
+  --gm-color-accent-fill: #6d4aff;
+  --gm-color-accent-wash: #f4f1ff;
+  --gm-color-on-accent: #ffffff;
+  --gm-color-warning: #955400;
   --gm-color-warning-mark: #b26b00;
-  --gm-color-warning-wash: #fdf3dd;
+  --gm-color-warning-wash: #fdf3e1;
   --gm-color-warning-edge: #d29a3a;
-  --gm-color-error: #b3261e;
-  --gm-color-error-wash: #fceeec;
-  --gm-color-error-edge: #d9837d;
-  --gm-color-selection-tint: #efefec;
-  --gm-color-text-selection: #d6d9db;
-  --gm-color-avatar: #3f4347;
+  --gm-color-error: #c42430;
+  --gm-color-error-wash: #fdebec;
+  --gm-color-error-edge: #f0a6ab;
+  --gm-color-selection-tint: #f0f0f0;
+  --gm-color-text-selection: #dcdcdc;
+  --gm-color-avatar: #0a0a0a;
   --gm-color-on-avatar: #ffffff;
-  --gm-color-veil: rgba(27,29,31,.36);
+  --gm-color-veil: rgba(0,0,0,.4);
 
-  /* Only what floats over the work casts a shadow (DESIGN.md, Elevation). */
-  --gm-shadow-overlay: 0 1px 2px rgba(27,29,31,.10), 0 10px 28px rgba(27,29,31,.16);
+  /* Cards lift a hair off the page; what floats over the work casts a real shadow (DESIGN.md, Elevation). */
+  --gm-shadow-card: 0 0 0 1px var(--gm-color-rule), 0 1px 2px rgba(0,0,0,.04);
+  --gm-shadow-overlay: 0 0 0 1px rgba(0,0,0,.06), 0 8px 30px rgba(0,0,0,.12);
+  --gm-shadow-control: 0 1px 2px rgba(0,0,0,.05);
 
-  /* Type: Archivo with tabular lining figures, Noto Sans TC for Chinese,
-     both self-hosted (OFL, docs/THIRD_PARTY_NOTICES.md), then the faces
-     each system already has. Five sizes only. */
-  --gm-font-sans: "Archivo Variable", Archivo, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  /* Type: Geist with tabular figures, Geist Mono for IDs and code, Noto Sans
+     TC for Chinese, all self-hosted (OFL, docs/THIRD_PARTY_NOTICES.md), then
+     the faces each system already has. Five sizes only. */
+  --gm-font-sans: "Geist Variable", Geist, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --gm-font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
   --gm-font-features: "tnum" 1, "lnum" 1;
   --gm-font-size-label: 12px;
-  --gm-font-size-body: 13.5px;
+  --gm-font-size-body: 13px;
   --gm-font-size-title: 15px;
-  --gm-font-size-headline: 18px;
-  --gm-font-size-display: 22px;
-  --gm-line-height-label: 1.35;
-  --gm-line-height-body: 1.4;
-  --gm-line-height-title: 20px;
-  --gm-line-height-headline: 24px;
-  --gm-line-height-display: 28px;
+  --gm-font-size-headline: 20px;
+  --gm-font-size-display: 26px;
+  --gm-line-height-label: 1.4;
+  --gm-line-height-body: 1.5;
+  --gm-line-height-title: 22px;
+  --gm-line-height-headline: 28px;
+  --gm-line-height-display: 32px;
   --gm-font-weight-regular: 400;
   --gm-font-weight-medium: 500;
   --gm-font-weight-strong: 600;
-  --gm-font-weight-brand: 700;
+  --gm-font-weight-brand: 600;
 
   /* Spacing (DESIGN.md spacing): tight inside a group, open between groups. */
   --gm-space-hair: 2px;
@@ -92,10 +101,11 @@
   --gm-space-2xl: 32px;
   --gm-space-split: 40px;
 
-  /* Corners: 4 px inside the sheet, 6 px controls and containers, 8 px dialogs. */
-  --gm-radius-sm: 4px;
-  --gm-radius-md: 6px;
-  --gm-radius-lg: 8px;
+  /* Corners: 6 px tags and small parts, 8 px controls, 12 px cards and dialogs, full for pills. */
+  --gm-radius-sm: 6px;
+  --gm-radius-md: 8px;
+  --gm-radius-lg: 12px;
+  --gm-radius-full: 999px;
 
   --gm-content-width: 1152px;
   /* The main region's side gutters (ui/shell.module.css); a header band reaches past them to the window's edges (H-040). */
@@ -110,10 +120,10 @@
   --gm-row-height: 32px;
   --gm-control-padding-x: var(--gm-space-lg);
 
-  /* Focus: a 2 px Graphite Ink outline, 2 px out. */
+  /* Focus: a 2 px accent outline, 2 px out. */
   --gm-focus-width: 2px;
   --gm-focus-offset: 2px;
-  --gm-focus-ring: var(--gm-focus-width) solid var(--gm-color-ink);
+  --gm-focus-ring: var(--gm-focus-width) solid var(--gm-color-accent);
 
   /* State changes only, 180 ms (DESIGN.md Do's); off under reduced motion (ui/base.css). */
   --gm-motion: 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -123,78 +133,92 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --gm-color-ground: #111111;
-    --gm-color-sheet: #171717;
-    --gm-color-panel: #1b1b1b;
-    --gm-color-raised: #232323;
-    --gm-color-well: #0d0d0d;
-    --gm-color-hover: #2a2a2a;
-    --gm-color-press: #323232;
-    --gm-color-time-grid: #1f1f1f;
-    --gm-color-time-grid-major: #2e2e2e;
-    --gm-color-rule: #2e2e2e;
-    --gm-color-edge: #707070;
-    --gm-color-ink: #ebebeb;
-    --gm-color-ink-2: #b5b5b5;
-    --gm-color-ink-3: #949494;
-    --gm-color-ink-4: #5e5e5e;
-    --gm-color-on-ink: #111111;
-    --gm-color-baseline: #c9c9c9;
-    --gm-color-scenario: #5cc79e;
-    --gm-color-scenario-wash: #242424;
-    --gm-color-on-scenario: #0f0f0f;
-    --gm-color-warning: #f0b44c;
-    --gm-color-warning-mark: #f0b44c;
-    --gm-color-warning-wash: #242424;
+    --gm-color-ground: #0a0a0a;
+    --gm-color-sheet: #111111;
+    --gm-color-panel: #111111;
+    --gm-color-raised: #171717;
+    --gm-color-well: #161616;
+    --gm-color-hover: #1f1f1f;
+    --gm-color-press: #262626;
+    --gm-color-time-grid: #1a1a1a;
+    --gm-color-time-grid-major: #262626;
+    --gm-color-rule: #232323;
+    --gm-color-rule-strong: #2e2e2e;
+    --gm-color-edge: #6e6e6e;
+    --gm-color-ink: #ededed;
+    --gm-color-ink-2: #a1a1a1;
+    --gm-color-ink-3: #8a8a8a;
+    --gm-color-ink-4: #525252;
+    --gm-color-on-ink: #0a0a0a;
+    --gm-color-baseline: #a1a1a1;
+    --gm-color-scenario: #3dd68c;
+    --gm-color-scenario-wash: #0d281b;
+    --gm-color-on-scenario: #0a0a0a;
+    --gm-color-accent: #9d8fff;
+    --gm-color-accent-fill: #6d4aff;
+    --gm-color-accent-wash: #1b1735;
+    --gm-color-on-accent: #ffffff;
+    --gm-color-warning: #f5b14c;
+    --gm-color-warning-mark: #f5b14c;
+    --gm-color-warning-wash: #2a2010;
     --gm-color-warning-edge: #b07a1e;
-    --gm-color-error: #f07a70;
-    --gm-color-error-wash: #242424;
-    --gm-color-error-edge: #b5534b;
-    --gm-color-selection-tint: #262626;
-    --gm-color-text-selection: #3b3b3b;
-    --gm-color-avatar: #3a3a3a;
-    --gm-color-on-avatar: #ffffff;
-    --gm-color-veil: rgba(0,0,0,.62);
-    --gm-shadow-overlay: 0 0 0 1px #3a3a3a, 0 12px 32px rgba(0,0,0,.6);
+    --gm-color-error: #ff6b6b;
+    --gm-color-error-wash: #2c1416;
+    --gm-color-error-edge: #7d3438;
+    --gm-color-selection-tint: #1c1c1c;
+    --gm-color-text-selection: #333333;
+    --gm-color-avatar: #ededed;
+    --gm-color-on-avatar: #0a0a0a;
+    --gm-color-veil: rgba(0,0,0,.7);
+    --gm-shadow-card: 0 0 0 1px var(--gm-color-rule);
+    --gm-shadow-overlay: 0 0 0 1px #2e2e2e, 0 12px 32px rgba(0,0,0,.6);
+    --gm-shadow-control: 0 1px 2px rgba(0,0,0,.4);
   }
 }
 
 /* Dark, because the reader chose it (the same values as above). */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --gm-color-ground: #111111;
-  --gm-color-sheet: #171717;
-  --gm-color-panel: #1b1b1b;
-  --gm-color-raised: #232323;
-  --gm-color-well: #0d0d0d;
-  --gm-color-hover: #2a2a2a;
-  --gm-color-press: #323232;
-  --gm-color-time-grid: #1f1f1f;
-  --gm-color-time-grid-major: #2e2e2e;
-  --gm-color-rule: #2e2e2e;
-  --gm-color-edge: #707070;
-  --gm-color-ink: #ebebeb;
-  --gm-color-ink-2: #b5b5b5;
-  --gm-color-ink-3: #949494;
-  --gm-color-ink-4: #5e5e5e;
-  --gm-color-on-ink: #111111;
-  --gm-color-baseline: #c9c9c9;
-  --gm-color-scenario: #5cc79e;
-  --gm-color-scenario-wash: #242424;
-  --gm-color-on-scenario: #0f0f0f;
-  --gm-color-warning: #f0b44c;
-  --gm-color-warning-mark: #f0b44c;
-  --gm-color-warning-wash: #242424;
+  --gm-color-ground: #0a0a0a;
+  --gm-color-sheet: #111111;
+  --gm-color-panel: #111111;
+  --gm-color-raised: #171717;
+  --gm-color-well: #161616;
+  --gm-color-hover: #1f1f1f;
+  --gm-color-press: #262626;
+  --gm-color-time-grid: #1a1a1a;
+  --gm-color-time-grid-major: #262626;
+  --gm-color-rule: #232323;
+  --gm-color-rule-strong: #2e2e2e;
+  --gm-color-edge: #6e6e6e;
+  --gm-color-ink: #ededed;
+  --gm-color-ink-2: #a1a1a1;
+  --gm-color-ink-3: #8a8a8a;
+  --gm-color-ink-4: #525252;
+  --gm-color-on-ink: #0a0a0a;
+  --gm-color-baseline: #a1a1a1;
+  --gm-color-scenario: #3dd68c;
+  --gm-color-scenario-wash: #0d281b;
+  --gm-color-on-scenario: #0a0a0a;
+  --gm-color-accent: #9d8fff;
+  --gm-color-accent-fill: #6d4aff;
+  --gm-color-accent-wash: #1b1735;
+  --gm-color-on-accent: #ffffff;
+  --gm-color-warning: #f5b14c;
+  --gm-color-warning-mark: #f5b14c;
+  --gm-color-warning-wash: #2a2010;
   --gm-color-warning-edge: #b07a1e;
-  --gm-color-error: #f07a70;
-  --gm-color-error-wash: #242424;
-  --gm-color-error-edge: #b5534b;
-  --gm-color-selection-tint: #262626;
-  --gm-color-text-selection: #3b3b3b;
-  --gm-color-avatar: #3a3a3a;
-  --gm-color-on-avatar: #ffffff;
-  --gm-color-veil: rgba(0,0,0,.62);
-  --gm-shadow-overlay: 0 0 0 1px #3a3a3a, 0 12px 32px rgba(0,0,0,.6);
+  --gm-color-error: #ff6b6b;
+  --gm-color-error-wash: #2c1416;
+  --gm-color-error-edge: #7d3438;
+  --gm-color-selection-tint: #1c1c1c;
+  --gm-color-text-selection: #333333;
+  --gm-color-avatar: #ededed;
+  --gm-color-on-avatar: #0a0a0a;
+  --gm-color-veil: rgba(0,0,0,.7);
+  --gm-shadow-card: 0 0 0 1px var(--gm-color-rule);
+  --gm-shadow-overlay: 0 0 0 1px #2e2e2e, 0 12px 32px rgba(0,0,0,.6);
+  --gm-shadow-control: 0 1px 2px rgba(0,0,0,.4);
 }
 
 /* Light, because the reader chose it on a dark system. */

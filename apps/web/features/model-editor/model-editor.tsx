@@ -335,15 +335,17 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
         <div className={styles.column}>
           <div className={styles.toolbar}>
             {/* 3D is a read-only projection (T-033): no step is added or fitted there. */}
-            {editable && view === "2d" && (
-              <div ref={addRef}>
-                <ActionMenu label={t("editor.addStep")} icon={<PlusIcon />} items={addable.map((type) => ({ id: type, label: t(`editor.type.${type}`) }))} onAction={(id) => add(id as (typeof nodeTypes)[number])} />
-              </div>
-            )}
             {view === "2d" && (
-              <Button variant="quiet" icon={<FitIcon />} onPress={() => void flow.fitView({ padding: 0.1 })}>
-                {t("editor.fit")}
-              </Button>
+              <div className={styles.tools}>
+                {editable && (
+                  <div ref={addRef}>
+                    <ActionMenu label={t("editor.addStep")} icon={<PlusIcon />} items={addable.map((type) => ({ id: type, label: t(`editor.type.${type}`) }))} onAction={(id) => add(id as (typeof nodeTypes)[number])} />
+                  </div>
+                )}
+                <Button variant="quiet" icon={<FitIcon />} onPress={() => void flow.fitView({ padding: 0.1 })}>
+                  {t("editor.fit")}
+                </Button>
+              </div>
             )}
             <div className={styles.views}>
               <Segmented label={t("editor.view")} items={[{ id: "2d", label: t("editor.view.2d") }, { id: "3d", label: t("editor.view.3d") }]} value={view} onChange={setView} />

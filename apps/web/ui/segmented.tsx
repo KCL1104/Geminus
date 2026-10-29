@@ -1,7 +1,6 @@
 "use client";
-// One form for every one-of-n choice (DESIGN.md Segmented Controls): a
-// Control Edge outline with 6 px corners, Raised items divided by Control
-// Edge, the selected one in Graphite Ink with a 600 Reverse Ink label. React
+// One form for every one-of-n choice (DESIGN.md Segmented Controls, H-041):
+// a well with the selected item raised on it, its label at 600. React
 // Aria's ToggleButtonGroup gives it the role, the arrow keys and the name;
 // exactly one item is always selected.
 import { ToggleButton, ToggleButtonGroup } from "react-aria-components";

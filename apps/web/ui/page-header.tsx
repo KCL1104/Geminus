@@ -1,9 +1,8 @@
 "use client";
-// The page's header band (H-040, DESIGN.md Layout): under the app strip, on
-// the Pale Shell, the way back (the parents' links), the page's title, then
-// the provenance row, label and value groups divided by hairline verticals
-// that ends at the right edge in the page's actions. It reaches both edges
-// of the window; the page under it keeps its own width.
+// The page's header (H-040, restyled by H-041; DESIGN.md Layout): the way
+// back (the parents' links), the page's title at Display size, its
+// provenance as pills (label and value), and the page's actions at the
+// right, level with the pills.
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useI18n } from "../lib/i18n/provider";
@@ -20,7 +19,7 @@ export function PageHeader({ trail, title, facts = [], actions }: {
   const { t } = useI18n();
   return (
     <header className={styles.band}>
-      <div className={styles.titleRow}>
+      <div className={styles.text}>
         {trail.length > 0 && (
           <nav aria-label={t("nav.trail")}>
             <ol className={styles.trail}>
@@ -33,25 +32,21 @@ export function PageHeader({ trail, title, facts = [], actions }: {
           </nav>
         )}
         <h1>{title}</h1>
+        {facts.length > 0 && (
+          <dl className={styles.facts}>
+            {facts.map((f) => (
+              <div key={f.label} className={styles.fact}>
+                <dt>{f.label}</dt>
+                <dd>
+                  {f.icon}
+                  {f.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </div>
-      {(facts.length > 0 || actions) && (
-        <div className={styles.row}>
-          {facts.length > 0 && (
-            <dl className={styles.facts}>
-              {facts.map((f) => (
-                <div key={f.label} className={styles.fact}>
-                  <dt>{f.label}</dt>
-                  <dd>
-                    {f.icon}
-                    {f.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-          {actions && <div className={styles.actions}>{actions}</div>}
-        </div>
-      )}
+      {actions && <div className={styles.actions}>{actions}</div>}
     </header>
   );
 }

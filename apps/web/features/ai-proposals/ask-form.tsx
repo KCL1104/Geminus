@@ -115,7 +115,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
       </div>
       <div className={styles.askRow}>
-        <Button icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
+        <Button variant="ai" icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>
         {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}

@@ -53,7 +53,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 {t("nav.skip")}
               </a>
               <header className={shell.header}>
-                <span className={shell.brand}>{t("app.name")}</span>
+                <span className={shell.brand}>
+                  <svg className={shell.mark} width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <rect x="0.75" y="0.75" width="12.5" height="12.5" rx="3.5" className={shell.markFront} />
+                    <rect x="6.75" y="6.75" width="12.5" height="12.5" rx="3.5" className={shell.markBack} />
+                  </svg>
+                  {t("app.name")}
+                </span>
                 <nav aria-label={t("nav.label")} className={shell.nav}>
                   <Link href="/projects">{t("nav.projects")}</Link>
                 </nav>

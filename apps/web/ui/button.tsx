@@ -7,10 +7,10 @@ import { cx } from "./cx";
 export type ButtonProps = Omit<AriaButtonProps, "className"> & {
   /**
    * primary: the page's main action; danger: destroys or discards; quiet:
-   * low emphasis; run: runs a scenario, and nothing else (DESIGN.md Buttons,
-   * Deep Scenario Green: green means scenario).
+   * low emphasis; run: runs a scenario, and nothing else (green means
+   * scenario); ai: asks the AI (the accent marks the AI, H-041).
    */
-  variant?: "primary" | "secondary" | "danger" | "quiet" | "run";
+  variant?: "primary" | "secondary" | "danger" | "quiet" | "run" | "ai";
   /**
    * A blocked action (DESIGN.md Buttons, Disabled): it looks disabled and
    * does nothing when pressed, but stays focusable as aria-disabled, so
