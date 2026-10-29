@@ -81,4 +81,22 @@ CI 的截圖 baseline（`/`、`/projects`、`/no-such-page`、`/ui-gallery`，TE
 |---|---|
 | `make backend-test` | exit 0：**85 個 package ok** |
 
-`make backend-race`、`make integration-test` NOT RUN（Go 只加一個常數，CI 會跑）。前兩次 push（`14bb5f2`、`007ff57`）的 CI 失敗是 spec-check：新增驗證文件後沒有更新 `checks/docs-check.json`；`66d4d48` 已更新且 spec-check 通過。Live（部署後）NOT RUN：待部署。
+`make backend-race`、`make integration-test` 本機 NOT RUN（Go 只加一個常數）。前兩次 push（`14bb5f2`、`007ff57`）的 CI 失敗是 spec-check：新增驗證文件後沒有更新 `checks/docs-check.json`；`66d4d48` 已更新且 spec-check 通過。
+
+`f06ca92` 的 CI（run 40744508253）：6 個 job 全部通過（spec-check、frontend、browser checks 含截圖比對、db migration＋API 整合、backend 含 race、containers）。
+
+### Live（2026-10-29，Railway，`f06ca92`）
+
+`deploy.sh --apply`：18 個 migration 已記錄；api、worker、web SUCCESS；`/healthz`、`/readyz` 200，`/v1/me` 401，Postgres 沒有開著的 TCP proxy；完成後 `railway logout`。以評審帳號在 Chromium 檢查（沒有發出新的 AI 請求）：
+
+| 檢查 | 結果 |
+|---|---|
+| 結果頁開頭那句 | scenario 值在 `<data value="461.108…">`，顯示「461.11 min」，綠色 rgb(11,107,75)；其下說明「From 5 replications of each run…95% intervals.」 |
+| 「Both runs completed.」 | 只在 quiet live region（`data-quiet`），畫面上 0 個可見 |
+| 減號 | 頁面 26 個 U+2212，表格中沒有以「-」開頭的數字 |
+| 手機（390 px） | 結果頁、模型頁無水平溢出；比較表的列為 grid；結果頁 3D 畫面 358×240 |
+| 模型頁 | 顯示「Electronics assembly and test line」，不顯示 `electronics_line`；文字框 2 行；Send 在 y=325，2D 畫布在 y=520；1280 無溢出 |
+| 提案頁 | 兩個既有提案分別是「could not be written」與「needs more information」，沒有可批准的提案 |
+| Page errors | 無 |
+
+NOT RUN（live）：AI 摘要的 `<details>`（頁面要再問一次 AI 才會顯示說明，為省 live 呼叫未問；unit 與 e2e 已涵蓋）；確認按鈕的新字樣與過期狀態（live 沒有 ready 的提案；unit 與 e2e 已涵蓋）。
