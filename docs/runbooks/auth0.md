@@ -1,106 +1,106 @@
-# Runbook：Auth0 tenant 與瀏覽器 session（BFF）設定
+# Runbook: Auth0 tenant and browser session (BFF) setup
 
-依據：[ADR-018](../adr/ADR-018-browser-session-and-oidc-provider.md)（BFF、Auth0）、[ADR-017](../adr/ADR-017-oidc-token-verification.md)（API 驗 token）、T-043。
+Basis: [ADR-018](../adr/ADR-018-browser-session-and-oidc-provider.md) (BFF, Auth0), [ADR-017](../adr/ADR-017-oidc-token-verification.md) (the API verifies tokens), T-043.
 
-**這些步驟由 owner 執行。** Agent 不建立帳號、不接受條款、不持有任何 credential；repo 與 CI 都沒有 Auth0 的設定或密鑰，測試只用 repo 內的測試 provider（`apps/web/tests/fake-oidc.ts`、`apps/web-e2e/fake/servers.mjs`）。H-034 之後（T-057）：tenant 與 owner 自己的使用者仍由 owner 建立；§2、§3 的設定、關閉 sign-up 與評審帳號（H-035 (2)）由部署 session 的 `deploy/railway/deploy.sh --apply` 以 Auth0 CLI 設定（owner 在自己的瀏覽器核准 CLI 的登入，[deploy runbook](deploy.md) §7.8）；§6 是同樣設定的手動備援。
+**The owner runs these steps.** Agents do not create accounts, do not accept terms and do not hold any credential. Neither the repo nor CI has Auth0 settings or secrets; tests use only the test provider in the repo (`apps/web/tests/fake-oidc.ts`, `apps/web-e2e/fake/servers.mjs`). After H-034 (T-057): the owner still creates the tenant and the owner's own user. The settings of §2 and §3, turning off sign-up, and the judge account (H-035 (2)) are set by the deploy session's `deploy/railway/deploy.sh --apply` with the Auth0 CLI (the owner approves the CLI's login in the owner's own browser, [deploy runbook](deploy.md) §7.8). §6 is the manual fallback for the same settings.
 
-## 1. 建立前要先決定的事
+## 1. What to decide before creating it
 
-- **Region**：依資料 residency 與 retention 決定（仍為 TBD）。決定之前只能有測試使用者，不放真實客戶的使用者資料（ADR-018 §3）。
-- **方案與費用**：owner 註冊時確認。
+- **Region**: decided by data residency and retention (still TBD). Until it is decided, only test users are allowed; no real customer user data (ADR-018 §3).
+- **Plan and cost**: the owner confirms them at sign-up.
 
-## 2. API（access token 的 audience）
+## 2. API (the audience of the access token)
 
-在 Auth0 Dashboard → Applications → APIs 建立：
+Create it in Auth0 Dashboard → Applications → APIs:
 
-| 設定 | 值 |
+| Setting | Value |
 |---|---|
-| Identifier | API 的 audience，例如 `https://api.<你的網域>`。之後不能改 |
+| Identifier | The API's audience, for example `https://api.<your domain>`. It cannot be changed later |
 | Signing algorithm | RS256 |
-| Access token profile | RFC 9068（header `typ: at+jwt`），API 端開 `AUTH_OIDC_REQUIRE_AT_JWT=true` |
-| Token expiration | 600 秒（10 分鐘） |
-| Allow Offline Access | 開（才會發 refresh token） |
+| Access token profile | RFC 9068 (header `typ: at+jwt`); on the API side set `AUTH_OIDC_REQUIRE_AT_JWT=true` |
+| Token expiration | 600 seconds (10 minutes) |
+| Allow Offline Access | On (otherwise no refresh token is issued) |
 
-## 3. Application（BFF 是 confidential client）
+## 3. Application (the BFF is a confidential client)
 
-Applications → Applications → Create → **Regular Web Application**：
+Applications → Applications → Create → **Regular Web Application**:
 
-| 設定 | 值 |
+| Setting | Value |
 |---|---|
 | Token endpoint authentication method | Client Secret (Post) |
-| Allowed Callback URLs | `https://<app 網域>/auth/callback`（只有這一個） |
-| Allowed Logout URLs | `https://<app 網域>/` |
-| Allowed Web Origins、Allowed Origins (CORS) | 空白（BFF 不開 CORS，瀏覽器不直接連 Auth0 的 API） |
-| Grant types | 只勾 Authorization Code 與 Refresh Token |
-| ID token signature | RS256（BFF 固定以 RS256 驗 ID token 簽章） |
-| Refresh token rotation | 開，reuse detection 開 |
-| Rotation 的 reuse interval | 30 秒，與 BFF 在 process 內共用 refresh 結果的時間相同（`REFRESH_REUSE_MS`）。只有一個 web instance 時也不設 0：瀏覽器取消的 request 或遺失的回應拿不到 rotation 後的 cookie，30 秒內的重送仍能拿到新 token，而不是被當成 reuse 撤銷整個 session |
-| Refresh token expiration | Inactivity lifetime 43200 秒（12 小時）、Absolute lifetime 604800 秒（7 天） |
+| Allowed Callback URLs | `https://<app domain>/auth/callback` (this one only) |
+| Allowed Logout URLs | `https://<app domain>/` |
+| Allowed Web Origins, Allowed Origins (CORS) | Empty (the BFF does not open CORS; the browser does not connect to Auth0's API directly) |
+| Grant types | Tick only Authorization Code and Refresh Token |
+| ID token signature | RS256 (the BFF always verifies the ID token signature with RS256) |
+| Refresh token rotation | On, with reuse detection on |
+| Rotation reuse interval | 30 seconds, the same as the time the BFF shares a refresh result within the process (`REFRESH_REUSE_MS`). Do not set 0 even with a single web instance: a request the browser cancelled, or a lost response, does not get the cookie after rotation; a resend within 30 seconds still gets the new token instead of being treated as reuse that revokes the whole session |
+| Refresh token expiration | Inactivity lifetime 43200 seconds (12 hours), Absolute lifetime 604800 seconds (7 days) |
 
-使用者：關閉 database connection 的 sign-up。使用者與 organization 只由 operator 以 `cmd/provision-tenant` 建立，subject 用 Auth0 的 `user_id`（例如 `auth0|…`）；未 provision 的 identity 登入後 API 回 403，不會自動建立（D-008）。
+Users: turn off sign-up on the database connection. Users and organizations are created only by an operator with `cmd/provision-tenant`; the subject is Auth0's `user_id` (for example `auth0|…`). An identity that was not provisioned gets 403 from the API after sign-in; it is not created automatically (D-008).
 
-## 4. 部署設定
+## 4. Deployment settings
 
-Web（Next.js 伺服器端，BFF）：
+Web (the Next.js server side, the BFF):
 
-| 變數 | 值 |
+| Variable | Value |
 |---|---|
-| `BFF_APP_ORIGIN` | `https://<app 網域>` |
-| `BFF_API_URL` | Go API 的 base URL（https；只有全部 URL 都在 loopback 時才可 http） |
-| `BFF_OIDC_ISSUER` | `https://<tenant>.<region>.auth0.com/`（含結尾的 `/`，與 ID token 的 `iss` 完全相同） |
+| `BFF_APP_ORIGIN` | `https://<app domain>` |
+| `BFF_API_URL` | The Go API's base URL (https; http only when every URL is on loopback) |
+| `BFF_OIDC_ISSUER` | `https://<tenant>.<region>.auth0.com/` (with the trailing `/`, exactly the ID token's `iss`) |
 | `BFF_OIDC_AUTHORIZATION_URL` | `<issuer>authorize` |
 | `BFF_OIDC_TOKEN_URL` | `<issuer>oauth/token` |
 | `BFF_OIDC_REVOCATION_URL` | `<issuer>oauth/revoke` |
 | `BFF_OIDC_END_SESSION_URL` | `<issuer>oidc/logout` |
 | `BFF_OIDC_JWKS_URL` | `<issuer>.well-known/jwks.json` |
-| `BFF_OIDC_CLIENT_ID` | Application 的 Client ID |
-| `BFF_OIDC_CLIENT_SECRET` | Application 的 Client Secret（只放 secret manager） |
-| `BFF_OIDC_AUDIENCE` | 第 2 節的 API Identifier |
-| `BFF_OIDC_SCOPES` | 不設（預設 `openid offline_access`） |
-| `SESSION_KEYS` | `<id>:<32 bytes 的 base64url>`，見下方（只放 secret manager） |
+| `BFF_OIDC_CLIENT_ID` | The Application's Client ID |
+| `BFF_OIDC_CLIENT_SECRET` | The Application's Client Secret (only in the secret manager) |
+| `BFF_OIDC_AUDIENCE` | The API Identifier of section 2 |
+| `BFF_OIDC_SCOPES` | Not set (default `openid offline_access`) |
+| `SESSION_KEYS` | `<id>:<base64url of 32 bytes>`, see below (only in the secret manager) |
 
-Go API：`AUTH_OIDC_ISSUER` 與上面相同、`AUTH_OIDC_AUDIENCE` 為 API Identifier、`AUTH_OIDC_JWKS_URL` 同上、`AUTH_OIDC_REQUIRE_AT_JWT=true`（ADR-017）。
+Go API: `AUTH_OIDC_ISSUER` the same as above, `AUTH_OIDC_AUDIENCE` the API Identifier, `AUTH_OIDC_JWKS_URL` as above, `AUTH_OIDC_REQUIRE_AT_JWT=true` (ADR-017).
 
-設定不完整或不合格時，BFF 的 `/auth/login`、`/auth/callback`、`/auth/logout` 與 `/api/v1/*` 一律回 503（`/auth/error` 是一般頁面，照常顯示），log 只寫變數名稱，不寫值。
+When the settings are incomplete or invalid, the BFF's `/auth/login`, `/auth/callback`, `/auth/logout` and `/api/v1/*` always return 503 (`/auth/error` is an ordinary page and shows as usual). The log writes only variable names, never values.
 
-BFF 依 token endpoint 本身的回答分類 refresh 失敗（SECURITY §3）。Auth0 暫時無法 refresh（沒有回答：連不上、逾時；5xx、429；錯誤碼 `temporarily_unavailable`、`server_error`、`too_many_requests`；或非 2xx 卻沒有 OAuth 錯誤，例如前方 edge 的錯誤頁）或 client 設定錯誤（`invalid_client`）時，`/api/v1/*` 回 503（`Retry-After: 5`），session cookie 保留；同一個 instance 在 5 秒內以同一個 refresh token 來的 request 共用這次失敗，之後的 request 再試。Log 的 `session.refresh_unavailable` 帶 token endpoint 的 status 與 body 中的 OAuth 錯誤碼（沒有錯誤碼時只有 status），可分辨限流、edge 錯誤頁與 client secret 錯誤。Auth0 拒絕 refresh token（4xx 並帶上述以外的錯誤碼，例如 `invalid_grant`：reuse、撤銷、過期；`access_denied`）、session 沒有 refresh token，或 Auth0 回 2xx 但回答無法使用（包括驗 ID token 所需的 JWKS 抓不到）時才結束 session（401 並清除 cookie，log 為 `session.refresh_failed`）；2xx 時 Auth0 已可能 rotation，BFF 盡力撤銷回答中的新 refresh token，撤銷失敗記 `session.discard_failed`。
+The BFF classifies refresh failures by the token endpoint's own answer (SECURITY §3). When Auth0 temporarily cannot refresh (no answer: unreachable, timeout; 5xx, 429; error codes `temporarily_unavailable`, `server_error`, `too_many_requests`; or a non-2xx without an OAuth error, for example an error page from an edge in front) or the client is misconfigured (`invalid_client`), `/api/v1/*` returns 503 (`Retry-After: 5`) and the session cookie is kept. Requests to the same instance within 5 seconds with the same refresh token share this failure; later requests try again. The log's `session.refresh_unavailable` carries the token endpoint's status and the OAuth error code in the body (only the status when there is no error code), so rate limiting, edge error pages and a wrong client secret can be told apart. The session ends (401 and the cookie is cleared, log `session.refresh_failed`) only when Auth0 rejects the refresh token (4xx with an error code other than those above, for example `invalid_grant`: reuse, revoked, expired; `access_denied`), when the session has no refresh token, or when Auth0 returns 2xx but the answer cannot be used (including when the JWKS needed to verify the ID token cannot be fetched). On a 2xx, Auth0 may already have rotated; the BFF does its best to revoke the new refresh token in the answer, and a failed revocation is logged as `session.discard_failed`.
 
-### Session 金鑰與輪替
+### Session keys and rotation
 
 ```sh
-# 產生一把 key（32 random bytes，base64url，無 padding）
+# Generate one key (32 random bytes, base64url, no padding)
 openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
 ```
 
-- `SESSION_KEYS="k2:<新 key>,k1:<舊 key>"`：第一把用來封裝，第二把只用來打開舊 cookie，最多兩把。
-- 輪替：先部署「新,舊」，等至少 7 天（session 的絕對期限）後再部署只有「新」。舊 key 外流時直接只放新 key：所有 session 失效、使用者重新登入。
+- `SESSION_KEYS="k2:<new key>,k1:<old key>"`: the first key seals; the second only opens old cookies; at most two keys.
+- Rotation: first deploy "new,old", wait at least 7 days (the session's absolute lifetime), then deploy "new" only. If the old key leaked, deploy only the new key right away: every session becomes invalid and users sign in again.
 
-## 5. 上線前檢查（staging）
+## 5. Pre-launch checks (staging)
 
-1. 以測試使用者登入：瀏覽器開發工具中只有 `__Host-geminus_session`，屬性為 HttpOnly、Secure、SameSite=Lax、Path=/、無 Domain；`document.cookie`、localStorage、sessionStorage 中沒有 token。
-2. 呼叫任一頁面的 API：request 只到同源 `/api/v1/…`，沒有 `Authorization` header。
-3. 登出：Auth0 的 log 有 refresh token 撤銷與 logout；之後 `/api/v1/…` 回 401。
-4. 未 provision 的使用者登入：API 回 403。
-5. 封鎖測試使用者、以及讓 refresh token 過期，確認 Auth0 回的錯誤碼（預期 `invalid_grant`）讓 session 以 401 結束，而不是 503。
-   另外確認兩種情況下 Auth0 實際回的 status 與錯誤碼（看 `session.refresh_unavailable`／`session.refresh_failed` 的 log）：(a) BFF 以錯誤的 client secret refresh（只在 staging 的另一個部署設定錯的值，不動正式設定）——4xx 回答只有在錯誤碼是 `invalid_client` 或沒有錯誤碼時才保留 session；若 Auth0 回的是其他錯誤碼（例如 401 `access_denied`），secret 輪替順序錯誤會結束所有 session，輪替前必須先在 Auth0 加上新 secret、部署、再移除舊的，並把結果記回本 runbook；(b) 讓 refresh 流程中執行的 Auth0 Action 刻意失敗，記下 Auth0 回的 status 與錯誤碼，以及 BFF 因此結束（401）或保留（503）session，確認符合預期。
-6. 登出時 BFF 不帶 `id_token_hint`（ID token 驗完即丟）：確認 Auth0 是否因此顯示登出確認畫面；若會，評估 Auth0 的 logout 設定或改為保留 ID token 的 hash 以外的方式（需另行決定）。
+1. Sign in as a test user: the browser's developer tools show only `__Host-geminus_session`, with attributes HttpOnly, Secure, SameSite=Lax, Path=/, no Domain; there is no token in `document.cookie`, localStorage or sessionStorage.
+2. Call the API from any page: requests go only to the same-origin `/api/v1/…`, with no `Authorization` header.
+3. Sign out: Auth0's log has the refresh token revocation and the logout; after that `/api/v1/…` returns 401.
+4. Sign in as a user that was not provisioned: the API returns 403.
+5. Block a test user, and let a refresh token expire; confirm that the error code Auth0 returns (expected `invalid_grant`) ends the session with 401, not 503.
+   Also confirm the status and error code Auth0 actually returns in two cases (see the `session.refresh_unavailable`/`session.refresh_failed` logs): (a) the BFF refreshes with a wrong client secret (set the wrong value only on a separate staging deployment; do not touch the real settings). A 4xx answer keeps the session only when the error code is `invalid_client` or there is no error code. If Auth0 returns another error code (for example 401 `access_denied`), a wrong secret rotation order ends every session; before a rotation, first add the new secret in Auth0, deploy, then remove the old one, and record the result back in this runbook. (b) Make an Auth0 Action that runs during the refresh flow fail on purpose; record the status and error code Auth0 returns, and whether the BFF therefore ends (401) or keeps (503) the session, and confirm this matches the expectation.
+6. At sign-out the BFF sends no `id_token_hint` (the ID token is discarded once verified): confirm whether Auth0 therefore shows a logout confirmation screen; if it does, evaluate Auth0's logout settings or a way other than keeping the ID token's hash (needs a separate decision).
 
-自動化的對應測試是 `apps/web/tests/bff.test.ts`（單元）與 `apps/web-e2e/tests/session.spec.ts`（瀏覽器，TEST-032），兩者都只連測試 provider；連 Auth0 的檢查只能在 staging 由人執行（NOT RUN in CI）。
+The matching automated tests are `apps/web/tests/bff.test.ts` (unit) and `apps/web-e2e/tests/session.spec.ts` (browser, TEST-032); both connect only to the test provider. Checks against Auth0 can only be run by a person on staging (NOT RUN in CI).
 
-## 6. 手動備援：在 dashboard 做 Auth0 步驟的設定（H-034）
+## 6. Manual fallback: the Auth0 step's settings in the dashboard (H-034)
 
-在 `deploy.sh` 的 Auth0 步驟（[deploy runbook](deploy.md) §7.8）無法使用時（拿不到 pin 住的 CLI、裝置登入失敗、或某一步停下而無法修正）由 owner 執行，設定值與 §7.8 的表完全相同。Dashboard 的名稱依 Auth0 文件（2026-10-26 取得：[API settings](https://auth0.com/docs/get-started/apis/api-settings)、[application settings](https://auth0.com/docs/get-started/applications/application-settings)、[credential settings](https://auth0.com/docs/get-started/applications/credentials)、[refresh token rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation)、[refresh token expiration](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration)、[application connections](https://auth0.com/docs/get-started/applications/update-application-connections)、[access token profiles](https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles)）；「Disable Sign Ups」的文件頁沒有取得，名稱依 dashboard（API 欄位為 connection 的 `options.disable_signup`）。
+The owner runs this when the Auth0 step of `deploy.sh` ([deploy runbook](deploy.md) §7.8) cannot be used (the pinned CLI cannot be obtained, the device login fails, or a step stops and cannot be fixed). The settings are exactly those of the §7.8 table. The dashboard names follow Auth0's documentation (fetched 2026-10-26: [API settings](https://auth0.com/docs/get-started/apis/api-settings), [application settings](https://auth0.com/docs/get-started/applications/application-settings), [credential settings](https://auth0.com/docs/get-started/applications/credentials), [refresh token rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-rotation), [refresh token expiration](https://auth0.com/docs/secure/tokens/refresh-tokens/configure-refresh-token-expiration), [application connections](https://auth0.com/docs/get-started/applications/update-application-connections), [access token profiles](https://auth0.com/docs/secure/tokens/access-tokens/access-token-profiles)). The documentation page for "Disable Sign Ups" was not fetched; its name follows the dashboard (the API field is the connection's `options.disable_signup`).
 
-先要有 web 的公開網域（Railway → web → Settings → Networking；或先以 `GEMINUS_AUTH0_SETUP=manual` 跑一次 `--apply`，步驟 2 會建立它，verification 會印出 callback 與 logout URL）。
+First the web needs its public domain (Railway → web → Settings → Networking; or first run `--apply` once with `GEMINUS_AUTH0_SETUP=manual`: step 2 creates it and the verification prints the callback and logout URLs).
 
-1. **API**：Applications → APIs → **+ Create API**：Name `Geminus demo API`；Identifier 為 `GEMINUS_AUTH0_AUDIENCE`（例如 `https://api.geminus-demo.invalid`，之後不能改）；**JSON Web Token (JWT) Profile** 選 **RFC 9068**；**JSON Web Token (JWT) Signing Algorithm** 選 **RS256** → Create。該 API 的 **Settings**：Token Settings 的 **Maximum Access Token Lifetime** 填 `600`；Access Settings 的 **Allow Skipping User Consent** 開、**Allow Offline Access** 開 → Save。
-2. **Application**：Applications → Applications → **+ Create Application**：Name `Geminus demo web`，選 **Regular Web Applications** → Create。
-   - **Settings** → Application URIs：**Allowed Callback URLs** 只有 `https://<web 網域>/auth/callback`；**Allowed Logout URLs** 只有 `https://<web 網域>/`；**Allowed Web Origins**、**Allowed Origins (CORS)** 空白。
-   - **Settings** → **Refresh Token Rotation**：**Allow Refresh Token Rotation** 開，**Rotation Overlap Period** 填 `30`。**Refresh Token Expiration**：**Set Idle Refresh Token Lifetime** 開、**Idle Refresh Token Lifetime** 填 `43200`；**Set Maximum Refresh Token Lifetime** 開、**Maximum Refresh Token Lifetime** 填 `604800`。
-   - **Settings** → **Advanced Settings** → **OAuth**：**JSON Web Token (JWT) Signature Algorithm** 為 RS256、**OIDC Conformant** 開；**Grant Types**：只勾 **Authorization Code** 與 **Refresh Token**（其他全部取消）→ **Save Changes**。
-   - **Credentials**：**Authentication Method** 選 **Client Secret (Post)** → Save。**Client ID** 給 `GEMINUS_AUTH0_CLIENT_ID`；**Client Secret** 只貼到 Railway → web → Variables 的 `BFF_OIDC_CLIENT_SECRET`，立刻 Seal（變數右側的 3-dot 選單），不存到其他任何地方。
-   - **Connections**：只開 `Username-Password-Authentication`（database connection），其他（例如 Google）全部關閉。
-3. **關閉 sign-up**：Authentication → Database → `Username-Password-Authentication` → **Disable Sign Ups** 開 → Save。
-4. **評審帳號**（H-035 (2)）：User Management → Users → **+ Create User**：Email `judge@geminus-demo.invalid`（或與 coordinator 約定的地址），Password 以密碼管理器產生（20 字元以上，含大小寫、數字與符號），Connection `Username-Password-Authentication` → Create。在該使用者的頁面複製 **user_id**（`auth0|…`）給 `GEMINUS_JUDGE_SUBJECT`。密碼直接寫進提交說明，不存到其他地方。
-5. 執行 `GEMINUS_AUTH0_SETUP=manual GEMINUS_AUTH0_CLIENT_ID='<Client ID>' GEMINUS_JUDGE_SUBJECT='auth0|<評審的 user_id>' deploy/railway/deploy.sh --apply`（其他輸入同 deploy runbook §7.7）：seed 把評審帳號設為 demo 組織的 editor 並檢查它不是其他組織的成員；`BFF_OIDC_CLIENT_SECRET` 未填時停在 verification，填好並 Seal 後重跑。demo 組織若已經 seed 過，見 deploy runbook §7.8 的「評審帳號的 membership」。
-6. 對照 deploy runbook §7.8 的表逐項確認（例如 API 的 Settings 與 application 的 Settings、Credentials、Connections 三頁），再做 §5 的檢查。
+1. **API**: Applications → APIs → **+ Create API**: Name `Geminus demo API`; Identifier is `GEMINUS_AUTH0_AUDIENCE` (for example `https://api.geminus-demo.invalid`; it cannot be changed later); **JSON Web Token (JWT) Profile** choose **RFC 9068**; **JSON Web Token (JWT) Signing Algorithm** choose **RS256** → Create. In that API's **Settings**: Token Settings, **Maximum Access Token Lifetime** enter `600`; Access Settings, **Allow Skipping User Consent** on, **Allow Offline Access** on → Save.
+2. **Application**: Applications → Applications → **+ Create Application**: Name `Geminus demo web`, choose **Regular Web Applications** → Create.
+   - **Settings** → Application URIs: **Allowed Callback URLs** only `https://<web domain>/auth/callback`; **Allowed Logout URLs** only `https://<web domain>/`; **Allowed Web Origins** and **Allowed Origins (CORS)** empty.
+   - **Settings** → **Refresh Token Rotation**: **Allow Refresh Token Rotation** on, **Rotation Overlap Period** enter `30`. **Refresh Token Expiration**: **Set Idle Refresh Token Lifetime** on, **Idle Refresh Token Lifetime** enter `43200`; **Set Maximum Refresh Token Lifetime** on, **Maximum Refresh Token Lifetime** enter `604800`.
+   - **Settings** → **Advanced Settings** → **OAuth**: **JSON Web Token (JWT) Signature Algorithm** RS256, **OIDC Conformant** on; **Grant Types**: tick only **Authorization Code** and **Refresh Token** (untick all others) → **Save Changes**.
+   - **Credentials**: **Authentication Method** choose **Client Secret (Post)** → Save. The **Client ID** goes to `GEMINUS_AUTH0_CLIENT_ID`; paste the **Client Secret** only into Railway → web → Variables as `BFF_OIDC_CLIENT_SECRET`, Seal it right away (the 3-dot menu on the right of the variable), and store it nowhere else.
+   - **Connections**: enable only `Username-Password-Authentication` (the database connection); turn off all others (for example Google).
+3. **Turn off sign-up**: Authentication → Database → `Username-Password-Authentication` → **Disable Sign Ups** on → Save.
+4. **Judge account** (H-035 (2)): User Management → Users → **+ Create User**: Email `judge@geminus-demo.invalid` (or the address agreed with the coordinator), Password generated with a password manager (20 characters or more, with upper and lower case, digits and symbols), Connection `Username-Password-Authentication` → Create. On that user's page copy the **user_id** (`auth0|…`) for `GEMINUS_JUDGE_SUBJECT`. Write the password directly into the submission notes and store it nowhere else.
+5. Run `GEMINUS_AUTH0_SETUP=manual GEMINUS_AUTH0_CLIENT_ID='<Client ID>' GEMINUS_JUDGE_SUBJECT='auth0|<the judge's user_id>' deploy/railway/deploy.sh --apply` (other inputs as in deploy runbook §7.7): the seed makes the judge account an editor of the demo organization and checks that it is not a member of any other organization. If `BFF_OIDC_CLIENT_SECRET` is not filled in, it stops at the verification; fill it in, Seal it and run again. If the demo organization was already seeded, see "The judge account's membership" in deploy runbook §7.8.
+6. Check each item against the table in deploy runbook §7.8 (for example the API's Settings and the application's Settings, Credentials and Connections pages), then do the checks of §5.
