@@ -82,3 +82,20 @@ The e2e run before the review fixes also found two problems of its own, fixed in
 | `make spec-check` | exit 0 |
 
 NOT RUN locally: `make backend-race`, `make integration-test` (left to CI); the screenshot comparison (baselines stale, §5); live (the deploy follows this commit).
+
+## 7. Live (after the 5b0d354 deploy, 2026-10-29, as the judge)
+
+The deploy finished with exit 0: migrations (18 recorded), api, worker and web SUCCESS; `/healthz` and `/readyz` 200; `/auth/login` 303 to Auth0. Script: `check-h042.cjs` (Playwright; the password only in an environment variable).
+
+| Check | Result |
+|---|---|
+| Sign-in with the new `profile email` scopes | Signed in with no consent screen. The avatar shows initials. The menu shows the name and the email, two radio groups (language, theme) and Sign out. |
+| Rail on the model page | Projects, Canvas (current), Scenarios, AI proposals, Runs. No link back to the model in `main`. No horizontal overflow at 1280. |
+| List pages | Scenarios: 7 rows, all 5 what-ifs present. AI proposals: 9 rows with their states. Runs: 16 rows. On each page the rail marks its own section. |
+| `generated_by` from the live API | Every approved, needs-input and invalid proposal is labelled `meta/muse-spark-1.3`; the photo proposal is labelled `+sam-3.1 (10 objects)`. Failed proposals have no label. |
+| Proposal page | "Written by: Muse Spark 1.3 (Meta)"; no links in `main`. |
+| Explanation (kept analysis) | "Written by Muse Spark 1.3 (Meta) from these results." Three "Propose as a scenario: …" buttons. |
+| Phone (390 px) | The rail is a 390 × 49 px bar across the top; no overflow; no page errors. |
+| "Propose as a scenario" (one live request: "Test FCT follow up capacity") | The proposal was created (`aip_01M63PMA6595KPWG9XWMJX8MEX`). The worker's Meta call returned `provider_status=404`, `not_found_error` (`AI_REQUEST_REJECTED`) after 1.25 s, so the proposal **failed** and nothing was approved. This is the egress problem recorded in T-057: Meta answers 404 to some Railway instances after a deploy. The fix recorded there is to redeploy the worker; that needs the owner's go-ahead. The H-043 B loop is **not yet confirmed live**. |
+
+**Worker redeploys (owner's go-ahead, 2026-10-29).** Two `railway redeploy --service worker` (deployments `77fa0984`, then `6a28453c`); both SUCCESS, `/readyz` 200, the region still `asia-southeast1-eqsg3a` from `deploy/railway/worker.railway.json`. After each, one more "Propose as a scenario" (`aip_01M63YPHDDHEWVTQ4VRZ9NKQFC`, `aip_01M63YV4D1BD9SXTHSNP01YY7A`): the new instance's Meta call again returned `provider_status=404`, `not_found_error`, cost 0, and the proposal failed. From this machine the same key's `GET /v1/models` returns 200 and lists `muse-spark-1.3` (the key was read into the shell from `.env` and sent from stdin, never printed). The provider code is unchanged since the last deploy whose proposals succeeded (f06ca92..5b0d354 touches only `internal/ai/provider/segment.go`). So the key and the model are good, and Meta refuses this Railway egress; a redeploy no longer clears it. The H-043 B loop stays **not confirmed live**; the three failed proposals are in the live list. The options (owner's call) are in T-057's findings: a static egress IP, or a network or region restriction on the key in Meta's dashboard.
