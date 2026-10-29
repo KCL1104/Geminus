@@ -47,9 +47,9 @@
             "to": "board_b",
             "distribution": {
               "type": "triangular",
-              "min": 15,
-              "mode": 25,
-              "max": 45
+              "min": 20,
+              "mode": 35,
+              "max": 60
             }
           },
           {
@@ -57,9 +57,9 @@
             "to": "board_a",
             "distribution": {
               "type": "triangular",
-              "min": 15,
-              "mode": 25,
-              "max": 45
+              "min": 20,
+              "mode": 35,
+              "max": 60
             }
           }
         ]
@@ -145,7 +145,7 @@
       "type": "machine",
       "role": "burn_in_chamber",
       "name": "Burn-in chambers",
-      "capacity": 6,
+      "capacity": 9,
       "queue_discipline": "fifo",
       "breakdowns": {
         "time_to_failure": {
@@ -271,9 +271,9 @@
       "service_time": {
         "distribution": {
           "type": "triangular",
-          "min": 0.9,
-          "mode": 1.0,
-          "max": 1.4
+          "min": 0.75,
+          "mode": 0.85,
+          "max": 1.15
         }
       },
       "requires": [
@@ -300,9 +300,9 @@
       "service_time": {
         "distribution": {
           "type": "triangular",
-          "min": 0.8,
-          "mode": 0.9,
-          "max": 1.1
+          "min": 0.2,
+          "mode": 0.25,
+          "max": 0.35
         }
       },
       "requires": [
@@ -372,9 +372,9 @@
       "service_time": {
         "distribution": {
           "type": "triangular",
-          "min": 1.8,
-          "mode": 2.0,
-          "max": 2.6
+          "min": 1.4,
+          "mode": 1.7,
+          "max": 2.3
         }
       },
       "requires": [
@@ -448,9 +448,9 @@
       "service_time": {
         "distribution": {
           "type": "triangular",
-          "min": 1.8,
-          "mode": 2.0,
-          "max": 2.6
+          "min": 1.4,
+          "mode": 1.7,
+          "max": 2.3
         }
       },
       "requires": [
@@ -598,7 +598,7 @@
       "service_time": {
         "distribution": {
           "type": "constant",
-          "value": 240
+          "value": 480
         }
       },
       "requires": [
@@ -635,7 +635,7 @@
     {
       "id": "q_pack",
       "type": "queue",
-      "capacity": 400,
+      "capacity": 500,
       "name": "Buffer before packing"
     },
     {
@@ -1409,16 +1409,17 @@
   "metadata": {
     "synthetic": true,
     "source": "synthetic, for demonstration",
-    "origin": "Synthetic demonstration values of docs/domains/ELECTRONICS_LINE.md §4.1, §4.2 and §4.4 (H-018); NOT customer data, plant measurements or typical values.",
+    "origin": "Synthetic model of docs/domains/ELECTRONICS_LINE.md §4.1, §4.2, §4.4 and §4.5 (H-018, H-046): no real company's data; its magnitudes follow the sources cited in §4.5, and the values without a source are marked there as estimates. NOT customer data or plant measurements.",
     "assumptions": [
       "Time unit minute; t=0 is Monday 00:00 model time (no time zone, D-052).",
-      "Two shifts 06:00-14:00 and 14:00-22:00, Monday to Friday; burn-in chambers run 24/7.",
-      "Board family A: 360 boards released at 06:00 and board family B: 360 at 14:00 every weekday (720 a day).",
-      "The SMT line (printer, SPI, placement, reflow) is one server; the balance inside the line is not modelled.",
-      "Changeover between families on the SMT line tri(15, 25, 45) min; every unit starts set up for family A.",
-      "Breakdowns count on-shift time only; the time to failure and repair parameters are synthetic.",
+      "Two shifts 06:00-14:00 and 14:00-22:00, Monday to Friday, breaks not modelled; burn-in chambers run 24/7.",
+      "Board family A: 360 boards released at 06:00 and board family B: 360 at 14:00 every weekday (720 a day, 3,600 a week).",
+      "The SMT line (printer, SPI, placement, reflow) is one server at the pace of its slowest machine, tri(0.75, 0.85, 1.15) min a board (about 55 s); the balance inside the line and the reflow oven's transit time are not modelled.",
+      "Changeover between families on the SMT line tri(20, 35, 60) min (feeders, program, stencil); every unit starts set up for family A.",
+      "Inline AOI tri(0.2, 0.25, 0.35) min a board; ICT tri(1.4, 1.7, 2.3) min including loading the fixture; FCT tri(2.8, 3.2, 4.0) min.",
+      "Breakdowns count on-shift time only; their time to failure and repair are estimates, not measurements.",
       "Test yields are model inputs (AOI 0.97, ICT 0.95, FCT 0.93, burn-in 0.995); retests pass 0.90; debug repairs 0.97 (ICT) and 0.95 (FCT), the rest is scrapped.",
-      "Burn-in batches 20 to 40 boards, at most 120 min wait to fill, 240 min per batch."
+      "Burn-in 480 min (8 h) per batch of 20 to 40 boards, at most 120 min wait to fill, 9 chambers."
     ]
   }
 }

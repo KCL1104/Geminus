@@ -106,7 +106,8 @@ func TestTemplate(t *testing.T) {
 }
 
 // The parameters are the synthetic values of ELECTRONICS_LINE §4.2 and
-// §4.4 (H-018): a change to them is a change to the reviewed template.
+// §4.4 (H-018), tuned to the cited magnitudes of §4.5 (H-046): a change
+// to them is a change to the reviewed template.
 func TestTemplateParameters(t *testing.T) {
 	ir := tmpl(t)
 	type res struct {
@@ -122,7 +123,7 @@ func TestTemplateParameters(t *testing.T) {
 		"aoi_machine":     {model.ResourceMachine, "aoi", 1, true, ptr(exp(1200)), ptr(tri(5, 10, 30))},
 		"ict_tester":      {model.ResourceMachine, "ict_tester", 2, true, ptr(exp(900)), ptr(tri(10, 20, 60))},
 		"fct_tester":      {model.ResourceMachine, "fct_tester", 3, true, ptr(exp(900)), ptr(tri(10, 30, 90))},
-		"burn_in_chamber": {model.ResourceMachine, "burn_in_chamber", 6, false, ptr(exp(10080)), ptr(tri(60, 120, 480))},
+		"burn_in_chamber": {model.ResourceMachine, "burn_in_chamber", 9, false, ptr(exp(10080)), ptr(tri(60, 120, 480))},
 		"debug_operator":  {model.ResourceHuman, "debug_operator", 4, true, nil, nil},
 		"pack_station":    {model.ResourceHuman, "pack_station", 2, true, nil, nil},
 	}
@@ -151,21 +152,21 @@ func TestTemplateParameters(t *testing.T) {
 	}
 	s := ir.Resources[resourceIndex(t, ir, "smt_line")].Setups
 	if s.Initial != "board_a" || s.Default != nil || len(s.Transitions) != 2 ||
-		s.Transitions[0].From != "board_a" || s.Transitions[0].To != "board_b" || !sameDist(s.Transitions[0].Distribution, tri(15, 25, 45)) ||
-		s.Transitions[1].From != "board_b" || s.Transitions[1].To != "board_a" || !sameDist(s.Transitions[1].Distribution, tri(15, 25, 45)) {
+		s.Transitions[0].From != "board_a" || s.Transitions[0].To != "board_b" || !sameDist(s.Transitions[0].Distribution, tri(20, 35, 60)) ||
+		s.Transitions[1].From != "board_b" || s.Transitions[1].To != "board_a" || !sameDist(s.Transitions[1].Distribution, tri(20, 35, 60)) {
 		t.Errorf("SMT changeovers %+v", s)
 	}
 	service := map[string]model.Distribution{
-		"smt": tri(0.9, 1.0, 1.4), "aoi": tri(0.8, 0.9, 1.1), "aoi_touchup": tri(3, 5, 10),
-		"ict": tri(1.8, 2.0, 2.6), "ict_retest": tri(1.8, 2.0, 2.6), "ict_debug": tri(5, 10, 30),
+		"smt": tri(0.75, 0.85, 1.15), "aoi": tri(0.2, 0.25, 0.35), "aoi_touchup": tri(3, 5, 10),
+		"ict": tri(1.4, 1.7, 2.3), "ict_retest": tri(1.4, 1.7, 2.3), "ict_debug": tri(5, 10, 30),
 		"fct": tri(2.8, 3.2, 4.0), "fct_retest": tri(2.8, 3.2, 4.0), "fct_debug": tri(10, 20, 60),
-		"burn_in": constant(240), "pack_ship": tri(0.8, 1.0, 1.5),
+		"burn_in": constant(480), "pack_ship": tri(0.8, 1.0, 1.5),
 	}
 	resource := map[string]string{"smt": "smt_line", "aoi": "aoi_machine", "aoi_touchup": "debug_operator", "ict": "ict_tester",
 		"ict_retest": "ict_tester", "ict_debug": "debug_operator", "fct": "fct_tester", "fct_retest": "fct_tester", "fct_debug": "debug_operator",
 		"burn_in": "burn_in_chamber", "pack_ship": "pack_station"}
 	queues := map[string]int{"q_smt": 0, "q_aoi": 20, "q_touchup": 0, "q_ict": 10, "q_ict_debug": 0, "q_ict_retest": 0,
-		"q_fct": 10, "q_fct_debug": 0, "q_fct_retest": 0, "q_burnin": 120, "q_pack": 400}
+		"q_fct": 10, "q_fct_debug": 0, "q_fct_retest": 0, "q_burnin": 120, "q_pack": 500}
 	for _, n := range ir.Nodes {
 		switch n.Type {
 		case model.NodeProcess:

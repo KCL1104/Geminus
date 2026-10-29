@@ -105,16 +105,16 @@ func TestCompareObservedOnTheSyntheticLog(t *testing.T) {
 			first[e.Stage][e.CaseID] = e // the log is in start order
 		}
 	}
-	if shipped != 3588 {
+	if shipped != 3563 {
 		t.Fatalf("the log ships %d", shipped)
 	}
 	week := got["line_output_per_week"]
-	if week.Kind != observed.Output || week.Status != simulation.Available || *week.Observed != 3588 || *week.Simulated != 3588 ||
+	if week.Kind != observed.Output || week.Status != simulation.Available || *week.Observed != 3563 || *week.Simulated != 3563 ||
 		*week.AbsoluteError != 0 || *week.RelativeError != 0 || !*week.WithinRange || week.Replications != 1 || week.Unit != "entity" || week.Approximate {
 		t.Errorf("per week %+v", week)
 	}
 	day := got["line_output_per_day"]
-	if day.Status != simulation.Available || *day.Observed != 3588.0/7 || *day.Simulated != 3588.0/7 || day.Unit != "entity" {
+	if day.Status != simulation.Available || *day.Observed != 3563.0/7 || *day.Simulated != 3563.0/7 || day.Unit != "entity" {
 		t.Errorf("per day %+v", day)
 	}
 	for _, st := range []struct {
@@ -139,8 +139,8 @@ func TestCompareObservedOnTheSyntheticLog(t *testing.T) {
 	for _, st := range []struct {
 		node, stage string
 		mean        float64
-	}{{"smt", "smt", (0.9 + 1.0 + 1.4) / 3}, {"aoi", "aoi", (0.8 + 0.9 + 1.1) / 3}, {"ict", "ict", (1.8 + 2.0 + 2.6) / 3},
-		{"fct", "fct", (2.8 + 3.2 + 4.0) / 3}, {"burn_in", "burn_in", 240}, {"pack_ship", "pack", (0.8 + 1.0 + 1.5) / 3}} {
+	}{{"smt", "smt", (0.75 + 0.85 + 1.15) / 3}, {"aoi", "aoi", (0.2 + 0.25 + 0.35) / 3}, {"ict", "ict", (1.4 + 1.7 + 2.3) / 3},
+		{"fct", "fct", (2.8 + 3.2 + 4.0) / 3}, {"burn_in", "burn_in", 480}, {"pack_ship", "pack", (0.8 + 1.0 + 1.5) / 3}} {
 		xs := cycle[st.stage]
 		sum := 0.0
 		for _, x := range xs {
@@ -184,7 +184,7 @@ func TestCompareObservedAgainstAnotherRun(t *testing.T) {
 	for i, r := range res.ReplicationSummaries {
 		xs[i] = float64(r.CompletedCount)
 	}
-	want := observed.CompareOutput(3588, xs)
+	want := observed.CompareOutput(3563, xs)
 	if c := got["line_output_per_week"]; c.Replications != 5 || *c.Simulated != *want.Simulated || *c.RangeLow != slices.Min(xs) ||
 		*c.RangeHigh != slices.Max(xs) || *c.AbsoluteError != *want.AbsoluteError || c.RangeMethod != observed.RangeMinMax {
 		t.Errorf("per week %+v, replications %v", c, xs)

@@ -115,7 +115,7 @@ func lineRows(t *testing.T, data []byte) [][]string {
 }
 
 // The synthetic log through the import path (TEST-012, TEST-013 on T-052's
-// data): profiled as 22,739 rows of eleven columns, the two times as
+// data): profiled as 22,569 rows of eleven columns, the two times as
 // timestamps; mapped as D-059 says; every row valid and no data-quality
 // warning (the log keeps the pack's rules for its own model), so the import
 // is VALIDATED with its canonical dataset: one schema-valid event per row in
