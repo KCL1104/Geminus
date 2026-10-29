@@ -1,0 +1,34 @@
+{
+  "about": "The demo's what-if scenarios on the electronics assembly and test line template (owner's request of 2026-10-29: several ready what-ifs on the same line). Each change names its target by ID and the value it expects to replace; deploy/demo/seed-whatifs.cjs turns them into scenario patches that test every value first. Synthetic data only.",
+  "scenarios": [
+    {
+      "name": "Third ICT tester",
+      "changes": [{ "resource": "ict_tester", "path": ["capacity"], "from": 2, "to": 3 }]
+    },
+    {
+      "name": "One more debug operator",
+      "changes": [{ "resource": "debug_operator", "path": ["capacity"], "from": 4, "to": 5 }]
+    },
+    {
+      "name": "Burn-in batches of 48",
+      "changes": [
+        { "node": "burn_in", "path": ["batch", "min_size"], "from": 20, "to": 48 },
+        { "node": "burn_in", "path": ["batch", "max_size"], "from": 40, "to": 48 }
+      ]
+    },
+    {
+      "name": "Bigger buffers before ICT and FCT",
+      "changes": [
+        { "node": "q_ict", "path": ["capacity"], "from": 10, "to": 30 },
+        { "node": "q_fct", "path": ["capacity"], "from": 10, "to": 30 }
+      ]
+    },
+    {
+      "name": "20% more boards per release",
+      "changes": [
+        { "node": "release_a", "path": ["arrival", "schedule", "releases", "*", "quantity"], "from": 360, "to": 432 },
+        { "node": "release_b", "path": ["arrival", "schedule", "releases", "*", "quantity"], "from": 360, "to": 432 }
+      ]
+    }
+  ]
+}
