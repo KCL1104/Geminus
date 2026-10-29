@@ -1,24 +1,25 @@
-# 給 Coding Agent 的第一個工作指令
+# First work instruction for a Coding Agent
 
-以下文字可作為首輪任務。不要要求 agent 一次完成全部產品。
+The text below can be used as the first-round task. Do not ask the agent to finish the whole product at once.
 
 ```text
-讀取本 repository 的 AGENTS.md、README.md、docs/DECISIONS_AND_TBD.md、
-docs/IMPLEMENTATION_PLAN.md 及 planning/tasks.json，並依 sources/SOURCE_MAP.md
-定位原始需求。所有 proposed decision 都尚未獲批准；不可自行批准或改為 accepted。
+Read this repository's AGENTS.md, README.md, docs/DECISIONS_AND_TBD.md,
+docs/IMPLEMENTATION_PLAN.md and planning/tasks.json, and locate the original
+requirements through sources/SOURCE_MAP.md. No proposed decision has been
+approved yet; do not approve one yourself or change one to accepted.
 
-先盤點 repository，再執行 make spec-check，保留完整結果。
-這是規格包，不是已實作系統；缺少 Go / Next.js / PostgreSQL runtime 不算成功。
+First take stock of the repository, then run make spec-check and keep the full result.
+This is a spec package, not an implemented system; a missing Go / Next.js / PostgreSQL runtime is not a success.
 
-首輪只處理 T-001、T-002：
-1. 列出 P0 contracts 的阻擋項及需要人類確認的 decision IDs。
-2. 建立不含 production secret 的 repo / CI / toolchain skeleton。
-3. 保留 schema、OpenAPI、SQL source of truth，不另創 React Flow 專用 domain schema。
-4. 未確認的技術與 provider 用 interface + 明確 disabled configuration；不得默認開真實 AI。
-5. 不要先做 3D 或漂亮 dashboard，不要新增 P1 connector / broker / autonomous tools。
+The first round handles only T-001 and T-002:
+1. List the blockers of the P0 contracts and the decision IDs that need human confirmation.
+2. Build a repo / CI / toolchain skeleton without any production secret.
+3. Keep schema, OpenAPI and SQL as the source of truth; do not invent a separate React Flow-specific domain schema.
+4. Technologies and providers that are not confirmed get an interface + an explicit disabled configuration; never turn on real AI by default.
+5. Do not do 3D or a pretty dashboard first; do not add P1 connectors / brokers / autonomous tools.
 
-下一輪先完成 T-003 / T-004 的 contract + validator tests；需要定案的範圍先提出決策。
-每次只選 dependencies 已完成的一個 bounded task，測試後交付：
-changed files、requirement IDs、decision IDs、實際執行命令、通過/失敗/未執行項目、
-剩餘風險及下一個 ready task。不得把 mock、TODO、skip 或預估數字當完成證據。
+The next round first finishes the contract + validator tests of T-003 / T-004; scope that needs a decision is proposed as a decision first.
+Each time, pick one bounded task whose dependencies are done, test it, then deliver:
+changed files, requirement IDs, decision IDs, the commands actually run, the passed/failed/not-run items,
+the remaining risks and the next ready task. Never use a mock, TODO, skip or estimated number as evidence of completion.
 ```

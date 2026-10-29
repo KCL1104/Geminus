@@ -1,19 +1,19 @@
 # ADR-013 — Go JSON Schema validator and embedded schemas
 
-狀態：ACCEPTED（2026-10-19，owner H-010；T-004 agent 選定）。日期：2026-10-15。
+Status: ACCEPTED (2026-10-19, owner H-010; chosen by the T-004 agent). Date: 2026-10-15.
 
 ## Decision
 
-Go 伺服器的 schema 階段使用 `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3（Apache-2.0，2026-06-28），依賴 `golang.org/x/text` v0.42.0（BSD-3-Clause，2026-09-08）。`schemas/embed.go` 以 `go:embed` 把 `schemas/*.schema.json` 編進 binary，validator 以各檔 `$id` 註冊資源、拒絕載入任何其他 URL，因此驗證不讀檔案系統也不連網，且永遠對同一份 source of truth 驗證。`AssertFormat()` 開啟，`date-time` 等 format 與 Python spec checks 一樣強制。
+The schema stage of the Go server uses `github.com/santhosh-tekuri/jsonschema/v6` v6.0.3 (Apache-2.0, 2026-06-28), which depends on `golang.org/x/text` v0.42.0 (BSD-3-Clause, 2026-09-08). `schemas/embed.go` compiles `schemas/*.schema.json` into the binary with `go:embed`; the validator registers each file as a resource under its `$id` and refuses to load any other URL, so validation reads no file system and makes no network connection, and always validates against the same source of truth. `AssertFormat()` is on, so `date-time` and other formats are enforced the same way as in the Python spec checks.
 
-## 選擇理由
+## Reasons for the choice
 
-- 支援 JSON Schema 2020-12，以 `$id` 解析跨檔 `$ref`，不需改寫 schemas。
-- 錯誤樹帶 instance location，可產生精確 JSON Pointer；`oneOf` 錯誤只保留 discriminator（`type`／`op`）相符的分支，沒有相符時只報 discriminator 允許值。
-- 函式庫的部分錯誤訊息依 Go map 順序列出欄位名，fuzz 測試因此抓到非決定性；`AdditionalProperties` 與 `Required` 改由本專案以排序後的名單組訊息。
+- Supports JSON Schema 2020-12 and resolves cross-file `$ref` by `$id`, without rewriting the schemas.
+- The error tree carries the instance location, so a precise JSON Pointer can be produced; `oneOf` errors keep only the branch whose discriminator (`type`/`op`) matches, and when none matches, report only the discriminator's allowed values.
+- Some of the library's error messages list field names in Go map order, which the fuzz tests caught as non-determinism; for `AdditionalProperties` and `Required`, this project builds the message from a sorted list instead.
 
 ## Consequences
 
-- 初版帶入的 `golang.org/x/text` v0.14.0 經 `govulncheck v1.9.0` 掃出兩個模組層級漏洞（GO-2026-6629、GO-2026-5970，程式未呼叫到），已升級至 v0.42.0 並重掃為 0。CI backend job 執行 govulncheck，新依賴出現已知漏洞時會失敗。
-- `make backend-*` 的 `GO_PKGS` 加入 `./schemas/...`。
-- Go 與 Python 兩套 validator 對共用 fixtures 的結論由 `TestAgreesWithSharedFixtures` 比對；任一實作改變行為都會讓測試失敗。
+- The `golang.org/x/text` v0.14.0 brought in by the first version had two module-level vulnerabilities found by `govulncheck v1.9.0` (GO-2026-6629, GO-2026-5970; not reached by the code); it was upgraded to v0.42.0 and a rescan found 0. CI's backend job runs govulncheck and fails when a new dependency has a known vulnerability.
+- `./schemas/...` is added to `GO_PKGS` of `make backend-*`.
+- The conclusions of the Go and Python validators on the shared fixtures are compared by `TestAgreesWithSharedFixtures`; a behaviour change in either implementation makes the test fail.

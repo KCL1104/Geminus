@@ -1,15 +1,15 @@
 # ADR-009 — PostgreSQL-backed P0 Jobs
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 37,39–40。
+Source: the original report pp. 37, 39–40.
 
 ## Decision
 
-P0 PostgreSQL pull queue + SKIP LOCKED；不預先增加broker。
+P0 uses a PostgreSQL pull queue + SKIP LOCKED; no broker is added ahead of time.
 
 ## Consequences / Review boundary
 
-RLS-aware tenant assignment、lease/retry/fencing由D-008/D-011補完。
+RLS-aware tenant assignment and lease/retry/fencing are completed by D-008/D-011.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

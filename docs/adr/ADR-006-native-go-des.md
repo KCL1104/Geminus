@@ -1,15 +1,15 @@
 # ADR-006 — Native Go DES
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 20–22,45–46。
+Source: the original report pp. 20–22, 45–46.
 
 ## Decision
 
-P0自製有限primitive的GoDES；SimPy僅reference/testing。
+P0 builds its own Go DES with a limited set of primitives; SimPy is only for reference/testing.
 
 ## Consequences / Review boundary
 
-精確time/RNG/statistics是D-005/D-006/D-010提案；不得聲稱既有正確性已證明。
+Exact time/RNG/statistics are the D-005/D-006/D-010 proposals; do not claim that correctness is already proven.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

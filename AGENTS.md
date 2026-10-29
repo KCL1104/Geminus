@@ -1,46 +1,46 @@
 # AGENTS.md — Coding Agent Rules
 
-本檔適用整個 repository。來源：原報告 pp. 10–11、38–39、48–51；新增執行細節受 `docs/DECISIONS_AND_TBD.md` 管理。
+This file applies to the whole repository. Source: the original report pp. 10–11, 38–39, 48–51. New execution details are governed by `docs/DECISIONS_AND_TBD.md`.
 
-## 1. 先讀、先確認、再改動
+## 1. Read first, confirm first, then change
 
-依序讀 README → DECISIONS_AND_TBD → PRD → ARCHITECTURE → 本次任務涉及的 Spec → planning/tasks.json。遇來源與衍生文件矛盾，停止受影響部分、記錄差異，保留其他可獨立推進工作。不得自行把 proposed / TBD 轉為 approved；不得把本規格包宣稱為已有 application。
+Read in this order: README → DECISIONS_AND_TBD → PRD → ARCHITECTURE → the Specs this task touches → planning/tasks.json. When a source and a derived document contradict each other, stop the affected part, record the difference, and keep the other work that can move forward independently. Do not turn proposed / TBD into approved on your own. Do not claim that this spec package already has an application.
 
-`schemas/` 是 JSON payload source of truth；`openapi/openapi.yaml` 是 HTTP binding source of truth；`migrations/` 是 DB shape draft。Go/TypeScript types 由 schema 生成或接受 contract tests 約束。禁止自行維護第二套 React Flow / AI / simulation domain model。
+`schemas/` is the source of truth for JSON payloads; `openapi/openapi.yaml` is the source of truth for the HTTP binding; `migrations/` is the draft of the DB shape. Go/TypeScript types are generated from the schemas or constrained by contract tests. Do not maintain a second React Flow / AI / simulation domain model of your own.
 
-## 2. 不可違反的 P0 invariants
+## 2. P0 invariants that must not be violated
 
-- Generic Twin IR + DomainPack + SimulationEngine + ModelChangeProposal 四個邊界保持分離；generic engine 不 import 任何 domain package（electronics-line、software-delivery 等）、HTTP、pgx、LLM SDK 或 frontend types。
-- AI 只能建議，不能 approve、publish、寫 DB、執行任意程式／SQL、呼叫 production tools、自行啟動 simulation。Schema-valid 不是 authorized；risk/validation 必須由 server 計算。
-- ModelVersion、Scenario、dataset revision、completed result 均不可原地修改。Simulation 永遠綁 immutable version、patch、dataset manifest、engine/config/seed。
-- stale revision/base 回 409，不 silent overwrite / auto-rebase。Approval 以同一 transaction 完成 revalidation、一次性 canonical effect、audit、idempotency response。
-- 每個 tenant-owned row 帶 organization_id；application filter + RLS + composite tenant FKs。API / worker role 不得 superuser、BYPASSRLS 或 table owner。Tenant context 必須 transaction-local，不可殘留於 pool connection。
-- 2D 為 authoring，3D 為 read-only projection/playback；共用 entity IDs 與 IR topology。不可建立另一份 3D topology。
-- 凡資料不足，回 needs_input / unavailable；不得捏造 metric、dataset、性能測試數字、通過的測試或用戶批准。
+- The four boundaries Generic Twin IR + DomainPack + SimulationEngine + ModelChangeProposal stay separate. The generic engine does not import any domain package (electronics-line, software-delivery, etc.), HTTP, pgx, an LLM SDK or frontend types.
+- AI can only suggest. It cannot approve, publish, write to the DB, run arbitrary code/SQL, call production tools or start a simulation on its own. Schema-valid is not authorized; risk/validation must be computed by the server.
+- ModelVersion, Scenario, dataset revision and completed result are never modified in place. A simulation is always bound to an immutable version, patch, dataset manifest and engine/config/seed.
+- A stale revision/base returns 409; no silent overwrite / auto-rebase. Approval completes revalidation, a one-time canonical effect, audit and the idempotency response in the same transaction.
+- Every tenant-owned row carries organization_id; application filter + RLS + composite tenant FKs. The API / worker roles must not be superuser, BYPASSRLS or table owner. Tenant context must be transaction-local and must not remain on a pool connection.
+- 2D is authoring; 3D is a read-only projection/playback. They share entity IDs and the IR topology. Do not build a separate 3D topology.
+- Whenever data is insufficient, return needs_input / unavailable. Do not fabricate a metric, a dataset, performance test numbers, passing tests or a user's approval.
 
-## 3. Repository 邊界
+## 3. Repository boundaries
 
 ```text
-apps/web/               Next.js UI；由 task bootstrap 建立
-cmd/api/ cmd/worker/     組裝、設定與生命周期，不放 business rules
-internal/model/         draft/version、IR validation、commit service
-internal/domainpack/    電子產線 pack（P0，H-016）與 SoftwareDeliveryDomainPack（範例）；只透過接口連接 generic kernel
-internal/simulation/    pure Go DES；CPU/memory/time bounded
-internal/ai/            context、provider adapter、proposal、analyst；無 mutation tool
+apps/web/               Next.js UI; created by the bootstrap task
+cmd/api/ cmd/worker/     assembly, configuration and lifecycle; no business rules
+internal/model/         draft/version, IR validation, commit service
+internal/domainpack/    electronics line pack (P0, H-016) and SoftwareDeliveryDomainPack (example); connected to the generic kernel only through interfaces
+internal/simulation/    pure Go DES; CPU/memory/time bounded
+internal/ai/            context, provider adapter, proposal, analyst; no mutation tool
 internal/import/        upload/profile/map/validate/freeze/inference
 internal/auth/ tenant/  JWT + membership + policy
-internal/results/       aggregates、comparison、trace artifact
-internal/audit/ storage/ 受控 persistence 與 object storage adapters
-schemas/ openapi/       先改 contract，再改 handlers/clients
-migrations/             已部署 migration 不得改寫；新增 migration
-prompts/ testdata/       prompt version、golden、negative、eval fixtures
+internal/results/       aggregates, comparison, trace artifact
+internal/audit/ storage/ controlled persistence and object storage adapters
+schemas/ openapi/       change the contract first, then handlers/clients
+migrations/             never rewrite a deployed migration; add a new migration
+prompts/ testdata/       prompt version, golden, negative, eval fixtures
 ```
 
-原報告 Go/Next.js/React/TypeScript/React Flow/PlayCanvas/PostgreSQL 的選擇保留。版本、provider、cloud、sqlc/explicit SQL、前端 state libraries 尚未全定；不要使用 floating `latest`，在 bootstrap 時記錄所選版本、license、lockfile 和 ADR。
+The original report's choices of Go/Next.js/React/TypeScript/React Flow/PlayCanvas/PostgreSQL are kept. Versions, provider, cloud, sqlc/explicit SQL and frontend state libraries are not all decided yet. Do not use a floating `latest`; at bootstrap, record the chosen versions, licenses, lockfile and ADR.
 
-## 4. 執行指令與誠實狀態
+## 4. Commands and honest status
 
-本包可立即執行：
+This package can run right away:
 
 ```sh
 python -m pip install -r requirements-spec.txt
@@ -49,33 +49,33 @@ make spec-contracts
 make spec-planning
 ```
 
-bootstrap 後必須提供並實際通過：
+After bootstrap, these must be provided and must actually pass:
 
 ```sh
-make backend-test         # go vet + go test；無 go.mod 時必須失敗
-make backend-race         # go test -race；支援平台才執行，不能假裝跑過
-make frontend-test        # lint + typecheck + unit；無 package.json 時必須失敗
-make integration-test    # disposable PostgreSQL + API + worker + RLS，不指向 production
+make backend-test         # go vet + go test; must fail when there is no go.mod
+make backend-race         # go test -race; run only on a supported platform, never pretend it ran
+make frontend-test        # lint + typecheck + unit; must fail when there is no package.json
+make integration-test    # disposable PostgreSQL + API + worker + RLS, never pointed at production
 make e2e-test             # browser closed-loop with deterministic fake provider
-make ai-eval              # app-owned fixture suite；fake 與 live provider 結果分開
+make ai-eval              # app-owned fixture suite; fake and live provider results kept separate
 ```
 
-目前未附 app 的 targets 會回非零狀態，直到被真實命令替換。SQL migration 尚須在一次性 DB 執行；不要自動對使用者環境執行 destructive down / reset。`make spec-check` 不會執行 SQL，也不代表完整 OpenAPI 官方 validator 已通過。
+Targets whose app is not yet included return a non-zero status until they are replaced by real commands. SQL migrations still have to be run on a disposable DB. Do not automatically run a destructive down / reset against a user's environment. `make spec-check` does not run SQL, and it does not mean that the full official OpenAPI validator has passed.
 
-## 5. 每次任務的開發流程
+## 5. Development flow for each task
 
-確認 dependencies / scope / decision gate → 先寫 negative 和 happy-path tests → contract → pure domain logic → persistence/HTTP adapter → UI adapter → security/concurrency regression → 文件與 traceability。一次只交付一個可驗收的 bounded slice，避免跨越多個未完成依賴的大型修改。
+Confirm dependencies / scope / decision gate → write negative and happy-path tests first → contract → pure domain logic → persistence/HTTP adapter → UI adapter → security/concurrency regression → documentation and traceability. Deliver one bounded slice that can be accepted at a time; avoid large changes that span several unfinished dependencies.
 
-核心錯誤要有 typed error code、JSON Pointer path、request_id；context cancellation 逐層傳遞；不吞錯、不回假成功。Go maps 不可决定 simulation iteration order；RNG、time quantization、hash、event tie-break 要有固定 golden vectors。
+Core errors have a typed error code, a JSON Pointer path and a request_id. Context cancellation is passed down through every layer. Do not swallow errors and do not return a fake success. Go maps must not decide the simulation iteration order. RNG, time quantization, hash and event tie-break have fixed golden vectors.
 
-新增任何 DB 查詢都檢查 tenant scope；新增 write 都檢查 role + audit + concurrency + idempotency（適用時）；新增 AI context 都做 redaction/injection tests；新增 API 都更新 OpenAPI + examples + generated client contract test。
+Every new DB query is checked for tenant scope. Every new write is checked for role + audit + concurrency + idempotency (where applicable). Every new AI context gets redaction/injection tests. Every new API updates OpenAPI + examples + the generated client contract test.
 
-## 6. PR / 任務 Definition of Done
+## 6. PR / task Definition of Done
 
-有需求 ID、正向/反向/併發測試、migration/RLS 影響、失敗處理、觀測資訊、更新文件。實際貼出命令與結果；未執行項目列為 NOT RUN，不可列 PASS。不可把 skip/placeholder/fake provider 當 production capability。
+It has requirement IDs, positive/negative/concurrency tests, the migration/RLS impact, failure handling, observability and updated documentation. Paste the actual commands and results. Items not run are listed as NOT RUN, never as PASS. Do not present a skip/placeholder/fake provider as a production capability.
 
-安全 tests、immutable semantics 或 deterministic golden 失敗時不得降低 assertion／加 skip 以求綠燈。不得提交 secret、客戶原始 CSV、raw prompt、private chain-of-thought。不得替人類執行 production approval；部署到 production 需明確授權。
+When security tests, immutable semantics or a deterministic golden fail, do not weaken an assertion / add a skip to get green. Do not commit secrets, raw customer CSV, raw prompts or private chain-of-thought. Do not perform a production approval on behalf of a human. Deploying to production needs explicit authorization.
 
-## 7. 範圍停止線
+## 7. Scope stop line
 
-P0 不加入 native MES/CFX/GitHub/Jira connectors、Kafka/Redis/RabbitMQ、GraphQL、CRDT、BIM/CAD、physics simulation、3D authoring、arbitrary Python runtime、autonomous multi-agent framework 或 AI production actions。SimPy 僅 independent reference test。Rust / iTwin 只留接口，不預先重寫。
+P0 does not add native MES/CFX/GitHub/Jira connectors, Kafka/Redis/RabbitMQ, GraphQL, CRDT, BIM/CAD, physics simulation, 3D authoring, an arbitrary Python runtime, an autonomous multi-agent framework or AI production actions. SimPy is only an independent reference test. Rust / iTwin only keep an interface; do not rewrite ahead of time.
