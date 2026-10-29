@@ -1,104 +1,104 @@
 # Product Requirements — Product MVP
 
-來源：原報告 pp. 1–8、47–53。原則與 P0/P1 分類為 SOURCE；本文件的 requirement IDs、細分驗收、closed-loop interaction 為衍生整理；未定義的行為見 D-001–D-017。Owner 於 2026-10-19 把 P0 第一個 domain 改為電子組裝／測試線（H-016，偏離原報告）；受影響的段落標 H-016。
+Source: the original report pp. 1–8, 47–53. The principles and the P0/P1 classification are SOURCE; this document's requirement IDs, detailed acceptance criteria and closed-loop interaction are derived; undefined behavior is in D-001–D-017. On 2026-10-19 the owner changed the first P0 domain to an electronics assembly/test line (H-016, a departure from the original report); affected passages are marked H-016.
 
-## 1. 產品定位與成功假設
+## 1. Product positioning and success hypotheses
 
-產品不是單純的產線看板（原報告舉 DevOps dashboard），也不是 3D 動畫工具。定位為 **AI-native Digital Twin Modeling + Simulation + Decision Support**，架構為 General-purpose Digital Twin Kernel + Domain Pack Architecture + AI Modeling Layer。第一個完整 domain 是電子組裝／測試線（H-016；原報告為 Software Delivery / DevOps，其 pack 保留為範例與 conformance pack），不是寫死在 kernel 的唯一 domain。
+The product is not just a line dashboard (the original report's example is a DevOps dashboard), and it is not a 3D animation tool. It is positioned as **AI-native Digital Twin Modeling + Simulation + Decision Support**, with the architecture General-purpose Digital Twin Kernel + Domain Pack Architecture + AI Modeling Layer. The first complete domain is the electronics assembly/test line (H-016; in the original report it was Software Delivery / DevOps, whose pack is kept as an example and conformance pack); it is not the only domain hard-coded into the kernel.
 
-核心閉環：Describe / Import → Model → AI Proposal → Human Approval → Simulate → Compare → AI Explain → Iterate。
+Core closed loop: Describe / Import → Model → AI Proposal → Human Approval → Simulate → Compare → AI Explain → Iterate.
 
-SOURCE 的三個驗證假設：AI 降低建模門檻；simulation 提供使用者願意用於決策的答案；同一 Generic IR / DES / AI 架構可支撐下一 domain。這些是 pilot 要驗證的假設，不是已達成的成果。第二個正式 domain（倉儲人力與尖峰，H-016）不是 P0 launch 必備功能。
+The three SOURCE validation hypotheses: AI lowers the barrier to modeling; simulation gives answers users are willing to use for decisions; the same Generic IR / DES / AI architecture can support the next domain. These are hypotheses for a pilot to test, not results already achieved. The second production domain (warehouse labor and peaks, H-016) is not required for the P0 launch.
 
-Owner 的近期目標（H-016）：做出初步產品與技術驗證後投 launchpad。Owner 目前沒有可接觸的潛在使用者，示範資料一律為 synthetic，不宣稱客戶驗證或模型已對真實產線校準。
+The owner's near-term goal (H-016): build an initial product and technical validation, then apply to a launchpad. The owner currently has no potential users to contact, so all demo data is synthetic; we do not claim customer validation or that the model has been calibrated against a real line.
 
-## 2. 角色與工作情境
+## 2. Roles and work context
 
-主要使用者為電子製造廠的工業工程（IE）、生產技術與產線規劃人員，以及製造主管（H-016；原報告為工程主管、Platform/DevOps 負責人及 delivery process owner）。權限角色只有 Owner、Editor、Viewer。前兩者可編輯、建立 proposal、批准與啟動 simulation；Viewer 僅讀取；只有 Owner 管理成員。審核自己建立的 proposal 在原報告並未禁止，本草案不要求額外的四眼政策。
+The main users are industrial engineering (IE), production engineering and line planning staff at electronics manufacturers, and manufacturing managers (H-016; in the original report: engineering managers, Platform/DevOps leads and delivery process owners). The permission roles are only Owner, Editor and Viewer. The first two can edit, create proposals, approve and start simulations; Viewer is read-only; only Owner manages members. The original report does not forbid reviewing a proposal you created yourself, and this draft does not require an extra four-eyes policy.
 
-代表問題（H-016）：「目前 ICT 測試機 2 台、FCT 3 台、FCT 前緩衝 10 片；若增加 1 台 ICT 或加大緩衝，UPH、瓶頸站、WIP、utilization、阻塞時間與重測比例會如何改變？」原報告的例子是「2 reviewer、3 CI runner」。模型與資料不足時先要求補充，不得將例子中的參數當客戶事實。結果是條件化模擬估計，不是未來保證。
+Representative question (H-016): "We now have 2 ICT testers, 3 FCT testers and a buffer of 10 boards before FCT; if we add 1 ICT tester or enlarge the buffer, how will UPH, the bottleneck station, WIP, utilization, blocked time and the retest ratio change?" The original report's example is "2 reviewers, 3 CI runners". When the model or data is insufficient, ask for more first; never treat the example's parameters as customer facts. Results are conditional simulation estimates, not guarantees about the future.
 
-## 3. P0 功能與可驗收需求
+## 3. P0 features and acceptance requirements
 
-| ID | 能力 | 驗收標準 |
+| ID | Capability | Acceptance criteria |
 |---|---|---|
-| REQ-001 | Workspace / tenancy | authenticated user 在有權限的 organization 建 project；跨 tenant 的 read/write/job/artifact 一律不可見；isolation regression 100% pass |
-| REQ-002 | RBAC / membership | Owner/Editor/Viewer server-side enforcement；UI 按鈕不構成授權；Owner 可管理既有使用者的 membership |
-| REQ-003 | Generic IR / Domain Pack | 電子產線 DomainPack（H-016）產生 valid IR；SoftwareDeliveryDomainPack 保留為範例；generic simulation package 不依賴任何 domain package；unsupported domain fail closed |
-| REQ-004 | Template + 2D authoring | 電子產線 full template（H-016；站別由 T-046 定義，研究提案為 SMT→AOI→ICT→FCT→燒機→包裝出貨，含測試失敗→除錯→重測）；原報告的 Source→Review→CI→Test→Deploy→Sink 保留在範例 pack；可 add/delete/move nodes、連接 edges、編輯 properties；client/server validation 一致 |
-| REQ-005 | Draft / immutable versions | create 建 model+draft+v1；publish 產生新 immutable version，保留 parent；simulation 不接受 draft ID |
-| REQ-006 | Optimistic concurrency | stale If-Match 或 published base 回 409 MODEL_VERSION_CONFLICT；不得覆寫未保存改動或偷偷 rebase |
-| REQ-007 | CSV / JSON import | upload→profile/preview→map→validate→commit；invalid rows 可下載；JSON invalid 回 JSON Pointer；未 commit 不修改 Twin |
-| REQ-008 | AI modeling | 自然語言輸出 structured proposal；schema/semantic-invalid proposal 不得 ready；資訊不足 needs_input |
-| REQ-009 | Human approval | diff、assumptions、server risk、validation 可見；approve 重新驗證；edit 一次 transaction 只建一個新 version；reject 不改 model hash |
-| REQ-010 | Scenario | baseline 為空 patch，alternative 為 immutable base 上的 patch；scenario 不改 canonical version；AI scenario 需人類批准後再手動 run |
-| REQ-011 | DES | 固定 IR、dataset、engine、config、seed 的 aggregate digest 可重現；bounded event processing；沒有任意腳本執行 |
-| REQ-012 | Async runs | durable enqueue 後立即 202；queued/running/completed/failed/cancelled 與 progress 可查；取消於 checkpoint 停止 |
-| REQ-013 | Replications / metrics | 初始範圍 1–1000（hard cap TBD）；throughput（含每小時產出 UPH）、lead/cycle、queue、WIP、utilization、failure/rework，以及 REQ-024 帶來的阻塞／缺料時間與故障停機（H-016）；統計 population 與不足情況可見 |
-| REQ-014 | Baseline comparison | 同時呈現 baseline、scenario、absolute delta、relative delta；0 分母、缺值及不可比 config 不偽造 percentage |
-| REQ-015 | Domain 指標的資料門檻 | domain 指標只在語義資料充足時產生：電子產線的首次良率（FPY）、站別 availability 等由 T-046 定義（H-016）；範例 pack 的 DORA 指標需要 deployment/change/failure/recovery 資料；缺資料標 unavailable，不以一般 cycle time 冒稱 DORA，也不以 utilization 冒稱 OEE |
-| REQ-016 | AI analyst | 僅引用供應的 results，重大結論有 metric evidence；區分 observation/inference；不得 invent metric 或宣稱必然結果 |
-| REQ-017 | 3D viewer / playback | procedural scene、orbit/pan/zoom、hover/select、tokens、queue/utilization、timeline play/pause/scrub、baseline/scenario switch；same entity IDs；無 3D authoring |
-| REQ-018 | Audit | create/edit/publish/proposal/approve/reject/import/run 有 tenant-scoped audit；可追 request_id / run_id；不儲存 private chain-of-thought |
-| REQ-019 | Security | JWT/OIDC、tenant isolation、RBAC、RLS、authorized artifact access、AI authority containment、resource budgets |
-| REQ-020 | Observability / deployment | structured logs + traces/metrics；containerized web/api/worker、staging 與受控 production approval；no customer content in product telemetry |
-| REQ-021 | Quality gates | 六層測試、50 curated modeling intents 初始目標、invalid mutation=0、AI leakage=0、mandatory adversarial invented metrics=0 |
-| REQ-022 | Bilingual UI（owner 新增，H-005） | 英文（`en`）為預設與主要語言，另支援繁體中文（`zh-Hant`）；所有使用者可見字串來自 message catalog，兩語 key 完全一致；使用者可切換並記住語言；日期／數字／期間依語言格式化；API 錯誤由 UI 依 error code 在地化；AI 文字輸出依使用者語言，ID、JSON Pointer、enum 與 metric path 不翻譯 |
-| REQ-023 | UI design & accessibility（owner 新增，H-007） | 每個 P0 畫面符合 WCAG 2.2 AA（只用鍵盤可完成主流程、focus 可見、色彩對比、螢幕閱讀器可讀名稱與狀態）；共用 design tokens 與元件，元件庫與 styling 方式經比較多個 UI 庫後以 ADR 決定；每個 UI 任務先交可點擊 prototype 經 owner review 再實作；en 與 zh-Hant、手機與桌面寬度皆不跑版 |
-| REQ-024 | 產線流動語義（owner 變更 domain 後新增，H-016） | 有限緩衝與阻塞、resource 故障（MTBF/MTTR）與停機、班表（resource 的可用時段）、隨時間變化的投入（release schedule）、批次 process；語義依 T-046 提出並經 owner 批准的 decisions；每項有固定 golden vectors 與獨立 SimPy reference 比對；仍是 bounded event processing、沒有任意腳本 |
-| REQ-025 | 模擬與觀測的比對（H-016） | baseline run 有對應的觀測資料時，並列模擬與觀測的產出（例如每週產出、站別 cycle time）與誤差；沒有觀測資料時標 unavailable，不宣稱模型已校準；示範資料標為 synthetic |
+| REQ-001 | Workspace / tenancy | An authenticated user creates a project in an organization they have access to; cross-tenant read/write/job/artifact is never visible; isolation regression 100% pass |
+| REQ-002 | RBAC / membership | Owner/Editor/Viewer server-side enforcement; UI buttons do not grant authorization; Owner can manage the membership of existing users |
+| REQ-003 | Generic IR / Domain Pack | The electronics line DomainPack (H-016) produces valid IR; SoftwareDeliveryDomainPack is kept as an example; the generic simulation package depends on no domain package; unsupported domain fails closed |
+| REQ-004 | Template + 2D authoring | Electronics line full template (H-016; stations defined by T-046; the research proposal is SMT→AOI→ICT→FCT→burn-in→packing and shipping, including test failure→debug→retest); the original report's Source→Review→CI→Test→Deploy→Sink stays in the example pack; can add/delete/move nodes, connect edges, edit properties; client/server validation agree |
+| REQ-005 | Draft / immutable versions | Create builds model+draft+v1; publish produces a new immutable version and keeps the parent; simulation does not accept a draft ID |
+| REQ-006 | Optimistic concurrency | A stale If-Match or published base returns 409 MODEL_VERSION_CONFLICT; must not overwrite unsaved changes or silently rebase |
+| REQ-007 | CSV / JSON import | upload→profile/preview→map→validate→commit; invalid rows can be downloaded; invalid JSON returns a JSON Pointer; nothing modifies the Twin before commit |
+| REQ-008 | AI modeling | Natural language produces a structured proposal; a schema/semantic-invalid proposal must not become ready; insufficient information gives needs_input |
+| REQ-009 | Human approval | diff, assumptions, server risk and validation are visible; approve revalidates; an edit creates exactly one new version in one transaction; reject does not change the model hash |
+| REQ-010 | Scenario | The baseline is an empty patch; an alternative is a patch on an immutable base; a scenario does not change the canonical version; an AI scenario needs human approval and then a manual run |
+| REQ-011 | DES | The aggregate digest for a fixed IR, dataset, engine, config and seed is reproducible; bounded event processing; no arbitrary script execution |
+| REQ-012 | Async runs | 202 immediately after a durable enqueue; queued/running/completed/failed/cancelled and progress can be queried; cancellation stops at a checkpoint |
+| REQ-013 | Replications / metrics | Initial range 1–1000 (hard cap TBD); throughput (including hourly output, UPH), lead/cycle, queue, WIP, utilization, failure/rework, plus the blocked/starved time and failure downtime that REQ-024 brings (H-016); the statistical population and any shortfall are visible |
+| REQ-014 | Baseline comparison | Show baseline, scenario, absolute delta and relative delta together; a 0 denominator, missing values and non-comparable configs never produce a fabricated percentage |
+| REQ-015 | Data threshold for domain metrics | Domain metrics are produced only when the semantic data is sufficient: for the electronics line, first pass yield (FPY), per-station availability and so on are defined by T-046 (H-016); the example pack's DORA metrics need deployment/change/failure/recovery data; missing data is marked unavailable; general cycle time is never passed off as DORA, and utilization is never passed off as OEE |
+| REQ-016 | AI analyst | Cites only the supplied results; major conclusions have metric evidence; distinguishes observation/inference; must not invent a metric or claim a certain outcome |
+| REQ-017 | 3D viewer / playback | procedural scene, orbit/pan/zoom, hover/select, tokens, queue/utilization, timeline play/pause/scrub, baseline/scenario switch; same entity IDs; no 3D authoring |
+| REQ-018 | Audit | create/edit/publish/proposal/approve/reject/import/run have a tenant-scoped audit; traceable by request_id / run_id; no private chain-of-thought is stored |
+| REQ-019 | Security | JWT/OIDC, tenant isolation, RBAC, RLS, authorized artifact access, AI authority containment, resource budgets |
+| REQ-020 | Observability / deployment | structured logs + traces/metrics; containerized web/api/worker, staging and controlled production approval; no customer content in product telemetry |
+| REQ-021 | Quality gates | Six test layers, an initial target of 50 curated modeling intents, invalid mutation=0, AI leakage=0, mandatory adversarial invented metrics=0 |
+| REQ-022 | Bilingual UI (added by the owner, H-005) | English (`en`) is the default and primary language, with Traditional Chinese (`zh-Hant`) also supported; every user-visible string comes from the message catalog, and the two languages have exactly the same keys; the user can switch the language and it is remembered; dates/numbers/durations are formatted per language; API errors are localized by the UI from the error code; AI text output follows the user's language; IDs, JSON Pointers, enums and metric paths are not translated |
+| REQ-023 | UI design & accessibility (added by the owner, H-007) | Every P0 screen meets WCAG 2.2 AA (the main flow can be completed with the keyboard only, visible focus, color contrast, names and states readable by screen readers); shared design tokens and components, with the component library and styling approach decided by an ADR after comparing several UI libraries; every UI task first delivers a clickable prototype for owner review before implementation; no broken layout in en or zh-Hant, at phone or desktop widths |
+| REQ-024 | Line flow semantics (added after the owner changed the domain, H-016) | Finite buffers and blocking, resource failures (MTBF/MTTR) and downtime, shift calendars (when a resource is available), time-varying arrivals (release schedule), batch processes; semantics follow the decisions proposed by T-046 and approved by the owner; each has fixed golden vectors and an independent SimPy reference comparison; still bounded event processing, with no arbitrary scripts |
+| REQ-025 | Comparison of simulation and observation (H-016) | When a baseline run has matching observed data, show simulated and observed output side by side (for example weekly output, per-station cycle time) with the error; without observed data, mark unavailable and do not claim the model is calibrated; demo data is labeled synthetic |
 
-REQ-022 不是原報告需求：owner 於 2026-10-18 新增（H-005）；中文定為繁體 `zh-Hant`，owner 確認先只做繁體（H-006）。
+REQ-022 is not an original report requirement: the owner added it on 2026-10-18 (H-005); Chinese is set to Traditional `zh-Hant`, and the owner confirmed only Traditional for now (H-006).
 
-REQ-022 的例外（H-008）：UI 元件庫內建、無法以 prop 覆寫的無障礙字串，可用該庫自己的翻譯，但須列清單、審閱並以測試列出。
+The REQ-022 exception (H-008): accessibility strings built into the UI component library that cannot be overridden by a prop may use the library's own translation, but they must be listed, reviewed and enumerated by a test.
 
-REQ-024、REQ-025 不是原報告需求：owner 於 2026-10-19 採用 agent 建議、把 P0 domain 改為電子組裝／測試線（H-016）而新增；語義細節為 D-047–D-060，2026-10-20 由 owner 依建議批准（H-018）。
+REQ-024 and REQ-025 are not original report requirements: they were added when the owner, on 2026-10-19, adopted the agent's recommendation and changed the P0 domain to an electronics assembly/test line (H-016); the semantic details are D-047–D-060, approved by the owner as recommended on 2026-10-20 (H-018).
 
-REQ-023 不是原報告需求：owner 於 2026-10-18 同意 agent 建議新增（H-007），並要求比較多個 UI 庫的做法、不直接採用 Tailwind＋shadcn/ui；owner 尚無視覺偏好，預設為中性、資訊密集的工具型介面。
+REQ-023 is not an original report requirement: the owner agreed on 2026-10-18 to add it at the agent's recommendation (H-007), and asked that several UI libraries' approaches be compared rather than adopting Tailwind + shadcn/ui directly; the owner has no visual preference yet, so the default is a neutral, information-dense tool interface.
 
-工程補充（已批准）：REQ-002 的 org bootstrap / membership HTTP 範圍見 D-008 / D-012；REQ-007 commit 與 proposal 邊界見 D-009；REQ-010 scenario approval 結果見 D-004；其餘缺值、clock 與一致性細節依專門 Spec。
+Engineering supplements (approved): REQ-002's org bootstrap / membership HTTP scope is in D-008 / D-012; REQ-007's commit and proposal boundary is in D-009; REQ-010's scenario approval result is in D-004; other missing values, clock and consistency details follow the dedicated Specs.
 
-## 4. UI 與主要旅程
+## 4. UI and main journeys
 
-### 建立與人工修改
+### Creation and manual edits
 
-選 project → 選電子產線 template（H-016）→ 2D editor 顯示 draft revision/base/latest → 編輯 properties → 顯示 validation issue 與定位 → Save Draft → 顯式 Publish。未保存 editor state 與 server draft 分開；切版本不能默默覆蓋 local edits。409 時展示 server revision，要求重新載入／顯式處理，不能自動合併。
+Choose a project → choose the electronics line template (H-016) → the 2D editor shows the draft revision/base/latest → edit properties → show validation issues and locate them → Save Draft → explicit Publish. Unsaved editor state is kept separate from the server draft; switching versions must not silently overwrite local edits. On a 409, show the server revision and require a reload / explicit handling; no automatic merge.
 
-### 匯入與 AI 建模
+### Import and AI modeling
 
-Upload CSV/JSON → preview 與 row errors → mapping 建議（低於 0.80 需確認）→人類確認 mapping → deterministic validation → commit dataset →生成 inference/model proposal → review diff/assumptions/data quality →approve 或 reject。APPROVED D-009：commit 不等於 publish；reject 後 frozen dataset 可保留，但 canonical Twin 完全不變。
+Upload CSV/JSON → preview and row errors → mapping suggestions (below 0.80 needs confirmation) → a human confirms the mapping → deterministic validation → commit dataset → generate an inference/model proposal → review diff/assumptions/data quality → approve or reject. APPROVED D-009: commit is not publish; after a reject the frozen dataset can be kept, but the canonical Twin does not change at all.
 
-### Scenario 與決策
+### Scenario and decision
 
-選 immutable version →建立 baseline run →提出 scenario（manual 或 AI）→review/approve AI scenario →手動 Run →monitor/cancel →compare →AI analysis →人類選擇下一個 experiment。使用者必須分辨「把變更存為實際 model version」和「只用於 what-if scenario」；兩種按鈕及回傳物件不可混用。
+Choose an immutable version → create a baseline run → propose a scenario (manual or AI) → review/approve the AI scenario → manual Run → monitor/cancel → compare → AI analysis → a human chooses the next experiment. The user must be able to tell "save the change as an actual model version" from "use only for a what-if scenario"; the two buttons and their returned objects must not be mixed.
 
-### 3D 與結果
+### 3D and results
 
-3D 讀同一 IR/version/run，2D/3D 選取狀態共用 entity ID。sampled trace 不是所有 entity 的完整動畫；UI 明確標示 sampling。沒有 trace 時仍可看 aggregates；不能捏造 playback trajectory。3D 載入失敗不可阻擋 2D / simulation / results。
+3D reads the same IR/version/run, and 2D/3D share the selection state by entity ID. A sampled trace is not a full animation of every entity; the UI states clearly that it is sampled. Without a trace, aggregates are still viewable; a playback trajectory must never be fabricated. A 3D load failure must not block 2D / simulation / results.
 
-## 5. P1 與明確排除
+## 5. P1 and explicit exclusions
 
-P1：MES／CFX 與 GitHub/GitLab/Jira/CI connectors、parameter sweeps、advanced routing/priority/preemption（班表已因 H-016 進 P0）、P0 之後的產線功能（H-018：零容量緩衝、拼板與分板、跨步驟持有資源、依忙碌時間的故障時鐘、交班前做不完不開始、AGV／搬運）、batch AI experiment approval、rich 3D assets、collaboration、SSO/SAML、billing、telemetry streaming、第二 domain（倉儲人力與尖峰，H-016）、iTwin adapter、必要時 dedicated broker / GraphQL。
+P1: MES/CFX and GitHub/GitLab/Jira/CI connectors, parameter sweeps, advanced routing/priority/preemption (shift calendars are already in P0 because of H-016), line features after P0 (H-018: zero-capacity buffers, panelization and depanelization, holding resources across steps, failure clocks based on busy time, not starting work that cannot finish before a shift change, AGV/material handling), batch AI experiment approval, rich 3D assets, collaboration, SSO/SAML, billing, telemetry streaming, a second domain (warehouse labor and peaks, H-016), iTwin adapter, and a dedicated broker / GraphQL if needed.
 
-P0 不做 BIM/CAD、IoT synchronization、physics/CFD/FEA、CRDT、AI autonomous mutation/production actions、arbitrary Python simulation runtime、3D authoring。完整 viewer 本身仍是 P0，不能因為 non-goal 而移除它。
+P0 does not include BIM/CAD, IoT synchronization, physics/CFD/FEA, CRDT, AI autonomous mutation/production actions, an arbitrary Python simulation runtime, or 3D authoring. The full viewer itself is still P0; it must not be removed because of a non-goal.
 
-## 6. 工程目標，而非已達成指標
+## 6. Engineering targets, not achieved metrics
 
-| 面向 | 原報告初始目標 | 限定 |
+| Aspect | Original report's initial target | Qualification |
 |---|---|---|
-| Graph | 500 nodes / 1,000 edges | Alpha 校準 |
+| Graph | 500 nodes / 1,000 edges | Alpha calibration |
 | 2D / 3D initial render | <2s / <3s | reference device TBD |
 | 3D interaction | median ≥30 FPS | reference device TBD |
-| CSV | 100k rows / 50 MB | load test 後確認 |
-| DES | 1M events <15s；peak RSS <1 GB | 2 vCPU / 4 GB reference server TBD |
-| API / validation | normal API p95 <500ms；max model validation <1s | AI / simulation 執行時間除外；工作負載 TBD |
-| Cancel | requested 後 ≤5s | benchmark 待確認 |
-| Security | tenant regression 100%；unsafe/invalid mutations committed=0 | 必須 gating，不是平均值 |
+| CSV | 100k rows / 50 MB | Confirm after load test |
+| DES | 1M events <15s; peak RSS <1 GB | 2 vCPU / 4 GB reference server TBD |
+| API / validation | normal API p95 <500ms; max model validation <1s | Excludes AI / simulation run time; workload TBD |
+| Cancel | ≤5s after requested | benchmark to be confirmed |
+| Security | tenant regression 100%; unsafe/invalid mutations committed=0 | Must be gating, not an average |
 
-## 7. Launch gates / 驗收證據
+## 7. Launch gates / acceptance evidence
 
-Alpha：manual model→simulation→results。AI Alpha：intent→proposal→approve→new version。Product Alpha：CSV→inferred model→approval→scenario→simulate→compare→analysis。Private Beta：外部團隊真實資料與重複 what-if 決策，並已批准 retention/residency/provider policy。
+Alpha: manual model→simulation→results. AI Alpha: intent→proposal→approve→new version. Product Alpha: CSV→inferred model→approval→scenario→simulate→compare→analysis. Private Beta: an external team's real data and repeated what-if decisions, with an approved retention/residency/provider policy.
 
-H-016 的近期目標（初步產品＋技術驗證，投 launchpad）對應 Product Alpha，以 synthetic 資料完成；Private Beta 需要外部真實資料，owner 目前沒有接觸對象。
+H-016's near-term goal (initial product + technical validation, apply to a launchpad) corresponds to Product Alpha, completed with synthetic data; Private Beta needs real external data, and the owner currently has no one to contact.
 
-工程完成需要測試與可重現 workload；產品成功需要 pilot 的 decision usefulness 證據。time-to-first-model、time-to-first-simulation、proposal acceptance/rejection、runs/project、comparisons/project 可收集，但 raw model/CSV/prompt 不進 telemetry。原報告未給轉換率或商業 KPI 門檻，不新增虛構目標。
+Engineering completion needs tests and a reproducible workload; product success needs evidence of decision usefulness from a pilot. time-to-first-model, time-to-first-simulation, proposal acceptance/rejection, runs/project and comparisons/project can be collected, but raw model/CSV/prompt does not go into telemetry. The original report gives no conversion rate or business KPI threshold, so no fictional target is added.

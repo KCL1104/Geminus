@@ -1,59 +1,59 @@
-# Hackathon 計畫：Meta Global AI Developer Hackathon（H-029）
+# Hackathon plan: Meta Global AI Developer Hackathon (H-029)
 
-依據：H-029（2026-10-26，owner 已錄取 Indie 組並選定以下範圍與流程），H-030、H-031 修改：**只用 Railway；先不接 Meta，先用 Claude API 驗證與 demo；照片辨識先用 Claude 的影像輸入**。H-032：owner 已提供 Railway token，授權 agent 部署 demo（secret 由 owner 在 Railway 填）。**H-033：owner 已加 Meta（Muse）的 key，恢復 Meta：自然語言修改用 Muse Spark，照片辨識用 SAM 3.1＋Muse Spark，Claude 為可切換的備援。**本檔是比賽期間的工作計畫，不改變 P0 的範圍與已批准的決策；比賽後恢復 H-003 的審查流程，延後的任務照 `planning/tasks.json` 進行。
+Basis: H-029 (2026-10-26; the owner has been accepted into the Indie track and chose the scope and process below), amended by H-030 and H-031: **Railway only; do not connect Meta yet; validate and demo with the Claude API first; use Claude's image input for photo recognition first**. H-032: the owner has provided a Railway token and authorized the agent to deploy the demo (the owner fills in the secrets in Railway). **H-033: the owner has added the Meta (Muse) key, and Meta is restored: Muse Spark for natural-language edits, SAM 3.1 + Muse Spark for photo recognition, and Claude as a switchable fallback.** This file is the work plan for the competition period. It does not change the P0 scope or any approved decision. After the competition, the H-003 review process resumes, and deferred tasks proceed per `planning/tasks.json`.
 
-## 比賽
+## Competition
 
-- 線上，2026-10-26 開始，**2026-11-04 21:00 ET（2026-11-05 02:00 UTC）截止提交**；11-04 至 11-08 評審，11-09 公布。
-- 評分：Impact 30%、Use of Meta AI Tooling 25%、Technical Depth & Execution 20%、Demo 25%（可運作的 demo 與影片）。
-- 主題：「Push the Frontier」點名 manufacturing 與「understand and control a physical system」；Geminus 的電子組裝／測試線數位分身直接對題。
-- 規則重點（Official Rules，2026-10-26 取得）：作品須為參賽者的原創、權利屬於參賽者；開源元件須遵守授權；提交後參賽者保有所有權，但授予主辦方永久、不可撤銷、免費、非專屬的使用授權；活動中分享的內容不視為機密。規則沒有寫「必須從零開始」，提交時說明哪些是比賽期間做的。
+- Online, starts 2026-10-26; **submission deadline 2026-11-04 21:00 ET (2026-11-05 02:00 UTC)**; judging 11-04 to 11-08; results announced 11-09.
+- Scoring: Impact 30%, Use of Meta AI Tooling 25%, Technical Depth & Execution 20%, Demo 25% (a working demo and a video).
+- Theme: "Push the Frontier" names manufacturing and "understand and control a physical system"; Geminus's digital twin of an electronics assembly/test line fits the theme directly.
+- Key rules (Official Rules, retrieved 2026-10-26): the work must be the entrant's original work, and the rights belong to the entrant; open-source components must follow their licenses; after submission the entrant keeps ownership but grants the organizers a perpetual, irrevocable, royalty-free, non-exclusive license to use it; content shared during the event is not treated as confidential. The rules do not say "must start from scratch"; the submission states what was built during the competition.
 
-## Demo 的內容（H-029 (2)）
+## Demo contents (H-029 (2))
 
-1. 電子產線範本（SMT、AOI、ICT、燒機批次、包裝）與 synthetic 資料。
-2. **照片 → 模型**：上傳產線照片或平面圖，SAM 3.1 找出機台與輸送帶，Muse Spark 判斷工作站與流向（H-033；Claude 的影像輸入為備援），產生模型 proposal；伺服器驗證、算風險，人工批准才生效。
-3. **2D 編輯器**：在畫布上檢視與調整模型。
-4. **用自然語言提出修改**：例如「燒機改成每批 48 片」，Muse Spark 產生 proposal（H-033；Claude 為備援），畫面並列差異、AI 的假設、伺服器算的風險。
-5. **模擬與比較**：執行模擬，Marey 圖比較 baseline 與 scenario，加上主要指標。
+1. Electronics line template (SMT, AOI, ICT, burn-in batch, packaging) and synthetic data.
+2. **Photo → model**: upload a line photo or floor plan; SAM 3.1 finds machines and conveyors, and Muse Spark identifies stations and flow direction (H-033; Claude's image input is the fallback), producing a model proposal; the server validates it and computes risk; it takes effect only after human approval.
+3. **2D editor**: view and adjust the model on the canvas.
+4. **Propose edits in natural language**: for example "change burn-in to 48 boards per batch"; Muse Spark generates a proposal (H-033; Claude is the fallback), and the screen shows the diff, the AI's assumptions and the server-computed risk side by side.
+5. **Simulation and comparison**: run the simulation; a Marey chart compares baseline and scenario, plus the main metrics.
 
-不變的規則：AI 只提出建議、不能批准或直接改模型；風險與驗證由伺服器計算；租戶隔離；資料不足時回 needs_input；不捏造任何結果或數字。
+Rules that do not change: AI only proposes; it cannot approve or change the model directly; risk and validation are computed by the server; tenant isolation; return needs_input when data is insufficient; never fabricate any result or number.
 
-## 切片與相依
+## Slices and dependencies
 
-| 切片 | 任務 | 相依 | 預定完成（UTC） |
+| Slice | Task | Depends on | Planned completion (UTC) |
 |---|---|---|---|
-| Meta provider（Muse Spark） | T-055（H-033 恢復） | T-024、T-025、T-053 | 10-28 |
-| 電子產線範本與指標 | T-051 切片 | T-050 | 10-28 |
-| Synthetic 產線資料 | T-052 切片 | T-051 | 10-29 |
-| 2D 編輯器 | T-015 切片 | T-045 | 10-30 |
-| Container 與部署（只用 Railway，H-031、H-032） | T-039 切片 | Railway token（已有）、Auth0 tenant | 10-31 |
-| 照片 → 模型 proposal（SAM 3.1＋Muse Spark，H-033） | T-056 | T-055、T-051 | 10-31 |
-| 自然語言修改與 proposal 審閱畫面 | T-031 切片 | T-053、T-015 切片 | 11-01 |
-| 模擬與 Marey 比較畫面 | T-032 切片 | T-031 切片 | 11-02 |
-| 部署、demo 腳本、影片、提交 | T-057 | 以上全部 | 11-04 |
+| Meta provider (Muse Spark) | T-055 (restored by H-033) | T-024, T-025, T-053 | 10-28 |
+| Electronics line template and metrics | T-051 slice | T-050 | 10-28 |
+| Synthetic line data | T-052 slice | T-051 | 10-29 |
+| 2D editor | T-015 slice | T-045 | 10-30 |
+| Container and deployment (Railway only, H-031, H-032) | T-039 slice | Railway token (available), Auth0 tenant | 10-31 |
+| Photo → model proposal (SAM 3.1 + Muse Spark, H-033) | T-056 | T-055, T-051 | 10-31 |
+| Natural-language edits and the proposal review screen | T-031 slice | T-053, T-015 slice | 11-01 |
+| Simulation and Marey comparison screen | T-032 slice | T-031 slice | 11-02 |
+| Deployment, demo script, video, submission | T-057 | All of the above | 11-04 |
 
-程式在 11-03 23:59 UTC 凍結；11-04 只做部署確認、影片與提交文字。
+Code freezes at 11-03 23:59 UTC; 11-04 is only for deployment checks, the video and the submission text.
 
-## 流程（H-029 (4)，比賽期間）
+## Process (H-029 (4), during the competition)
 
-- 每個切片先寫測試，再實作；安全規則、反向測試與 assertion 照舊，不加 skip。
-- 每個切片做一輪獨立審查；High／Medium 修完並由 coordinator 驗證即可完成，Low 記為比賽後的後續。
-- 延到比賽後：其餘 P0 任務、第七張決策頁（D-096、D-097、D-110–D-116）、T-053 的 Anthropic live 執行（執行前先回答 D-116）。
+- Each slice writes tests first, then the implementation; security rules, negative tests and assertions stay as before, and no skips are added.
+- Each slice gets one round of independent review; it is complete once High/Medium findings are fixed and verified by the coordinator; Low findings are recorded as post-competition follow-ups.
+- Deferred until after the competition: the remaining P0 tasks, the seventh decision page (D-096, D-097, D-110–D-116), and T-053's Anthropic live run (answer D-116 before running it).
 
-## Owner 要做的事
+## What the owner needs to do
 
-| 時間 | 事項 |
+| When | Item |
 |---|---|
-| 已完成 | Meta（Muse）的 key 加到環境變數（H-033） |
-| 已完成 | Railway token 加到環境變數（H-032） |
-| 10-29 前 | 註冊 Auth0、建立 tenant（region 建議 US）與自己的登入使用者，告知 `user_id`；其餘由 agent 在部署時以裝置登入設定（H-034，部署當天在瀏覽器按核准） |
-| 10-31 前 | 在 Railway 的 variables 填入 Meta key 與 Anthropic key（備援），填完立刻 sealed（H-036）；Auth0 的 Client Secret 由部署腳本直接寫入（H-034）（agent 提供名稱清單；session secret 由 Railway 產生；secret 不進 repo，agent 不讀值） |
-| 11-04 | 看過 demo 影片（需要的話錄旁白），以 Indie 組 Representative 身分在 Cerebral Valley 提交 |
+| Done | Add the Meta (Muse) key to the environment variables (H-033) |
+| Done | Add the Railway token to the environment variables (H-032) |
+| Before 10-29 | Register for Auth0, create a tenant (region: US recommended) and your own login user, and share its `user_id`; the agent configures the rest at deployment time through device login (H-034; on deployment day, approve in the browser) |
+| Before 10-31 | Fill in the Meta key and the Anthropic key (fallback) in Railway's variables and seal them right after filling them in (H-036); the Auth0 Client Secret is written directly by the deployment script (H-034) (the agent provides the list of names; Railway generates the session secret; secrets do not go into the repo, and the agent does not read the values) |
+| 11-04 | Watch the demo video (record a narration if needed), and submit on Cerebral Valley as the Indie track Representative |
 
-## 資料與花費
+## Data and spend
 
-- Claude API（H-031）：只送 synthetic 資料、demo 圖片與使用者輸入的文字；request 不指定 inference_geo（D-116 選項 A）；log 不存原始 prompt 與回應。
-- 花費沿用 T-053 的程式內上限與開關（live 只在獨立審查過的程式上執行，H-025）。
-- Meta（H-033）：Standard mode（官方 pricing 頁：Standard mode 的內容不拿去訓練）；錄取者有 150 美元的 Meta API 額度（10 天）；官方價格（2026-10-26）`muse-spark-1.3` 每百萬 token 輸入 1.25、輸出 4.25 美元，`sam-3.1` 每千張圖 2.50 美元。評分的「Use of Meta AI Tooling」占 25%；Meta 的 live 呼叫只在獨立審查過的 T-055 程式上執行（比照 H-025）。
-- 照片 proposal 的預留（H-037）：帶圖片的 request 先以 count_tokens 取得 input token 數，加 10% 預留；以 context window 預留時每次約 USD 4.04，organization 日上限 USD 5 下一天只能做一次。
+- Claude API (H-031): send only synthetic data, demo images and text the user types; requests do not specify inference_geo (D-116 option A); logs do not store raw prompts or responses.
+- Spend keeps T-053's in-code caps and switches (live runs only on independently reviewed code, H-025).
+- Meta (H-033): Standard mode (official pricing page: Standard mode content is not used for training); accepted entrants get USD 150 of Meta API credit (10 days); official prices (2026-10-26): `muse-spark-1.3` USD 1.25 per million input tokens and USD 4.25 per million output tokens, `sam-3.1` USD 2.50 per thousand images. "Use of Meta AI Tooling" is 25% of the score; Meta live calls run only on independently reviewed T-055 code (as with H-025).
+- Photo proposal reservation (H-037): for a request with an image, first get the input token count with count_tokens and reserve that plus 10%; reserving by the context window costs about USD 4.04 each time, so under the organization's USD 5 daily cap only one would fit per day.
