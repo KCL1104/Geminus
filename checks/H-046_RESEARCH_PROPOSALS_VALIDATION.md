@@ -128,3 +128,12 @@ Commands after the fixes (2026-10-30, same toolchains):
 | `make frontend-test` (Node 24.21.0) | 0 | 54 test files, 1,162 tests (2 new) |
 | `make e2e-test` | NOT RUN | ports 3100 to 3102 were held by another agent's servers for the whole session (`ss -ltn`); the frontend fork's two earlier attempts overlapped with them and are not counted |
 | `make backend-race`, `make integration-test` | NOT RUN | not run locally (as instructed) |
+
+### Verification of round 1 (independent reviewer, 2026-10-30)
+
+All eight findings are fixed in 05c4324 and nothing new is High or Medium. The reviewer re-ran `go test -count=1 ./internal/ai/... ./internal/proposals/... ./internal/config/... ./internal/api/... ./cmd/... ./prompts/...` (exit 0) and `npx vitest run tests/proposal-research.test.tsx` (exit 0, 20/20). Two new Low findings are deferred (hackathon mode, H-029):
+
+| Finding | Outcome |
+|---|---|
+| N1: markers match by substring, so descriptive snake_case IDs (`lead_time`, `code_review`) make `web_search_steps_with_ids` count legitimate pages and can drop a legitimate source whose query string carries such a word | Deferred. No leak. `web_search_steps_with_ids` is an upper bound, not a count of exfiltration attempts. |
+| N2: a research job has one attempt, so a refusal made before any call (concurrency limit, spend unavailable) fails it for good | Deferred. The person asks again; nothing was billed. |
