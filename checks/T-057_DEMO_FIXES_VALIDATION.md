@@ -124,4 +124,5 @@ Coordinator 驗證：H1 以出貨的範本實際讀檔測試（41 個座標、AO
 
 - **文字提案的假設不再寫區塊名稱（`context-rules-2`）**：a383141 部署後的第一次文字提案，Meta 回 **404**（`not_found_error`，`AI_REQUEST_REJECTED`，花費 0），與 `checks/T-057_AUTH0_VALIDATION.md` 記錄的出口問題相同。8602c4b 重新部署（worker 換了執行個體）後再送同一個要求（「Add a buffer queue between ICT and FCT…」，edit）：AI 回 **needs input**，因為模型已經有 FCT 前的 buffer；「What the AI assumed」三條都是自然語言（例如「The current model already contains a buffer before FCT with capacity 10…」），沒有 `CURRENT_MODEL_IR`、`USER_INTENT`、`CONTEXT_OMISSIONS` 等區塊名稱。截圖 `D4-text-proposal.png`。
 - **Demo 的風險仍在**：Meta 對部分 Railway 出口回 404，部署（或 worker 重啟）之後可能再出現。錄 demo 之前先送一個文字提案；404 時重新部署 worker。
+  - **更正（2026-10-29）**：原因是 Railway 上 worker 的 `GEMINUS_MUSE_API_KEY`，不是出口。兩個區域、三個執行個體都是 404；換成 `.env` 的 key 之後就正常了（`checks/H-042_SHELL_AND_META_VALIDATION.md` §7）。錄 demo 之前仍先送一個文字提案。
 - **照片提案**：這次沒有重跑（省花費）：NOT RUN。

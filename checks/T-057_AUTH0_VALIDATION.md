@@ -550,6 +550,7 @@ project 中原本就有的 `Geminus` 服務（接了這個 repo 的 branch）沒
 - 以真正的 key 從容器測 `/v1/models` 這一步，被 Claude Code 的自動權限檢查擋下，沒有執行。
 - Owner 選擇把 worker 搬到 `asia-southeast1-eqsg3a`（Singapore；environment patch，committed，讀回確認）。之後就正常了。
 - 原因推定為 Meta 依地區回應（未以 key 直接證實）。
+- **更正（2026-10-29）**：推定錯誤。原因是 Railway 上 worker 的 key；換成 `.env` 的 key 之後就正常了（`checks/H-042_SHELL_AND_META_VALIDATION.md` §7）。
 - 待辦：把 worker 的 region 寫進 deployer 的 patch。
 
 **完整流程**（Playwright 1.56.1，照 `apps/web-e2e` 的 lockfile 安裝；評審帳號；live 網站；腳本 `workflow.cjs.txt`，密碼只經環境變數，不在檔案中；log `workflow-singapore.log`；截圖在同一個資料夾）：
