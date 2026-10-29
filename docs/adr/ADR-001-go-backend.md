@@ -1,15 +1,15 @@
 # ADR-001 — Go Backend
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 9–10,50。
+Source: the original report pp. 9–10, 50.
 
 ## Decision
 
-採 Go 為 P0 SaaS backend，net/http / ordinary packages，framework保持輕量。
+Go is the P0 SaaS backend, with net/http / ordinary packages; the framework stays light.
 
 ## Consequences / Review boundary
 
-主要優勢為總體delivery risk，並非宣稱Go一定比Rust快。SDK版本與sqlc仍需後續選型。
+The main advantage is the overall delivery risk; this is not a claim that Go is always faster than Rust. The SDK versions and sqlc still need to be chosen later.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

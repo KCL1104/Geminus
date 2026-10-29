@@ -1,15 +1,15 @@
 # ADR-007 — React Flow Authoring
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 2,12–14。
+Source: the original report pp. 2, 12–14.
 
 ## Decision
 
-React Flow作2D authoring adapter；domain model與UI state分開。
+React Flow is the 2D authoring adapter; the domain model is kept separate from UI state.
 
 ## Consequences / Review boundary
 
-生成nodes/edges是projection，不保存第二套IR。
+The generated nodes/edges are a projection; no second IR is stored.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

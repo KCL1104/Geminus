@@ -1,15 +1,15 @@
 # ADR-005 — AI Cannot Mutate Model
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 3,23–27,41–43。
+Source: the original report pp. 3, 23–27, 41–43.
 
 ## Decision
 
-AI只提proposal；server deterministic validator + human approval才有canonical effect。
+AI only makes proposals; only the server's deterministic validator + human approval have a canonical effect.
 
 ## Consequences / Review boundary
 
-provider沒有DB/write/run tools；Critic不能覆蓋server authority。
+The provider has no DB/write/run tools; the Critic cannot override the server's authority.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

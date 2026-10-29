@@ -1,27 +1,27 @@
 # ADR-014 — RFC 8785 canonicalization library and hash verification
 
-狀態：ACCEPTED（T-005 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。前提：D-006、D-019、D-034（皆已批准）。
+Status: ACCEPTED (chosen by the T-005 agent; owner KCL1104 agreed on 2026-10-15). Date: 2026-10-15. Preconditions: D-006, D-019, D-034 (all approved).
 
 ## Decision
 
-`internal/model/hashing` 以 `github.com/gowebpki/jcs` v1.0.2（Apache-2.0，2026-09-21 發布）做 RFC 8785 canonicalization。它是 RFC 作者 Anders Rundgren（cyberphone）參考實作的 Go fork，經原作者同意維護；API 為 `jcs.Transform([]byte) ([]byte, error)`。`hashing.Canonical` 在其前面：
+`internal/model/hashing` uses `github.com/gowebpki/jcs` v1.0.2 (Apache-2.0, released 2026-09-21) for RFC 8785 canonicalization. It is the Go fork of the reference implementation by the RFC's author Anders Rundgren (cyberphone), maintained with the original author's agreement; the API is `jcs.Transform([]byte) ([]byte, error)`. `hashing.Canonical` sits in front of it:
 
-- 以 `encoding/json/jsontext` 獨立讀一遍：拒 duplicate member（含 escape 後相同者）、不合法 UTF-8、多個 top-level value。jcs 本身也拒絕這些（1.6M 次 differential fuzz 未找到 jsontext 拒絕而 jcs 接受的輸入）；第二個 parser 讓規則不只倚賴一個實作，並提供錯誤種類與 byte offset。
-- 錯誤訊息只帶 byte offset，不轉傳 jsontext／jcs 會引用輸入 token 的訊息。
-- 數字依 RFC 8785 為 binary64：只在 binary64 精度外不同的文件同 hash；精確整數欄位由 schema 限制在 2^53−1。曾考慮拒絕超過 2^53−1 的整數 literal（Python `rfc8785` 以型別這樣做），但 fuzz 證實它使 Canonical 拒絕自身輸出（`1e17` → `100000000000000000`），也會讓 Go 重新 marshal 的 patch candidate 無法計算 effective hash，故不採用。對這類輸入 Go 接受、Python 拒絕；兩者不會對同一輸入給出不同 hash。
+- An independent pass with `encoding/json/jsontext`: it rejects duplicate members (including ones that are equal after unescaping), invalid UTF-8 and multiple top-level values. jcs itself also rejects these (1.6M differential fuzz runs found no input that jsontext rejects and jcs accepts); the second parser keeps the rules from depending on a single implementation, and provides the error kind and byte offset.
+- Error messages carry only the byte offset; messages from jsontext/jcs that quote input tokens are not passed on.
+- Numbers are binary64 per RFC 8785: documents that differ only beyond binary64 precision have the same hash; exact integer fields are limited to 2^53−1 by the schema. Rejecting integer literals above 2^53−1 was considered (Python `rfc8785` does this by type), but fuzzing showed that it makes Canonical reject its own output (`1e17` → `100000000000000000`) and would also leave patch candidates that Go re-marshals unable to compute an effective hash, so it is not adopted. For such input Go accepts and Python rejects; the two never give different hashes for the same input.
 
-## 為何可信：三組獨立 oracle
+## Why it can be trusted: three independent oracles
 
-| Oracle | 內容 | 位置 |
+| Oracle | Content | Location |
 |---|---|---|
-| RFC 8785 原文 | §3.2.2–§3.2.4 範例（逐 byte）、§3.2.3 UTF-16 排序、附錄 B 全部 26 個數字（含 NaN／Infinity 須報錯） | `testdata/hashing/rfc8785-vectors.json`，由 RFC 文字機械擷取 |
-| V8 | 6,000 個 IEEE-754 值（邊界、10 的冪、fixed／exponent 切換點、亂數 bit pattern）的 `JSON.stringify` 結果；RFC §3.2.2.3 指定 V8 為 reference | `testdata/hashing/v8-number-vectors.txt`，`scripts/gen_number_vectors.mjs` 可重現（Node 24.21.0） |
-| Python `rfc8785` 0.1.4（Trail of Bits，Apache-2.0） | 所有 golden model、patch、effective model、config（獨立以 `Decimal` 實作 quantizer）、manifest、result digest、content hash；另有 400 份隨機文件（含 UTF-16 與 code point 排序不同的 astral／私用區 member name、escape、控制字元）逐 byte 比對 | `scripts/check_hashes.py` → `testdata/hashing/expected-hashes.json`、`rfc8785-documents.jsonl`；`make spec-hashes` 在 CI 重算 |
+| The RFC 8785 text | The §3.2.2–§3.2.4 examples (byte by byte), the §3.2.3 UTF-16 ordering, all 26 numbers of Appendix B (including NaN/Infinity, which must raise an error) | `testdata/hashing/rfc8785-vectors.json`, extracted mechanically from the RFC text |
+| V8 | The `JSON.stringify` results of 6,000 IEEE-754 values (boundaries, powers of 10, fixed/exponent switch points, random bit patterns); RFC §3.2.2.3 names V8 as the reference | `testdata/hashing/v8-number-vectors.txt`, reproducible with `scripts/gen_number_vectors.mjs` (Node 24.21.0) |
+| Python `rfc8785` 0.1.4 (Trail of Bits, Apache-2.0) | All golden models, patches, effective models, configs (with a quantizer implemented independently with `Decimal`), manifests, result digests, content hashes; plus 400 random documents (including astral/private-use member names whose UTF-16 and code point orders differ, escapes, control characters) compared byte by byte | `scripts/check_hashes.py` → `testdata/hashing/expected-hashes.json`, `rfc8785-documents.jsonl`; `make spec-hashes` recomputes in CI |
 
-Go 測試與 Python 檢查讀同一份 expected 檔，任一實作改變行為 CI 即失敗。擴充執行（不入 repo）：`HASHING_V8_VECTORS` 指向 `gen_number_vectors.mjs 1000000` 的輸出、`HASHING_PY_DOCUMENTS` 指向 `check_hashes.py --documents 100000 PATH` 的輸出；T-005 已以 1,000,000 個數字與 100,000 份文件執行並全數一致（checks/T-005_VALIDATION.md）。
+The Go tests and the Python check read the same expected file, so CI fails as soon as either implementation changes behaviour. Extended runs (not in the repo): `HASHING_V8_VECTORS` points to the output of `gen_number_vectors.mjs 1000000`, and `HASHING_PY_DOCUMENTS` points to the output of `check_hashes.py --documents 100000 PATH`; T-005 ran them with 1,000,000 numbers and 100,000 documents, all in agreement (checks/T-005_VALIDATION.md).
 
 ## Consequences
 
-- 新直接依賴 `github.com/gowebpki/jcs`；其 `go.mod` 只帶 test 依賴（testify、yaml），不編進 binary。CI 的 govulncheck 涵蓋它。
-- 只保證已測平台（目前 linux/amd64）的 digest（D-006）；跨架構 byte-identical 未驗證不得宣稱。
-- 換 JCS 實作或 profile 會改變既有 hash：必須先讓三組 oracle 全部通過，且視為 hash 版本變更處理。
+- New direct dependency `github.com/gowebpki/jcs`; its `go.mod` brings only test dependencies (testify, yaml), which are not compiled into the binary. CI's govulncheck covers it.
+- Only the digests on the tested platform (currently linux/amd64) are guaranteed (D-006); cross-architecture byte-identical output is not verified and must not be claimed.
+- Switching the JCS implementation or profile changes existing hashes: all three oracles must pass first, and it is handled as a hash version change.

@@ -1,15 +1,15 @@
 # ADR-008 — PlayCanvas Visualization
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 2,12–14。
+Source: the original report pp. 2, 12–14.
 
 ## Decision
 
-PlayCanvas作P0 read-only interactive 3D viewer與sampled playback。
+PlayCanvas is the P0 read-only interactive 3D viewer and sampled playback.
 
 ## Consequences / Review boundary
 
-無3Dauthoring/BIM/CAD；topology/IDs源自IR。
+No 3D authoring/BIM/CAD; topology/IDs come from the IR.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

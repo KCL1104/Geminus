@@ -1,15 +1,15 @@
 # ADR-004 — JSON Patch Change Protocol
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 19,24–25,31–33。
+Source: the original report pp. 19, 24–25, 31–33.
 
 ## Decision
 
-修改以RFC6902 JSON Patch表示；base/revision pinning避免silent overwrite。
+Changes are expressed as RFC 6902 JSON Patch; base/revision pinning prevents silent overwrite.
 
 ## Consequences / Review boundary
 
-P0 allowlist與pointer安全由D-014限制；不是任意RFCoperation都可用。
+The P0 allowlist and pointer safety are restricted by D-014; not every RFC operation is allowed.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

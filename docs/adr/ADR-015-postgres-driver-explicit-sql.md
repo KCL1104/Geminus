@@ -1,14 +1,14 @@
 # ADR-015 — PostgreSQL driver and explicit SQL
 
-狀態：ACCEPTED（T-006 agent 選定；owner KCL1104 於 2026-10-15 同意）。日期：2026-10-15。原報告把「SQL generation：explicit SQL / sqlc」列為 TBD（DECISIONS_AND_TBD.md）。
+Status: ACCEPTED (chosen by the T-006 agent; owner KCL1104 agreed on 2026-10-15). Date: 2026-10-15. The original report lists "SQL generation: explicit SQL / sqlc" as TBD (DECISIONS_AND_TBD.md).
 
 ## Decision
 
-- Driver 與 pool：`github.com/jackc/pgx/v5` v5.11.0（MIT，2026-09-07 發布；依賴 `jackc/puddle/v2`、`pgpassfile`、`pgservicefile`，皆 MIT）。不經 `database/sql`，以便使用 pgx 的 transaction options、SQLSTATE 與 `pgconn.PgError` 欄位。
-- 查詢以手寫、參數化的 explicit SQL 放在各 repository；暫不引入 sqlc。理由：P0 的安全性集中在 transaction 邊界（tenant context、lock order、CAS），手寫 SQL 讓這些步驟在 code review 中可見；schema 仍以 `migrations/` 為準，正確性由 `make db-test` 與 `make db-go-test` 在一次性資料庫驗證。
-- `internal/storage/postgres` 只提供 pool、`Tx`（error／panic／cancel 皆 rollback，rollback 用與 request 分離的 context）與 `Classify`（SQLSTATE → typed error，不帶 DETAIL 等列值）。tenant scope helper 屬 T-007（D-008）。
+- Driver and pool: `github.com/jackc/pgx/v5` v5.11.0 (MIT, released 2026-09-07; depends on `jackc/puddle/v2`, `pgpassfile`, `pgservicefile`, all MIT). It does not go through `database/sql`, so that pgx's transaction options, SQLSTATE and `pgconn.PgError` fields can be used.
+- Queries are hand-written, parameterized explicit SQL in each repository; sqlc is not introduced for now. Reason: P0's security is concentrated at the transaction boundary (tenant context, lock order, CAS), and hand-written SQL keeps these steps visible in code review; the schema is still defined by `migrations/`, and correctness is verified on a disposable database by `make db-test` and `make db-go-test`.
+- `internal/storage/postgres` provides only the pool, `Tx` (rollback on error/panic/cancel, using a context separate from the request for the rollback) and `Classify` (SQLSTATE → typed error, without DETAIL or other row values). The tenant scope helper belongs to T-007 (D-008).
 
 ## Consequences
 
-- 若 repository 數量或 query 變更頻率讓手寫 SQL 的型別錯誤成為問題，可再評估 sqlc；改變時須保留 `db/tests` 與 Go 整合測試。
-- CI db job 安裝 Go 並以 `GEMINUS_REQUIRE_DB_TESTS=1` 執行整合測試，skip 視為失敗；`make backend-test` 沒有資料庫時這些測試標 NOT RUN（skip），不是 PASS。
+- If the number of repositories or the rate of query changes makes type errors in hand-written SQL a problem, sqlc can be reevaluated; any change must keep `db/tests` and the Go integration tests.
+- CI's db job installs Go and runs the integration tests with `GEMINUS_REQUIRE_DB_TESTS=1`, where a skip counts as a failure; under `make backend-test` without a database these tests are marked NOT RUN (skip), not PASS.

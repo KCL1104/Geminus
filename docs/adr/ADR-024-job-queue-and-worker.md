@@ -1,85 +1,85 @@
-# ADR-024 — PostgreSQL job queue 與 worker 迴圈（T-019）
+# ADR-024 — PostgreSQL job queue and worker loop (T-019)
 
-狀態：ACCEPTED（2026-10-19，owner H-010：參數照提案，`WORKER_STOPPED` 計入 attempt；2026-10-26 owner H-024 修訂 `WORKER_ID` 的格式，D-092 (b)）。T-019 agent 提出並先實作，review round 1–3 後修訂。日期：2026-10-19。依據：D-007、D-008、D-011（皆 APPROVED）、ARCHITECTURE §6、API_DATABASE §6–§7、TEST-020、TEST-021、ADR-019（T-009 re-review R3b）。
+Status: ACCEPTED (2026-10-19, owner H-010: parameters as proposed, `WORKER_STOPPED` counts as an attempt; on 2026-10-26 owner H-024 amended the format of `WORKER_ID`, D-092 (b)). Proposed and implemented first by the T-019 agent, amended after review rounds 1–3. Date: 2026-10-19. Basis: D-007, D-008, D-011 (all APPROVED), ARCHITECTURE §6, API_DATABASE §6–§7, TEST-020, TEST-021, ADR-019 (T-009 re-review R3b).
 
 ## Decision
 
-### 佇列（`internal/storage/jobs`）
+### Queue (`internal/storage/jobs`)
 
-- 只用 PostgreSQL 的 `twin.jobs`，不加 broker（ARCHITECTURE §6、AGENTS §7）。API 在建立或更新 resource、寫 audit 的同一個 transaction 中 `Enqueue`（D-011：202 只在三者一起 commit 之後回）。Job 必須恰有一個與 type 相符的 resource、payload 是 JSON object（只放凍結的輸入參照，不放 secret 或客戶原始資料）、`max_attempts` 1–10，否則在送到 DB 之前就拒絕。
-- **Claim**：在一個 organization 的 transaction 中（`internal/tenant/workerscope`，D-008），只取 queued、`available_at` 已到、還有 attempt、且 worker 有 handler 的 type；順序為 priority 高者先，再依 `created_at`、`id`；`FOR UPDATE SKIP LOCKED`。Claim 使 attempt 加一、`lease_token` 加一，設 `locked_by` 與 `lease_expires_at`。Organization filter 與 RLS 並存（RLS 已限制在該 organization，filter 是 AGENTS 要求的 application filter）。
-- **Lease fence**：之後每個寫入（`Heartbeat`、`Lock`、`Complete`、`Cancel`、`Fail`）都比對 organization、job、worker、token，且 job 仍為 running、lease 未過期；比對不到就回 `ErrLeaseLost`，什麼都不改。Lease 的時間一律用 DB 的 `now()`；worker 只用自己的時鐘決定何時停止 handler，而且只會更早停（見下）。
-- **結束**：handler 的結果與 job 的結束在同一個 transaction：先 `Lock`（fence 下 `FOR UPDATE`，reaper 會跳過被鎖的 job），再寫結果，最後 `Complete` 或 `Cancel`。`Fail` 記錄 `Failure{code, message, retryable}`：可重試且還有 attempt 時回到 queued，等 backoff 後再 claim，否則 failed。存下的只有 Failure，不存 error 原文。
-- **取消（TEST-021 的佇列部分）**：`CancelQueued` 只把仍為 queued 的 job 立即改為 cancelled（給 API 在取消 resource 的 transaction 中呼叫），回報是否取消；running 的 job 由 handler 在 checkpoint 看到取消要求後以 `Cancel` 結束（run 的 `cancellation_requested` 與 checkpoint 屬 T-023）。Cancel 與 Complete 都在 fence 下，先者生效，後者得到 `ErrLeaseLost`。
-- **Reaper**：每次 pass 在每個 organization 取回 lease 已過期的 running job（`FOR UPDATE SKIP LOCKED`，每次至多 `ReapLimit` 個）：還有 attempt 的回到 queued 並記 `LEASE_EXPIRED`、等 backoff，否則 failed。過期 worker 的 token 留在原處，所以它之後的寫入全部被 fence 擋下。
-- **DB 端的生命週期（migration 0007）**：trigger 在 INSERT 與 UPDATE 時強制（DELETE 與 TRUNCATE 屬 retention，runtime role 本來就沒有 DELETE）：
-  - job 以 queued、無 attempt／lease／error 建立；queued 只能變成 running（claim：attempt 恰加一、token 變大）或 cancelled；queued 的 job 一定還有 attempt（最後一次 attempt 結束即為終態）；
-  - completed、failed、cancelled 不可再改；identity 與輸入（id、organization、type、payload、resource、max_attempts、created_at）不可改；attempt 與 token 不回退；
-  - 各 runtime role 只能做自己的那一步（review L3、round 2 I1、I2）：API 只能 enqueue、取消或重排（priority、available_at）queued 的 job，不能 claim、結束、接手或重試，也不能動 lease 欄位；worker 從 queued 只能 claim，running 的 job 只能續期自己的 lease（不改 attempt、token、holder、error），離開 running 時必須清除 lease。只有 schema owner（operator、migration，以及屬於它的 login，例如 superuser）不受這一條限制，但前兩條照樣適用；其他任何 role 不論被授予什麼權限都被拒絕；
-  - 寫入不改任何值的 UPDATE 照常通過。
+- Only PostgreSQL's `twin.jobs`, no broker (ARCHITECTURE §6, AGENTS §7). The API calls `Enqueue` in the same transaction in which it creates or updates the resource and writes the audit (D-011: 202 is returned only after all three commit together). A job must have exactly one resource matching its type, its payload must be a JSON object (holding only references to frozen inputs, never secrets or raw customer data), and `max_attempts` must be 1–10; otherwise it is refused before it reaches the DB.
+- **Claim**: in one organization's transaction (`internal/tenant/workerscope`, D-008), takes only queued jobs whose `available_at` has arrived, that have attempts left, and whose type the worker has a handler for; order: higher priority first, then `created_at`, `id`; `FOR UPDATE SKIP LOCKED`. A claim increments the attempt and `lease_token` by one, and sets `locked_by` and `lease_expires_at`. The organization filter and RLS coexist (RLS already restricts to the organization; the filter is the application filter AGENTS requires).
+- **Lease fence**: every later write (`Heartbeat`, `Lock`, `Complete`, `Cancel`, `Fail`) matches organization, job, worker and token, and requires the job to still be running with an unexpired lease; when nothing matches it returns `ErrLeaseLost` and changes nothing. Lease times always use the DB's `now()`; the worker uses its own clock only to decide when to stop the handler, and only ever stops earlier (see below).
+- **Ending**: the handler's result and the job's end are in the same transaction: first `Lock` (`FOR UPDATE` under the fence; the reaper skips locked jobs), then write the result, and finally `Complete` or `Cancel`. `Fail` records `Failure{code, message, retryable}`: when retryable and attempts remain, the job returns to queued and is claimed again after the backoff; otherwise it is failed. Only the Failure is stored, never the original error text.
+- **Cancellation (the queue part of TEST-021)**: `CancelQueued` immediately changes only a job that is still queued to cancelled (for the API to call in the transaction that cancels the resource), and reports whether it cancelled it; a running job is ended with `Cancel` by the handler once it sees the cancellation request at a checkpoint (the run's `cancellation_requested` and the checkpoints belong to T-023). Cancel and Complete are both under the fence; the first wins, and the second gets `ErrLeaseLost`.
+- **Reaper**: each pass, in each organization, takes back running jobs whose lease has expired (`FOR UPDATE SKIP LOCKED`, at most `ReapLimit` each time): those with attempts left return to queued, recording `LEASE_EXPIRED`, and wait for the backoff; otherwise they are failed. The expired worker's token stays in place, so all its later writes are blocked by the fence.
+- **The lifecycle on the DB side (migration 0007)**: triggers enforce it on INSERT and UPDATE (DELETE and TRUNCATE belong to retention, and the runtime roles have no DELETE anyway):
+  - a job is created queued, with no attempt/lease/error; queued can become only running (claim: the attempt grows by exactly one, the token grows) or cancelled; a queued job always has attempts left (the end of the last attempt is a terminal state);
+  - completed, failed and cancelled cannot change again; identity and inputs (id, organization, type, payload, resource, max_attempts, created_at) cannot change; attempt and token never go back;
+  - each runtime role can do only its own step (review L3, round 2 I1, I2): the API can only enqueue, cancel, or reschedule (priority, available_at) queued jobs; it cannot claim, end, take over or retry, and cannot touch the lease columns; from queued, the worker can only claim; for a running job it can only renew its own lease (without changing attempt, token, holder, error), and leaving running must clear the lease. Only the schema owner (operator, migrations, and logins belonging to it, for example a superuser) is exempt from this rule, but the first two rules still apply; any other role is refused, whatever privileges it was granted;
+  - an UPDATE that changes no value passes as usual.
 
-### 參數（`jobs.DefaultPolicy` 與 `cmd/worker`）
+### Parameters (`jobs.DefaultPolicy` and `cmd/worker`)
 
-| 參數 | 值 | 來源 |
+| Parameter | Value | Source |
 |---|---|---|
-| Lease | 30 秒 | D-007 候選值 |
-| Heartbeat | 10 秒（至多 lease 的三分之一） | D-007 候選值 |
-| 停止 handler 的時間 | 最後一次成功續期（一開始是 claim）的 transaction 開始前的時間 + lease − 半個 heartbeat；預設即 25 秒，可容許一次續期失敗（續期從 claim 開始起每個 heartbeat 一次，每次至多一個 heartbeat，卡住的續期放棄後立刻重試） | 本 ADR（review M1、round 2 L2、round 3 I2） |
-| Max attempts | 3（每個 job 可設 1–10） | API_DATABASE §7 候選值 |
-| Backoff | 第 n 次 attempt 後等 5 秒 × 2^(n−1)，最多 5 分鐘 | 本 ADR（API_DATABASE §7 要求有限 exponential backoff，參數待定） |
-| 無 job 時的間隔 | 1 秒 | 本 ADR |
-| 每次 pass、每個 organization 的 reap 上限 | 100 | 本 ADR |
+| Lease | 30 seconds | D-007 candidate value |
+| Heartbeat | 10 seconds (at most a third of the lease) | D-007 candidate value |
+| Time to stop the handler | The time before the transaction of the last successful renewal (initially the claim) began + lease − half a heartbeat; 25 seconds by default, which tolerates one failed renewal (renewals run once per heartbeat from the start of the claim, each at most one heartbeat long; a stuck renewal is abandoned and retried immediately) | This ADR (review M1, round 2 L2, round 3 I2) |
+| Max attempts | 3 (each job can set 1–10) | API_DATABASE §7 candidate value |
+| Backoff | After the nth attempt, wait 5 seconds × 2^(n−1), at most 5 minutes | This ADR (API_DATABASE §7 requires a bounded exponential backoff, parameters TBD) |
+| Interval when there is no job | 1 second | This ADR |
+| Reap limit per pass, per organization | 100 | This ADR |
 
-全部需要 benchmark 與評審（D-007）；不是效能測試的結果。
+All of them need a benchmark and review (D-007); they are not the results of a performance test.
 
-### Worker 迴圈（`internal/worker`、`cmd/worker`）
+### Worker loop (`internal/worker`, `cmd/worker`)
 
-- 設定：`WORKER_ID`（必填，actor reference：字母開頭，之後是字母、數字、`_`、`.`、`:`、`-`，至多 128 字元，與 DB 的 `twin.actor_ref` 相同（D-092，H-024 修訂；原文為「1–200 個可見 ASCII 字元」，但自 T-023 起 handler 已拒絕不是 actor reference 的名稱）；寫入 `locked_by` 並作為 audit event 的 worker actor；fence 靠 token，名稱只用來辨識；唯一性不由系統強制，由部署負責）與 `WORKER_ORGANIZATION_IDS`（必填，逗號分隔，D-008 的 allowlist，`workerscope` 檢查每個都是 organization ID 且不重複）。連線的 login 必須是 `twin_worker` 的成員，不是 superuser、不能 BYPASSRLS、不是 owner（`tenant.CheckRuntimeRole`），pool 歸還時檢查沒有殘留 tenant scope（`tenant.Guard`）。
-- 一次 pass 依 deployment 的順序走過每個 organization：先 reap，再 claim 至多一個 job 並執行。每個 organization 每次 pass 至多一個 job，所以一個 organization 的大量 job 不會餓死其他 organization。一個 process 一次只執行一個 job；要更多並行就多開 process（每個 job 只會被一個 worker 取得，`TestWorkersShareTheQueue`）。
-- 執行時另有 heartbeat，handler 一定在 DB 的 lease 結束之前被停止（review M1）：
-  - DB 的 lease 從 transaction 的 `now()` 起算，不早於 worker 開始該 transaction 的時間。Worker 從那個時間（claim 的，之後每次成功續期的）算起，在 lease 減半個 heartbeat 時取消 handler 的 context；這由獨立的 timer 執行，不等進行中的續期。Lease 為三個 heartbeat 時，一次續期失敗、下一次成功仍能保住 job。
-  - 續期從 claim 的 transaction 開始前的時間起，每個 heartbeat 到期一次（不從 handler 開始時算，所以慢的 claim 不會把續期推遲，round 3 I2）；一次只有一個，每次至多一個 heartbeat（也不超過期限）。卡住的續期在一個 heartbeat 後放棄，這時下一次已到期、立刻開始，所以「卡住後才失敗」的連線（例如 failover）不會用掉重試的餘裕（round 2 L2）。
-  - 續期發現 lease 已被取得或已結束（`ErrLeaseLost`）時立刻停止。
-  - Worker 以 Go 的 monotonic clock 計時，所以 worker 與 DB 的時鐘差距不影響。半個 heartbeat 的餘裕涵蓋停止 handler 所需的時間、DB 時鐘往前跳、以及短於它的 worker process 暫停；更大的跳動與暫停由部署避免（NTP slewing、不暫停 VM）（round 2 I3）。
-  - 停止之後 handler 做的任何事都不會 commit：`Checkpoint`、`Finish` 在 attempt 停止後不再開始（lease 失去時為 `jobs.ErrLeaseLost`，worker 停止時為 `handler.ErrStopped`），進行中的 transaction 在 attempt 停止時被取消並 rollback，不論 handler 給它什麼 context（round 2 L1）。這時呼叫回傳停止的原因，並包住 `fn` 回傳的 error（若有）：worker 停止時 `fn` 回的 `*jobs.Failure` 仍算數；lease 失去（或到期）後 job 已不屬於這個 attempt，什麼都不記錄，`Failure` 只回到 handler（round 3 M1、round 4 L1）。唯一的例外是 attempt 停止時已經送出的 COMMIT：不論 DB 之後 commit 或 rollback，呼叫都回 `tenant.ErrOutcomeUnknown`（可能已 commit），絕不回停止（round 3 M1、round 4 L1）。
-  - `fn` 的 error 要經過 transaction 的分類（`postgres.Classify` 以 `errors.As` 走整棵 Unwrap 樹），所以 worker 先以讀 handler error 的同一上限（64 個 error）檢查它的 Unwrap 樹；讀不了的（太大，或 `Unwrap` 會 panic）換成只帶型別名稱的替代 error 再交給 transaction，handler 拿到的也是這個替代品，worker 不會卡在其中（round 3 L1、round 4 L3）。這只檢查樹的形狀：`As` 方法 panic 時，分類時仍會 panic 出 `Checkpoint`／`Finish`（round 4 I1）。
-- **Handler 如何接上（review M3）**：handler 實作 `internal/worker/handler` 的 `Handler`。這個 package 是 leaf，不依賴 worker scope，所以實作它的 package 不會違反 `worker-scope-only-in-the-worker`；`internal/worker` 執行它們，`cmd/worker` 的 `handlers()` 登錄它們。Handler 讀寫 DB，所以是 adapter：放在允許 DB 存取的地方（例如 T-016 的 `internal/import/upload`），不能放在 generic kernel（`internal/model`、`internal/simulation`、`internal/results`）或 `internal/ai` 之中，它們既有的規則禁止依賴 `internal/storage` 與 `internal/tenant`。因此 T-023（simulation）與 T-025（AI）的 handler 要各自有 adapter package，呼叫 kernel 或 AI 的 package；tasks.json 中這兩個任務的 planned outputs（`internal/simulation/service`、`internal/ai/proposals`）放不下 handler，由那兩個任務決定 package 名稱並記錄（round 2 L3；`TestHandlersPlugInWithoutTheWorkerScope` 檢查這三種位置）。Handler 拿到的 `Run` 只有三個方法：
-  - `Job()`：claim 到的 job；
-  - `Checkpoint(ctx, fn)`：在 lease 下（先 `Lock`）的一個 transaction，用來讀輸入、寫進度、檢查是否要求取消；
-  - `Finish(ctx, end, fn)`：同上，並在同一個 transaction 中以 `jobs.Completed` 或 `jobs.Cancelled` 結束 job，其他狀態回 `ErrInvalidEnd`。
-  - 這兩種 transaction 持有 job 的 row lock，續期要等它；所以必須在一個 heartbeat 內結束，否則續期被放棄，再拖到期限時 attempt 被停止、transaction rollback（review L7）。長的計算放在 transaction 之外，transaction 只寫結果。
-- Attempt 的其他結果（依序判斷）：
+- Configuration: `WORKER_ID` (required, an actor reference: starts with a letter, followed by letters, digits, `_`, `.`, `:`, `-`, at most 128 characters, the same as the DB's `twin.actor_ref` (D-092, amended by H-024; the original text was "1–200 visible ASCII characters", but since T-023 the handler has refused names that are not actor references); written to `locked_by` and used as the worker actor of audit events; the fence relies on the token, and the name is only for identification; uniqueness is not enforced by the system but is the deployment's responsibility) and `WORKER_ORGANIZATION_IDS` (required, comma-separated, D-008's allowlist; `workerscope` checks that each is an organization ID and that none repeats). The connection's login must be a member of `twin_worker`, not a superuser, not BYPASSRLS and not an owner (`tenant.CheckRuntimeRole`); when a connection returns to the pool it is checked for leftover tenant scope (`tenant.Guard`).
+- One pass goes through every organization in the deployment's order: first reap, then claim at most one job and run it. At most one job per organization per pass, so many jobs in one organization do not starve the others. A process runs one job at a time; for more concurrency, start more processes (each job is taken by only one worker, `TestWorkersShareTheQueue`).
+- While running there is also a heartbeat, and the handler is always stopped before the DB's lease ends (review M1):
+  - The DB's lease counts from the transaction's `now()`, no earlier than the time the worker began that transaction. Counting from that time (of the claim, and later of each successful renewal), the worker cancels the handler's context at the lease minus half a heartbeat; an independent timer does this, without waiting for an in-progress renewal. With a lease of three heartbeats, one failed renewal followed by a successful one still keeps the job.
+  - Renewals fall due once per heartbeat from the time before the claim's transaction began (not from when the handler starts, so a slow claim does not delay renewal, round 3 I2); only one at a time, each at most one heartbeat long (and never past the deadline). A stuck renewal is abandoned after one heartbeat, by which time the next is already due and starts immediately, so a connection that "fails only after getting stuck" (for example a failover) does not use up the retry margin (round 2 L2).
+  - A renewal that finds the lease taken or ended (`ErrLeaseLost`) stops immediately.
+  - The worker times with Go's monotonic clock, so a difference between the worker's and the DB's clocks has no effect. The half-heartbeat margin covers the time needed to stop the handler, the DB clock jumping forward, and worker process pauses shorter than it; larger jumps and pauses are avoided by the deployment (NTP slewing, no VM pauses) (round 2 I3).
+  - Nothing the handler does after the stop commits: `Checkpoint` and `Finish` do not start after the attempt stops (`jobs.ErrLeaseLost` when the lease is lost, `handler.ErrStopped` when the worker is stopping), and an in-progress transaction is cancelled and rolled back when the attempt stops, whatever context the handler gave it (round 2 L1). The call then returns the reason for the stop, wrapping the error `fn` returned (if any): when the worker is stopping, a `*jobs.Failure` returned by `fn` still counts; after the lease is lost (or expires), the job no longer belongs to this attempt, nothing is recorded, and the `Failure` goes back only to the handler (round 3 M1, round 4 L1). The only exception is a COMMIT already sent when the attempt stops: whether the DB then commits or rolls back, the call returns `tenant.ErrOutcomeUnknown` (it may have committed), never the stop (round 3 M1, round 4 L1).
+  - `fn`'s error goes through the transaction's classification (`postgres.Classify` walks the whole Unwrap tree with `errors.As`), so the worker first checks its Unwrap tree with the same limit used to read handler errors (64 errors); one that cannot be read (too large, or its `Unwrap` panics) is replaced by a substitute error that carries only the type name before it is handed to the transaction, and the handler also gets this substitute, so the worker does not get stuck in it (round 3 L1, round 4 L3). This only checks the tree's shape: when an `As` method panics, classification still panics out of `Checkpoint`/`Finish` (round 4 I1).
+- **How handlers plug in (review M3)**: a handler implements `Handler` from `internal/worker/handler`. This package is a leaf and does not depend on the worker scope, so the packages that implement it do not violate `worker-scope-only-in-the-worker`; `internal/worker` runs them, and `handlers()` in `cmd/worker` registers them. A handler reads and writes the DB, so it is an adapter: it goes where DB access is allowed (for example T-016's `internal/import/upload`), never in the generic kernel (`internal/model`, `internal/simulation`, `internal/results`) or in `internal/ai`, whose existing rules forbid depending on `internal/storage` and `internal/tenant`. So the handlers of T-023 (simulation) and T-025 (AI) each need an adapter package that calls the kernel or AI package; the planned outputs of these two tasks in tasks.json (`internal/simulation/service`, `internal/ai/proposals`) cannot hold a handler, so those two tasks decide the package names and record them (round 2 L3; `TestHandlersPlugInWithoutTheWorkerScope` checks these three kinds of location). The `Run` a handler gets has only three methods:
+  - `Job()`: the claimed job;
+  - `Checkpoint(ctx, fn)`: one transaction under the lease (with `Lock` first), for reading inputs, writing progress and checking whether cancellation was requested;
+  - `Finish(ctx, end, fn)`: the same, and in the same transaction ends the job with `jobs.Completed` or `jobs.Cancelled`; any other state returns `ErrInvalidEnd`.
+  - Both kinds of transaction hold the job's row lock, and renewal waits for it; so they must end within one heartbeat, otherwise the renewal is abandoned, and if it drags on to the deadline the attempt is stopped and the transaction rolled back (review L7). Long computation goes outside the transaction; the transaction only writes the result.
+- The attempt's other outcomes (judged in this order):
 
-| Handler 的結果 | 記錄 | 重試 |
+| Handler outcome | Recorded | Retry |
 |---|---|---|
-| lease 已失去 | 不寫任何東西（reaper 或新的 holder 負責） | — |
-| `*jobs.Failure`（可包在其他 error 中，在 Unwrap 樹的前 64 個 error 之內；worker 正在停止時也以它為準，review L1、round 3 M1） | 原樣；code 不符 `^[A-Z][A-Z0-9_]{0,63}$` 時記為 `INTERNAL`（保留其 retry 判斷），message 空白、超過 1000 字、不是 UTF-8 或含 NUL 時改為通用文字（review L2、round 2 L4）；nil 的 `*jobs.Failure` 視為一般 error（review M2） | 依 `Retryable` |
-| panic | `INTERNAL` | 否（是 bug，不是暫時的錯誤） |
-| 讀不了的 error：方法在其值上 panic（例如 typed nil 的 `*os.PathError`） | `INTERNAL`；log 只記型別（round 2 M1）。永遠卡住的方法無法在 process 內防範 | 否 |
-| Unwrap 樹超過 64 個 error（例如包住自己，或 join 了許多 row error）：不再往下讀，其中的 Failure 不算 | `INTERNAL`；log 只記型別（round 3 I1） | 是 |
-| worker 收到 SIGINT／SIGTERM | `WORKER_STOPPED` | 是 |
-| 沒有呼叫 `Finish` 就回 nil | `NO_RESULT` | 否 |
-| 其他 error | `INTERNAL` | 是 |
+| Lease already lost | Nothing is written (the reaper or the new holder takes over) | — |
+| `*jobs.Failure` (may be wrapped in other errors, within the first 64 errors of the Unwrap tree; also decisive while the worker is stopping, review L1, round 3 M1) | As is; a code not matching `^[A-Z][A-Z0-9_]{0,63}$` is recorded as `INTERNAL` (keeping its retry judgment); a message that is blank, over 1000 characters, not UTF-8 or containing NUL is replaced by generic text (review L2, round 2 L4); a nil `*jobs.Failure` counts as an ordinary error (review M2) | Per `Retryable` |
+| panic | `INTERNAL` | No (a bug, not a transient error) |
+| An unreadable error: a method panics on its value (for example a typed nil `*os.PathError`) | `INTERNAL`; the log records only the type (round 2 M1). A method that hangs forever cannot be guarded against within the process | No |
+| An Unwrap tree with more than 64 errors (for example one that wraps itself, or joins many row errors): reading stops, and a Failure inside it does not count | `INTERNAL`; the log records only the type (round 3 I1) | Yes |
+| The worker receives SIGINT/SIGTERM | `WORKER_STOPPED` | Yes |
+| Returns nil without calling `Finish` | `NO_RESULT` | No |
+| Any other error | `INTERNAL` | Yes |
 
-- **Log（review L8）**：存下的永遠只有上表的 Failure。Handler 的 error 文字會寫進 log（去除控制字元、至多 500 字），所以 handler 的 error 不得含客戶資料、prompt、provider 輸出或 secret（SECURITY §7）；panic 只記 runtime error 的訊息或 panic 值的型別（值可能是 handler 正在處理的資料）與 stack。
+- **Log (review L8)**: what is stored is always only the Failure in the table above. The handler's error text goes into the log (control characters stripped, at most 500 characters), so a handler's errors must not contain customer data, prompts, provider output or secrets (SECURITY §7); for a panic, only the runtime error's message or the panic value's type (the value may be data the handler was processing) and the stack are recorded.
 
-- 停止時：取消 handler 的 context，等它返回，在自己的 context（不隨停止取消，時限一個 heartbeat）上記錄結果；若連這也失敗，lease 過期後 reaper 取回。記錄同樣受 lease 的 fence 限制：job 已不屬於這個 attempt 時（被 reap，或已由回答遺失的 COMMIT 結束）不寫，只記 warning。第二個 SIGINT／SIGTERM 立刻結束 process（review I4），給不理會 context 的 handler；迴圈開始前收到的 signal 是停止（exit 0），不是 DB 錯誤。
-- 設定在連線與 handler 檢查之前全部驗完，包括 allowlist（review L4）與 pgx 讀得懂的 `DATABASE_URL`（round 2 I5）。
-- 目前沒有任何 handler：import profiling 是 T-016，simulation 是 T-023，AI proposal 與 analysis 是 T-025。在那之前 `cmd/worker` 驗完設定後以 exit 2（NOT IMPLEMENTED）拒絕啟動，不會 claim 無法執行的 job。
+- On stop: cancel the handler's context, wait for it to return, and record the result on the worker's own context (not cancelled by the stop, limited to one heartbeat); if even this fails, the reaper takes the job back after the lease expires. Recording is also bound by the lease fence: when the job no longer belongs to this attempt (reaped, or already ended by a COMMIT whose answer was lost), nothing is written and only a warning is logged. A second SIGINT/SIGTERM ends the process immediately (review I4), for handlers that ignore the context; a signal received before the loop starts is a stop (exit 0), not a DB error.
+- The configuration is fully validated before the connection and the handler check, including the allowlist (review L4) and a `DATABASE_URL` that pgx can parse (round 2 I5).
+- There are no handlers yet: import profiling is T-016, simulation is T-023, AI proposal and analysis are T-025. Until then, `cmd/worker` refuses to start with exit 2 (NOT IMPLEMENTED) after validating the configuration, and never claims a job it cannot run.
 
 ## Consequences
 
-- **At-least-once**：DB 中的結果與 job 的結束一起 commit，所以完成只會發生一次；但 commit 前 worker 當掉或失去 lease 時，job 會再執行一次。Handler 在 `Finish` 之前對外部（object storage）做的事必須可重複（例如 object key 由輸入決定），後續 handler 的任務各自負責。因為 handler 在 lease 結束前就被停止，另一個 worker 要等 lease 結束、reaper 取回、再等 backoff 才能 claim，同一個 job 正常情況下不會同時有兩個 handler；不理會 context 的 handler 例外。
-- 不理會 context 的 handler 在失去 lease 後仍會繼續跑到結束，只是寫不進去；handler 應在 checkpoint 檢查 context。
-- Attempt 因期限停止時（DB 的 lease 還有半個 heartbeat），handler 這時才回的 Failure 不記錄：lease 結束後 reaper 以可重試的 `LEASE_EXPIRED` 取回，下一次 attempt 再得到 handler 的判斷（round 2 I4，接受）。
-- **與 T-023 的分工（CB-19）**：running→cancelled 的 job 終態已定（`Cancel`、0007）。Run 的 `cancellation_requested`、cancel 與 finalize 的鎖順序（job 再 run）、progress 寫入的 fence（以 `Checkpoint`）、以及 reaper 重排已要求取消的 run（handler 在下一次 attempt 開始時先檢查 `cancellation_requested`）屬 T-023。
-- 迴圈本身沒有每個 job 的總時限：時限屬於 handler 與其 resource（D-007 的 simulation wall／event budget，T-023）。
-- 每次 pass 每個 organization 兩個短 transaction（reap、claim）；閒置的 worker 每秒 2×N 個 transaction（N 為 assigned organization 數）。Organization 很多時要另立 ADR 設計 dispatcher（ARCHITECTURE §6），不在 worker 中加入跨 tenant 的掃描或 BYPASSRLS。
-- `WORKER_STOPPED` 會用掉一次 attempt：部署期間反覆重啟可能讓 job 提早 failed。若成為問題，可改為不計 attempt 的 requeue（需要 owner 決定）。
-- 參數改動只需改 `jobs.DefaultPolicy` 與 `cmd/worker` 的常數，不影響 schema。
-- **Worker login 受信任處理 job（round 3 I3，接受）**：所有 worker 共用一個 role，DB 分不出 holder。0007 擋住直接接手別人的 lease，但 worker login 仍能結束任何 running 的 job、把 lease 設成任意長度（包括 `infinity`，job 永遠不被 reap）、或讓 lease 過期後經 reaper 再 claim（舊 holder 的寫入被 token 擋下，得到 `ErrLeaseLost`）。Lease 長度只來自 `jobs.DefaultPolicy`；DB 端不另設上限，這樣的 job 由 operator 手動結束。
+- **At-least-once**: the result in the DB commits together with the job's end, so completion happens only once; but when the worker crashes or loses the lease before the commit, the job runs again. Whatever a handler does externally (object storage) before `Finish` must be repeatable (for example the object key is determined by the input); the tasks of later handlers are each responsible for this. Because the handler is stopped before the lease ends, another worker can claim only after the lease ends, the reaper takes the job back, and the backoff passes, so normally the same job never has two handlers at once; handlers that ignore the context are the exception.
+- A handler that ignores the context keeps running to the end after losing the lease; it just cannot write. Handlers should check the context at checkpoints.
+- When an attempt stops at the deadline (the DB's lease still has half a heartbeat), a Failure the handler returns only then is not recorded: after the lease ends, the reaper takes the job back with the retryable `LEASE_EXPIRED`, and the next attempt gets the handler's judgment again (round 2 I4, accepted).
+- **Division of work with T-023 (CB-19)**: the job terminal state running→cancelled is settled (`Cancel`, 0007). The run's `cancellation_requested`, the lock order of cancel and finalize (job, then run), the fence on progress writes (with `Checkpoint`), and the reaper requeueing a run whose cancellation was requested (the handler first checks `cancellation_requested` at the start of the next attempt) belong to T-023.
+- The loop itself has no total time limit per job: time limits belong to the handler and its resource (D-007's simulation wall/event budget, T-023).
+- Two short transactions (reap, claim) per organization per pass; an idle worker runs 2×N transactions per second (N is the number of assigned organizations). With many organizations, a dispatcher must be designed in its own ADR (ARCHITECTURE §6); no cross-tenant scan or BYPASSRLS is added to the worker.
+- `WORKER_STOPPED` uses up an attempt: repeated restarts during a deployment can make a job fail early. If this becomes a problem, it can be changed to a requeue that does not count as an attempt (needs an owner decision).
+- Changing the parameters only needs changes to `jobs.DefaultPolicy` and the constants in `cmd/worker`; the schema is not affected.
+- **The worker login is trusted to process jobs (round 3 I3, accepted)**: all workers share one role, and the DB cannot tell holders apart. 0007 prevents directly taking over another worker's lease, but the worker login can still end any running job, set a lease of any length (including `infinity`, so the job is never reaped), or let a lease expire and claim it again through the reaper (the old holder's writes are blocked by the token and get `ErrLeaseLost`). The lease length comes only from `jobs.DefaultPolicy`; the DB sets no separate upper limit, and such a job is ended manually by an operator.
 
-## Owner 的決定（H-010，2026-10-19）
+## The owner's decisions (H-010, 2026-10-19)
 
-- 接受上表的參數與 backoff 公式（D-007 的 lease／heartbeat 為 APPROVED 候選值，其餘為本 ADR 的提案）。它們仍不是 benchmark 的結果，T-037 實測後可另以 ADR 修改。
-- `WORKER_STOPPED` 計入 attempt（見 Consequences；部署過於頻繁而讓 job 提早 failed 時再改為不計入）。
+- The parameters and the backoff formula in the table above are accepted (D-007's lease/heartbeat are APPROVED candidate values; the rest are this ADR's proposals). They are still not benchmark results; after T-037 measures them, another ADR can change them.
+- `WORKER_STOPPED` counts as an attempt (see Consequences; to be changed to not counting when deployments are so frequent that jobs fail early).

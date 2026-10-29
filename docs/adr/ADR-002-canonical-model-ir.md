@@ -1,15 +1,15 @@
 # ADR-002 — Canonical Model IR
 
-狀態：SOURCE_LOCKED（依原報告，不代表新增工程提案已經人類批准）。
+Status: SOURCE_LOCKED (per the original report; this does not mean that new engineering proposals have been approved by a human).
 
-來源：原報告 pp. 14–20,49,53。
+Source: the original report pp. 14–20, 49, 53.
 
 ## Decision
 
-JSON IR 為唯一model source；JSON Schema 2020-12，所有renderers/import/AI/engine透過adapter。
+The JSON IR is the only model source; JSON Schema 2020-12; all renderers/import/AI/engine go through adapters.
 
 ## Consequences / Review boundary
 
-完整schema profile為D-014提案；不能把React Flow nodes當canonical資料。
+The full schema profile is the D-014 proposal; React Flow nodes must not be treated as canonical data.
 
-若要改此原報告架構邊界，必須提出新的ADR並由人類確認，不能以coding agent偏好替換。
+Changing this architectural boundary of the original report requires a new ADR confirmed by a human; it cannot be replaced by a coding agent's preference.

@@ -1,19 +1,19 @@
 # ADR-012 — SimulationEngine dataset injection: explicit RunInput
 
-狀態：APPROVED（2026-10-15，KCL1104 於 T-003 選擇「明確的 RunInput」）。來源：docs/ARCHITECTURE.md §3、T-003 scope。
+Status: APPROVED (2026-10-15, KCL1104 chose 「明確的 RunInput」 ("explicit RunInput") in T-003). Source: docs/ARCHITECTURE.md §3, T-003 scope.
 
 ## Decision
 
-`internal/simulation.Engine` 的 Run 簽名為 `Run(ctx, RunInput, ProgressSink)`，取代原報告字面上的 `Run(ctx, ModelIR, RunConfig, ProgressSink)`。`RunInput` 一次帶入 effective IR、effective model hash、RunConfig、ExecutionLimits、依 logical_ref 的已驗證 datasets，以及依 logical_ref 排序的 dataset manifest。
+The Run signature of `internal/simulation.Engine` is `Run(ctx, RunInput, ProgressSink)`, replacing the original report's literal `Run(ctx, ModelIR, RunConfig, ProgressSink)`. `RunInput` brings in, at once, the effective IR, the effective model hash, RunConfig, ExecutionLimits, the validated datasets by logical_ref, and the dataset manifest sorted by logical_ref.
 
 ## Consequences
 
-- 「所有輸入在 Run 前凍結」由型別保證；engine 沒有任何 resolver、DB、object storage 或網路入口，重試與重播讀到同一份輸入。
-- RunConfig 維持純 API payload；不在其中藏不序列化的內部欄位，避免從 JSON 解出的 RunConfig 「安靜地沒有 datasets」。
-- 與原報告簽名的差異只在參數打包方式，Validate 與 ProgressSink 概念不變；`ProgressSink.Report` 只帶 engine 擁有的 replications／events 計數，run identity、status、revision 由 worker 補上。
+- "All inputs are frozen before Run" is guaranteed by the type; the engine has no resolver, DB, object storage or network entry point, so retries and replays read the same input.
+- RunConfig stays a pure API payload; no non-serialized internal fields are hidden in it, so that a RunConfig decoded from JSON does not "quietly have no datasets".
+- The difference from the original report's signature is only in how the parameters are packed; the Validate and ProgressSink concepts do not change. `ProgressSink.Report` carries only the replications/events counts the engine owns; run identity, status and revision are added by the worker.
 
-## 實作補充（T-022，2026-10-15）
+## Implementation addendum (T-022, 2026-10-15)
 
-- `RunInput.ModelHash`：pinned ModelVersion 的 model_hash（patch 之前），無法從 effective IR 重算，因此由 worker 凍結並照錄。`EffectiveModelHash` 由 engine 以 `hashing.Model(model.Encode(Model))` 重算，不同即拒絕。
-- `des.Engine.RunWithTrace` 另回傳 trace artifact（`simulation.TraceArtifact`）；`Run` 只回 Result，符合 `simulation.Engine` 介面。Result.run_id 與 trace.artifact_id 由 worker 填入。
-- DomainPack 的 metrics 以函式注入（`des.Engine.DomainMetrics`），使 engine 不 import 任何 domain。
+- `RunInput.ModelHash`: the model_hash of the pinned ModelVersion (before the patch). It cannot be recomputed from the effective IR, so the worker freezes it and records it as is. `EffectiveModelHash` is recomputed by the engine with `hashing.Model(model.Encode(Model))`, and a mismatch is rejected.
+- `des.Engine.RunWithTrace` also returns the trace artifact (`simulation.TraceArtifact`); `Run` returns only the Result, matching the `simulation.Engine` interface. Result.run_id and trace.artifact_id are filled in by the worker.
+- The DomainPack's metrics are injected as a function (`des.Engine.DomainMetrics`), so the engine does not import any domain.
