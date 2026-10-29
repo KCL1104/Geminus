@@ -121,3 +121,18 @@ Go `go1.27.3` (toolchain path as in AGENTS.md's setup), Node v24.21.0, Python of
 
 - `internal/results/observed/observed_test.go` uses 3588 (the old log's weekly output) as an arbitrary input of a pure-function test; it is not tied to the template, so it was left as is.
 - Historical reports (`checks/T-051_*.md`, `checks/T-052_*.md`, `checks/DEMO_WHATIFS_VALIDATION.md`) keep the old template's values as recorded.
+
+## Independent review, round 1 (2026-10-30)
+
+No High finding. Tests re-run by the reviewer: `go test -count=1 ./internal/domainpack/... ./internal/results/... ./internal/api/... ./scripts/...` exit 0. Fifteen cited pages were read and support their values; the §11/§12 figures were re-derived with a separate probe and match.
+
+| Finding | Outcome |
+|---|---|
+| M1: the docs describe the researched template while the live demo model and DEMO_WHATIFS_VALIDATION are the old template, and a one-day run on a new model shows flat what-ifs | Decided by the owner as H-047: a new live electronics model from this template, "Fourth FCT tester" in place of "Third ICT tester", the debug crew changed per shift, and a one-week default run length. The README's demo pointer is updated when the new live model exists. |
+| L1: D-117 (g) still gave the old changeover | A note in D-117 (g) points to the researched value. |
+| L2: the AOI yield's worked example is a modelled whole-assembly yield | The row now says "Estimate, near a worked example". |
+| L3: "about 0.81" should be 0.82 | Fixed. |
+| L4: the shift source is an expired job posting | Not changed; the content still matches. |
+| L5: the e2e screenshots cannot show template values (the fake serves a contract fixture) | Noted; nothing to change. |
+| L6: the what-if harness is not in the repository | Not changed; the reviewer re-derived the figures independently. |
+| L7: checks/README row order; the dataset README lacks §4.5 | Fixed. The generator-written note in ground-truth.json is left as the generator writes it. |

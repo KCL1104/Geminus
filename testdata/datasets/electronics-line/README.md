@@ -5,7 +5,7 @@
 | File | What it is | Size |
 |---|---|---|
 | `station-log-synthetic.csv` | One week of station event log (operations and breakdowns) of the electronics assembly and test line, MES-style, D-059's fields | 2,606,756 bytes, 22,569 rows |
-| `ground-truth-model.json` | The model the log comes from: the electronics line pack's template `electronics_assembly_test_line` (ELECTRONICS_LINE §4.1, §4.2, §4.4; T-051), as the generator ran it | 30,255 bytes |
+| `ground-truth-model.json` | The model the log comes from: the electronics line pack's template `electronics_assembly_test_line` (ELECTRONICS_LINE §4.1, §4.2, §4.4, §4.5; T-051, H-046), as the generator ran it | 30,255 bytes |
 | `ground-truth.json` | The generation: seed, generator and engine versions, anchor, window, rules, every file's SHA-256, size and rows, and counts of what the log holds | 5,938 bytes |
 | `negative/*.csv` | Seven derived fixtures: the header and the first 40 rows of the log with one cell changed (see below) | ~4.5 KB each |
 
