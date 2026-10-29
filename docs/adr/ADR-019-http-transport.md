@@ -1,112 +1,112 @@
 # ADR-019 — HTTP transport, error envelope and request scope (T-009)
 
-狀態：ACCEPTED（T-009 agent 選定並先實作；owner 於 2026-10-18 批准，H-006）。日期：2026-10-18。ADR-001 已鎖定 `net/http`、不引入重型 framework；本 ADR 固定第一批 route（projects）所建立、之後每個 route 共用的 HTTP 層。
+Status: ACCEPTED (chosen and implemented first by the T-009 agent; approved by the owner on 2026-10-18, H-006). Date: 2026-10-18. ADR-001 already locked `net/http` with no heavy framework; this ADR fixes the HTTP layer that the first routes (projects) built and that every later route shares.
 
 ## Decision
 
-### Package 分工
+### Package roles
 
-| Package | 內容 |
+| Package | Content |
 |---|---|
-| `internal/httpapi` | error envelope、request ID、JSON body 解碼與 schema 驗證、驗證 token 並組出 `tenant.Scope` 的 middleware |
-| `internal/api` | 把所有 route 組成一個 `http.Handler`。`cmd/api` serve 的與整合測試使用的是同一個 handler |
-| `internal/<feature>`（如 `internal/project`） | service 與 handler |
+| `internal/httpapi` | error envelope, request ID, JSON body decoding and schema validation, the middleware that verifies the token and builds `tenant.Scope` |
+| `internal/api` | assembles all routes into one `http.Handler`. `cmd/api` serves the same handler the integration tests use |
+| `internal/<feature>` (e.g. `internal/project`) | service and handler |
 | `internal/storage/<table>` | SQL |
-| `internal/ids` | D-001 ID（`<prefix>_<ULID>`） |
-| `internal/storage/dbtest` | test-only 的 DB fixture，architecture check 禁止 production 連結 |
+| `internal/ids` | D-001 IDs (`<prefix>_<ULID>`) |
+| `internal/storage/dbtest` | test-only DB fixture; the architecture check forbids production code from linking it |
 
-Router 用標準函式庫的 `http.ServeMux` method pattern（`POST /v1/projects`）。其他 path 或 method 一律回 404 `NOT_FOUND` envelope。
+The router uses the standard library's `http.ServeMux` method patterns (`POST /v1/projects`). Any other path or method always returns a 404 `NOT_FOUND` envelope.
 
-### 錯誤
+### Errors
 
-- Handler 回傳 error，由 `httpapi.WriteError` 決定 status 與 body。成功的回應經 `httpapi.WriteJSON`／`WriteBody` 送出；每個回應（含錯誤）都帶 `Content-Type: application/json`、`X-Content-Type-Options: nosniff`、`Cache-Control: no-store`。格式是 `common.schema.json#/$defs/Error`：`code`、`message`、`details[{path, reason, code?, severity?}]`、`request_id`。
-- `httpapi.Status` 與 schema 的 `x-http-status` 由 contract test 鎖成相同（D-025）。
-- 各套件的 sentinel error 對應：
+- A handler returns an error; `httpapi.WriteError` decides the status and the body. Successful responses are sent through `httpapi.WriteJSON`/`WriteBody`. Every response (errors included) carries `Content-Type: application/json`, `X-Content-Type-Options: nosniff` and `Cache-Control: no-store`. The format is `common.schema.json#/$defs/Error`: `code`, `message`, `details[{path, reason, code?, severity?}]`, `request_id`.
+- `httpapi.Status` and the schema's `x-http-status` are locked to the same values by a contract test (D-025).
+- How each package's sentinel errors map:
 
-  | 錯誤 | 回應 |
+  | Error | Response |
   |---|---|
-  | `auth.ErrInvalidToken` | 401，帶 `WWW-Authenticate` |
+  | `auth.ErrInvalidToken` | 401, with `WWW-Authenticate` |
   | `auth.ErrKeysUnavailable` | 503 |
   | `tenant.ErrUnknownUser` | 403 |
-  | `tenant.ErrNoMembership` | 404（不揭露 organization 是否存在） |
+  | `tenant.ErrNoMembership` | 404 (does not reveal whether the organization exists) |
   | `tenant.ErrForbidden` | 403 |
-  | `tenant.ErrRetryable`、`ErrOutcomeUnknown`（即 `postgres.Classify` 的錯誤；httpapi 不 import storage 基礎層） | 503，提示重試（write 用同一 Idempotency-Key） |
+  | `tenant.ErrRetryable`, `ErrOutcomeUnknown` (the errors of `postgres.Classify`; httpapi does not import the storage base layer) | 503, with a hint to retry (a write with the same Idempotency-Key) |
 
-- 其他錯誤一律 500 `INTERNAL_ERROR`，訊息固定為 `internal error`，原因只寫 log（帶 request_id）。
-- Panic 轉為 500；`http.ErrAbortHandler` 照原意中止回應。
-- Contract 以外的 request 也回 envelope（T-009 review L2）：非 clean form 的 path（ServeMux 原本會 307 redirect）與 HEAD（ServeMux 原本交給 GET 的 handler）都是 404 `NOT_FOUND`；其他未宣告的 method 亦同。`OPTIONS *` 由 net/http 自己回空的 200，`GET *`、`POST *` 等其他 method 的 `*` 由 net/http 回純文字 400，都不到 handler（不是 envelope）。
+- Every other error is a 500 `INTERNAL_ERROR` with the fixed message `internal error`; the cause goes only to the log (with the request_id).
+- A panic becomes a 500; `http.ErrAbortHandler` aborts the response as intended.
+- Requests outside the contract also get an envelope (T-009 review L2): a path not in clean form (which ServeMux would 307-redirect) and HEAD (which ServeMux would hand to the GET handler) are both 404 `NOT_FOUND`; so is any other undeclared method. `OPTIONS *` gets an empty 200 from net/http itself, and `*` with any other method such as `GET *` or `POST *` gets a plain-text 400 from net/http; none of these reach a handler (they are not envelopes).
 
 ### Request ID
 
-- 每個 request 都由 server 發 `req_<ULID>`，放在 `X-Request-ID`，同時寫進 error body 與 audit row。
-- Client 送來的 `X-Request-ID` 一律不用，因為它會進 audit。
+- The server issues `req_<ULID>` for every request, puts it in `X-Request-ID`, and writes it into the error body and the audit row.
+- An `X-Request-ID` sent by the client is never used, because it would go into the audit.
 
 ### Body
 
-- Content-Type 必須是 `application/json`，只接受 `charset=utf-8` 參數（media type、參數名稱與值皆不分大小寫），否則 415；參數格式錯誤也是 415。
-- 大小上限預設 1 MiB，超過回 413。每個有 request body 的 operation 都在 openapi 宣告 413 與 415，`scripts/check_contracts.py` 檢查。讀取中斷的 body 回 400，即使已讀到的部分是合法 JSON。
-- 解析失敗回 400 `INVALID_REQUEST`，涵蓋不合法 JSON、重複成員名稱、非 UTF-8、尾端多餘資料，detail 附 JSON Pointer。
-- 字串（值或成員名稱）含 U+0000 回 422 `REQUEST_VALIDATION_FAILED`，detail 指向該值或該 object：PostgreSQL 的 text 無法存放它，否則會在 DB 變成 500（T-009 review L1）。
-- Query string 格式錯誤（例如 `;` 分隔、無法解碼的 `%`）回 400，不只讀其中能讀的部分（`httpapi.Query`，T-009 review L6）。
-- 對 `schemas/` 的 request schema 驗證不過回 422 `REQUEST_VALIDATION_FAILED`，每個失敗的 JSON Pointer 各一個 detail。用的是 generic validator 同一份 schema，不另寫一套。Schema reference 無法解析，或通過 schema 的 body 無法解碼成 Go type（schema 與 type 不一致），是 server 的錯：500，不會當成功處理。
+- The Content-Type must be `application/json`, with `charset=utf-8` as the only accepted parameter (media type, parameter names and values are case-insensitive); otherwise 415. A malformed parameter is also 415.
+- The size limit is 1 MiB by default; above it, 413. Every operation with a request body declares 413 and 415 in openapi, and `scripts/check_contracts.py` checks this. A body whose read is interrupted returns 400, even when the part read so far is valid JSON.
+- A parse failure returns 400 `INVALID_REQUEST`. This covers invalid JSON, duplicate member names, non-UTF-8 and trailing data; the detail carries a JSON Pointer.
+- A string (a value or a member name) containing U+0000 returns 422 `REQUEST_VALIDATION_FAILED`, with the detail pointing at that value or that object: PostgreSQL text cannot store it, and it would otherwise become a 500 at the DB (T-009 review L1).
+- A malformed query string (for example `;` separators, an undecodable `%`) returns 400; the server does not read only the parts it can (`httpapi.Query`, T-009 review L6).
+- A request that fails validation against the request schema in `schemas/` returns 422 `REQUEST_VALIDATION_FAILED`, with one detail per failing JSON Pointer. It uses the same schema as the generic validator; no second copy is written. A schema reference that cannot be resolved, or a body that passes the schema but cannot be decoded into the Go type (schema and type disagree), is a server error: 500, never treated as a success.
 
 ### Scope
 
-- `Scoped` 依序處理：
-  1. 只讀單一 `Authorization: Bearer`（ADR-017），先驗 token；
-  2. 要求恰好一個合法格式的 `X-Organization-ID`，否則 400；
-  3. 以 `tenant.ResolveUser` 解析 user；
-  4. 把 scope 交給 handler。
-- Header 只是 selector（D-008）。Membership 與 role 由 handler 在 `tenant.DB.Run` 的同一個 transaction 中檢查：非 member 回 404，role 不足回 403。
-- 讀寫的 run 以 `FOR SHARE` 鎖住它檢查過的 membership row 直到 transaction 結束：同時發生的撤權或 role 變更會等這個 write commit，不會先 commit 而讓 write 繼續（T-009 review L3）。唯讀的 run 不上鎖。
-  - **已知限制（T-009 re-review R1，latent）**：D-036 的成員變更 transaction 依 user_id 順序以 `FOR UPDATE` 鎖該 organization 全部 owner membership。若它跑在 `Run(ReadWrite)` 之上，每個 owner 已先持有自己 row 的 `FOR SHARE`，兩個 owner 同時變更成員會形成 lock cycle（reviewer probe：3／3 次 `40P01`，回 `ErrRetryable`／503）。T-009 沒有變更 membership 的 route。T-010 必須提供不先取 `FOR SHARE` 的 run 模式：先取 D-036 的有序鎖（owner caller 自己的 row 在其中），再重讀 caller 的 role；並加上在 `Run` 之上執行 D-036 的並行測試。
-  - **T-010 處理**：成員變更改用 `tenant.DB.RunOwners`（ADR-023）。第一版（先取有序的 owner 鎖再讀 caller 的 role）只解決了兩個 owner 的情形：T-010 review round 1 以三個以上 owner 的壓力測試仍得到 40P01，且被拒的 request 也會先鎖 owner row（M1、M2）。現行做法：不上鎖先檢查 caller 是 owner，再取每個 organization 的 transaction 層級 advisory lock（成員變更一次一個），然後才是 D-036 的有序 owner 鎖與 role 重讀。`TestMembershipChangesUnderLoad`、`TestOwnerLockAcrossPlans`、`TestOwnersChangeAtOnce` 在現行做法下沒有 40P01；這是測試的結果，不是證明，理由見 ADR-023。
-- Route 的 role 與 `planning/api-operations.json` 的 `x-required-roles` 由 contract test 鎖住；service 要求的是同一組值（`createRoles`、`readRoles`），所以被鎖住的就是實際執行的（T-009 review L5）。
-- **不選 organization 的 operation（D-045，2026-10-19 補記）**：`GET /v1/me` 用第二個 middleware `Self`，順序同 `Scoped`：先驗 token；帶任何 `X-Organization-ID`（即使為空）回 400（從不忽略，client 不會誤以為選了 organization）；再以 `ResolveUser` 解析 user（未知 identity 403，不建立）；handler 只拿到 user ID，在 `tenant.DB.RunSelf`（只設 user 的唯讀 transaction）中讀取。openapi 以 `x-tenant-scope: user` 標示，`x-required-roles` 為空，並以 schema 為 `not: {}` 的 `NoOrganizationContext` 宣告 header 不得送出；`scripts/check_contracts.py` 檢查 organization scope 的 operation 一定要求 header 並列出 role、user scope 的不列 role 且有 400／401／403，並檢查 `planning/api-operations.json` 的 method、path、origin、roles、scope 與 openapi 相同。
+- `Scoped` works in this order:
+  1. read only a single `Authorization: Bearer` (ADR-017) and verify the token first;
+  2. require exactly one well-formed `X-Organization-ID`, otherwise 400;
+  3. resolve the user with `tenant.ResolveUser`;
+  4. hand the scope to the handler.
+- The header is only a selector (D-008). Membership and role are checked by the handler in the same transaction of `tenant.DB.Run`: a non-member gets 404, an insufficient role gets 403.
+- A read-write run locks the membership row it checked with `FOR SHARE` until the end of the transaction: a concurrent revocation or role change waits for this write to commit, rather than committing first and letting the write go on (T-009 review L3). A read-only run takes no lock.
+  - **Known limitation (T-009 re-review R1, latent)**: D-036's member-change transaction locks all owner memberships of the organization with `FOR UPDATE` in user_id order. If it runs on top of `Run(ReadWrite)`, each owner already holds `FOR SHARE` on their own row, and two owners changing members at the same time form a lock cycle (reviewer probe: `40P01` 3/3 times, returning `ErrRetryable`/503). T-009 has no route that changes membership. T-010 must provide a run mode that does not take `FOR SHARE` first: take D-036's ordered locks first (the owner caller's own row is among them), then reread the caller's role; and add a concurrency test that runs D-036 on top of `Run`.
+  - **Handled in T-010**: member changes use `tenant.DB.RunOwners` instead (ADR-023). The first version (take the ordered owner locks first, then read the caller's role) only solved the two-owner case: T-010 review round 1 still got 40P01 in a stress test with three or more owners, and a rejected request also locked owner rows first (M1, M2). Current approach: first check without locks that the caller is an owner, then take a transaction-level advisory lock per organization (member changes one at a time), and only then D-036's ordered owner locks and the role reread. `TestMembershipChangesUnderLoad`, `TestOwnerLockAcrossPlans` and `TestOwnersChangeAtOnce` get no 40P01 under the current approach; this is a test result, not a proof; see ADR-023 for the reasons.
+- The route's roles and `x-required-roles` in `planning/api-operations.json` are locked by a contract test; the service requires the same set of values (`createRoles`, `readRoles`), so what is locked is what actually runs (T-009 review L5).
+- **Operations that select no organization (D-045, 2026-10-19 addendum)**: `GET /v1/me` uses a second middleware, `Self`, in the same order as `Scoped`: verify the token first; any `X-Organization-ID` sent (even empty) returns 400 (never ignored, so the client never wrongly believes an organization was selected); then resolve the user with `ResolveUser` (an unknown identity gets 403 and is not created). The handler gets only the user ID and reads in `tenant.DB.RunSelf` (a read-only transaction that sets only the user). openapi marks it with `x-tenant-scope: user`, `x-required-roles` is empty, and the header is declared as not to be sent through `NoOrganizationContext`, whose schema is `not: {}`. `scripts/check_contracts.py` checks that an organization-scope operation always requires the header and lists roles, that a user-scope one lists no roles and has 400/401/403, and that the method, path, origin, roles and scope in `planning/api-operations.json` are the same as in openapi.
 
-### 寫入
+### Writes
 
-一個 write 的效果、audit event 與 idempotency response 在同一個 transaction 中完成：
+A write's effect, audit event and idempotency response are completed in the same transaction:
 
-- **Idempotency（D-011）**：
-  - Key 以 organization、actor、operation 為 scope。之後有 path 參數或 concurrency header 的 write，須把 resource 與這些 header 納入 operation scope 或 request hash（API_DATABASE §7）；`createProject` 沒有。
-  - Role 在 claim 與重播之前檢查：被降級或移除的 user 重試舊 key 得到 403／404，不是舊的成功回應（API_DATABASE §7）。
-  - Request hash 是 body 的 JCS canonical form 的 SHA-256。
-  - 同 key、同 hash 重播已存的 status 與 body，不同 hash 回 409 `IDEMPOTENCY_KEY_CONFLICT`。
-  - 兩個並行 request 搶同一個 key 時，由 primary key 序列化：後到的等前者 commit 後重播。
-  - 保留 24 小時，過期後重新 claim。已存在的 key 以 `FOR UPDATE` 讀取：搶同一個過期 key 的重試依序讀到前一個留下的狀態，只有第一個重新 claim（T-009 review M1）。
-  - Response 以 JCS canonical form 送出，jsonb 往返後重播的 bytes 仍相同。
-  - `Idempotency-Key` 只接受 8–128 個可見 ASCII 字元（openapi `IdempotencyKey` 的 pattern `^[!-~]{8,128}$`）。
-- **Audit**：`internal/storage/auditlog` 在同一個 transaction 寫 `twin.audit_events`，`actor_id` 為 scope 的 user；DB trigger 也會強制這點。Metadata 只放 ID 與計數。
+- **Idempotency (D-011)**:
+  - The key is scoped by organization, actor and operation. A later write with path parameters or concurrency headers must include the resource and those headers in the operation scope or the request hash (API_DATABASE §7); `createProject` has none.
+  - The role is checked before the claim and the replay: a user who was demoted or removed and retries an old key gets 403/404, not the old success response (API_DATABASE §7).
+  - The request hash is the SHA-256 of the body's JCS canonical form.
+  - The same key with the same hash replays the stored status and body; a different hash returns 409 `IDEMPOTENCY_KEY_CONFLICT`.
+  - When two concurrent requests race for the same key, the primary key serializes them: the later one waits for the first to commit and then replays.
+  - Kept for 24 hours; after expiry the key is claimed again. An existing key is read with `FOR UPDATE`: retries racing for the same expired key read, in turn, the state the previous one left, and only the first one reclaims it (T-009 review M1).
+  - The response is sent in JCS canonical form, so the replayed bytes are still the same after the jsonb round trip.
+  - `Idempotency-Key` accepts only 8–128 visible ASCII characters (the pattern `^[!-~]{8,128}$` of openapi's `IdempotencyKey`).
+- **Audit**: `internal/storage/auditlog` writes `twin.audit_events` in the same transaction, with `actor_id` being the scope's user; a DB trigger also enforces this. Metadata holds only IDs and counts.
 
 ### List
 
-- 依 `(created_at, id)` 排序。
-- Cursor 是 base64url 的 `{v, o, l, t, i}`，綁 organization 與 list，未簽章：它只能在 caller 自己 organization 的資料內移動，由 RLS 與 organization filter 限制。
-- 用在別的 organization 或 list、或被改動過的 cursor 回 400。
-- `limit` 為 1–100 的十進位整數，預設 50。
+- Ordered by `(created_at, id)`.
+- The cursor is a base64url `{v, o, l, t, i}`, bound to the organization and the list, and not signed: it can only move within the caller's own organization's data, which RLS and the organization filter limit.
+- A cursor used in another organization or list, or one that was tampered with, returns 400.
+- `limit` is a decimal integer from 1 to 100, default 50.
 
-### DB rule 的 gateway
+### Gateways of the DB rules
 
-- `db-only-in-storage` 改為不追進 `internal/storage` 與 `internal/tenant` 內部的依賴（`through`）：其他 package 經由它們存取資料，自己不 import driver。`tenant.Tx`／`tenant.TxOptions` 是 pgx 的 alias，service 持有 transaction 只為交給 storage。
-- 這兩個 gateway 包含 storage 的基礎層 `internal/storage/postgres`，它的 `Open` 接受任何連線字串：經由它，一個 package 可以自己開連線，繞過 `tenant.DB.Run`、`CheckRuntimeRole` 與 `Guard`（T-009 review M2）。新規則 `db-handles-only-in-gateways`：只有 `internal/storage`、`internal/tenant` 與 `cmd` 可以依賴它；httpapi 需要的錯誤由 `tenant` 轉出（`tenant.ErrRetryable`、`ErrOutcomeUnknown`）。
-- Import 規則看不到 SQL 字串：service 透過 `tenant.Tx` 自己寫 SQL（包括經 `tx.Conn()` 取得的連線）這件事只能靠 review 擋下（`internal/project` 沒有 SQL）。這些 SQL 在 `tenant.DB.Run` 的 transaction 內以同一個 API login 執行，但**不受 scope 約束**：它可以 `set_config('app.organization_id', …)` 改掉 transaction 的 tenant context，讀別的 organization（T-009 re-review R3a）。所以 SQL 只寫在 `internal/storage`，由 review 把關；T-036 評估把 `tenant.Tx` 縮成沒有 `Conn()` 的介面。
-- Worker scope（R3b）：`tenant.NewWorker` 在 `internal/tenant`，API 端程式也能 import，以任何 organization 執行而不查 membership，import 規則看不出來。目前沒有 production 呼叫者。T-019 必須把它移到只有 worker 端可 import 的 package，並加 architecture 規則。**已處理（T-019a）**：移到 `internal/tenant/workerscope`（設定 scope 的 SQL 在只有 `internal/tenant/...` 能 import 的 `internal/tenant/internal/scope`），architecture 規則 `worker-scope-only-in-the-worker` 只允許 `cmd/worker`、`internal/worker` 與它自己 import，三個 probe（cmd/api、service、storage）確認會被抓到。
+- `db-only-in-storage` no longer follows the dependencies inside `internal/storage` and `internal/tenant` (`through`): other packages reach data through them and do not import the driver themselves. `tenant.Tx`/`tenant.TxOptions` are pgx aliases; a service holds a transaction only to hand it to storage.
+- These two gateways include the storage base layer `internal/storage/postgres`, whose `Open` accepts any connection string: through it, a package could open its own connection and bypass `tenant.DB.Run`, `CheckRuntimeRole` and `Guard` (T-009 review M2). New rule `db-handles-only-in-gateways`: only `internal/storage`, `internal/tenant` and `cmd` may depend on it; the errors httpapi needs are re-exported by `tenant` (`tenant.ErrRetryable`, `ErrOutcomeUnknown`).
+- The import rules cannot see SQL strings: a service writing its own SQL through `tenant.Tx` (including a connection obtained through `tx.Conn()`) can only be stopped by review (`internal/project` has no SQL). That SQL runs inside the `tenant.DB.Run` transaction with the same API login, but is **not bound by the scope**: it could `set_config('app.organization_id', …)` to change the transaction's tenant context and read another organization (T-009 re-review R3a). So SQL is written only in `internal/storage`, guarded by review; T-036 evaluates shrinking `tenant.Tx` to an interface without `Conn()`.
+- Worker scope (R3b): `tenant.NewWorker` is in `internal/tenant`, so API-side code could also import it and run as any organization without a membership check, and the import rules cannot tell. There is no production caller at present. T-019 must move it to a package that only the worker side can import, and add an architecture rule. **Handled (T-019a)**: moved to `internal/tenant/workerscope` (the SQL that sets the scope is in `internal/tenant/internal/scope`, which only `internal/tenant/...` can import). The architecture rule `worker-scope-only-in-the-worker` allows only `cmd/worker`, `internal/worker` and the package itself to import it; three probes (cmd/api, a service, storage) confirm that violations are caught.
 
 ### Server
 
-`cmd/api` 的啟動與關閉：
+Startup and shutdown of `cmd/api`:
 
-- **啟動**：
-  - 以 API runtime login 連 PostgreSQL；superuser、BYPASSRLS 或 table owner 都會被拒絕（`tenant.CheckRuntimeRole`，log 為 `refusing the database login`）；DB 無法連線時 log 為 `database unavailable`，含 host、user、database，不含密碼。
-  - Pool 裝 `tenant.Guard`（`poolConfig`）。
-  - Timeouts：read header 10 s、read 30 s、write 60 s、idle 120 s；header 上限 32 KiB（`newServer`）。兩者與 shutdown 等待時間由測試鎖住，因為少了任何一項都不會反映在回應上（T-009 review M1、L4）。
-  - 監聽 `API_LISTEN_ADDR`（預設 `:8080`）。
-- **關閉**：SIGINT／SIGTERM 時 graceful shutdown，最多等 20 s。
+- **Startup**:
+  - Connects to PostgreSQL with the API runtime login; superuser, BYPASSRLS or table owner are refused (`tenant.CheckRuntimeRole`, logged as `refusing the database login`). When the DB cannot be reached the log is `database unavailable`, with host, user and database, without the password.
+  - The pool installs `tenant.Guard` (`poolConfig`).
+  - Timeouts: read header 10 s, read 30 s, write 60 s, idle 120 s; header limit 32 KiB (`newServer`). These two and the shutdown wait are locked by tests, because the absence of any of them would not show in a response (T-009 review M1, L4).
+  - Listens on `API_LISTEN_ADDR` (default `:8080`).
+- **Shutdown**: graceful shutdown on SIGINT/SIGTERM, waiting at most 20 s.
 
 ## Consequences
 
-- 之後每個 route 只寫 service、handler 與 storage，錯誤格式、request ID、body 規則與 scope 都共用。
-- 每個 request 開兩個 transaction：解析 user 的唯讀 transaction，加上 handler 的 transaction。若之後需要，可以快取 user 解析結果。
-- 未簽章的 cursor 依賴 RLS 與 organization filter；若將來 cursor 要攜帶 filter，需要在 cursor 中綁定該 filter。
-- Rate limiting（429）與 OTel tracing 尚未實作，分屬 T-035／T-036。
+- Every later route writes only a service, a handler and storage; the error format, request ID, body rules and scope are shared.
+- Each request opens two transactions: the read-only transaction that resolves the user, plus the handler's transaction. If needed later, the user resolution can be cached.
+- The unsigned cursor relies on RLS and the organization filter; if a cursor is to carry a filter in future, that filter must be bound in the cursor.
+- Rate limiting (429) and OTel tracing are not implemented yet; they belong to T-035/T-036 respectively.

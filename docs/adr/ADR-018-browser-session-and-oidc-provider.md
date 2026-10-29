@@ -1,82 +1,82 @@
 # ADR-018 — Browser session through a BFF, and Auth0 as the OIDC provider
 
-狀態：ACCEPTED。2026-10-18 由 agent 依 owner 授權決定：owner 在 session 中回覆「ok, you can do it right now」（H-004），並非 owner 逐項審查。Owner 可隨時重開；任何 provider 帳號、方案與費用由 owner 確認。
+Status: ACCEPTED. Decided on 2026-10-18 by the agent under the owner's authorization: the owner replied "ok, you can do it right now" in the session (H-004); the owner did not review it item by item. The owner can reopen it at any time; any provider account, plan and cost is confirmed by the owner.
 
-原報告把 Auth provider 列為 TBD（「managed OIDC」，DECISIONS_AND_TBD.md）。SECURITY §3 要求 browser 端 token 儲存、refresh 與 BFF 模式另立 auth ADR。ADR-017 只固定 API 怎麼驗 access token，不選 provider。本 ADR 補上這兩項，前端登入流程（T-043）依此實作。
+The original report lists the Auth provider as TBD ("managed OIDC", DECISIONS_AND_TBD.md). SECURITY §3 requires a separate auth ADR for browser-side token storage, refresh and the BFF pattern. ADR-017 only fixes how the API verifies the access token and does not choose a provider. This ADR adds these two items; the frontend sign-in flow (T-043) is implemented from it.
 
 ## Decision
 
-### 1. Browser session：BFF（Backend-for-Frontend）
+### 1. Browser session: BFF (Backend-for-Frontend)
 
-- **OIDC client 在伺服器端。** Next.js 伺服器端（Node runtime，不是 static export）是 confidential OIDC client。
-  - 流程：Authorization Code ＋ PKCE（S256）＋ `state` ＋ `nonce`。
-  - Client 認證：client secret 或 `private_key_jwt`，只存在 web server 的 secret store。
-  - Endpoints：authorization、token、revocation、end-session 都只來自 deployment 設定，不在 runtime 做 discovery。這與 SECURITY §3 的「provider endpoints 僅 deployment allowlist」一致。
-- **瀏覽器拿不到任何 token。**
-  - Access、refresh、ID token 都不放進 JS 可讀的地方：localStorage、sessionStorage、IndexedDB、JS 可讀的 cookie、回應 body 都不行。
-  - ID token 只在 callback 驗證後使用（`iss`、`aud`、`nonce`、`sub`），隨即丟棄。
-- **Session cookie。**
-  - 屬性：`__Host-geminus_session`，`HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`，不設 `Domain`。
-  - 內容：以 AES-256-GCM 加密的 access token、refresh token、到期時間與 session 絕對期限；AAD 為 cookie 名稱與格式版本。
-  - Key：同時保留一把目前、一把前一把的 key，以支援輪替；key 來自 secret store。
-  - 大小：cookie 超過 3.5 KB 視為錯誤，不切塊。屆時改用 server-side session store，另立 ADR。
-- **CSRF 防護。**
-  - 除了 `SameSite=Lax` 之外，BFF 對所有非 GET／HEAD 請求要求兩件事：`Origin` 與設定的 app origin 完全相同（瀏覽器有送 `Sec-Fetch-Site` 時須為 `same-origin`），且帶自訂 header `X-Geminus-Request: 1`，這會迫使跨站請求先做 preflight。
-  - BFF 不開 CORS。
-- **API proxy。**
-  - 瀏覽器只呼叫同源的 `/api/v1/...`。BFF 換上 `Authorization: Bearer <access token>` 轉給 Go API，`X-Organization-ID` 原樣轉送；它只是 selector（D-008）。
-  - Access token 剩不到 60 秒時，BFF 在伺服器端 refresh。
-  - BFF 不把 cookie 轉給 Go API。Go API 維持只讀 Bearer、不讀 cookie（ADR-017 不變）。
-  - SSE（TEST-026）與 upload 以串流轉送；大小限制仍由 API 執行（TEST-012）。
-- **Token 期限的起始值**（在 provider 設定，記入部署 runbook；變更需 security review）：
-  - Access token：10 分鐘。
-  - Refresh token：rotation，並開啟 reuse detection。
-  - Session：閒置 12 小時、絕對期限 7 天。
-- **Logout。** 依序：清除 cookie；在 revocation endpoint 撤銷 refresh token；再導向設定的 end-session URL（RP-initiated logout）。
-- **Library。** 使用通用的 OIDC／OAuth client，不用 provider 專屬 SDK，讓 provider 可以替換。候選是 `openid-client`（MIT）。版本在 T-043 依 AGENTS.md 選定、釘住並記錄：發布滿兩週、有 lockfile、有 license 記錄。
+- **The OIDC client is on the server.** The Next.js server side (Node runtime, not a static export) is a confidential OIDC client.
+  - Flow: Authorization Code + PKCE (S256) + `state` + `nonce`.
+  - Client authentication: a client secret or `private_key_jwt`, kept only in the web server's secret store.
+  - Endpoints: authorization, token, revocation and end-session come only from the deployment settings; there is no discovery at runtime. This matches SECURITY §3 "provider endpoints only from the deployment allowlist".
+- **The browser never gets any token.**
+  - Access, refresh and ID tokens are never put anywhere JS can read: not localStorage, sessionStorage, IndexedDB, a JS-readable cookie or a response body.
+  - The ID token is used only after it is verified in the callback (`iss`, `aud`, `nonce`, `sub`) and is discarded right after.
+- **Session cookie.**
+  - Attributes: `__Host-geminus_session`, `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, no `Domain`.
+  - Content: the access token, refresh token, expiry time and the session's absolute deadline, encrypted with AES-256-GCM; the AAD is the cookie name and the format version.
+  - Keys: a current key and the previous key are kept at the same time, to support rotation; the keys come from the secret store.
+  - Size: a cookie over 3.5 KB is an error; it is not split into chunks. If that happens, switch to a server-side session store, under a separate ADR.
+- **CSRF protection.**
+  - Besides `SameSite=Lax`, the BFF requires two things on every request that is not GET/HEAD: `Origin` is identical to the configured app origin (when the browser sends `Sec-Fetch-Site`, it must be `same-origin`), and the custom header `X-Geminus-Request: 1` is present, which forces a cross-site request to do a preflight first.
+  - The BFF does not enable CORS.
+- **API proxy.**
+  - The browser calls only the same-origin `/api/v1/...`. The BFF swaps in `Authorization: Bearer <access token>` and forwards to the Go API; `X-Organization-ID` is forwarded as is; it is only a selector (D-008).
+  - When the access token has less than 60 seconds left, the BFF refreshes it on the server.
+  - The BFF does not forward the cookie to the Go API. The Go API still reads only Bearer and no cookie (ADR-017 unchanged).
+  - SSE (TEST-026) and uploads are forwarded as streams; size limits are still enforced by the API (TEST-012).
+- **Starting token lifetimes** (set at the provider, recorded in the deployment runbook; a change needs a security review):
+  - Access token: 10 minutes.
+  - Refresh token: rotation, with reuse detection turned on.
+  - Session: 12 hours idle, 7 days absolute.
+- **Logout.** In order: clear the cookie; revoke the refresh token at the revocation endpoint; then redirect to the configured end-session URL (RP-initiated logout).
+- **Library.** A generic OIDC/OAuth client is used, not a provider-specific SDK, so that the provider can be replaced. The candidate is `openid-client` (MIT). The version is chosen, pinned and recorded in T-043 under AGENTS.md: released at least two weeks ago, with a lockfile and a license record.
 
-### 2. OIDC provider：Auth0
+### 2. OIDC provider: Auth0
 
-選 Auth0 作為 alpha 與 production 的 managed OIDC provider，理由：
+Auth0 is chosen as the managed OIDC provider for alpha and production, because:
 
-- **Access token 綁 API audience。** Auth0 可替 API identifier（`aud`）簽發 JWT access token，且每個 API 可選 RFC 9068 profile（header `typ: at+jwt`）。因此可開啟 `AUTH_OIDC_REQUIRE_AT_JWT`（ADR-017），ID token 無法被拿來當 access token 用。
-- **不綁雲端。** Cloud 仍是 TBD（GCP reference／AWS equivalent），Auth0 兩邊都能用。
-- **標準介面。** 提供標準的 OIDC endpoints 與 JWKS，預設 RS256，在 ADR-017 的預設 allowlist 內。
-- **Refresh token。** 支援 rotation 與 reuse detection。
-- **日後的 B2B SSO。** 若需要，可用 organizations 或 enterprise connections。Tenancy 與 role 仍一律來自 Geminus 的 DB（D-008），絕不取自 IdP claims。
+- **The access token is bound to the API audience.** Auth0 can issue JWT access tokens for an API identifier (`aud`), and each API can choose the RFC 9068 profile (header `typ: at+jwt`). So `AUTH_OIDC_REQUIRE_AT_JWT` (ADR-017) can be turned on, and an ID token cannot be used as an access token.
+- **Not tied to a cloud.** The cloud is still TBD (GCP reference/AWS equivalent); Auth0 works with both.
+- **Standard interface.** It provides the standard OIDC endpoints and a JWKS, RS256 by default, which is in ADR-017's default allowlist.
+- **Refresh token.** It supports rotation and reuse detection.
+- **B2B SSO later.** If needed, organizations or enterprise connections can be used. Tenancy and role still always come from the Geminus DB (D-008) and are never taken from IdP claims.
 
-比較過的替代方案：
+Alternatives compared:
 
-| 方案 | 不選的原因 |
+| Option | Why not chosen |
 |---|---|
-| Amazon Cognito | Access token 只有在 resource binding 時才帶 `aud`；而且綁定 AWS |
-| Google Identity Platform | 以 ID token 為主，不是替自訂 API audience 簽 access token 的 authorization server |
-| Microsoft Entra External ID | 可行的替代方案；`typ` 為 `JWT` 而不是 `at+jwt` |
-| 自架 Keycloak | 不是 managed，增加維運負擔 |
+| Amazon Cognito | The access token carries `aud` only with a resource binding; and it is tied to AWS |
+| Google Identity Platform | Centred on ID tokens; not an authorization server that issues access tokens for a custom API audience |
+| Microsoft Entra External ID | A workable alternative; `typ` is `JWT`, not `at+jwt` |
+| Self-hosted Keycloak | Not managed; adds operating burden |
 
-換 provider 只需改設定：API 的 `AUTH_OIDC_*` 與 BFF 的 client 設定，再重跑 TEST-009／TEST-032。
+Changing the provider only needs a settings change: the API's `AUTH_OIDC_*` and the BFF's client settings, then re-running TEST-009/TEST-032.
 
-### 3. 條件與仍未決
+### 3. Conditions and still open
 
-- **帳號屬 owner。** Auth0 tenant 由 owner 建立並持有，方案與費用由 owner 在註冊時確認。Agent 不建立帳號、不接受條款，也不持有 credential。
-- **Region 與資料。** Tenant region 依 retention／residency 決定（TBD）。決定前只能有測試使用者，不放真實客戶的使用者資料。
-- **Provisioning 受控。** 遵守 D-008／T-010：未知 identity 登入時回 403（`tenant.ErrUnknownUser`），不從 token 自動建立 user。
-- **本機與 CI。** E2E 使用 repo 內的 deterministic 測試 OIDC provider：在 `internal/auth/authtest` 加上 authorize 與 token endpoint，或改用同等的 test-only 程式。絕不連 Auth0，CI 也沒有 Auth0 credential。
-- **Rate limiting。** Login、callback、refresh 的 rate limiting 與告警屬 T-036／T-035。
+- **The account belongs to the owner.** The Auth0 tenant is created and held by the owner; the plan and cost are confirmed by the owner at sign-up. The agent does not create accounts, does not accept terms and does not hold credentials.
+- **Region and data.** The tenant region is decided by retention/residency (TBD). Until then there may be only test users; no real customer user data.
+- **Controlled provisioning.** Follows D-008/T-010: when an unknown identity signs in, the answer is 403 (`tenant.ErrUnknownUser`); no user is created automatically from the token.
+- **Local and CI.** E2E uses a deterministic test OIDC provider in the repository: add authorize and token endpoints to `internal/auth/authtest`, or use equivalent test-only code instead. It never connects to Auth0, and CI has no Auth0 credential.
+- **Rate limiting.** Rate limiting and alerting for login, callback and refresh belong to T-036/T-035.
 
 ## Consequences
 
-- Web 需要伺服器端 runtime：T-039 的 web container 是 Node server，不是靜態檔。
-- ADR-016 的 `lib/api/client.ts` 原本「帶 `Authorization`、不送 cookie」，在 T-043 改為：
-  - 呼叫同源 BFF，`credentials: 'same-origin'`；
-  - 帶 `X-Geminus-Request`；
-  - 瀏覽器不再持有 token，也不設 `Authorization`。
+- The web needs a server-side runtime: T-039's web container is a Node server, not static files.
+- ADR-016's `lib/api/client.ts` originally "sends `Authorization`, sends no cookie"; in T-043 it changes to:
+  - call the same-origin BFF, `credentials: 'same-origin'`;
+  - send `X-Geminus-Request`;
+  - the browser no longer holds a token and does not set `Authorization`.
 
-  ADR-016 其餘部分不變。
-- Go API 不變：仍只接受 Bearer，也不新增 cookie 寫入路徑。SECURITY §3 要求的 cookie 防護（CSRF、SameSite、Secure、HttpOnly）由 BFF 執行，並由 TEST-032 驗證。
-- 2026-10-26 補記（T-043 後續：登入後的 UI bootstrap）：root layout 在伺服器端讀 session cookie，只為了知道它是否打得開且未到期（BFF 的 `hasSession`：解封、檢查期限，不 refresh、不呼叫 provider 或 API）；交給頁面的只有這個布林值與之前選過的 organization ID，cookie 的值、token 或封裝的內容都不進 HTML。`/me` 與其後的 API 呼叫都經同源 proxy，refresh 仍只在 proxy 中進行（輪替後的 token 只能放在回應的 Set-Cookie）。登入連結為 `/auth/login?return_to=<目前的頁面>`，return path 以與 BFF 相同的規則（`lib/return-to.ts`）檢查；登出按鈕以 `X-Geminus-Request` 呼叫既有的 `POST /auth/logout`。CSRF 規則不變。
-- 2026-10-26 補記（T-057：公開 demo 前的 security header；細節與理由在 SECURITY §3）：BFF 所在的 Next.js 伺服器對每個回應（頁面、`/auth/*`、`/api/v1/*`、靜態檔）由 `apps/web/proxy.ts` 加上 CSP（每個 request 一個 nonce，script 只靠 nonce 與 `'strict-dynamic'`，沒有 `'unsafe-inline'`／`'unsafe-eval'`；唯一放寬的是 style attribute）、`X-Content-Type-Options`、`Referrer-Policy: no-referrer`、`Permissions-Policy`、`X-Frame-Options`，以及 app origin 為 https 時的 HSTS。對本 ADR 的影響：
-  - 登入流程不需要 CSP 的例外：`/auth/login` 是連結與 303，provider 以 GET 302 回 callback，`form-action 'self'` 足夠；`connect-src 'self'` 也足夠，因為 token、revocation、JWKS 都是伺服器端的呼叫，瀏覽器只碰同源的 BFF。換 provider 不需要改 CSP。
-  - CSRF 規則不變：`Referrer-Policy: no-referrer` 不影響 `fetch` 送出的 `Origin`（e2e 的登出與寫入通過，跨站寫入仍是 403）。
-  - HSTS 與 `upgrade-insecure-requests` 由 `BFF_APP_ORIGIN` 的 scheme 決定（部署設定，不是 request），所以本機與 e2e 的 http（loopback）不受影響。
-  - Proxy 不讀、不改 session cookie，也不擋任何 request；它只加 header 與 nonce。
+  The rest of ADR-016 is unchanged.
+- The Go API is unchanged: it still accepts only Bearer and adds no cookie write path. The cookie protections SECURITY §3 requires (CSRF, SameSite, Secure, HttpOnly) are enforced by the BFF and verified by TEST-032.
+- 2026-10-26 addendum (T-043 follow-up: the UI bootstrap after sign-in): the root layout reads the session cookie on the server only to know whether it can be opened and has not expired (the BFF's `hasSession`: unseal, check the deadline; no refresh, no call to the provider or the API). The page receives only this boolean and the organization ID chosen earlier; the cookie's value, tokens or sealed contents never reach the HTML. `/me` and the API calls after it all go through the same-origin proxy, and refresh still happens only in the proxy (the rotated token can only go in the response's Set-Cookie). The sign-in link is `/auth/login?return_to=<the current page>`; the return path is checked with the same rules as the BFF (`lib/return-to.ts`). The sign-out button calls the existing `POST /auth/logout` with `X-Geminus-Request`. The CSRF rules are unchanged.
+- 2026-10-26 addendum (T-057: security headers before the public demo; details and reasons in SECURITY §3): the Next.js server that hosts the BFF adds to every response (pages, `/auth/*`, `/api/v1/*`, static files), through `apps/web/proxy.ts`, a CSP (one nonce per request; scripts rely only on the nonce and `'strict-dynamic'`, with no `'unsafe-inline'`/`'unsafe-eval'`; the only relaxation is for style attributes), `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `X-Frame-Options`, and HSTS when the app origin is https. Impact on this ADR:
+  - The sign-in flow needs no CSP exception: `/auth/login` is a link and a 303, the provider returns to the callback with a GET 302, and `form-action 'self'` is enough; `connect-src 'self'` is also enough, because the token, revocation and JWKS calls are server-side, and the browser only touches the same-origin BFF. Changing the provider does not need a CSP change.
+  - The CSRF rules are unchanged: `Referrer-Policy: no-referrer` does not affect the `Origin` that `fetch` sends (the e2e sign-out and writes pass, and a cross-site write is still 403).
+  - HSTS and `upgrade-insecure-requests` are decided by the scheme of `BFF_APP_ORIGIN` (a deployment setting, not the request), so local and e2e http (loopback) is not affected.
+  - The proxy does not read or change the session cookie and does not block any request; it only adds headers and the nonce.

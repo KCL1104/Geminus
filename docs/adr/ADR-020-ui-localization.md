@@ -1,120 +1,120 @@
-# ADR-020 — UI 語言：自寫 typed catalog、cookie 語言偏好、template 兩語預設名稱（T-044）
+# ADR-020 — UI language: a hand-written typed catalog, a cookie language preference, two-language default names for templates (T-044)
 
-狀態：ACCEPTED（T-044 agent 選定並先實作；owner 於 2026-10-18 批准，並決定中文先只做繁體 `zh-Hant`，H-006）。日期：2026-10-18。需求：REQ-022（owner 新增，H-005）、REQ-004。T-044 scope 要求「i18n 機制（自寫或 library，另立 ADR、版本釘住）」。
+Status: ACCEPTED (chosen and implemented first by the T-044 agent; approved by the owner on 2026-10-18, who also decided that Chinese is Traditional `zh-Hant` only for now, H-006). Date: 2026-10-18. Requirements: REQ-022 (added by the owner, H-005), REQ-004. The T-044 scope requires "an i18n mechanism (hand-written or a library, under a separate ADR, version pinned)".
 
 ## Decision
 
-### Catalog 與翻譯函式（`apps/web/lib/i18n/`、`apps/web/messages/`）
+### Catalog and translation function (`apps/web/lib/i18n/`, `apps/web/messages/`)
 
-- **自寫**，不加依賴。Catalog 是 TypeScript object：`messages/en.ts`（`as const`）定義 key；`messages/zh-Hant.ts` 型別為 `Catalog`，所以少 key、多 key 或把複數訊息寫成字串都會編譯失敗。
-- `createTranslator(locale)`：
-  - 插值 `{name}`；數字參數依 locale 用 `Intl.NumberFormat` 格式化。
-  - 複數訊息是 `{ one?, other }`，依 `params.count` 用 `Intl.PluralRules` 選；zh-Hant 只有 `other`。
-  - 缺參數或 `count` 不是數字時 throw：這是程式錯誤，不顯示 `{name}`。只看 params 自己的值（`Object.hasOwn`），不看 prototype。
-  - 修訂號、版本號這類編號以字串傳入，不加千分位；只有數量（count）依語言分組。
-  - `gap`：句與句、標籤與值之間的間隔，英文一個空格，中文沒有（「已儲存。草稿修訂版 3。」、「技術細節：…」）。
-- 日期、數字、期間：`formatDateTime`、`formatNumber`、`formatDuration`（`Intl.NumberFormat` unit style）。
-  - `formatDateTime` 只接受 RFC 3339 date-time（contract 的格式，`T`／`Z` 大小寫皆可），且日期與時間必須存在：`Date.parse` 接受的範圍大得多，並把 2026-02-30 或 24:00 進位成別的時間（T-044 review L4）。檢查不依賴 V8：其他瀏覽器的 `Date` 解析不同。
-  - 元件經 `useI18n().dateTime` 使用：API 給的字串若不是 date-time，就照原樣顯示；不是字串的值（缺欄位、`null`）顯示為空，該段文字略過，不讓整頁失敗（T-044 review M2）。
-- `tests/i18n.test.ts` 鎖住：
-  - 兩語 key 相同且沒有空值；placeholder 與複數形狀相同；
-  - 兩語相同的文字只限 `app.name`、`home.title` 與兩個語言名稱；
-  - 每個 `ErrorCode`、`ValidationCode`、`ProblemKind` 都有訊息。
-- 不用 ICU MessageFormat 或 library（next-intl、FormatJS 皆 MIT，可行）：
-  - 目前訊息只需插值與 one/other。
-  - next-intl 以 route 前綴與 middleware 為主，本專案不加前綴。
-  - 自寫的代價是 plural 與格式化由我們維護。
-  - 需要 select、性別、巢狀、第三種語言或外部翻譯流程（抽取工具）時，改用 library 並另立 ADR。
+- **Hand-written**, with no added dependency. The catalog is a TypeScript object: `messages/en.ts` (`as const`) defines the keys; `messages/zh-Hant.ts` has the type `Catalog`, so a missing key, an extra key or a plural message written as a string fails to compile.
+- `createTranslator(locale)`:
+  - Interpolates `{name}`; numeric parameters are formatted per locale with `Intl.NumberFormat`.
+  - A plural message is `{ one?, other }`, chosen by `params.count` with `Intl.PluralRules`; zh-Hant has only `other`.
+  - A missing parameter, or a `count` that is not a number, throws: this is a programming error, and `{name}` is never shown. Only the params' own values are read (`Object.hasOwn`), not the prototype.
+  - Identifiers such as revision numbers and version numbers are passed as strings, without thousands separators; only quantities (count) are grouped per language.
+  - `gap`: the spacing between sentences, and between a label and a value; one space in English, none in Chinese (「已儲存。草稿修訂版 3。」, 「技術細節：…」).
+- Dates, numbers, durations: `formatDateTime`, `formatNumber`, `formatDuration` (`Intl.NumberFormat` unit style).
+  - `formatDateTime` accepts only an RFC 3339 date-time (the contract's format, `T`/`Z` in either case), and the date and the time must exist: `Date.parse` accepts a much wider range and rolls 2026-02-30 or 24:00 over into another time (T-044 review L4). The check does not depend on V8: other browsers' `Date` parsing differs.
+  - Components use it through `useI18n().dateTime`: a string from the API that is not a date-time is shown as is; a value that is not a string (a missing field, `null`) is shown as empty and that piece of text is skipped, so the whole page does not fail (T-044 review M2).
+- `tests/i18n.test.ts` locks:
+  - the two languages have the same keys and no empty values; placeholders and plural shapes are the same;
+  - text that is the same in both languages is limited to `app.name`, `home.title` and the two language names;
+  - every `ErrorCode`, `ValidationCode` and `ProblemKind` has a message.
+- No ICU MessageFormat or library (next-intl and FormatJS are both MIT and would work):
+  - The messages currently need only interpolation and one/other.
+  - next-intl is built around route prefixes and middleware; this project adds no prefix.
+  - The cost of hand-writing is that we maintain plurals and formatting.
+  - When select, gender, nesting, a third language or an external translation flow (extraction tools) is needed, switch to a library under a separate ADR.
 
-### Locale 與保存
+### Locale and persistence
 
-- Locale 只有 `en`（預設、主要）與 `zh-Hant`（H-005；H-006 決定先不加 `zh-Hans`）。
-  - Contract 是 `common.schema.json#/$defs/Locale`；Go `domainpack.Locales` 與 TS `locales` 由測試鎖成相同。
-- 偏好存在 cookie `geminus_locale`：
-  - 值只能是 `en` 或 `zh-Hant`；`Path=/; Max-Age=31536000; SameSite=Lax`，https 下加 `Secure`。
-  - 不設 HttpOnly：由 client 的語言切換寫入，內容不是秘密。
-  - 不含身分或 session，不參與授權。Go API 不讀 cookie（ADR-018）。
-  - 讀取時完全比對，其他值（含 `zh-hant`、`zh-Hans`、`EN`）一律視為未選、用 `en`。
-  - 有兩個同名 cookie（別的 path 或 domain；app 只設一個）時，server（Next.js `cookies().get`）與 client（`cookieLocale`）都取最後一個，頁面與 global-error 的語言一致（T-044 review 2 N5）。
-- **不做 Accept-Language 協商**：H-005 定英文為主要語言，瀏覽器語言是中文也從 `en` 開始，由使用者切換。
-- **Route 不加語言前綴**：root layout 在 server 端讀 cookie，設定 `<html lang>` 與 `I18nProvider`。
-  - 代價：所有 route 變成 dynamic rendering（`next build` 標 ƒ）。ADR-018 的 BFF session 本來就需要每個 request 渲染。
-- 切換：`LocaleSwitcher` 寫 cookie，再 `router.refresh()`，server components 以新語言重新渲染，不換 URL。
-  - 依 Next.js 文件，`router.refresh()` 保留 client state，未存的 draft 編輯應保留。T-044 尚無可編輯 draft 的頁面，所以當時未驗證；T-015 的 `apps/web-e2e/tests/editor.spec.ts`（「switching the language keeps the unsaved edits」）已在瀏覽器確認：切換語言後未存的編輯與狀態都保留（2026-10-26）。
-  - 每個語言名稱以其本身的語言顯示（`English`、`繁體中文`，各帶 `lang`）。T-045 re-skin 起切換器是 design system 的 `Select`（ADR-021），方向鍵只打開清單，選定才切換。
+- The locales are only `en` (default, primary) and `zh-Hant` (H-005; H-006 decided not to add `zh-Hans` for now).
+  - The contract is `common.schema.json#/$defs/Locale`; Go `domainpack.Locales` and TS `locales` are locked to the same values by tests.
+- The preference is stored in the cookie `geminus_locale`:
+  - The value can only be `en` or `zh-Hant`; `Path=/; Max-Age=31536000; SameSite=Lax`, plus `Secure` under https.
+  - Not HttpOnly: it is written by the client's language switch, and its content is not secret.
+  - It holds no identity or session and plays no part in authorization. The Go API does not read cookies (ADR-018).
+  - It is compared exactly when read; any other value (including `zh-hant`, `zh-Hans`, `EN`) is treated as not chosen, and `en` is used.
+  - When there are two cookies with the same name (another path or domain; the app sets only one), the server (Next.js `cookies().get`) and the client (`cookieLocale`) both take the last one, so the page and global-error use the same language (T-044 review 2 N5).
+- **No Accept-Language negotiation**: H-005 makes English the primary language; even when the browser's language is Chinese, the UI starts in `en`, and the user switches.
+- **No language prefix on routes**: the root layout reads the cookie on the server and sets `<html lang>` and `I18nProvider`.
+  - Cost: every route becomes dynamic rendering (`next build` marks ƒ). ADR-018's BFF session needs rendering per request anyway.
+- Switching: `LocaleSwitcher` writes the cookie, then `router.refresh()`; server components re-render in the new language without a URL change.
+  - According to the Next.js documentation, `router.refresh()` keeps client state, so unsaved draft edits should be kept. T-044 had no page with an editable draft, so this was not verified then; T-015's `apps/web-e2e/tests/editor.spec.ts` ("switching the language keeps the unsaved edits") confirmed it in a browser: after switching the language, unsaved edits and state are kept (2026-10-26).
+  - Each language name is shown in its own language (`English`, `繁體中文`, each with its `lang`). Since the T-045 re-skin the switcher is the design system's `Select` (ADR-021); the arrow keys only open the list, and the language switches only on selection.
 
-### API 錯誤與資料
+### API errors and data
 
-- API 只回語言中立的 `code` 與英文 `message`（開發者訊息），UI 依 code 顯示。
-  - `error.<ErrorCode>` 是說明；`problem.heading.<kind>` 是標題。
-  - `message`（server 的，或 client 自己產生的 network／protocol 診斷）放在「Technical details／技術細節」後，標 `lang="en"`，不翻譯。
-  - 404 仍不顯示 message 與 details（TEST-009）。
-- Validation details：已知的 `ValidationCode` 顯示 `validation.<code>`；未知 code（pack 自訂）顯示 server 的 `reason`，標 `lang="en"`。
-- 新增 contract `common.schema.json#/$defs/ValidationCode`（21 個）。
-  - Go 測試鎖成與 `internal/model/validate`、`internal/model/patch` 宣告的常數及 P0 pack 的 `DOMAIN_MISMATCH` 相同。
-  - `ValidationIssue.code` 仍是 string，pack 可以有自己的 code。
-- 使用者輸入的名稱、label、dataset 內容是資料，不翻譯。ID、JSON Pointer、enum、metric path 永不翻譯。
+- The API returns only a language-neutral `code` and an English `message` (a developer message); the UI displays text by code.
+  - `error.<ErrorCode>` is the explanation; `problem.heading.<kind>` is the heading.
+  - `message` (the server's, or a network/protocol diagnostic the client produces itself) is placed after "Technical details/技術細節", marked `lang="en"`, and not translated.
+  - A 404 still shows no message and no details (TEST-009).
+- Validation details: a known `ValidationCode` shows `validation.<code>`; an unknown code (a pack's own) shows the server's `reason`, marked `lang="en"`.
+- New contract `common.schema.json#/$defs/ValidationCode` (21 codes).
+  - A Go test locks it to the constants declared in `internal/model/validate` and `internal/model/patch` plus the P0 pack's `DOMAIN_MISMATCH`.
+  - `ValidationIssue.code` is still a string, so a pack can have its own codes.
+- Names, labels and dataset content entered by users are data and are not translated. IDs, JSON Pointers, enums and metric paths are never translated.
 
-### Template 兩語預設名稱（`internal/domainpack/`）
+### Two-language default names for templates (`internal/domainpack/`)
 
-- 新增 optional interface `domainpack.TemplateProvider`。`DomainPack` 保持原報告的 method set。
-  - `Templates()`。
-  - `Template(name, modelID, modelName, locale)`：未知 template 或 locale 回 error。
-- Conformance suite 新增 `templates` 步驟，對每個 template 檢查：
-  - 列表非空、不重複、無空名；
-  - 每個 locale 都產生一個通過 generic validator 與 pack 規則的 model，domain、ID、名稱正確；
-  - 兩次呼叫相同；
-  - 除名稱外各 locale 完全相同；
-  - 未知 locale 或 template 只回 error：locale 包括 `zh`、`zh-TW`、`zh-Hant-TW`、`en-US` 這類近似值，template 包括大小寫不同或前後有空白的名稱。
-  - 每個呼叫者拿到自己的 model：以另一個 model ID 與名稱再要一次，並改動它能改到的每個值（字串、數字、布林、每個 slice 元素與 map 項目，並在每個 map 加一個 key），第一個 model 不變（`templates/copies`；T-044 review 2 N1：原本只改名稱，淺拷貝而共用 flows 或 positions 的 pack 會通過）。
-  - `Template` 也在 `concurrent` 步驟中並行呼叫；data race 由 `make backend-race` 抓（T-044 review M1）。
-- SoftwareDelivery：`templates/<template>.zh-Hant.names.json` 依 ID 給名稱，嚴格比對。
-  - 少一個、多一個、空白或含控制字元的名稱、超過 IR 上限（200 字元）的名稱、未知 member 都是 internal error，避免某語言混雜兩種語言；不會變成表示「呼叫者輸入有誤」的 `InvalidError`（T-044 review L6）。
-  - ID 與其他內容在各語言相同。
-- `CreateModel` request 加 optional `locale`（省略即 `en`）。建立 model 的 handler（T-012／T-013）傳入它。建立後的名稱是使用者資料，切換語言不會改。
+- New optional interface `domainpack.TemplateProvider`. `DomainPack` keeps the original report's method set.
+  - `Templates()`.
+  - `Template(name, modelID, modelName, locale)`: an unknown template or locale returns an error.
+- The conformance suite adds a `templates` step, which checks for each template:
+  - the list is non-empty, without duplicates or empty names;
+  - each locale produces a model that passes the generic validator and the pack's rules, with the right domain, IDs and name;
+  - two calls give the same result;
+  - apart from names, all locales are identical;
+  - an unknown locale or template only returns an error: locales include near values such as `zh`, `zh-TW`, `zh-Hant-TW`, `en-US`, and templates include names differing in letter case or with leading or trailing spaces.
+  - Each caller gets its own model: request again with another model ID and name, and change every value it can reach (strings, numbers, booleans, every slice element and map entry, and add a key to every map); the first model is unchanged (`templates/copies`; T-044 review 2 N1: originally only the name was changed, so a pack that copied shallowly and shared flows or positions would pass).
+  - `Template` is also called concurrently in the `concurrent` step; data races are caught by `make backend-race` (T-044 review M1).
+- SoftwareDelivery: `templates/<template>.zh-Hant.names.json` gives names by ID, matched strictly.
+  - A missing or extra name, a blank name or one containing control characters, a name over the IR limit (200 characters) and an unknown member are all internal errors, so that no language mixes two languages; they never become the `InvalidError` that means "the caller's input is wrong" (T-044 review L6).
+  - IDs and all other content are the same in every language.
+- The `CreateModel` request gains an optional `locale` (omitted means `en`). The handler that creates a model (T-012/T-013) passes it in. After creation the name is user data, and switching the language does not change it.
 
-### Lint（`apps/web/eslint.config.mjs`，tests 除外；文字規則對 `**/*.tsx`，dialog 與 title 對 `.ts` 與 `.tsx`）
+### Lint (`apps/web/eslint.config.mjs`, tests excluded; the text rules apply to `**/*.tsx`, dialog and title to `.ts` and `.tsx`)
 
-- `react/jsx-no-literals`：noStrings、ignoreProps；允許空白與少數標點。它只看 JSX 中裸露的字串。
-- `no-restricted-syntax`（T-044 review M3 擴大）：
-  - 「含字母」以 `\p{L}` 判斷（任何文字，含重音字母與 CJK 擴充區）。
-  - 文字 prop：`aria-label`、`aria-description`、`aria-placeholder`、`aria-roledescription`、`aria-valuetext`、`title`、`alt`、`placeholder`、`label`，以及元件常用的 `text`、`message`、`description`、`heading`、`caption`、`tooltip`、`hint`、`helperText`、`errorMessage`。它們的含字母字串值都擋，經最多三層「傳遞」也擋。傳遞指條件 `&&`／`||`／`??`／`?:`、`+` 串接、`as`／`satisfies`／`!`、陣列。`alt=""`（裝飾圖）可以。
-  - Element 或 fragment 的子 expression，經一到三層傳遞後的含字母字串或 template literal；callback 回傳的字串（`xs.map(() => "item")`）也算。
-  - `<input type="submit|button|reset" value="…">` 與 `value={"…"}`；JSX prop 中物件的文字欄位（`problem={{ message: "…" }}`）。
-  - `document.title = …` 與 `window.document.title = …`（用 metadata），`.ts` 也擋。
-- `no-restricted-globals`／`no-restricted-properties`：`alert`、`confirm`、`prompt`（含 `window.`、`globalThis.`、`self.`），改用頁內 dialog；`.ts` 也擋，hook 一樣能開 dialog（T-044 review 2 N3）。
-- 函式呼叫不是傳遞：`t(a ? "k.x" : "k.y")` 的 key、`onClick={() => set("edit")}` 的參數、`m === "edit"` 的比較都不算。
-- `tests/lint-guards.test.ts` 對每類寫法有正反例，mutation 證明每個 selector 都有測試擋。
-- **限制**（需人工 review）：
-  - 在 JSX 外組好的字串（`const s = "Hello"; … {s}`），以及經函式呼叫才進 JSX 的字串（`String("x")`、`label("x")`、`.join("and")`）；
-  - 其他名稱的文字 prop；
-  - 四層以上的傳遞；
-  - 只有符號、沒有字母的文字（`→`、`©`）；
-  - `lib/` 內產生的英文診斷（刻意保留為 technical message）；
-  - `metadata` 物件；
-  - 展開的 attribute（`{...{"aria-label": "Main"}}`）、條件中的物件 prop 文字（`problem={a ? { message: "…" } : x}`）、經變數取得的 `window`（T-044 review 2 N3）。
-- **誤擋**（T-044 review 2 N2）：
-  - 上列文字 prop 的名稱保留給翻譯後的文字。傳 key 或 token 給這些 prop（`message="validation.required"`、`heading="h2"`、`text="sm"`）也會被擋；請改用其他 prop 名稱（`messageKey`、`level`、`size`）。
-  - Callback 規則涵蓋子 expression 中任何呼叫的 arrow 回傳值：`{xs.map((x) => <li className={cx(() => "row")} />)}` 之外，`groupBy(xs, () => "k")` 這類只回傳資料的 callback 也擋；只含資料的 template literal（`` xs.map((x) => `${x}%`) ``）也擋。請把它們移到 JSX 外的變數或函式。
-  - 選擇誤擋而不是放寬：放寬會漏掉 callback 回傳的真正文字。
+- `react/jsx-no-literals`: noStrings, ignoreProps; whitespace and a few punctuation marks are allowed. It only looks at bare strings in JSX.
+- `no-restricted-syntax` (widened by T-044 review M3):
+  - "Contains letters" is judged by `\p{L}` (any script, including accented letters and the CJK extension blocks).
+  - Text props: `aria-label`, `aria-description`, `aria-placeholder`, `aria-roledescription`, `aria-valuetext`, `title`, `alt`, `placeholder`, `label`, and the props components commonly use: `text`, `message`, `description`, `heading`, `caption`, `tooltip`, `hint`, `helperText`, `errorMessage`. String values containing letters are blocked on all of them, also through up to three levels of "passing". Passing means the conditionals `&&`/`||`/`??`/`?:`, `+` concatenation, `as`/`satisfies`/`!`, and arrays. `alt=""` (a decorative image) is allowed.
+  - Child expressions of an element or fragment: a string or template literal containing letters after one to three levels of passing; a string returned by a callback (`xs.map(() => "item")`) also counts.
+  - `<input type="submit|button|reset" value="…">` and `value={"…"}`; text fields of an object in a JSX prop (`problem={{ message: "…" }}`).
+  - `document.title = …` and `window.document.title = …` (use metadata), blocked in `.ts` too.
+- `no-restricted-globals`/`no-restricted-properties`: `alert`, `confirm`, `prompt` (including `window.`, `globalThis.`, `self.`); use an in-page dialog instead. Blocked in `.ts` too, since a hook can open a dialog just as well (T-044 review 2 N3).
+- A function call is not passing: the key in `t(a ? "k.x" : "k.y")`, the argument in `onClick={() => set("edit")}` and the comparison in `m === "edit"` do not count.
+- `tests/lint-guards.test.ts` has positive and negative examples for each kind of code, and mutation shows that every selector is guarded by a test.
+- **Limits** (need human review):
+  - strings built outside JSX (`const s = "Hello"; … {s}`), and strings that reach JSX only through a function call (`String("x")`, `label("x")`, `.join("and")`);
+  - text props with other names;
+  - four or more levels of passing;
+  - text with only symbols and no letters (`→`, `©`);
+  - English diagnostics produced in `lib/` (kept on purpose as technical messages);
+  - the `metadata` object;
+  - spread attributes (`{...{"aria-label": "Main"}}`), text in object props inside a conditional (`problem={a ? { message: "…" } : x}`), and `window` obtained through a variable (T-044 review 2 N3).
+- **False positives** (T-044 review 2 N2):
+  - The names of the text props above are reserved for translated text. Passing a key or a token to these props (`message="validation.required"`, `heading="h2"`, `text="sm"`) is also blocked; use another prop name (`messageKey`, `level`, `size`).
+  - The callback rule covers the return value of an arrow in any call inside a child expression: besides `{xs.map((x) => <li className={cx(() => "row")} />)}`, a callback that only returns data, such as `groupBy(xs, () => "k")`, is also blocked, and so is a template literal that holds only data (`` xs.map((x) => `${x}%`) ``). Move them to a variable or function outside the JSX.
+  - False positives were chosen over loosening: loosening would miss real text returned by callbacks.
 
-### 錯誤與找不到的頁面（T-044 review M2）
+### Error and not-found pages (T-044 review M2)
 
-- `app/not-found.tsx`：任何沒有頁面的網址，以讀者的語言顯示（含 `<title>`）。Next.js 內建的 404 頁只有英文，且會標成 `lang="zh-Hant"`。
-- `app/error.tsx`：route 渲染失敗時，在 root layout 內以 catalog 文字顯示，可重試；有 server 的 `digest` 就顯示為參考編號，不顯示 error message（可能含內部資訊）。
-- `app/global-error.tsx`：root layout 本身失敗時取代整份文件。它沒有 server 的 locale，先以英文渲染，瀏覽器讀到 cookie 後換成記住的語言（`useRememberedLocale`）。
+- `app/not-found.tsx`: any URL without a page is shown in the reader's language (including `<title>`). Next.js's built-in 404 page is English only and would be marked `lang="zh-Hant"`.
+- `app/error.tsx`: when a route fails to render, it shows catalog text inside the root layout, with a retry; when the server provides a `digest`, it is shown as a reference number; the error message is not shown (it may contain internal information).
+- `app/global-error.tsx`: replaces the whole document when the root layout itself fails. It has no server locale, so it first renders in English, and switches to the remembered language once the browser reads the cookie (`useRememberedLocale`).
 
-### 不在本 ADR
+### Not in this ADR
 
-- Pack 的 `NodeCatalog`／`ResourceCatalog` 的 `Label`／`Description` 目前是英文 pack 資料。T-015 palette 應依 kind 由 UI catalog 顯示兩語（follow-up）。
-- AI 文字依使用者語言輸出：T-025／T-030，受 D-018 與資料政策 gate。
+- The `Label`/`Description` of a pack's `NodeCatalog`/`ResourceCatalog` are currently English pack data. The T-015 palette should show both languages by kind from the UI catalog (follow-up).
+- AI text in the user's language: T-025/T-030, gated by D-018 and the data policy.
 
 ## Consequences
 
-- 沒有新依賴與 license 變化；翻譯與格式化函式約 70 行，由 unit 與 mutation tests 保護。
-- zh-Hant 文案由 agent 撰寫，沒有母語審稿。正式 release 前建議 owner 或母語者審閱 `messages/zh-Hant.ts`。
-- 所有頁面 dynamic rendering；部署與 CDN 快取（T-039）須以 cookie 區分，或不快取 HTML。
-- TEST-031 只由 T-044 完成 catalog、lint、切換與保存、Problem／validation code、Intl 部分。以下由後續任務完成：
-  - 「不需重新登入」：T-043，屆時登入 session 才存在；
-  - AI prose：T-025／T-030；
-  - E2E 主流程兩語各跑一次：T-040。
+- No new dependency and no license change; the translation and formatting functions are about 70 lines, protected by unit and mutation tests.
+- The zh-Hant copy was written by the agent without a native-speaker review. Before a formal release, the owner or a native speaker should review `messages/zh-Hant.ts`.
+- All pages use dynamic rendering; deployment and CDN caching (T-039) must vary on the cookie, or not cache HTML.
+- T-044 completes only the catalog, lint, switching and persistence, Problem/validation code and Intl parts of TEST-031. The rest is completed by later tasks:
+  - "no new sign-in needed": T-043, when the sign-in session exists;
+  - AI prose: T-025/T-030;
+  - the main E2E flow run once in each language: T-040.
