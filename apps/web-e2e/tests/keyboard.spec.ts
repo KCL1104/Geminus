@@ -25,7 +25,8 @@ test("the shell: skip link first, then the rail's brand and settings; the skip l
   await tab(page);
   await expect(focused(page)).toHaveAccessibleName("Settings");
   await tab(page);
-  await expect(focused(page)).toHaveText("Go to projects");
+  // H-048: then the landing's one action, the sign-in.
+  await expect(focused(page)).toHaveText("Sign in to try it");
   for (let i = 0; i < 3; i++) await page.keyboard.press("Shift+Tab");
   await expect(focused(page)).toHaveText("Skip to main content");
   await page.keyboard.press("Enter");
@@ -46,7 +47,7 @@ test("the language changes from the keyboard, only on a choice, and focus stays 
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveAttribute("lang", "zh-Hant");
-  await expect(page.getByRole("link", { name: "前往專案" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "登入試用" })).toBeVisible();
   await expect(focused(page)).toHaveText("繁體中文");
   await expect(focused(page)).toHaveAttribute("aria-checked", "true");
   expect(await focusIsVisible(page)).toBe(true);

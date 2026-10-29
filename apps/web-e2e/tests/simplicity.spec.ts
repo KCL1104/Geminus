@@ -9,10 +9,12 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { locales, open, routes, signedInViews, signInAs } from "./helpers";
 
-// Kept until the owner decides (T-045 re-skin report): the start page's
-// "Go to projects" goes where the strip's "Projects" goes; T-044's tests
-// assert it (keyboard.spec.ts, apps/web/tests/layout.test.tsx).
-const askedAbout: Record<string, string[]> = { "/": ["/projects"] };
+// Kept until the owner decides (T-045 re-skin report; H-028 kept it): the
+// start page's link to the projects goes where the rail's brand goes. Since
+// the landing (H-048) that is its action only with a session ("Open your
+// projects", landing.spec.ts); signed out, as the routes render here, its
+// action is the sign-in and nothing repeats.
+const askedAbout: Record<string, string[]> = {};
 // The 2D editor (T-015) blocks Save draft while nothing is unsaved and
 // Publish while the draft has errors or unsaved edits: each stays focusable
 // as aria-disabled with its reason on screen beside it (DESIGN.md Buttons,

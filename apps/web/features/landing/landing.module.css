@@ -1,0 +1,364 @@
+/* The landing at / (H-048): the app's own system (DESIGN.md, H-041) on one
+   page for a first visit. The record of one what-if is the page's spine:
+   each step names who acts, beside the product's real screen. Five type
+   sizes, tokens only, hairlines and the card shadow; the accent marks the
+   AI (an actor pill), Ink frames Geminus's own check, as on the proposal
+   page. Sections are divided by a hairline with the split space on either
+   side. */
+.landing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-split);
+  max-width: var(--gm-content-width);
+  padding-block-end: var(--gm-space-split);
+}
+
+.section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-xl);
+  padding-block-start: var(--gm-space-split);
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.section > h2 {
+  margin: 0;
+  font-size: var(--gm-font-size-headline);
+  line-height: var(--gm-line-height-headline);
+  letter-spacing: -0.015em;
+}
+
+.intro {
+  max-width: 40rem;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+/* The first view: the promise, how, the one action, then the results as they are on screen. */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-2xl);
+  padding-block-start: var(--gm-space-xl);
+}
+
+.heroText {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-gutter);
+  max-width: 44rem;
+}
+
+.heroText h1 {
+  max-width: 24em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.heroText .intro {
+  max-width: 42rem;
+}
+
+.act {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin-block-start: var(--gm-space-md);
+}
+
+/* The page's one primary action (H-027), drawn as DESIGN.md's primary key: the ink, inverted. */
+.primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-sm);
+  min-height: var(--gm-control-height);
+  padding: 0 var(--gm-space-gutter);
+  border: 1px solid var(--gm-color-ink);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-ink);
+  box-shadow: var(--gm-shadow-control);
+  color: var(--gm-color-on-ink);
+  font-weight: var(--gm-font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--gm-motion), border-color var(--gm-motion);
+}
+
+.primary:hover {
+  border-color: var(--gm-color-ink-2);
+  background: var(--gm-color-ink-2);
+  color: var(--gm-color-on-ink);
+}
+
+.primary svg {
+  flex: none;
+}
+
+.note {
+  margin: 0;
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* A product screen: a picture of the app floating over the page (the overlay's shadow, DESIGN.md
+   Elevation), so it does not read as part of this page; its caption under it. */
+.shot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-md);
+  min-width: 0;
+  margin: 0;
+}
+
+.frame {
+  display: block;
+  overflow: hidden;
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-ground);
+  box-shadow: var(--gm-shadow-overlay);
+}
+
+.frame img {
+  width: 100%;
+  height: auto;
+}
+
+/* One picture per theme, shown as the page's tokens are (tokens.css): light, unless dark is chosen or the system's is dark. */
+.light {
+  display: block;
+}
+
+.dark {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme="light"])) .light {
+    display: none;
+  }
+
+  :global(:root:not([data-theme="light"])) .dark {
+    display: block;
+  }
+}
+
+:global(:root[data-theme="dark"]) .light {
+  display: none;
+}
+
+:global(:root[data-theme="dark"]) .dark {
+  display: block;
+}
+
+.shot figcaption {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* The loop, in order: a number, the step, who acts; the screen it happens on below it. */
+.steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-split);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-xl);
+  counter-increment: step;
+}
+
+/* A tall screen stands beside its step. */
+.step[data-layout="beside"] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  align-items: start;
+}
+
+.stepText {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: var(--gm-space-lg);
+  max-width: 44rem;
+}
+
+.stepText::before {
+  content: counter(step);
+  display: grid;
+  grid-row: span 3;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.stepText h3 {
+  margin: 0 0 var(--gm-space-sm);
+  padding-block-start: var(--gm-space-xs);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.stepText p {
+  margin: 0 0 var(--gm-space-lg);
+  color: var(--gm-color-ink-2);
+}
+
+/* Who acts, as pills like the page header's provenance (DESIGN.md Layout). */
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-sm);
+  min-height: 26px;
+  padding: 0 var(--gm-space-cell);
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-ink);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+  line-height: var(--gm-line-height-label);
+}
+
+/* A Meta model: the accent's edge, which marks the AI everywhere, and its provider in tertiary ink. */
+.actor[data-kind="ai"] {
+  border-color: var(--gm-color-accent);
+}
+
+/* Geminus's own check: the ink frame of "Checked by Geminus" on the proposal page. */
+.actor[data-kind="server"] {
+  border-color: var(--gm-color-ink);
+}
+
+.provider {
+  color: var(--gm-color-ink-3);
+  font-weight: var(--gm-font-weight-regular);
+}
+
+/* Two columns of terms and what they mean, divided by hairlines, as the run settings are. */
+.facts {
+  display: grid;
+  grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr);
+  max-width: 52rem;
+  margin: 0;
+}
+
+/* A term and what it means: two cells of the grid. */
+.pair {
+  display: contents;
+}
+
+.facts dt,
+.facts dd {
+  margin: 0;
+  padding: var(--gm-space-lg) 0;
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.facts dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--gm-space-sm);
+  padding-inline-end: var(--gm-space-xl);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.facts dd {
+  color: var(--gm-color-ink-2);
+}
+
+.facts dd p {
+  margin: 0;
+}
+
+/* The industries the templates cover, in as many columns as fit. */
+.industries {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0 var(--gm-space-xl);
+  max-width: 52rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.industries li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gm-space-xs);
+  padding: var(--gm-space-lg) 0;
+  border-top: 1px solid var(--gm-color-rule);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.industries li span {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-regular);
+  line-height: var(--gm-line-height-label);
+}
+
+.industries li:first-child {
+  grid-column: 1 / -1;
+}
+
+.close {
+  max-width: 40rem;
+  margin: 0;
+  padding-block-start: var(--gm-space-xl);
+  border-top: 1px solid var(--gm-color-rule);
+  color: var(--gm-color-ink-3);
+}
+
+/* A phone (DESIGN.md Layout): one column; a tall screen follows its step. */
+@media (max-width: 720px) {
+  .landing {
+    gap: var(--gm-space-2xl);
+  }
+
+  .section {
+    padding-block-start: var(--gm-space-2xl);
+  }
+
+  .hero {
+    gap: var(--gm-space-xl);
+    padding-block-start: 0;
+  }
+
+  .step[data-layout="beside"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts dd {
+    padding-block-start: 0;
+    border-top: 0;
+  }
+}

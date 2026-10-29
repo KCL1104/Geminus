@@ -55,7 +55,9 @@ describe("server shell", () => {
     expect(rail(out)).toContain('aria-label="Settings"');
     expect(out).toMatch(/<a href="#main"[^>]*>Skip to main content<\/a>/);
     expect(out).toMatch(/<main id="main" tabindex="-1"/);
-    expect(out).toContain("Go to projects");
+    // H-048: the start page is the landing; signed out, its action is the sign-in.
+    expect(out).toContain(en["landing.title"].replace(/'/g, "&#x27;"));
+    expect(out).toContain(`>${en["landing.signIn"]}</a>`);
     expect(await generateMetadata()).toEqual({ title: "Geminus" });
   });
 
@@ -67,8 +69,10 @@ describe("server shell", () => {
     expect(rail(out)).toContain('aria-label="專案"');
     expect(rail(out)).toContain('aria-label="設定"');
     expect(out).toMatch(/<a href="#main"[^>]*>跳到主要內容<\/a>/);
-    expect(out).toContain("前往專案");
-    expect(out).not.toContain("Go to projects");
+    expect(out).toContain("先在工廠的數位分身上試一個改變，再動真正的產線。");
+    expect(out).toContain(">登入試用</a>");
+    expect(out).not.toContain(en["landing.title"].replace(/'/g, "&#x27;"));
+    expect(out).not.toContain(en["landing.signIn"]);
   });
 
   it.each(["zh-hant", "zh-Hans", "zh", "EN", "", "zh-Hant; Path=/"])("treats %j as no choice", async (value) => {

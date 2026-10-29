@@ -160,9 +160,18 @@ describe("no control that does nothing (H-027)", () => {
 
 describe("no two controls for one action in a view (H-027)", () => {
   // Kept until the owner decides (report, T-045 re-skin; H-028 kept it): the
-  // start page's "Go to projects" goes where the strip's "Projects" goes.
-  // Tests of T-044 assert it (layout.test.tsx, apps/web-e2e keyboard.spec.ts).
-  const askedAbout = new Map([["/", ["link to /projects"]]]);
+  // start page's link to the projects goes where the rail's brand goes.
+  // Since the landing (H-048) that link is its action only with a session
+  // ("Open your projects", checked below); signed out, its action is the
+  // sign-in, so the start page repeats nothing.
+  const askedAbout = new Map<string, string[]>();
+  const signedInHome: Auth = {
+    session: { organizationId: ORG }, role: "editor",
+    account: {
+      bootstrap: { state: "ready", organizations: [{ id: ORG, name: "Line A", role: "editor" }], organization: { id: ORG, name: "Line A", role: "editor" }, truncated: false },
+      choose: () => {}, retry: () => {}, signOut: async () => null,
+    },
+  };
 
   it("finds a repeated name or destination, so the rule can fail", () => {
     const twice = (role: Control["role"], name: string, href: string | null = null) => [{ role, name, href }, { role, name, href }];
@@ -181,6 +190,17 @@ describe("no two controls for one action in a view (H-027)", () => {
         jar.locale = locale;
         const doc = await shell(locale, await page());
         expect(duplicates(controls(doc))).toEqual(askedAbout.get(route) ?? []);
+      });
+
+      it("holds on / with a session but for the pair the owner kept (H-028): Open your projects goes where the rail's brand goes", async () => {
+        const { Landing } = await import("../features/landing/landing");
+        const { createTranslator } = await import("../lib/i18n/translate");
+        const el = await mount(<AuthProvider value={signedInHome}><Landing t={createTranslator(locale)} /></AuthProvider>, locale);
+        const c = await view(locale, el);
+        expect(c.filter((x) => x.href === "/projects").map((x) => x.name)).toEqual([catalogs[locale]["nav.projects"], catalogs[locale]["landing.openProjects"]]);
+        expect(duplicates(c)).toEqual(["link to /projects"]);
+        expect(primaries(el)).toBe(1);
+        expect(disabled(el)).toBe(0);
       });
 
       it.each(Object.entries(draftStates()))("holds for a draft that is %s, inside the app shell", async (state, session) => {
