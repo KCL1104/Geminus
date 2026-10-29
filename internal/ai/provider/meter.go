@@ -48,12 +48,15 @@ import (
 //     A settlement that fails leaves the reservation counted at its bound.
 //
 // A research call (H-046 (2)) is one attempt (ResearchMaxRetries) and its
-// bound also holds the web search steps the backend's Quote bounds
+// reservation also holds the web search steps the backend's Quote names
 // (MaxToolCalls), each at the model's search price (spend.SearchPriceOf);
 // its settlement adds every step the answer lists at that price. Meta
-// documents no bound on its search loop, so this bound is the backend's
-// assumption (internal/ai/provider/meta's Quote; docs/AI_SPEC.md §2), and a
-// call above it is recorded at what it cost as any other.
+// documents no bound on its search loop, and the loop's usage is summed over
+// its steps, so a research reservation is NOT a ceiling: one call can cost
+// more than it and more than a daily cap, and the only hard limit is the
+// attempt's timeout. A call above its reservation is recorded at what it
+// cost (SpendOverReservation), and the caps then refuse later calls
+// (internal/ai/provider/meta's Quote; docs/AI_SPEC.md §2).
 //
 // Only 401, 402 and 403 make the adapter fail over (D-018), and only while
 // every attempt on the credential was answered with an error status, which

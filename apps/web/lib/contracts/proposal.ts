@@ -47,6 +47,6 @@ export type Proposal = {
     content_hash: Hash;
   };
   generated_by?: GeneratedBy;
-  /** H-046 (2): the web pages the AI said it relied on, kept by the server only when this call opened them (common.schema.json#/$defs/WebSource), in the answer's order, at most 20. Present only with generated_by.web_search, and only in the states that keep what the provider wrote (needs_input, ready, approved, rejected, conflicted): never while generating, for an invalid or a failed proposal. */
+  /** H-046 (2): the web pages the AI said it relied on, kept by the server only when this call asked its search tool to open them (common.schema.json#/$defs/WebSource: that a page loaded is not known), in the answer's order, at most 20. Present only with generated_by.web_search, and only in the states that keep what the provider wrote (needs_input, ready, approved, rejected, conflicted): never while generating, for an invalid or a failed proposal. */
   sources?: WebSource[];
 };

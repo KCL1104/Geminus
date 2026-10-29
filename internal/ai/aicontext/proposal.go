@@ -53,6 +53,37 @@ type ProposalInput struct {
 	Research bool
 }
 
+// markers are the request's own identifiers a research call's steps and
+// sources are checked for (provider.ProposalContext.Markers, H-046 (2)):
+// the organization's, the model's, the base version's and the proposal's
+// IDs, every ID of the pool, and the model's entity IDs that look like
+// identifiers rather than words (with a '_' or a digit, at least
+// provider.MinMarker bytes), in a fixed order, once each. Never sent.
+func markers(in ProposalInput) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(s string) {
+		if len(s) >= provider.MinMarker && !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range []string{in.Scope.OrganizationID, in.Scope.ModelID, in.Base.VersionID, in.Pool.ProposalID} {
+		add(s)
+	}
+	for _, k := range idpool.Kinds {
+		for _, id := range in.Pool.IDs.IDs(k) {
+			add(id)
+		}
+	}
+	for _, id := range modelIDs(in.Base.IR) {
+		if strings.ContainsAny(id, "_0123456789") {
+			add(id)
+		}
+	}
+	return out
+}
+
 func modeRules(mode provider.Mode) string {
 	if mode == provider.ModeScenario {
 		return "- SCENARIO_PATCH_ALLOWLIST (D-021, D-057): a scenario patch only replaces existing resource capacities, arrival, service and delay distributions " +
@@ -435,7 +466,11 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 			}
 		}
 		if fits(p, in.Budget) {
-			return provider.ProposalContext{OrganizationID: in.Scope.OrganizationID, Mode: in.Mode, Prompt: p}, nil
+			pc := provider.ProposalContext{OrganizationID: in.Scope.OrganizationID, Mode: in.Mode, Prompt: p}
+			if in.Research {
+				pc.Markers = markers(in)
+			}
+			return pc, nil
 		}
 	}
 	return provider.ProposalContext{}, fail(TooLarge, "")

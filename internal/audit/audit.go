@@ -148,6 +148,9 @@ var (
 		// never a query, a page or a URL.
 		"web_search_queries": {shape: count}, "web_search_calls": {shape: count}, "web_search_pages": {shape: count},
 		"sources_kept": {shape: count}, "sources_dropped": {shape: count},
+		// Review round 1, M2: the steps that carried one of the request's
+		// own identifiers (provider.StepsWithIDs), a count only.
+		"web_search_steps_with_ids": {shape: count},
 	}
 	// photoCall is what the generator records of a photo proposal's image
 	// and segmentation (T-056, on T-055's provider.SegmentMetadata): the

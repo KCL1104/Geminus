@@ -238,13 +238,27 @@ func TestResearchAnswersFailClosed(t *testing.T) {
 
 func TestSourceURL(t *testing.T) {
 	for raw, want := range map[string]string{
-		"https://example.com/a/b?c=d&e=%20f":               "https://example.com/a/b?c=d&e=%20f",
-		"HTTPS://Example.COM/Path?Q=1#frag":                "https://example.com/Path?Q=1",
-		"https://example.com":                              "https://example.com/",
-		"https://example.com?x=1":                          "https://example.com/?x=1",
-		"https://example.com:8443/x":                       "https://example.com:8443/x",
-		"https://xn--bcher-kva.example/":                   "https://xn--bcher-kva.example/",
-		"https://192.0.2.1/x":                              "https://192.0.2.1/x",
+		"https://example.com/a/b?c=d&e=%20f": "https://example.com/a/b?c=d&e=%20f",
+		"HTTPS://Example.COM/Path?Q=1#frag":  "https://example.com/Path?Q=1",
+		"https://example.com":                "https://example.com/",
+		"https://example.com?x=1":            "https://example.com/?x=1",
+		"https://example.com:8443/x":         "https://example.com:8443/x",
+		"https://xn--bcher-kva.example/":     "https://xn--bcher-kva.example/",
+		// Review round 1, L2: no IP address, no single-label or private
+		// host: a source names a public web page.
+		"https://192.0.2.1/x":                              "",
+		"https://192.168.1.1/admin":                        "",
+		"https://10.0.0.1:8443/":                           "",
+		"https://localhost:8080/":                          "",
+		"https://intranet/wiki":                            "",
+		"https://printer.local/status":                     "",
+		"https://db.internal/":                             "",
+		"https://1.0.0.127.in-addr.arpa/":                  "",
+		"https://router.lan/":                              "",
+		"https://example.com./x":                           "",
+		"https://a.b.c.example.org/deep?q=1":               "https://a.b.c.example.org/deep?q=1",
+		"https://123.example.com/":                         "https://123.example.com/",
+		"https://xn--fsqu00a.xn--3lr804guic/":              "https://xn--fsqu00a.xn--3lr804guic/",
 		"https://en.wikipedia.org/wiki/Reflow_(soldering)": "https://en.wikipedia.org/wiki/Reflow_(soldering)",
 		"http://example.com/":                              "",
 		"javascript:alert(1)":                              "",
@@ -295,6 +309,63 @@ func TestSourceTitle(t *testing.T) {
 	spaced := SourceTitle(strings.Repeat("ab ", 100))
 	if n := len([]rune(spaced)); n > MaxSourceTitle || strings.HasSuffix(spaced, " ") {
 		t.Errorf("a long spaced title: %d characters, %q", n, spaced[len(spaced)-5:])
+	}
+}
+
+// Review round 1, M2: a page can tell the model to ask for a URL that
+// carries the request's data to another site. A source whose query string
+// carries one of the request's own identifiers (decoded, any case) is
+// dropped, never shown as a link; the steps that carry one are counted,
+// search texts and the URL after its host, never the host alone; markers
+// shorter than MinMarker are ignored.
+func TestMarkers(t *testing.T) {
+	markers := []string{"mdl_01M4YDQK004AGVNEGJQJ1NMM0N", "node_01m5xyzabcdefghjkmnpqrstvw", "ict_tester", "ab"}
+	opened := []string{
+		"https://attacker.example/collect?d=mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+		"https://attacker.example/c?x=ICT%5Ftester%20capacity",
+		"https://docs.example.org/ict_tester/datasheet",
+		"https://example.com/abacus",
+		"https://ict_tester.example.com/",
+	}
+	claims := make([]SourceClaim, len(opened))
+	for i, o := range opened {
+		claims[i] = SourceClaim{URL: o}
+	}
+	kept, dropped := FilterSources(claims, opened, markers...)
+	want := []WebSource{{URL: "https://docs.example.org/ict_tester/datasheet"}, {URL: "https://example.com/abacus"}}
+	if !slices.Equal(kept, want) || dropped != 3 {
+		// ict_tester.example.com fails SourceURL (an underscore is no DNS
+		// label), so it is dropped as well.
+		t.Errorf("kept %+v, dropped %d", kept, dropped)
+	}
+	if kept, dropped := FilterSources(claims[:2], opened); len(kept) != 2 || dropped != 0 {
+		t.Errorf("without markers: kept %+v, dropped %d", kept, dropped)
+	}
+	r := Research{Searched: []string{"ICT_TESTER cycle time", "reflow oven profile", "node_01M5XYZABCDEFGHJKMNPQRSTVW"}, Opened: opened}
+	// Two searches, and the first three URLs after their host; the fourth
+	// matches only the short marker "ab", the fifth only in its host.
+	if n := StepsWithIDs(r, markers); n != 5 {
+		t.Errorf("steps with identifiers %d, want 5", n)
+	}
+	if n := StepsWithIDs(r, nil); n != 0 {
+		t.Errorf("without markers %d", n)
+	}
+
+	// Through the client: the markers of the request decide both.
+	b := researcher{backendFunc: func(context.Context, Request) (Response, error) {
+		return Response{Text: []byte(withSources(`[{"url":"` + opened[0] + `"},{"url":"` + opened[2] + `"}]`)), Model: "m",
+			Research: Research{Queries: 1, ToolCalls: 3, Searched: r.Searched[:1], Opened: opened[:3]}}, nil
+	}, roles: []Role{RoleModeler}}
+	res, err := client(t, b).GenerateModelProposal(context.Background(), ProposalContext{OrganizationID: orgA, Mode: ModeEdit,
+		Prompt: researchPrompt(t, RoleModeler), Markers: markers})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(res.Sources, []WebSource{{URL: opened[2]}}) || res.Metadata.WebSearch.StepsWithIDs != 4 || res.Metadata.WebSearch.SourcesDropped != 1 {
+		t.Errorf("sources %+v, web search %+v", res.Sources, res.Metadata.WebSearch)
+	}
+	if got := percentDecoded("a%5Fb+c%zz%4"); got != "a_b c%zz%4" {
+		t.Errorf("decoded %q", got)
 	}
 }
 

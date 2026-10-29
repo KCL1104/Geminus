@@ -230,14 +230,7 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if p, err = store.Insert(ctx, tx, p); err != nil {
 			return err
 		}
-		// The job carries the person's choice of research (H-046 (2)): the
-		// frozen input every attempt reads; absent for a proposal without.
-		payload := map[string]any{"proposal_id": p.ID, "request_id": requestID}
-		if req.Research {
-			payload["research"] = true
-		}
-		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.ModelProposal,
-			Resource: jobs.Resource{AIProposalID: p.ID}, Payload: payload}, s.policy()); err != nil {
+		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research), s.policy()); err != nil {
 			return err
 		}
 		// IDs, the mode, the language and a count: never the intent
@@ -263,6 +256,26 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		return idempotency.Complete(ctx, tx, k, idempotency.Response{Status: status, Body: out})
 	})
 	return status, out, err
+}
+
+// ResearchJobAttempts is the attempts of a research proposal's job (H-046
+// (2), review round 1 M1): one. A research attempt may be billed for a
+// whole server-side search loop whose cost nothing bounds but the attempt's
+// timeout (provider.ResearchMaxRetries), so a failed one is never run
+// again on its own: the proposal fails, and the person asks again.
+const ResearchJobAttempts = 1
+
+// proposalJob is the model_proposal job of proposal id: its frozen input
+// (the proposal and the request; the person's choice of research, absent
+// for a proposal without it) and, for research, a single attempt.
+func proposalJob(org, id, requestID string, research bool) jobs.New {
+	j := jobs.New{ID: ids.New("job"), OrganizationID: org, Type: jobs.ModelProposal, Resource: jobs.Resource{AIProposalID: id},
+		Payload: map[string]any{"proposal_id": id, "request_id": requestID}}
+	if research {
+		j.Payload["research"] = true
+		j.MaxAttempts = ResearchJobAttempts
+	}
+	return j
 }
 
 // prepare checks req against the organization's model and version and

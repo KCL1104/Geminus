@@ -795,9 +795,11 @@ paths:
         analyst or the importer), decided from the settings, never a key; otherwise 503 AI_PROVIDER_NOT_CONFIGURED (a
         provider without web search, or AI off) or AI_POLICY_NOT_APPROVED (a live provider that is off or not approved
         for research), details[0].code AI_RESEARCH_UNSUPPORTED at /research, and nothing is stored. The job carries the
-        choice, the audit event says research (a flag, never the intent), and the answer is reviewed, risk-scored and
-        approved exactly as any other: the pages it read are shown as sources (getProposal), kept only when the call
-        itself opened them, and change neither the validation nor the risk.'
+        choice and has a single attempt (a research call that fails is not run again), the audit event says research (a
+        flag, never the intent), and the answer is reviewed, risk-scored and approved exactly as any other: the pages it
+        asked its search tool to open are shown as sources (getProposal), kept only when the call itself asked for them
+        (the provider returns no tool result, so that a page loaded is not known) and never with one of the request''s
+        identifiers in their query string, and change neither the validation nor the risk.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1137,7 +1139,8 @@ paths:
         is an answer. H-046 (2): a proposal asked for with research has generated_by.web_search (how many web searches
         the call made, and how many sources the answer named that the server did not keep) and, in the states that
         keep what the provider wrote (needs_input, ready, approved, rejected, conflicted), sources: the pages the AI
-        said it relied on that the call itself opened (https only, at most 20, titles cleaned), untrusted text that
+        said it relied on that the call itself asked its search tool to open (https only, at most 20, titles cleaned; that
+        a page loaded is not known), untrusted text that
         the server checks nothing of; never for an invalid or a failed proposal.'
       tags:
       - Proposals
@@ -1210,7 +1213,7 @@ paths:
                       issues: []
                     dataset_bindings: []
                 ready_researched:
-                  summary: Asked for with web research (H-046 (2)); the server kept the two pages the call opened and dropped one it did not
+                  summary: Asked for with web research (H-046 (2)); the server kept the two pages the call asked to open and dropped one it did not
                   value:
                     proposal_id: aip_01M4YDQK00ADN261CME3WV5HZC
                     organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH

@@ -118,14 +118,34 @@ const sources = (el: Element) => el.querySelector('[data-section="sources"]');
 const writtenBy = (el: Element, label: string) => [...el.querySelectorAll("header dl > div")].map((d) => text(d)).find((d) => d.startsWith(label));
 
 describe("the opt-in on the model page", () => {
-  it.each(["en", "zh-Hant"] as const)("is off by default, says in %s that the description is used for a web search, and names that line as its description", async (locale) => {
+  it.each(["en", "zh-Hant"] as const)("is off by default, says in %s that the description is used for a web search and that a photo is never researched, and names both lines as its description", async (locale) => {
     const t = createTranslator(locale);
     const { el } = await modelPage({ locale });
+    // The sample line's pack reads photos, so the photo button is offered beside Send.
+    expect(el.querySelector("[data-photo]")).not.toBeNull();
     const box = optIn(ask(el), t("ask.research"));
     expect(box.checked).toBe(false);
     const described = (box.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
-    expect(described.map((id) => text(document.getElementById(id)))).toEqual([t("ask.researchHint")]);
+    expect(described.map((id) => text(document.getElementById(id)))).toEqual([t("ask.researchHint"), t("ask.researchHint.photo")]);
     expect(await violations()).toEqual([]);
+  });
+
+  it("never researches a photo, ticked or not, and says so (review round 1, L3)", async () => {
+    const { el, api, created } = await modelPage();
+    expect(text(ask(el).querySelector("[data-research-photo]"))).toBe(en("ask.researchHint.photo"));
+    await tick(optIn(ask(el), en("ask.research")));
+    const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])], "line.png", { type: "image/png", lastModified: 1_700_000_000_000 });
+    await act(async () => {
+      Object.defineProperty(chooser, "files", { configurable: true, value: [png] });
+      chooser.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    await waitFor(() => created.length === 1, "the photo proposal");
+    const uploads = api.calls.filter((c) => c.method === "POST" && c.path.endsWith("/ai-proposals/image"));
+    expect(uploads).toHaveLength(1);
+    expect((uploads[0]!.body as { parts: string[] }).parts).toEqual(["base_version_id", "output_locale", "file"]);
+    expect(creates(api)).toHaveLength(0);
   });
 
   it("sends no research member unless ticked, research: true when ticked, and takes a new key for the other request", async () => {
@@ -203,6 +223,13 @@ describe("a researched proposal's page", () => {
     const el = await open({ ...researched, generated_by: { provider: "meta", model: "muse-spark-1.3", web_search: { queries, sources_dropped: 0 } } }, locale);
     expect(writtenBy(el, t("ai.writtenBy"))).toBe(`${t("ai.writtenBy")}${want}`);
     unmountAll();
+  });
+
+  it("says the AI asked to open the pages, not that it read them (review round 1, M3)", () => {
+    expect(en("proposal.sources")).toBe("Pages the AI asked to open");
+    expect(en("proposal.sourcesHint")).toContain("cannot confirm they loaded");
+    expect(zh("proposal.sourcesHint")).toContain("無法確認網頁是否成功載入");
+    for (const key of ["proposal.sources", "proposal.sourcesHint"] as const) expect(en(key)).not.toMatch(/\bread\b|\bopened\b/);
   });
 
   it("reads the copy the owner's way in English first", () => {

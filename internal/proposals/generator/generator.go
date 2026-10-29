@@ -186,6 +186,15 @@ func providerFailure(err error) error {
 	return failure("AI_"+strings.ToUpper(string(pe.Code)), message, pe.Retryable())
 }
 
+// final is err with its job failure made not retryable.
+func final(err error) error {
+	var f *jobs.Failure
+	if errors.As(err, &f) && f.Retryable {
+		return &jobs.Failure{Code: f.Code, Message: f.Message, Retryable: false}
+	}
+	return err
+}
+
 // payload is the job's reference (internal/proposals Create). Research is
 // the person's choice of web research (H-046 (2)): absent is false.
 type payload struct {
@@ -416,6 +425,12 @@ func (h *Handler) generateAsked(ctx context.Context, org string, st started, att
 			// and nothing of what it says (AI_SPEC §4).
 			return generation{outcome: review.InvalidOutput(pe.Issues), meta: &meta, manifest: manifest}, nil
 		}
+		if research {
+			// A research attempt is never run again (its job has one
+			// attempt, internal/proposals ResearchJobAttempts): its failure is
+			// final whatever the code says (review round 1, M1).
+			return generation{meta: &meta}, final(providerFailure(err))
+		}
 		return generation{meta: &meta}, providerFailure(err)
 	}
 	// The review never sees the sources (res.Output has none): what a page
@@ -550,6 +565,13 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 		h.cfg.Log.WarnContext(ctx, "a live AI call cost more than its spend reservation; recorded at what it cost",
 			"spend_reservation_id", m.SpendReservation, "cost_nano_usd", m.CostNanoUSD, "spend_over_reservation", true)
 	}
+	// H-046 (2), review round 1 M2: a research call's step carried one of the
+	// request's own identifiers (model data may have left in a query or a
+	// URL the provider fetched); the count, never the step.
+	if w := m.WebSearch; w != nil && w.StepsWithIDs > 0 {
+		h.cfg.Log.WarnContext(ctx, "a research call's web search carried an identifier of the request", "role", string(m.Role),
+			"web_search_steps_with_ids", w.StepsWithIDs)
+	}
 	if m.InferenceGeo == spend.GeoUnknown {
 		h.cfg.Log.WarnContext(ctx, "a live AI answer named no inference geo this build prices; priced at the dearest",
 			"spend_reservation_id", m.SpendReservation, "inference_geo", m.InferenceGeo)
@@ -586,6 +608,7 @@ func auditMeta(m provider.Metadata) map[string]any {
 	if w := m.WebSearch; w != nil {
 		out["web_search_queries"], out["web_search_calls"], out["web_search_pages"] = w.Queries, w.ToolCalls, w.PagesOpened
 		out["sources_kept"], out["sources_dropped"] = w.SourcesKept, w.SourcesDropped
+		out["web_search_steps_with_ids"] = w.StepsWithIDs
 	}
 	return out
 }

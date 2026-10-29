@@ -61,6 +61,13 @@ type ProposalContext struct {
 	Mode           Mode
 	Prompt         Prompt
 	Attribution    Attribution
+	// Markers are the request's own identifiers (the organization's, the
+	// model's, its version's and the proposal's IDs, the ID pool, the
+	// model's distinctive entity IDs; internal/ai/aicontext) for a research
+	// call (H-046 (2)): never sent. A source whose query string carries one
+	// is dropped, and the steps that carry one are counted
+	// (WebSearch.StepsWithIDs).
+	Markers []string
 }
 
 // MappingContext is a sanitized mapping suggestion request.
@@ -273,7 +280,7 @@ func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 // call runs one checked request and returns the schema-valid answer and,
 // for a research call, what its web search did. A metered client also
 // reserves before the call and settles after it (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, out any) (jsontext.Value, Metadata, Research, error) {
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, out any) (jsontext.Value, Metadata, Research, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Metadata{}, Research{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -346,7 +353,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	meta.Usage, meta.ProviderRequestID = resp.Usage, resp.ProviderRequestID
 	if p.Research {
 		meta.WebSearch = &WebSearch{Queries: max(0, resp.Research.Queries), ToolCalls: max(0, resp.Research.ToolCalls),
-			PagesOpened: pagesOpened(resp.Research.Opened)}
+			PagesOpened: pagesOpened(resp.Research.Opened), StepsWithIDs: StepsWithIDs(resp.Research, markers)}
 	}
 	switch {
 	case ctx.Err() != nil:
@@ -403,14 +410,14 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 // answer names.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, &out)
+	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, &out)
 	if err != nil {
 		return ProposalResult{Metadata: meta}, err
 	}
 	var kept []WebSource
 	if meta.WebSearch != nil {
 		var dropped int
-		kept, dropped = FilterSources(out.Sources, research.Opened)
+		kept, dropped = FilterSources(out.Sources, research.Opened, in.Markers...)
 		meta.WebSearch.SourcesKept, meta.WebSearch.SourcesDropped = len(kept), dropped
 	}
 	out.Sources = nil
@@ -420,7 +427,7 @@ func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return MappingResult{Metadata: meta}, err
 	}
@@ -430,7 +437,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return AnalysisResult{Metadata: meta}, err
 	}

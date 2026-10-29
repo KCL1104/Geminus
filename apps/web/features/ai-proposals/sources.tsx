@@ -1,7 +1,9 @@
 "use client";
-// The web pages the AI read for a proposal asked for with research on
-// (H-046 (2)). The server keeps a source only when the call itself opened
-// its URL, only https, and cleans its title; this page still treats both as
+// The web pages the AI asked its search tool to open for a proposal asked
+// for with research on (H-046 (2)). Meta returns no tool result, so that a
+// page loaded, or what it held, is not known, and the section says so
+// (review round 1, M3). The server keeps a source only when the call itself
+// asked to open its URL, only https, and cleans its title; this page still treats both as
 // the AI's data: a URL that is not https, or does not parse, is not shown at
 // all (defense in depth), the title is text with what it hides made visible
 // (shown.ts) in its own <bdi>, and the site is the URL's host as the browser

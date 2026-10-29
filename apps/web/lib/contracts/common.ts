@@ -131,14 +131,14 @@ export type GeneratedBy = {
     model?: string;
     objects: number;
   };
-  /** H-046 (2): present only when the call ran with research on. queries is how many web searches the call made (0 when the model made none; opening a page or finding text in one is not counted), sources_dropped how many sources the answer named that the server did not keep: not opened by this call, not an https URL the server accepts, a repeat, or past the first 20. */
+  /** H-046 (2): present only when the call ran with research on. queries is how many web searches the call made (0 when the model made none; asking to open a page or to find text in one is not counted), sources_dropped how many sources the answer named that the server did not keep: not asked for by this call, not an https URL the server accepts, carrying one of the request's identifiers in its query string, a repeat, or past the first 20. */
   web_search?: {
     queries: number;
     sources_dropped: number;
   };
 };
 
-/** H-046 (2): a web page the AI read while it researched a proposal. The server keeps a source only when the call itself opened that URL (an open_page or find_in_page step of the provider's web search tool), only an https URL of printable ASCII without user info, at most 2048 characters, with its fragment removed; the title is the AI's own words for the page, with control, format and bidirectional characters removed, white space collapsed and at most 200 characters. Untrusted text for people to follow up: the server checks nothing the page or the title says, and neither changes the proposal's validation or risk. */
+/** H-046 (2): a web page the AI asked its provider's web search tool to open while it researched a proposal (an open_page or find_in_page step). The provider returns no tool result, so that the page loaded, or what it held, is not known: this is where the model asked to go, not proof that it read the page. The server keeps a source only when the call itself asked to open that URL, only an https URL of a public-looking DNS name (no IP address, single-label or private host) of printable ASCII without user info, at most 2048 characters, with its fragment removed, and never one whose query string carries one of the request's own identifiers; the title is the AI's own words for the page, with control, format and bidirectional characters removed, white space collapsed and at most 200 characters. Untrusted text for people to follow up: the server checks nothing the page or the title says, and neither changes the proposal's validation or risk. */
 export type WebSource = {
   url: string;
   title?: string;

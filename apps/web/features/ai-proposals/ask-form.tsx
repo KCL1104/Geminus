@@ -20,7 +20,10 @@
 // a web search. Only a ticked box adds research: true to the request, so a
 // request without it is byte for byte what it was; a deployment that cannot
 // research refuses it (503, details[0].code AI_RESEARCH_UNSUPPORTED) and the
-// form says to send without it.
+// form says to send without it. A photo is never researched (createImageProposal
+// takes no research): where the photo button is offered, the opt-in's
+// description says it applies to what is sent in words only (review round 1,
+// L3), and the photo request is sent as it always was.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -62,6 +65,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const reasonId = useId();
   const noticeId = useId();
   const researchHintId = useId();
+  const researchPhotoId = useId();
   const [intent, setIntent] = useState("");
   const [mode, setMode] = useState<Mode>("edit");
   const [research, setResearch] = useState(false);
@@ -130,12 +134,17 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
       </div>
       <div className={styles.askResearch}>
-        <Checkbox isSelected={research} onChange={setResearch} aria-describedby={researchHintId} data-research>
+        <Checkbox isSelected={research} onChange={setResearch} aria-describedby={photo ? `${researchHintId} ${researchPhotoId}` : researchHintId} data-research>
           {t("ask.research")}
         </Checkbox>
         <p id={researchHintId} className={styles.hint}>
           {t("ask.researchHint")}
         </p>
+        {photo && (
+          <p id={researchPhotoId} className={styles.hint} data-research-photo>
+            {t("ask.researchHint.photo")}
+          </p>
+        )}
       </div>
       <div className={styles.askRow}>
         <Button variant="ai" icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>

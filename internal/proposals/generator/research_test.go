@@ -45,7 +45,7 @@ func TestResearchGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !f.Requests()[0].Prompt.Research || !strings.HasSuffix(f.Requests()[0].Prompt.TemplateVersion, "+research-0.1.0") {
+	if !f.Requests()[0].Prompt.Research || !strings.HasSuffix(f.Requests()[0].Prompt.TemplateVersion, "+research-0.2.0") {
 		t.Errorf("the call was not a research call: %+v", f.Requests()[0].Prompt.TemplateVersion)
 	}
 	o := gen.outcome
@@ -141,6 +141,36 @@ func TestResearchGeneration(t *testing.T) {
 		RequestID: "req_01M4YDQK00ADN261CME3WV5HZ6"}, "")
 	if err != nil || pub.Error.Error.Code != "AI_PROVIDER_NOT_CONFIGURED" || pub.Error.Error.Details[0].Code != "AI_RESEARCH_UNSUPPORTED" || pub.Sources != nil {
 		t.Errorf("shown as %+v %v", pub.Error, err)
+	}
+}
+
+// Review round 1, M1: a research attempt's failure is final whatever its
+// code (its job has a single attempt too, internal/proposals): a timeout
+// or a 5xx after a whole search loop is not run, and billed, again. The same
+// failure without research stays retryable.
+func TestResearchFailureIsFinal(t *testing.T) {
+	ctx := context.Background()
+	for _, code := range []provider.Code{provider.CodeTimeout, provider.CodeUnavailable, provider.CodeRateLimited} {
+		f := fake.New()
+		f.Fail(provider.RoleModeler, "Busy.", provider.NewError(code, 0, "meta"))
+		h, err := New(Config{Provider: client(t, f), Packs: packs(t), Actor: "worker-1", Log: discard()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		st := stored(t, "edit", "Busy.")
+		var jf *jobs.Failure
+		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true)
+		if !errors.As(err, &jf) || jf.Retryable || jf.Code != "AI_"+strings.ToUpper(string(code)) || jf.Message != providerMessages[code] {
+			t.Errorf("%s with research: %+v", code, jf)
+		}
+		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, false)
+		if !errors.As(err, &jf) || !jf.Retryable {
+			t.Errorf("%s without research: %+v", code, jf)
+		}
+	}
+	plain := errors.New("plain")
+	if final(plain) != plain {
+		t.Error("a plain error became a failure")
 	}
 }
 

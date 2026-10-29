@@ -59,16 +59,19 @@
 // server_tool_use block named web_search whose input says what it did
 // ({"type":"search","query":...}, {"type":"open_page","url":...},
 // {"type":"find_in_page","url":...,"pattern":...}), between narration text
-// blocks, and no tool result block. The adapter counts the steps (searches
-// apart), keeps the URLs of the pages opened or searched in for the
-// client's source filter (provider.FilterSources), and takes the last text
-// block, after the last step, as the answer; the narration is dropped
-// unread. Any other tool, block or a step that is not web_search fails the
+// blocks, and no tool result block: a step says what the model asked the
+// tool to do, never whether a page loaded or what it held. The adapter
+// counts the steps (searches apart), keeps the URLs the model asked to open
+// or search in for the client's source filter (provider.FilterSources) and
+// the query texts for its identifier count (provider.StepsWithIDs), and
+// takes the last text block, after the last step, as the answer; the
+// narration is dropped unread. Any other tool, block or a step that is not web_search fails the
 // answer (invalid_output), its usage and steps billed all the same. A
 // research call is one attempt (provider.ResearchMaxRetries) with
-// provider.ResearchMaxOutputTokens, quoted at the whole context window and
-// researchMaxToolCalls steps (Quote). Nothing of a query, a page or a URL
-// is logged or put in an error.
+// provider.ResearchMaxOutputTokens, reserved at the whole context window and
+// researchMaxToolCalls steps (Quote): a reservation, not a ceiling (the
+// attempt's timeout is the only hard limit). Nothing of a query, a page or a
+// URL is logged or put in an error.
 package meta
 
 import (
@@ -118,13 +121,13 @@ const (
 	// maxResponseBytes bounds a response body the adapter reads; a larger
 	// answer is not read (it may have been billed: Undecoded).
 	maxResponseBytes = 8 << 20
-	// researchMaxToolCalls is the most web search steps (searches, pages
-	// opened, finds in a page) one research attempt is reserved for (H-046
-	// (2)): Meta documents no bound on its server-side loop (max_uses is a
-	// 400), so this is the reservation's assumption, not a limit the
-	// provider keeps: the probe of 2026-10-29 took 5 steps for a small
-	// question. A call that takes more is settled at what it took
-	// (provider.Metadata.SpendOverReservation, warned of in the log).
+	// researchMaxToolCalls is the web search steps (searches, pages asked
+	// for, finds in a page) one research attempt is reserved for (H-046
+	// (2)). Meta documents no bound on its server-side loop (max_uses is a
+	// 400), so this is an assumption, not a limit anyone keeps: the probe of
+	// 2026-10-29 took 5 steps for a small question. A call that takes more
+	// is settled at what it took (provider.Metadata.SpendOverReservation,
+	// warned of in the log).
 	researchMaxToolCalls = 64
 	// webSearchTool is the built-in tool's type and the name of its steps
 	// (server_tool_use.name).
@@ -284,12 +287,16 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 		// A research call (H-046 (2)): the pages the provider reads are
 		// input tokens of the call that this build never sees before it is
 		// billed, so no count of the request bounds them. One attempt is
-		// quoted at the whole context window (no step of the loop reads
-		// more: "input_tokens + max_output_tokens must fit within it",
-		// /docs/error-handling; the probe's 41,356 for 5 steps is about a
-		// twenty-fifth of it) and researchMaxToolCalls steps. Both are the
-		// reservation's assumptions, documented in docs/AI_SPEC.md: Meta
-		// states no bound on how many steps the loop takes or on their sum.
+		// reserved at the whole context window and researchMaxToolCalls
+		// steps. This is NOT a ceiling: the context window bounds one
+		// sampling step ("input_tokens + max_output_tokens must fit within
+		// it", /docs/error-handling), but the loop's usage is summed over its
+		// steps, each of which reads the context again (the probe's 41,356
+		// input tokens for 5 steps), so one call can cost more than its
+		// reservation, and more than an organization's daily cap. Meta states
+		// no bound on how many steps the loop takes; the only hard limit is
+		// the attempt's timeout (provider.Budget.ResearchTimeout). A call that
+		// costs more is recorded at what it cost (docs/AI_SPEC.md §2).
 		if !b.AcceptsResearch(req.Prompt.Role) {
 			return provider.Quote{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
 		}
@@ -535,19 +542,22 @@ type contentBlock struct {
 	Input jsontext.Value `json:"input"`
 }
 
-// toolStep is what a web search step's input says it did, as this build
-// reads it: the kind (search, open_page, find_in_page or another) and the
-// page's URL of the two that name one. Its query and pattern are not read.
+// toolStep is what a web search step's input says the model asked for, as
+// this build reads it: the kind (search, open_page, find_in_page or
+// another), the URL of the two that name one, and a search's query text.
+// Its pattern is not read. None of it is logged.
 type toolStep struct {
-	Type string `json:"type"`
-	URL  string `json:"url"`
+	Type  string `json:"type"`
+	URL   string `json:"url"`
+	Query string `json:"query"`
 }
 
 // research reads a research answer's web search steps: every
 // server_tool_use block is one step (each priced as a query, an upper
-// bound), a search one a query, and an open_page or find_in_page one names
-// a page the call opened. ok is false when a step is not the web_search
-// tool's: the request offered no other.
+// bound), a search one a query (its text kept for the identifier count),
+// and an open_page or find_in_page one names a URL the model asked for (no
+// tool result says whether it loaded). ok is false when a step is not the
+// web_search tool's: the request offered no other.
 func research(m message) (r provider.Research, ok bool) {
 	ok = true
 	for _, blk := range m.Content {
@@ -566,6 +576,9 @@ func research(m message) (r provider.Research, ok bool) {
 		switch st.Type {
 		case "search":
 			r.Queries++
+			if st.Query != "" {
+				r.Searched = append(r.Searched, st.Query)
+			}
 		case "open_page", "find_in_page":
 			if st.URL != "" {
 				r.Opened = append(r.Opened, st.URL)

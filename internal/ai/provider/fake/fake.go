@@ -74,7 +74,7 @@ const notOpened = "https://example.com/geminus-fake-research/not-opened"
 // ResearchSteps is the fake's web search of a research call: two searches
 // and the two ResearchSources pages opened.
 func ResearchSteps() provider.Research {
-	r := provider.Research{Queries: 2, ToolCalls: 2 + len(ResearchSources)}
+	r := provider.Research{Queries: 2, ToolCalls: 2 + len(ResearchSources), Searched: []string{"SMT line balancing", "reflow oven throughput"}}
 	for _, s := range ResearchSources {
 		r.Opened = append(r.Opened, s.URL)
 	}
@@ -89,7 +89,7 @@ func (b *Backend) AcceptsResearch(role provider.Role) bool { return role.Researc
 func (b *Backend) ScriptResearch(key string, r provider.Research) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	r.Opened = slices.Clone(r.Opened)
+	r.Opened, r.Searched = slices.Clone(r.Opened), slices.Clone(r.Searched)
 	b.research[key] = r
 }
 
@@ -180,7 +180,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		resp.Research = ResearchSteps()
 		if stepsScripted {
 			resp.Research = steps
-			resp.Research.Opened = slices.Clone(steps.Opened)
+			resp.Research.Opened, resp.Research.Searched = slices.Clone(steps.Opened), slices.Clone(steps.Searched)
 		}
 	}
 	switch {

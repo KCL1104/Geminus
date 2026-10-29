@@ -74,8 +74,10 @@ func TestProposalResearch(t *testing.T) {
 	if r := e.propose(editor.Subject, e.a.ID, m.ID, "prop-research-01", researchBody(m.LatestVersion.ID, "scenario", "Model a carton plant.", false)); r.status != 409 {
 		t.Errorf("the key with research off: %d %s", r.status, r.body)
 	}
-	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND ai_proposal_id=$2 AND payload->>'research' = 'true'`, e.a.ID, id); n != 1 {
-		t.Errorf("%d jobs carry research", n)
+	// Review round 1, M1: a research job has a single attempt.
+	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND ai_proposal_id=$2 AND payload->>'research' = 'true'
+		AND max_attempts = 1`, e.a.ID, id); n != 1 {
+		t.Errorf("%d single-attempt jobs carry research", n)
 	}
 	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND target_id=$2 AND action='proposal.create'
 		AND metadata->>'research' = 'true' AND NOT metadata ? 'intent'`, e.a.ID, id); n != 1 {

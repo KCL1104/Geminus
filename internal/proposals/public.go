@@ -130,16 +130,20 @@ func FromMetadata(metadata []byte) *GeneratedBy {
 
 // SourcesOf are the sources a row's provider metadata keeps (H-046 (2):
 // "sources", written by the generator from provider.FilterSources), checked
-// again as the contract states them: only with a web search, at most
-// provider.MaxSources, each URL as provider.SourceURL writes it and each
-// title as provider.SourceTitle does; anything else is left out rather
-// than shown.
+// again as the contract states them: only when the resource shows the web
+// search (FromMetadata's generated_by.web_search, by the same checks, so
+// proposal.schema.json's "sources only with generated_by.web_search" holds;
+// review round 1, L1), at most provider.MaxSources, each URL as
+// provider.SourceURL writes it and each title as provider.SourceTitle does;
+// anything else is left out rather than shown.
 func SourcesOf(metadata []byte) []provider.WebSource {
-	var m struct {
-		WebSearch *provider.WebSearch  `json:"web_search"`
-		Sources   []provider.WebSource `json:"sources"`
+	if g := FromMetadata(metadata); g == nil || g.WebSearch == nil {
+		return nil
 	}
-	if len(metadata) == 0 || json.Unmarshal(metadata, &m) != nil || m.WebSearch == nil {
+	var m struct {
+		Sources []provider.WebSource `json:"sources"`
+	}
+	if json.Unmarshal(metadata, &m) != nil {
 		return nil
 	}
 	var out []provider.WebSource
