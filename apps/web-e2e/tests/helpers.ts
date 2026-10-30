@@ -101,6 +101,21 @@ export async function settled(page: Page, locale: Locale): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
+/**
+ * Loads every picture the page shows now, lazy ones included (the landing's
+ * product screens, H-048), and waits until each is decoded; returns the
+ * shown pictures' file names. A picture CSS hides (the other theme's) is
+ * left alone, so it is never fetched.
+ */
+export async function loadPictures(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const shown = [...document.querySelectorAll("img")].filter((i) => i.getBoundingClientRect().width > 0);
+    for (const img of shown) img.loading = "eager";
+    await Promise.all(shown.map((i) => i.decode()));
+    return shown.map((i) => new URL(i.currentSrc).pathname);
+  });
+}
+
 /** axe-core's WCAG 2.0–2.2 A/AA violations, contrast and target size included. */
 export async function violations(page: Page): Promise<string[]> {
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();

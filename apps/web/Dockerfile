@@ -29,6 +29,9 @@ WORKDIR /app
 # Root-owned and read-only for the server; only Next's cache is writable.
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# The files Next serves as they are (public/: the landing's screens, H-048);
+# the standalone server does not copy them itself.
+COPY --from=build /app/public ./public
 RUN mkdir -p .next/cache && chown node:node .next/cache
 USER node
 EXPOSE 3000

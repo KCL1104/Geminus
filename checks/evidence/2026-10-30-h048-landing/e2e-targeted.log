@@ -1,0 +1,36 @@
+
+Running 24 tests using 1 worker
+
+  ✓   1 [chromium] › tests/keyboard.spec.ts:15:1 › the shell: skip link first, then the rail's brand and settings; the skip link moves focus to main (1.3s)
+  ✓   2 [chromium] › tests/keyboard.spec.ts:35:1 › the language changes from the keyboard, only on a choice, and focus stays on the control (1.6s)
+  ✓   3 [chromium] › tests/keyboard.spec.ts:62:1 › the theme changes from the keyboard and is remembered (1.4s)
+  ✓   4 [chromium] › tests/keyboard.spec.ts:96:3 › component gallery › a status message after an action (1.7s)
+  ✓   5 [chromium] › tests/keyboard.spec.ts:104:3 › component gallery › a confirmation dialog: focus on Cancel, trapped, Escape returns focus, confirm acts (1.9s)
+  ✓   6 [chromium] › tests/keyboard.spec.ts:128:3 › component gallery › a select: open, move, choose (1.5s)
+  ✓   7 [chromium] › tests/keyboard.spec.ts:139:3 › component gallery › a table: one tab stop, arrows move, Enter sorts, Space selects (1.9s)
+  ✓   8 [chromium] › tests/keyboard.spec.ts:165:3 › component gallery › a long table is virtualized and reachable to its last row (1.5s)
+  ✓   9 [chromium] › tests/landing.spec.ts:24:5 › light, en: the screens are the committed pictures of this theme, from the app's own origin (1.3s)
+  ✓  10 [chromium] › tests/landing.spec.ts:24:5 › light, zh-Hant: the screens are the committed pictures of this theme, from the app's own origin (1.5s)
+  ✓  11 [chromium] › tests/landing.spec.ts:24:5 › dark, en: the screens are the committed pictures of this theme, from the app's own origin (1.3s)
+  ✓  12 [chromium] › tests/landing.spec.ts:24:5 › dark, zh-Hant: the screens are the committed pictures of this theme, from the app's own origin (1.5s)
+  ✓  13 [chromium] › tests/landing.spec.ts:49:1 › a theme chosen in the menu swaps the screens at once (1.3s)
+  ✓  14 [chromium] › tests/landing.spec.ts:70:1 › signed out: the one action is the sign-in, which comes back to the projects (1.1s)
+  ✓  15 [chromium] › tests/landing.spec.ts:84:1 › signed in: the one action opens the projects, and the page offers no sign-in (1.3s)
+  ✓  16 [chromium] › tests/landing.spec.ts:101:1 › names no account, address, password or key, in either language (2.3s)
+en signed in: strings not from the catalog or the data: []
+  ✓  17 [chromium] › tests/strings.spec.ts:79:3 › en: the signed-in views' strings are the catalog's, the tenant's data or an accepted library string (7.3s)
+en editor: strings not from the catalog or the model: ["Dismiss"]
+  ✓  18 [chromium] › tests/strings.spec.ts:99:3 › en: the editor's strings are the catalog's, the model's data or React Flow's attribution (1.4s)
+en: strings not from the catalog: ["sortable column","sorted by column Path in ascending order","/resources/reviewers selected.","sorted by column Path in descending order","All items selected.","4 items selected.","/nodes/review/capacity not selected. 3 items selected.","Dismiss"]
+  ✓  19 [chromium] › tests/strings.spec.ts:130:3 › en: every string is the catalog's or an accepted React Aria string (1.9s)
+  ✓  20 [chromium] › tests/strings.spec.ts:178:3 › en: the landing's strings are the catalog's (1.2s)
+zh-Hant signed in: strings not from the catalog or the data: []
+  ✓  21 [chromium] › tests/strings.spec.ts:79:3 › zh-Hant: the signed-in views' strings are the catalog's, the tenant's data or an accepted library string (8.8s)
+zh-Hant editor: strings not from the catalog or the model: ["關閉"]
+  ✓  22 [chromium] › tests/strings.spec.ts:99:3 › zh-Hant: the editor's strings are the catalog's, the model's data or React Flow's attribution (1.6s)
+zh-Hant: strings not from the catalog: ["可排序的欄","已依據「路徑」欄遞增排序","已選取「/resources/reviewers」。","已依據「路徑」欄遞減排序","已選取所有項目。","已選取 4 個項目。","未選取「/nodes/review/capacity」。 已選取 3 個項目。","關閉"]
+  ✓  23 [chromium] › tests/strings.spec.ts:130:3 › zh-Hant: every string is the catalog's or an accepted React Aria string (2.2s)
+  ✓  24 [chromium] › tests/strings.spec.ts:178:3 › zh-Hant: the landing's strings are the catalog's (1.4s)
+
+  24 passed (59.8s)
+exit 0

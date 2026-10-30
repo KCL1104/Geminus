@@ -152,4 +152,16 @@ for (const [locale, catalog] of [["en", en], ["zh-Hant", zhHant]] as const) {
     expect(unexpected).toEqual([]);
     for (const p of selectionNotices[locale]) expect(sentences.some((s) => p.test(s)), `announced: ${p}`).toBe(true);
   });
+
+  // H-048: the landing's every string, the rail's settings menu open too, signed out.
+  test(`${locale}: the landing's strings are the catalog's`, async ({ page }) => {
+    await open(page, "/", locale);
+    const known = catalogPatterns(catalog as Catalog);
+    const seen = new Set(await strings(page));
+    await page.getByRole("button", { name: locale === "en" ? "Settings" : "設定" }).click();
+    for (const s of await strings(page)) seen.add(s);
+    const other = [...seen].filter((s) => !known.some((p) => p.test(s)) && !reactAria[locale].some((p) => p.test(s)));
+    expect(other).toEqual([]);
+    expect(seen.has(catalog["landing.title"])).toBe(true);
+  });
 }

@@ -9,7 +9,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "./fixtures";
-import { locales, open, PROVIDER, schemes, signInAs, tenant } from "./helpers";
+import { loadPictures, locales, open, PROVIDER, schemes, signInAs, tenant } from "./helpers";
 
 const enabled = process.env.E2E_SCREENSHOTS === "1";
 // Before the first baselines are accepted there is nothing to compare with.
@@ -29,6 +29,8 @@ for (const scheme of schemes) for (const locale of locales) {
           test.skip(!enabled, "NOT RUN: screenshots compare only in the pinned environment (E2E_SCREENSHOTS=1)");
           test.skip(!accepted && test.info().config.updateSnapshots === "none", "NOT RUN: no accepted baselines yet (README.md)");
           await open(page, route, locale);
+          // H-048: the landing's screens load lazily; a whole-page picture needs every one in.
+          if (route === "/") await loadPictures(page);
           await expect(page).toHaveScreenshot(name, { fullPage: true });
         });
       }
