@@ -51,7 +51,7 @@
         ]
       },
       "worker": {
-        "variables": 23,
+        "variables": 25,
         "secrets": [
           "GEMINUS_ANTHROPIC_API_KEY_A",
           "GEMINUS_ANTHROPIC_API_KEY_B",
