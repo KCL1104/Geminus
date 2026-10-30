@@ -1,0 +1,14 @@
+{
+  "note": "Regression lock of the production and logistics templates' runs through des.Engine (H-045; retuned to researched magnitudes, H-046): the engine's own output for this config, taken after TestTemplatesThroughTheEngine's checks passed. Not an independent oracle (SIMULATION_SPEC §9); a change needs review, never a silent update.",
+  "engine_version": "des-go-0.5.0",
+  "horizon_days": 7,
+  "warmup_days": 1,
+  "replications": 5,
+  "seed": 2026,
+  "result_digests": {
+    "shoe_factory": "sha256:3dd55dde2658ad028d2940b7f87634dc0323080e944a9de277c792c5038de8be",
+    "food_plant": "sha256:6f931839e19f2c44c5905da6519d1614199f6ca775dfbe6b1f7475367e10c6aa",
+    "carton_plant": "sha256:3caed0dab548aa913b9999f9c853a46ebc402cb1c81a48596d8d00ff0f9538c1",
+    "warehouse": "sha256:7471e4c2ac29c4d6a0498fad4f9ab32e3a6cf4a540f0b79e71e0989b94e2f65c"
+  }
+}

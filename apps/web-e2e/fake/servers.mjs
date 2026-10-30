@@ -8,7 +8,7 @@
 // access tokens), POST /__api-cut (body "headers": the API's next answers
 // send their headers and then drop the connection; empty: normal), POST
 // /__reset (the tenant data as it starts: version 1, its draft, no AI
-// proposals), GET /__state (counts and what the API saw).
+// proposals, no created models), GET /__state (counts and what the API saw).
 import { createHash, generateKeyPairSync, randomBytes, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -202,8 +202,31 @@ function applied(ir, ops) {
   }
   return out;
 }
-/** Line Works' model as it starts: version 1 and its draft, no proposals, no keys. */
-const fresh = () => ({ versions: [version], draft: structuredClone(fixture), proposals: new Map(), keys: new Map(), scenarios: 0 });
+// createModel (H-045) in Line Works' project, as openapi has it: the
+// contract's domain and template pairs; the model is the pack's template
+// file as it is (its zh-Hant names from the pack's names file when asked),
+// with the new model's ID and the name given. Nothing is validated or
+// built as the server does; a viewer is 403, and keys work as for the
+// proposals. A created model has its draft and version 1 and empty lists.
+const pack = (dir, name) => JSON.parse(readFileSync(new URL(`../../../internal/domainpack/${dir}/templates/${name}.json`, import.meta.url), "utf8"));
+const templateDirs = {
+  electronics_line: ["electronicsline", ["electronics_assembly_test_line"]],
+  production_logistics: ["productionlogistics", ["shoe_factory", "food_plant", "carton_plant", "warehouse"]],
+  software_delivery: ["softwaredelivery", ["default_delivery_pipeline"]],
+};
+function templateIR(domain, template, locale) {
+  const [dir] = templateDirs[domain];
+  const ir = pack(dir, template);
+  if (locale === "zh-Hant") {
+    const names = pack(dir, `${template}.zh-Hant.names`);
+    for (const [list, from] of [[ir.entity_types, names.entity_types], [ir.resources, names.resources], [ir.nodes, names.nodes]]) {
+      for (const x of list) if (x.name && from[x.id]) x.name = from[x.id];
+    }
+  }
+  return ir;
+}
+/** Line Works' model as it starts: version 1 and its draft, no proposals, no keys, no models created. */
+const fresh = () => ({ versions: [version], draft: structuredClone(fixture), proposals: new Map(), keys: new Map(), scenarios: 0, created: new Map() });
 let live = fresh();
 const latest = () => live.versions[live.versions.length - 1];
 const modelNow = () => ({
@@ -216,7 +239,14 @@ const modelNow = () => ({
 function tenantGet(org, path) {
   if (path === "/v1/projects") return [{ items: projects[org] ?? [], next_cursor: null }, org === ORG ? { "set-cookie": "api_cookie=1" } : {}];
   if (org !== LINE) return null;
-  if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [modelNow()], next_cursor: null }, {}];
+  if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [modelNow(), ...[...live.created.values()].map((c) => c.model)], next_cursor: null }, {}];
+  for (const c of live.created.values()) {
+    if (path === `/v1/models/${c.model.id}`) return [c.model, {}];
+    if (path === `/v1/models/${c.model.id}/draft`) return [c.draft, { etag: `"draft-revision-${c.draft.revision}"` }];
+    if (path === `/v1/model-versions/${c.version.id}`) return [c.version, {}];
+    if (path === `/v1/models/${c.model.id}/versions`) return [{ items: [c.version], next_cursor: null }, {}];
+    if ([`/v1/model-versions/${c.version.id}/scenarios`, `/v1/models/${c.model.id}/ai-proposals`, `/v1/models/${c.model.id}/simulations`].includes(path)) return [{ items: [], next_cursor: null }, {}];
+  }
   if (path === `/v1/models/${model.id}`) return [modelNow(), {}];
   if (path === `/v1/models/${model.id}/draft`) return [live.draft, { etag: `"draft-revision-${live.draft.revision}"` }];
   const v = live.versions.find((x) => path === `/v1/model-versions/${x.id}`);
@@ -240,16 +270,33 @@ const refusal = (status, code, message, details) => ({ status, body: { error: { 
 function tenantPost(org, role, path, key, payload) {
   if (org !== LINE) return null;
   const create = path === `/v1/models/${model.id}/ai-proposals`;
+  const newModel = path === `/v1/projects/${PRJ_LINE}/models`;
   const decision = path.match(/^\/v1\/ai-proposals\/([^/]+)\/(approve|reject)$/);
   const s = decision ? live.proposals.get(decision[1]) : undefined;
-  if (!create && !s) return null;
-  if (role !== "editor" && role !== "owner") return refusal(403, "FORBIDDEN", "this role cannot ask for or decide a proposal");
+  if (!create && !newModel && !s) return null;
+  if (role !== "editor" && role !== "owner") return refusal(403, "FORBIDDEN", newModel ? "this role cannot create a model" : "this role cannot ask for or decide a proposal");
   if (!key) return refusal(400, "IDEMPOTENCY_KEY_REQUIRED", "the Idempotency-Key header is required");
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
   const fingerprint = `${path} ${jcs(payload)}`;
   const seen = live.keys.get(key);
   if (seen) return seen.fingerprint === fingerprint ? seen.answer : refusal(409, "IDEMPOTENCY_KEY_CONFLICT", "this Idempotency-Key was used for a different request");
   const kept = (a) => (live.keys.set(key, { fingerprint, answer: a }), a);
+  if (newModel) {
+    const known = templateDirs[payload.domain];
+    const fields = Object.keys(payload).every((k) => ["name", "domain", "template", "locale"].includes(k));
+    if (!fields || !known || !known[1].includes(payload.template) || typeof payload.name !== "string" || payload.name.length < 1 || payload.name.length > 200 ||
+      (payload.locale !== undefined && !["en", "zh-Hant"].includes(payload.locale))) {
+      return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/template", reason: "not a template of this domain" }]);
+    }
+    const n = live.created.size + 1;
+    const id = serial("mdl", "M", n);
+    const ir = { ...templateIR(payload.domain, payload.template, payload.locale), model_id: id, name: payload.name };
+    const v = { ...version, id: serial("mv", "N", n), model_id: id, version: 1, ir, hash: sha(ir) };
+    const m = { id, organization_id: LINE, project_id: PRJ_LINE, domain: payload.domain, name: payload.name,
+      draft: { revision: 1, base_version_id: v.id, out_of_date: false }, latest_version: { id: v.id, version: 1 }, created_at: ASKED };
+    live.created.set(id, { model: m, version: v, draft: { model_id: id, base_version_id: v.id, revision: 1, ir, hash: v.hash, out_of_date: false, issues: [] } });
+    return kept({ status: 201, body: m });
+  }
   if (create) {
     if (!["edit", "scenario"].includes(payload.mode) || typeof payload.intent !== "string" || payload.intent.trim() === "") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
     if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);

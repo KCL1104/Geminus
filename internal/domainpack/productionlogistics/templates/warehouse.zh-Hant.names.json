@@ -1,0 +1,32 @@
+{
+  "entity_types": {
+    "case": "箱"
+  },
+  "resources": {
+    "receiver": "收貨人員",
+    "forklift": "前移式堆高機",
+    "picker": "揀貨人員",
+    "packer": "包裝站",
+    "problem_solver": "異常處理人員",
+    "dock_door": "出貨月台"
+  },
+  "nodes": {
+    "inbound_trailers": "進貨拖車",
+    "q_receiving": "待卸貨拖車",
+    "receiving": "卸貨與收貨",
+    "q_putaway": "進貨暫存區",
+    "putaway": "上架（每棧板最多 48 箱）",
+    "storage": "儲位",
+    "picking": "整箱揀貨",
+    "q_packing": "待包裝",
+    "packing": "貼標與包裝",
+    "scan_check": "掃描與重量檢查",
+    "pick_error": "揀貨錯誤",
+    "q_correction": "待更正",
+    "correction": "更正與重新包裝",
+    "corrected": "更正完成",
+    "q_shipping": "出貨暫存道",
+    "loading": "裝車出貨",
+    "shipped": "已出貨"
+  }
+}

@@ -87,6 +87,13 @@ export type CreateModel = {
   template: "electronics_assembly_test_line";
   /** Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created. */
   locale?: Locale;
+} | {
+  name: string;
+  domain: "production_logistics";
+  /** A synthetic template of the production and logistics pack (H-045, docs/domains/PRODUCTION_LOGISTICS.md §3): a shoe factory, a food plant (bakery), a corrugated carton plant or a distribution warehouse, built only from the generic primitives (finite buffers, batches, shifts, breakdowns, changeovers, yields and rework); synthetic, for demonstration. */
+  template: "shoe_factory" | "food_plant" | "carton_plant" | "warehouse";
+  /** Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created. */
+  locale?: Locale;
 };
 
 export type Publish = {

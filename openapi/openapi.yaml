@@ -227,6 +227,12 @@ paths:
                   domain: electronics_line
                   template: electronics_assembly_test_line
                   locale: zh-Hant
+              production_logistics:
+                summary: A synthetic template of the production and logistics pack (H-045), here the shoe factory, default names in English
+                value:
+                  name: My shoe factory
+                  domain: production_logistics
+                  template: shoe_factory
               software_delivery:
                 summary: The synthetic software delivery pipeline of the example pack (T-011)
                 value:

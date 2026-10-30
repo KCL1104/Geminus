@@ -1,0 +1,1146 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00CART0NP1ANT00000",
+  "domain": "production_logistics",
+  "name": "Synthetic corrugated box plant",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "plain_rsc",
+      "name": "Plain shipping cases"
+    },
+    {
+      "id": "printed_rsc",
+      "name": "Printed shipping cases"
+    },
+    {
+      "id": "die_cut_tray",
+      "name": "Die-cut trays"
+    },
+    {
+      "id": "die_cut_display",
+      "name": "Die-cut displays"
+    }
+  ],
+  "resources": [
+    {
+      "id": "corrugator",
+      "type": "machine",
+      "role": "machine",
+      "name": "Corrugator",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 480
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 60
+          }
+        }
+      },
+      "setups": {
+        "initial": "plain_rsc",
+        "default": {
+          "type": "triangular",
+          "min": 1,
+          "mode": 2,
+          "max": 4
+        }
+      }
+    },
+    {
+      "id": "flexo_folder_gluer",
+      "type": "machine",
+      "role": "machine",
+      "name": "Flexo folder-gluer",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 600
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 40
+          }
+        }
+      },
+      "setups": {
+        "initial": "plain_rsc",
+        "default": {
+          "type": "triangular",
+          "min": 10,
+          "mode": 15,
+          "max": 25
+        }
+      }
+    },
+    {
+      "id": "die_cutter",
+      "type": "machine",
+      "role": "machine",
+      "name": "Rotary die-cutter",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 900
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 40
+          }
+        }
+      },
+      "setups": {
+        "initial": "die_cut_tray",
+        "default": {
+          "type": "triangular",
+          "min": 15,
+          "mode": 20,
+          "max": 30
+        }
+      }
+    },
+    {
+      "id": "strapper",
+      "type": "machine",
+      "role": "material_handling",
+      "name": "Bundler-strapper",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays"
+    },
+    {
+      "id": "palletizer",
+      "type": "machine",
+      "role": "material_handling",
+      "name": "Palletizer and stretch wrapper",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "orders_plain",
+      "type": "source",
+      "entity_type": "plain_rsc",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 360,
+              "quantity": 8
+            },
+            {
+              "at": 480,
+              "quantity": 8
+            },
+            {
+              "at": 600,
+              "quantity": 8
+            },
+            {
+              "at": 720,
+              "quantity": 8
+            },
+            {
+              "at": 840,
+              "quantity": 8
+            },
+            {
+              "at": 960,
+              "quantity": 8
+            },
+            {
+              "at": 1080,
+              "quantity": 8
+            },
+            {
+              "at": 1800,
+              "quantity": 8
+            },
+            {
+              "at": 1920,
+              "quantity": 8
+            },
+            {
+              "at": 2040,
+              "quantity": 8
+            },
+            {
+              "at": 2160,
+              "quantity": 8
+            },
+            {
+              "at": 2280,
+              "quantity": 8
+            },
+            {
+              "at": 2400,
+              "quantity": 8
+            },
+            {
+              "at": 2520,
+              "quantity": 8
+            },
+            {
+              "at": 3240,
+              "quantity": 8
+            },
+            {
+              "at": 3360,
+              "quantity": 8
+            },
+            {
+              "at": 3480,
+              "quantity": 8
+            },
+            {
+              "at": 3600,
+              "quantity": 8
+            },
+            {
+              "at": 3720,
+              "quantity": 8
+            },
+            {
+              "at": 3840,
+              "quantity": 8
+            },
+            {
+              "at": 3960,
+              "quantity": 8
+            },
+            {
+              "at": 4680,
+              "quantity": 8
+            },
+            {
+              "at": 4800,
+              "quantity": 8
+            },
+            {
+              "at": 4920,
+              "quantity": 8
+            },
+            {
+              "at": 5040,
+              "quantity": 8
+            },
+            {
+              "at": 5160,
+              "quantity": 8
+            },
+            {
+              "at": 5280,
+              "quantity": 8
+            },
+            {
+              "at": 5400,
+              "quantity": 8
+            },
+            {
+              "at": 6120,
+              "quantity": 8
+            },
+            {
+              "at": 6240,
+              "quantity": 8
+            },
+            {
+              "at": 6360,
+              "quantity": 8
+            },
+            {
+              "at": 6480,
+              "quantity": 8
+            },
+            {
+              "at": 6600,
+              "quantity": 8
+            },
+            {
+              "at": 6720,
+              "quantity": 8
+            },
+            {
+              "at": 6840,
+              "quantity": 8
+            }
+          ]
+        }
+      },
+      "name": "Orders: plain shipping cases"
+    },
+    {
+      "id": "orders_printed",
+      "type": "source",
+      "entity_type": "printed_rsc",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 420,
+              "quantity": 8
+            },
+            {
+              "at": 540,
+              "quantity": 8
+            },
+            {
+              "at": 660,
+              "quantity": 8
+            },
+            {
+              "at": 780,
+              "quantity": 8
+            },
+            {
+              "at": 900,
+              "quantity": 8
+            },
+            {
+              "at": 1020,
+              "quantity": 8
+            },
+            {
+              "at": 1140,
+              "quantity": 8
+            },
+            {
+              "at": 1860,
+              "quantity": 8
+            },
+            {
+              "at": 1980,
+              "quantity": 8
+            },
+            {
+              "at": 2100,
+              "quantity": 8
+            },
+            {
+              "at": 2220,
+              "quantity": 8
+            },
+            {
+              "at": 2340,
+              "quantity": 8
+            },
+            {
+              "at": 2460,
+              "quantity": 8
+            },
+            {
+              "at": 2580,
+              "quantity": 8
+            },
+            {
+              "at": 3300,
+              "quantity": 8
+            },
+            {
+              "at": 3420,
+              "quantity": 8
+            },
+            {
+              "at": 3540,
+              "quantity": 8
+            },
+            {
+              "at": 3660,
+              "quantity": 8
+            },
+            {
+              "at": 3780,
+              "quantity": 8
+            },
+            {
+              "at": 3900,
+              "quantity": 8
+            },
+            {
+              "at": 4020,
+              "quantity": 8
+            },
+            {
+              "at": 4740,
+              "quantity": 8
+            },
+            {
+              "at": 4860,
+              "quantity": 8
+            },
+            {
+              "at": 4980,
+              "quantity": 8
+            },
+            {
+              "at": 5100,
+              "quantity": 8
+            },
+            {
+              "at": 5220,
+              "quantity": 8
+            },
+            {
+              "at": 5340,
+              "quantity": 8
+            },
+            {
+              "at": 5460,
+              "quantity": 8
+            },
+            {
+              "at": 6180,
+              "quantity": 8
+            },
+            {
+              "at": 6300,
+              "quantity": 8
+            },
+            {
+              "at": 6420,
+              "quantity": 8
+            },
+            {
+              "at": 6540,
+              "quantity": 8
+            },
+            {
+              "at": 6660,
+              "quantity": 8
+            },
+            {
+              "at": 6780,
+              "quantity": 8
+            },
+            {
+              "at": 6900,
+              "quantity": 8
+            }
+          ]
+        }
+      },
+      "name": "Orders: printed shipping cases"
+    },
+    {
+      "id": "orders_tray",
+      "type": "source",
+      "entity_type": "die_cut_tray",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 390,
+              "quantity": 6
+            },
+            {
+              "at": 630,
+              "quantity": 6
+            },
+            {
+              "at": 870,
+              "quantity": 6
+            },
+            {
+              "at": 1830,
+              "quantity": 6
+            },
+            {
+              "at": 2070,
+              "quantity": 6
+            },
+            {
+              "at": 2310,
+              "quantity": 6
+            },
+            {
+              "at": 3270,
+              "quantity": 6
+            },
+            {
+              "at": 3510,
+              "quantity": 6
+            },
+            {
+              "at": 3750,
+              "quantity": 6
+            },
+            {
+              "at": 4710,
+              "quantity": 6
+            },
+            {
+              "at": 4950,
+              "quantity": 6
+            },
+            {
+              "at": 5190,
+              "quantity": 6
+            },
+            {
+              "at": 6150,
+              "quantity": 6
+            },
+            {
+              "at": 6390,
+              "quantity": 6
+            },
+            {
+              "at": 6630,
+              "quantity": 6
+            }
+          ]
+        }
+      },
+      "name": "Orders: die-cut trays"
+    },
+    {
+      "id": "orders_display",
+      "type": "source",
+      "entity_type": "die_cut_display",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 510,
+              "quantity": 6
+            },
+            {
+              "at": 750,
+              "quantity": 6
+            },
+            {
+              "at": 990,
+              "quantity": 6
+            },
+            {
+              "at": 1950,
+              "quantity": 6
+            },
+            {
+              "at": 2190,
+              "quantity": 6
+            },
+            {
+              "at": 2430,
+              "quantity": 6
+            },
+            {
+              "at": 3390,
+              "quantity": 6
+            },
+            {
+              "at": 3630,
+              "quantity": 6
+            },
+            {
+              "at": 3870,
+              "quantity": 6
+            },
+            {
+              "at": 4830,
+              "quantity": 6
+            },
+            {
+              "at": 5070,
+              "quantity": 6
+            },
+            {
+              "at": 5310,
+              "quantity": 6
+            },
+            {
+              "at": 6270,
+              "quantity": 6
+            },
+            {
+              "at": 6510,
+              "quantity": 6
+            },
+            {
+              "at": 6750,
+              "quantity": 6
+            }
+          ]
+        }
+      },
+      "name": "Orders: die-cut displays"
+    },
+    {
+      "id": "q_corrugate_rsc",
+      "type": "queue",
+      "name": "Case orders waiting for board"
+    },
+    {
+      "id": "corrugate_rsc",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2,
+          "mode": 2.5,
+          "max": 3.5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "corrugator",
+          "units": 1
+        }
+      ],
+      "name": "Corrugating: case sheets"
+    },
+    {
+      "id": "q_ffg",
+      "type": "queue",
+      "capacity": 30,
+      "name": "Sheets waiting for the folder-gluer"
+    },
+    {
+      "id": "ffg",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 4,
+          "mode": 5,
+          "max": 7
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "flexo_folder_gluer",
+          "units": 1
+        }
+      ],
+      "name": "Printing, slotting, folding and gluing"
+    },
+    {
+      "id": "q_corrugate_die",
+      "type": "queue",
+      "name": "Die-cut orders waiting for board"
+    },
+    {
+      "id": "corrugate_die",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2,
+          "mode": 2.5,
+          "max": 3.5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "corrugator",
+          "units": 1
+        }
+      ],
+      "name": "Corrugating: die-cut sheets"
+    },
+    {
+      "id": "q_die_cut",
+      "type": "queue",
+      "capacity": 30,
+      "name": "Sheets waiting for the die-cutter"
+    },
+    {
+      "id": "die_cutting",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 6,
+          "mode": 7.5,
+          "max": 10
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "die_cutter",
+          "units": 1
+        }
+      ],
+      "name": "Rotary die-cutting"
+    },
+    {
+      "id": "quality_check",
+      "type": "decision",
+      "name": "Quality check"
+    },
+    {
+      "id": "defect",
+      "type": "failure",
+      "name": "Rejected load"
+    },
+    {
+      "id": "q_strapping",
+      "type": "queue",
+      "capacity": 40,
+      "name": "Loads waiting for strapping"
+    },
+    {
+      "id": "strapping",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2.5,
+          "mode": 3,
+          "max": 4
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "strapper",
+          "units": 1
+        }
+      ],
+      "name": "Bundling and strapping"
+    },
+    {
+      "id": "q_palletizing",
+      "type": "queue",
+      "capacity": 40,
+      "name": "Bundles waiting for palletizing"
+    },
+    {
+      "id": "palletizing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 2,
+          "mode": 2.5,
+          "max": 3.5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "palletizer",
+          "units": 1
+        }
+      ],
+      "name": "Palletizing and wrapping"
+    },
+    {
+      "id": "shipped",
+      "type": "sink",
+      "outcome": "completed",
+      "name": "Ready to ship"
+    },
+    {
+      "id": "waste",
+      "type": "sink",
+      "outcome": "abandoned",
+      "name": "Waste"
+    }
+  ],
+  "flows": [
+    {
+      "id": "orders_plain__q_corrugate_rsc",
+      "from": "orders_plain",
+      "to": "q_corrugate_rsc",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "orders_printed__q_corrugate_rsc",
+      "from": "orders_printed",
+      "to": "q_corrugate_rsc",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "orders_tray__q_corrugate_die",
+      "from": "orders_tray",
+      "to": "q_corrugate_die",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "orders_display__q_corrugate_die",
+      "from": "orders_display",
+      "to": "q_corrugate_die",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_corrugate_rsc__corrugate_rsc",
+      "from": "q_corrugate_rsc",
+      "to": "corrugate_rsc",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "corrugate_rsc__q_ffg",
+      "from": "corrugate_rsc",
+      "to": "q_ffg",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_ffg__ffg",
+      "from": "q_ffg",
+      "to": "ffg",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "ffg__quality_check",
+      "from": "ffg",
+      "to": "quality_check",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_corrugate_die__corrugate_die",
+      "from": "q_corrugate_die",
+      "to": "corrugate_die",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "corrugate_die__q_die_cut",
+      "from": "corrugate_die",
+      "to": "q_die_cut",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_die_cut__die_cutting",
+      "from": "q_die_cut",
+      "to": "die_cutting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "die_cutting__quality_check",
+      "from": "die_cutting",
+      "to": "quality_check",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "quality_check__q_strapping",
+      "from": "quality_check",
+      "to": "q_strapping",
+      "routing": {
+        "type": "probability",
+        "probability": 0.985
+      }
+    },
+    {
+      "id": "quality_check__defect",
+      "from": "quality_check",
+      "to": "defect",
+      "routing": {
+        "type": "probability",
+        "probability": 0.015
+      }
+    },
+    {
+      "id": "defect__waste",
+      "from": "defect",
+      "to": "waste",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_strapping__strapping",
+      "from": "q_strapping",
+      "to": "strapping",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "strapping__q_palletizing",
+      "from": "strapping",
+      "to": "q_palletizing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_palletizing__palletizing",
+      "from": "q_palletizing",
+      "to": "palletizing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "palletizing__shipped",
+      "from": "palletizing",
+      "to": "shipped",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "quality_check",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "ffg_utilization",
+      "type": "resource_utilization",
+      "resource_id": "flexo_folder_gluer"
+    },
+    {
+      "id": "die_cutter_utilization",
+      "type": "resource_utilization",
+      "resource_id": "die_cutter"
+    },
+    {
+      "id": "ffg_queue_wait",
+      "type": "queue_wait",
+      "node_id": "q_ffg"
+    },
+    {
+      "id": "rejects",
+      "type": "failure_count"
+    }
+  ],
+  "calendars": [
+    {
+      "id": "two_shift_weekdays",
+      "period": 10080,
+      "shifts": [
+        {
+          "start": 360,
+          "end": 840,
+          "label": "early"
+        },
+        {
+          "start": 840,
+          "end": 1320,
+          "label": "late"
+        },
+        {
+          "start": 1800,
+          "end": 2280,
+          "label": "early"
+        },
+        {
+          "start": 2280,
+          "end": 2760,
+          "label": "late"
+        },
+        {
+          "start": 3240,
+          "end": 3720,
+          "label": "early"
+        },
+        {
+          "start": 3720,
+          "end": 4200,
+          "label": "late"
+        },
+        {
+          "start": 4680,
+          "end": 5160,
+          "label": "early"
+        },
+        {
+          "start": 5160,
+          "end": 5640,
+          "label": "late"
+        },
+        {
+          "start": 6120,
+          "end": 6600,
+          "label": "early"
+        },
+        {
+          "start": 6600,
+          "end": 7080,
+          "label": "late"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "orders_plain": {
+          "x": 0,
+          "y": 0
+        },
+        "orders_printed": {
+          "x": 0,
+          "y": 120
+        },
+        "orders_tray": {
+          "x": 0,
+          "y": 360
+        },
+        "orders_display": {
+          "x": 0,
+          "y": 480
+        },
+        "q_corrugate_rsc": {
+          "x": 240,
+          "y": 0
+        },
+        "corrugate_rsc": {
+          "x": 480,
+          "y": 0
+        },
+        "q_ffg": {
+          "x": 720,
+          "y": 0
+        },
+        "ffg": {
+          "x": 960,
+          "y": 0
+        },
+        "q_corrugate_die": {
+          "x": 240,
+          "y": 360
+        },
+        "corrugate_die": {
+          "x": 480,
+          "y": 360
+        },
+        "q_die_cut": {
+          "x": 720,
+          "y": 360
+        },
+        "die_cutting": {
+          "x": 960,
+          "y": 360
+        },
+        "quality_check": {
+          "x": 1200,
+          "y": 120
+        },
+        "defect": {
+          "x": 1200,
+          "y": 240
+        },
+        "q_strapping": {
+          "x": 1440,
+          "y": 120
+        },
+        "strapping": {
+          "x": 1680,
+          "y": 120
+        },
+        "q_palletizing": {
+          "x": 1920,
+          "y": 120
+        },
+        "palletizing": {
+          "x": 2160,
+          "y": 120
+        },
+        "shipped": {
+          "x": 2400,
+          "y": 120
+        },
+        "waste": {
+          "x": 1440,
+          "y": 240
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "source": "synthetic, for demonstration",
+    "origin": "Synthetic demonstration values of docs/domains/PRODUCTION_LOGISTICS.md (H-045, H-046): realistic structure and magnitudes from the sources listed there, scaled; NOT customer data, plant measurements or any company's data.",
+    "assumptions": [
+      "Time unit minute; t=0 is Monday 00:00 model time (no time zone).",
+      "Two shifts 06:00-14:00 and 14:00-22:00, Monday to Friday.",
+      "One item is a load of 1,000 sheets or boxes. Every weekday: 14 case orders of 8 loads alternating plain and printed every hour from 06:00 to 19:00, and 6 die-cut orders of 6 loads alternating trays and displays (148 loads, 148,000 boxes).",
+      "Each order family is routed by its own corrugating step on the shared corrugator: cases to the flexo folder-gluer, trays and displays to the rotary die-cutter.",
+      "The flexo folder-gluer is the bottleneck: tri(4, 5, 7) min a load (about 12,000 boxes an hour, about half its rated speed) and a makeready of tri(10, 15, 25) min at each order change, about 85% busy on shift.",
+      "Corrugator tri(2, 2.5, 3.5) min a load (about 300 m/min) with on-the-fly order changes of tri(1, 2, 4) min; rotary die-cutter tri(6, 7.5, 10) min a load with a die change of tri(15, 20, 30) min.",
+      "The quality check rejects 1.5% of loads (a model input); trim and slot waste inside each load is not modelled.",
+      "Breakdowns count on-shift time only; the time to failure and repair parameters are estimates."
+    ]
+  }
+}

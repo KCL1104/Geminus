@@ -1,0 +1,34 @@
+{
+  "entity_types": {
+    "white_bread": "白吐司",
+    "sesame_bread": "芝麻吐司"
+  },
+  "resources": {
+    "mixer": "臥式攪拌機",
+    "makeup_line": "整型線",
+    "tunnel_oven": "隧道爐",
+    "slicer_bagger": "切片裝袋機",
+    "metal_detector": "金屬檢測機"
+  },
+  "nodes": {
+    "release_white": "麵糰工單：白吐司",
+    "release_sesame": "麵糰工單：芝麻吐司（週五）",
+    "q_mixing": "待攪拌工單",
+    "mixing": "攪拌（每批 1,200 條）",
+    "floor_time": "靜置",
+    "q_makeup": "待整型麵糰",
+    "makeup": "分割、滾圓、整型與入模",
+    "final_proof": "最後發酵",
+    "q_oven": "待烘烤烤盤",
+    "baking": "烘烤（隧道爐）",
+    "cooling": "脫模與冷卻",
+    "q_slicing": "待切片",
+    "slicing": "切片與裝袋",
+    "q_detection": "金屬檢測前",
+    "detection": "金屬檢測",
+    "detection_result": "檢測結果",
+    "rejected": "剔除",
+    "dispatched": "送往出貨",
+    "scrap": "報廢"
+  }
+}

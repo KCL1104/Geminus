@@ -1,0 +1,1477 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00F00DP1ANT0000000",
+  "domain": "production_logistics",
+  "name": "Synthetic pan bread bakery",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "white_bread",
+      "name": "White pan bread"
+    },
+    {
+      "id": "sesame_bread",
+      "name": "Sesame-topped bread"
+    }
+  ],
+  "resources": [
+    {
+      "id": "mixer",
+      "type": "machine",
+      "role": "machine",
+      "name": "Horizontal mixers",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_ten_hour_shifts"
+    },
+    {
+      "id": "makeup_line",
+      "type": "machine",
+      "role": "machine",
+      "name": "Makeup line",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_ten_hour_shifts",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 600
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 5,
+            "mode": 10,
+            "max": 30
+          }
+        }
+      },
+      "setups": {
+        "initial": "white_bread",
+        "transitions": [
+          {
+            "from": "white_bread",
+            "to": "sesame_bread",
+            "distribution": {
+              "type": "triangular",
+              "min": 15,
+              "mode": 20,
+              "max": 30
+            }
+          },
+          {
+            "from": "sesame_bread",
+            "to": "white_bread",
+            "distribution": {
+              "type": "triangular",
+              "min": 10,
+              "mode": 15,
+              "max": 25
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "tunnel_oven",
+      "type": "machine",
+      "role": "machine",
+      "name": "Tunnel oven",
+      "capacity": 18,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_ten_hour_shifts"
+    },
+    {
+      "id": "slicer_bagger",
+      "type": "machine",
+      "role": "machine",
+      "name": "Slicer-baggers",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_ten_hour_shifts",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 480
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 5,
+            "mode": 10,
+            "max": 20
+          }
+        }
+      }
+    },
+    {
+      "id": "metal_detector",
+      "type": "machine",
+      "role": "inspection_equipment",
+      "name": "Metal detector",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_ten_hour_shifts"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "release_white",
+      "type": "source",
+      "entity_type": "white_bread",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 240,
+              "quantity": 30
+            },
+            {
+              "at": 270,
+              "quantity": 30
+            },
+            {
+              "at": 300,
+              "quantity": 30
+            },
+            {
+              "at": 330,
+              "quantity": 30
+            },
+            {
+              "at": 360,
+              "quantity": 30
+            },
+            {
+              "at": 390,
+              "quantity": 30
+            },
+            {
+              "at": 420,
+              "quantity": 30
+            },
+            {
+              "at": 450,
+              "quantity": 30
+            },
+            {
+              "at": 480,
+              "quantity": 30
+            },
+            {
+              "at": 510,
+              "quantity": 30
+            },
+            {
+              "at": 540,
+              "quantity": 30
+            },
+            {
+              "at": 570,
+              "quantity": 30
+            },
+            {
+              "at": 600,
+              "quantity": 30
+            },
+            {
+              "at": 630,
+              "quantity": 30
+            },
+            {
+              "at": 660,
+              "quantity": 30
+            },
+            {
+              "at": 690,
+              "quantity": 30
+            },
+            {
+              "at": 720,
+              "quantity": 30
+            },
+            {
+              "at": 750,
+              "quantity": 30
+            },
+            {
+              "at": 780,
+              "quantity": 30
+            },
+            {
+              "at": 810,
+              "quantity": 30
+            },
+            {
+              "at": 840,
+              "quantity": 30
+            },
+            {
+              "at": 870,
+              "quantity": 30
+            },
+            {
+              "at": 900,
+              "quantity": 30
+            },
+            {
+              "at": 930,
+              "quantity": 30
+            },
+            {
+              "at": 960,
+              "quantity": 30
+            },
+            {
+              "at": 990,
+              "quantity": 30
+            },
+            {
+              "at": 1020,
+              "quantity": 30
+            },
+            {
+              "at": 1050,
+              "quantity": 30
+            },
+            {
+              "at": 1080,
+              "quantity": 30
+            },
+            {
+              "at": 1110,
+              "quantity": 30
+            },
+            {
+              "at": 1140,
+              "quantity": 30
+            },
+            {
+              "at": 1170,
+              "quantity": 30
+            },
+            {
+              "at": 1680,
+              "quantity": 30
+            },
+            {
+              "at": 1710,
+              "quantity": 30
+            },
+            {
+              "at": 1740,
+              "quantity": 30
+            },
+            {
+              "at": 1770,
+              "quantity": 30
+            },
+            {
+              "at": 1800,
+              "quantity": 30
+            },
+            {
+              "at": 1830,
+              "quantity": 30
+            },
+            {
+              "at": 1860,
+              "quantity": 30
+            },
+            {
+              "at": 1890,
+              "quantity": 30
+            },
+            {
+              "at": 1920,
+              "quantity": 30
+            },
+            {
+              "at": 1950,
+              "quantity": 30
+            },
+            {
+              "at": 1980,
+              "quantity": 30
+            },
+            {
+              "at": 2010,
+              "quantity": 30
+            },
+            {
+              "at": 2040,
+              "quantity": 30
+            },
+            {
+              "at": 2070,
+              "quantity": 30
+            },
+            {
+              "at": 2100,
+              "quantity": 30
+            },
+            {
+              "at": 2130,
+              "quantity": 30
+            },
+            {
+              "at": 2160,
+              "quantity": 30
+            },
+            {
+              "at": 2190,
+              "quantity": 30
+            },
+            {
+              "at": 2220,
+              "quantity": 30
+            },
+            {
+              "at": 2250,
+              "quantity": 30
+            },
+            {
+              "at": 2280,
+              "quantity": 30
+            },
+            {
+              "at": 2310,
+              "quantity": 30
+            },
+            {
+              "at": 2340,
+              "quantity": 30
+            },
+            {
+              "at": 2370,
+              "quantity": 30
+            },
+            {
+              "at": 2400,
+              "quantity": 30
+            },
+            {
+              "at": 2430,
+              "quantity": 30
+            },
+            {
+              "at": 2460,
+              "quantity": 30
+            },
+            {
+              "at": 2490,
+              "quantity": 30
+            },
+            {
+              "at": 2520,
+              "quantity": 30
+            },
+            {
+              "at": 2550,
+              "quantity": 30
+            },
+            {
+              "at": 2580,
+              "quantity": 30
+            },
+            {
+              "at": 2610,
+              "quantity": 30
+            },
+            {
+              "at": 3120,
+              "quantity": 30
+            },
+            {
+              "at": 3150,
+              "quantity": 30
+            },
+            {
+              "at": 3180,
+              "quantity": 30
+            },
+            {
+              "at": 3210,
+              "quantity": 30
+            },
+            {
+              "at": 3240,
+              "quantity": 30
+            },
+            {
+              "at": 3270,
+              "quantity": 30
+            },
+            {
+              "at": 3300,
+              "quantity": 30
+            },
+            {
+              "at": 3330,
+              "quantity": 30
+            },
+            {
+              "at": 3360,
+              "quantity": 30
+            },
+            {
+              "at": 3390,
+              "quantity": 30
+            },
+            {
+              "at": 3420,
+              "quantity": 30
+            },
+            {
+              "at": 3450,
+              "quantity": 30
+            },
+            {
+              "at": 3480,
+              "quantity": 30
+            },
+            {
+              "at": 3510,
+              "quantity": 30
+            },
+            {
+              "at": 3540,
+              "quantity": 30
+            },
+            {
+              "at": 3570,
+              "quantity": 30
+            },
+            {
+              "at": 3600,
+              "quantity": 30
+            },
+            {
+              "at": 3630,
+              "quantity": 30
+            },
+            {
+              "at": 3660,
+              "quantity": 30
+            },
+            {
+              "at": 3690,
+              "quantity": 30
+            },
+            {
+              "at": 3720,
+              "quantity": 30
+            },
+            {
+              "at": 3750,
+              "quantity": 30
+            },
+            {
+              "at": 3780,
+              "quantity": 30
+            },
+            {
+              "at": 3810,
+              "quantity": 30
+            },
+            {
+              "at": 3840,
+              "quantity": 30
+            },
+            {
+              "at": 3870,
+              "quantity": 30
+            },
+            {
+              "at": 3900,
+              "quantity": 30
+            },
+            {
+              "at": 3930,
+              "quantity": 30
+            },
+            {
+              "at": 3960,
+              "quantity": 30
+            },
+            {
+              "at": 3990,
+              "quantity": 30
+            },
+            {
+              "at": 4020,
+              "quantity": 30
+            },
+            {
+              "at": 4050,
+              "quantity": 30
+            },
+            {
+              "at": 4560,
+              "quantity": 30
+            },
+            {
+              "at": 4590,
+              "quantity": 30
+            },
+            {
+              "at": 4620,
+              "quantity": 30
+            },
+            {
+              "at": 4650,
+              "quantity": 30
+            },
+            {
+              "at": 4680,
+              "quantity": 30
+            },
+            {
+              "at": 4710,
+              "quantity": 30
+            },
+            {
+              "at": 4740,
+              "quantity": 30
+            },
+            {
+              "at": 4770,
+              "quantity": 30
+            },
+            {
+              "at": 4800,
+              "quantity": 30
+            },
+            {
+              "at": 4830,
+              "quantity": 30
+            },
+            {
+              "at": 4860,
+              "quantity": 30
+            },
+            {
+              "at": 4890,
+              "quantity": 30
+            },
+            {
+              "at": 4920,
+              "quantity": 30
+            },
+            {
+              "at": 4950,
+              "quantity": 30
+            },
+            {
+              "at": 4980,
+              "quantity": 30
+            },
+            {
+              "at": 5010,
+              "quantity": 30
+            },
+            {
+              "at": 5040,
+              "quantity": 30
+            },
+            {
+              "at": 5070,
+              "quantity": 30
+            },
+            {
+              "at": 5100,
+              "quantity": 30
+            },
+            {
+              "at": 5130,
+              "quantity": 30
+            },
+            {
+              "at": 5160,
+              "quantity": 30
+            },
+            {
+              "at": 5190,
+              "quantity": 30
+            },
+            {
+              "at": 5220,
+              "quantity": 30
+            },
+            {
+              "at": 5250,
+              "quantity": 30
+            },
+            {
+              "at": 5280,
+              "quantity": 30
+            },
+            {
+              "at": 5310,
+              "quantity": 30
+            },
+            {
+              "at": 5340,
+              "quantity": 30
+            },
+            {
+              "at": 5370,
+              "quantity": 30
+            },
+            {
+              "at": 5400,
+              "quantity": 30
+            },
+            {
+              "at": 5430,
+              "quantity": 30
+            },
+            {
+              "at": 5460,
+              "quantity": 30
+            },
+            {
+              "at": 5490,
+              "quantity": 30
+            },
+            {
+              "at": 6000,
+              "quantity": 30
+            },
+            {
+              "at": 6030,
+              "quantity": 30
+            },
+            {
+              "at": 6060,
+              "quantity": 30
+            },
+            {
+              "at": 6090,
+              "quantity": 30
+            },
+            {
+              "at": 6120,
+              "quantity": 30
+            },
+            {
+              "at": 6150,
+              "quantity": 30
+            },
+            {
+              "at": 6180,
+              "quantity": 30
+            },
+            {
+              "at": 6210,
+              "quantity": 30
+            },
+            {
+              "at": 6240,
+              "quantity": 30
+            },
+            {
+              "at": 6270,
+              "quantity": 30
+            },
+            {
+              "at": 6300,
+              "quantity": 30
+            },
+            {
+              "at": 6330,
+              "quantity": 30
+            },
+            {
+              "at": 6360,
+              "quantity": 30
+            },
+            {
+              "at": 6390,
+              "quantity": 30
+            },
+            {
+              "at": 6420,
+              "quantity": 30
+            },
+            {
+              "at": 6450,
+              "quantity": 30
+            },
+            {
+              "at": 6480,
+              "quantity": 30
+            },
+            {
+              "at": 6510,
+              "quantity": 30
+            },
+            {
+              "at": 6540,
+              "quantity": 30
+            },
+            {
+              "at": 6570,
+              "quantity": 30
+            },
+            {
+              "at": 7440,
+              "quantity": 30
+            },
+            {
+              "at": 7470,
+              "quantity": 30
+            },
+            {
+              "at": 7500,
+              "quantity": 30
+            },
+            {
+              "at": 7530,
+              "quantity": 30
+            },
+            {
+              "at": 7560,
+              "quantity": 30
+            },
+            {
+              "at": 7590,
+              "quantity": 30
+            },
+            {
+              "at": 7620,
+              "quantity": 30
+            },
+            {
+              "at": 7650,
+              "quantity": 30
+            },
+            {
+              "at": 7680,
+              "quantity": 30
+            },
+            {
+              "at": 7710,
+              "quantity": 30
+            },
+            {
+              "at": 7740,
+              "quantity": 30
+            },
+            {
+              "at": 7770,
+              "quantity": 30
+            },
+            {
+              "at": 7800,
+              "quantity": 30
+            },
+            {
+              "at": 7830,
+              "quantity": 30
+            },
+            {
+              "at": 7860,
+              "quantity": 30
+            },
+            {
+              "at": 7890,
+              "quantity": 30
+            },
+            {
+              "at": 7920,
+              "quantity": 30
+            },
+            {
+              "at": 7950,
+              "quantity": 30
+            },
+            {
+              "at": 7980,
+              "quantity": 30
+            },
+            {
+              "at": 8010,
+              "quantity": 30
+            },
+            {
+              "at": 8040,
+              "quantity": 30
+            },
+            {
+              "at": 8070,
+              "quantity": 30
+            },
+            {
+              "at": 8100,
+              "quantity": 30
+            },
+            {
+              "at": 8130,
+              "quantity": 30
+            },
+            {
+              "at": 8160,
+              "quantity": 30
+            },
+            {
+              "at": 8190,
+              "quantity": 30
+            },
+            {
+              "at": 8220,
+              "quantity": 30
+            },
+            {
+              "at": 8250,
+              "quantity": 30
+            },
+            {
+              "at": 8280,
+              "quantity": 30
+            },
+            {
+              "at": 8310,
+              "quantity": 30
+            },
+            {
+              "at": 8340,
+              "quantity": 30
+            },
+            {
+              "at": 8370,
+              "quantity": 30
+            }
+          ]
+        }
+      },
+      "name": "Dough orders: white pan bread"
+    },
+    {
+      "id": "release_sesame",
+      "type": "source",
+      "entity_type": "sesame_bread",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 6600,
+              "quantity": 30
+            },
+            {
+              "at": 6630,
+              "quantity": 30
+            },
+            {
+              "at": 6660,
+              "quantity": 30
+            },
+            {
+              "at": 6690,
+              "quantity": 30
+            },
+            {
+              "at": 6720,
+              "quantity": 30
+            },
+            {
+              "at": 6750,
+              "quantity": 30
+            },
+            {
+              "at": 6780,
+              "quantity": 30
+            },
+            {
+              "at": 6810,
+              "quantity": 30
+            },
+            {
+              "at": 6840,
+              "quantity": 30
+            },
+            {
+              "at": 6870,
+              "quantity": 30
+            },
+            {
+              "at": 6900,
+              "quantity": 30
+            },
+            {
+              "at": 6930,
+              "quantity": 30
+            }
+          ]
+        }
+      },
+      "name": "Dough orders: sesame bread (Fridays)"
+    },
+    {
+      "id": "q_mixing",
+      "type": "queue",
+      "name": "Dough orders waiting"
+    },
+    {
+      "id": "mixing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 22,
+          "mode": 24,
+          "max": 27
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "mixer",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 30,
+        "max_size": 30
+      },
+      "name": "Mixing (a 1,200-loaf batch)"
+    },
+    {
+      "id": "floor_time",
+      "type": "delay",
+      "delay_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 12,
+          "mode": 15,
+          "max": 18
+        }
+      },
+      "name": "Floor time"
+    },
+    {
+      "id": "q_makeup",
+      "type": "queue",
+      "capacity": 60,
+      "name": "Dough waiting for makeup"
+    },
+    {
+      "id": "makeup",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.6,
+          "mode": 0.7,
+          "max": 0.9
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "makeup_line",
+          "units": 1
+        }
+      ],
+      "name": "Dividing, rounding, moulding and panning"
+    },
+    {
+      "id": "final_proof",
+      "type": "delay",
+      "delay_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 50,
+          "mode": 57,
+          "max": 65
+        }
+      },
+      "name": "Final proof"
+    },
+    {
+      "id": "q_oven",
+      "type": "queue",
+      "capacity": 30,
+      "name": "Proofed pans waiting for the oven"
+    },
+    {
+      "id": "baking",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 18,
+          "mode": 20,
+          "max": 22
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "tunnel_oven",
+          "units": 1
+        }
+      ],
+      "name": "Baking (tunnel oven)"
+    },
+    {
+      "id": "cooling",
+      "type": "delay",
+      "delay_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 60,
+          "mode": 75,
+          "max": 90
+        }
+      },
+      "name": "Depanning and cooling"
+    },
+    {
+      "id": "q_slicing",
+      "type": "queue",
+      "capacity": 40,
+      "name": "Cooled loaves waiting for slicing"
+    },
+    {
+      "id": "slicing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.2,
+          "mode": 1.4,
+          "max": 1.8
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "slicer_bagger",
+          "units": 1
+        }
+      ],
+      "name": "Slicing and bagging"
+    },
+    {
+      "id": "q_detection",
+      "type": "queue",
+      "capacity": 20,
+      "name": "Bagged loaves before the metal detector"
+    },
+    {
+      "id": "detection",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.3,
+          "mode": 0.4,
+          "max": 0.5
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "metal_detector",
+          "units": 1
+        }
+      ],
+      "name": "Metal detection"
+    },
+    {
+      "id": "detection_result",
+      "type": "decision",
+      "name": "Detector result"
+    },
+    {
+      "id": "rejected",
+      "type": "failure",
+      "name": "Rejected"
+    },
+    {
+      "id": "dispatched",
+      "type": "sink",
+      "outcome": "completed",
+      "name": "To dispatch"
+    },
+    {
+      "id": "scrap",
+      "type": "sink",
+      "outcome": "abandoned",
+      "name": "Scrap"
+    }
+  ],
+  "flows": [
+    {
+      "id": "release_white__q_mixing",
+      "from": "release_white",
+      "to": "q_mixing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "release_sesame__q_mixing",
+      "from": "release_sesame",
+      "to": "q_mixing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_mixing__mixing",
+      "from": "q_mixing",
+      "to": "mixing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "mixing__floor_time",
+      "from": "mixing",
+      "to": "floor_time",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "floor_time__q_makeup",
+      "from": "floor_time",
+      "to": "q_makeup",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_makeup__makeup",
+      "from": "q_makeup",
+      "to": "makeup",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "makeup__final_proof",
+      "from": "makeup",
+      "to": "final_proof",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "final_proof__q_oven",
+      "from": "final_proof",
+      "to": "q_oven",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_oven__baking",
+      "from": "q_oven",
+      "to": "baking",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "baking__cooling",
+      "from": "baking",
+      "to": "cooling",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "cooling__q_slicing",
+      "from": "cooling",
+      "to": "q_slicing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_slicing__slicing",
+      "from": "q_slicing",
+      "to": "slicing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "slicing__q_detection",
+      "from": "slicing",
+      "to": "q_detection",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_detection__detection",
+      "from": "q_detection",
+      "to": "detection",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "detection__detection_result",
+      "from": "detection",
+      "to": "detection_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "detection_result__dispatched",
+      "from": "detection_result",
+      "to": "dispatched",
+      "routing": {
+        "type": "probability",
+        "probability": 0.997
+      }
+    },
+    {
+      "id": "detection_result__rejected",
+      "from": "detection_result",
+      "to": "rejected",
+      "routing": {
+        "type": "probability",
+        "probability": 0.003
+      }
+    },
+    {
+      "id": "rejected__scrap",
+      "from": "rejected",
+      "to": "scrap",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "detection_result",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "oven_utilization",
+      "type": "resource_utilization",
+      "resource_id": "tunnel_oven"
+    },
+    {
+      "id": "makeup_utilization",
+      "type": "resource_utilization",
+      "resource_id": "makeup_line"
+    },
+    {
+      "id": "oven_queue_wait",
+      "type": "queue_wait",
+      "node_id": "q_oven"
+    },
+    {
+      "id": "rejects",
+      "type": "failure_count"
+    }
+  ],
+  "calendars": [
+    {
+      "id": "two_ten_hour_shifts",
+      "period": 10080,
+      "shifts": [
+        {
+          "start": 240,
+          "end": 840,
+          "label": "first"
+        },
+        {
+          "start": 840,
+          "end": 1440,
+          "label": "second"
+        },
+        {
+          "start": 1680,
+          "end": 2280,
+          "label": "first"
+        },
+        {
+          "start": 2280,
+          "end": 2880,
+          "label": "second"
+        },
+        {
+          "start": 3120,
+          "end": 3720,
+          "label": "first"
+        },
+        {
+          "start": 3720,
+          "end": 4320,
+          "label": "second"
+        },
+        {
+          "start": 4560,
+          "end": 5160,
+          "label": "first"
+        },
+        {
+          "start": 5160,
+          "end": 5760,
+          "label": "second"
+        },
+        {
+          "start": 6000,
+          "end": 6600,
+          "label": "first"
+        },
+        {
+          "start": 6600,
+          "end": 7200,
+          "label": "second"
+        },
+        {
+          "start": 7440,
+          "end": 8040,
+          "label": "first"
+        },
+        {
+          "start": 8040,
+          "end": 8640,
+          "label": "second"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "release_white": {
+          "x": 0,
+          "y": 0
+        },
+        "release_sesame": {
+          "x": 0,
+          "y": 120
+        },
+        "q_mixing": {
+          "x": 240,
+          "y": 0
+        },
+        "mixing": {
+          "x": 480,
+          "y": 0
+        },
+        "floor_time": {
+          "x": 720,
+          "y": 0
+        },
+        "q_makeup": {
+          "x": 960,
+          "y": 0
+        },
+        "makeup": {
+          "x": 1200,
+          "y": 0
+        },
+        "final_proof": {
+          "x": 1440,
+          "y": 0
+        },
+        "q_oven": {
+          "x": 1680,
+          "y": 0
+        },
+        "baking": {
+          "x": 1920,
+          "y": 0
+        },
+        "cooling": {
+          "x": 2160,
+          "y": 0
+        },
+        "q_slicing": {
+          "x": 2400,
+          "y": 0
+        },
+        "slicing": {
+          "x": 2640,
+          "y": 0
+        },
+        "q_detection": {
+          "x": 2880,
+          "y": 0
+        },
+        "detection": {
+          "x": 3120,
+          "y": 0
+        },
+        "detection_result": {
+          "x": 3360,
+          "y": 0
+        },
+        "rejected": {
+          "x": 3360,
+          "y": 120
+        },
+        "dispatched": {
+          "x": 3600,
+          "y": 0
+        },
+        "scrap": {
+          "x": 3600,
+          "y": 120
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "source": "synthetic, for demonstration",
+    "origin": "Synthetic demonstration values of docs/domains/PRODUCTION_LOGISTICS.md (H-045, H-046): realistic structure and magnitudes from the sources listed there, scaled; NOT customer data, plant measurements or any company's data.",
+    "assumptions": [
+      "Time unit minute; t=0 is Monday 00:00 model time (no time zone).",
+      "Two 10-hour shifts, 04:00-14:00 and 14:00-24:00, Monday to Saturday; 00:00-04:00 is maintenance and sanitation (a calendar gap); Sunday closed.",
+      "One item is a lot of 40 loaves (about 30 kg of dough); a dough order is 30 lots (1,200 loaves, about 900 kg), one every 30 min from 04:00 to 19:30 (960 lots, 38,400 loaves a day).",
+      "Sesame-topped bread runs only on Friday's second shift, after the white bread; the makeup line's topping changeover is tri(15, 20, 30) min, and the allergen wet clean is in the nightly sanitation gap.",
+      "The tunnel oven is the bottleneck: 18 lot positions (720 loaves), tri(18, 20, 22) min a bake, about 90% busy on shift.",
+      "Mixing tri(22, 24, 27) min a batch on two horizontal mixers (load, mix and discharge); floor time tri(12, 15, 18), final proof tri(50, 57, 65) and cooling tri(60, 75, 90) min take no resource here.",
+      "Two slicer-baggers at about 33 loaves a minute each: tri(1.2, 1.4, 1.8) min a lot.",
+      "The metal detector rejects 0.3% of lots (a model input), which are scrapped.",
+      "Breakdowns count on-shift time only; the time to failure and repair parameters are estimates. Shelf life, temperature and over-proofing are not modelled."
+    ]
+  }
+}

@@ -120,6 +120,8 @@ const textPairs: [string, string][] = [
   ["--gm-color-on-accent", "--gm-color-accent-fill"],
   ["--gm-color-ink", "--gm-color-accent-wash"],
   ["--gm-color-ink-3", "--gm-color-raised"],
+  // H-045: a chosen template's one-line description on Selected Row Tint.
+  ["--gm-color-ink-2", "--gm-color-selection-tint"],
 ];
 // Control boundaries against the surfaces controls sit on, the focus ring
 // and the checked box (WCAG 1.4.11, 3:1). A hovered control's own fill is

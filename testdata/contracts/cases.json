@@ -831,6 +831,40 @@
       ]
     },
     {
+      "id": "valid-create-model-production-logistics",
+      "instance": "testdata/contracts/valid-create-model-production-logistics.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-create-model-production-logistics-zh-hant",
+      "instance": "testdata/contracts/valid-create-model-production-logistics-zh-hant.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-create-model-production-logistics-template-of-another-domain",
+      "instance": "testdata/contracts/invalid-create-model-production-logistics-template-of-another-domain.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/template"
+      ]
+    },
+    {
+      "id": "invalid-create-model-production-logistics-template-under-another-domain",
+      "instance": "testdata/contracts/invalid-create-model-production-logistics-template-under-another-domain.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/template"
+      ]
+    },
+    {
       "id": "valid-me",
       "instance": "testdata/contracts/valid-me.json",
       "schema": "schemas/http.schema.json#/$defs/Me",

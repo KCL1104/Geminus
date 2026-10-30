@@ -1,0 +1,37 @@
+{
+  "entity_types": {
+    "plain_rsc": "素面運輸紙箱",
+    "printed_rsc": "印刷運輸紙箱",
+    "die_cut_tray": "模切托盤",
+    "die_cut_display": "模切展示箱"
+  },
+  "resources": {
+    "corrugator": "瓦楞紙板機",
+    "flexo_folder_gluer": "印刷開槽糊箱機",
+    "die_cutter": "輪轉模切機",
+    "strapper": "打捆機",
+    "palletizer": "棧板堆疊與纏繞機"
+  },
+  "nodes": {
+    "orders_plain": "訂單：素面運輸紙箱",
+    "orders_printed": "訂單：印刷運輸紙箱",
+    "orders_tray": "訂單：模切托盤",
+    "orders_display": "訂單：模切展示箱",
+    "q_corrugate_rsc": "待生產紙板（運輸紙箱）",
+    "corrugate_rsc": "瓦楞成型：紙箱紙板",
+    "q_ffg": "待印刷糊箱紙板",
+    "ffg": "印刷、開槽、折疊與糊箱",
+    "q_corrugate_die": "待生產紙板（模切）",
+    "corrugate_die": "瓦楞成型：模切紙板",
+    "q_die_cut": "待模切紙板",
+    "die_cutting": "輪轉模切",
+    "quality_check": "品質檢查",
+    "defect": "不良品",
+    "q_strapping": "待打捆",
+    "strapping": "成捆與打帶",
+    "q_palletizing": "待堆疊棧板",
+    "palletizing": "棧板堆疊與纏繞",
+    "shipped": "待出貨",
+    "waste": "廢品"
+  }
+}

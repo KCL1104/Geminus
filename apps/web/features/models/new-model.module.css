@@ -1,0 +1,136 @@
+/* A new model from a template (H-045): one section on the project page,
+   the templates under their domain's name as option rows (a 600 name over
+   a 12 px line, DESIGN.md Run menu), two columns where there is room, then
+   the name and the actions. The chosen row takes Selected Row Tint and its
+   radio fills with Ink; the shape, not the tint alone, says which. */
+.panel {
+  max-width: var(--gm-content-width);
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.panel > h2 {
+  margin: 0 0 var(--gm-space-xs);
+}
+
+.intro {
+  max-width: 720px;
+  margin: 0 0 var(--gm-space-section);
+  color: var(--gm-color-ink-2);
+}
+
+.templates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-section);
+}
+
+.label {
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-sm);
+}
+
+.domain {
+  margin: 0;
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr));
+  gap: var(--gm-space-md);
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gm-space-cell);
+  padding: var(--gm-space-cell) var(--gm-space-lg);
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-sheet);
+  cursor: pointer;
+  transition: background-color var(--gm-motion), border-color var(--gm-motion);
+}
+
+.option[data-hovered] {
+  background: var(--gm-color-hover);
+}
+
+.option[data-selected] {
+  border-color: var(--gm-color-ink);
+  background: var(--gm-color-selection-tint);
+}
+
+.option[data-focus-visible] {
+  outline: var(--gm-focus-ring);
+  outline-offset: var(--gm-focus-offset);
+}
+
+.dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: var(--gm-space-hair);
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-raised);
+  transition: border-color var(--gm-motion);
+}
+
+.option[data-hovered] .dot {
+  border-color: var(--gm-color-ink-2);
+}
+
+.option[data-selected] .dot {
+  border-color: var(--gm-color-ink);
+}
+
+.option[data-selected] .dot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-ink);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-hair);
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.option[data-selected] .name {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.description {
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-md);
+}

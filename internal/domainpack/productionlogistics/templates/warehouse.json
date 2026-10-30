@@ -1,0 +1,739 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00WAREH0VSE0000000",
+  "domain": "production_logistics",
+  "name": "Synthetic distribution center",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "case",
+      "name": "Cases"
+    }
+  ],
+  "resources": [
+    {
+      "id": "receiver",
+      "type": "human",
+      "role": "operator",
+      "name": "Receiving crew",
+      "capacity": 9,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "shift_capacity": {
+        "early": 9,
+        "late": 3
+      }
+    },
+    {
+      "id": "forklift",
+      "type": "machine",
+      "role": "material_handling",
+      "name": "Reach trucks",
+      "capacity": 3,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 960
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 15,
+            "mode": 30,
+            "max": 60
+          }
+        }
+      }
+    },
+    {
+      "id": "picker",
+      "type": "human",
+      "role": "operator",
+      "name": "Pickers",
+      "capacity": 4,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "shift_capacity": {
+        "early": 4,
+        "late": 3
+      }
+    },
+    {
+      "id": "packer",
+      "type": "human",
+      "role": "operator",
+      "name": "Pack stations",
+      "capacity": 3,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays",
+      "shift_capacity": {
+        "early": 3,
+        "late": 3
+      }
+    },
+    {
+      "id": "problem_solver",
+      "type": "human",
+      "role": "inspector",
+      "name": "Problem solver",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays"
+    },
+    {
+      "id": "dock_door",
+      "type": "machine",
+      "role": "dock",
+      "name": "Outbound dock doors",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "two_shift_weekdays"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "inbound_trailers",
+      "type": "source",
+      "entity_type": "case",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 360,
+              "quantity": 1200
+            },
+            {
+              "at": 450,
+              "quantity": 1200
+            },
+            {
+              "at": 540,
+              "quantity": 1200
+            },
+            {
+              "at": 630,
+              "quantity": 1200
+            },
+            {
+              "at": 720,
+              "quantity": 1200
+            },
+            {
+              "at": 1800,
+              "quantity": 1200
+            },
+            {
+              "at": 1890,
+              "quantity": 1200
+            },
+            {
+              "at": 1980,
+              "quantity": 1200
+            },
+            {
+              "at": 2070,
+              "quantity": 1200
+            },
+            {
+              "at": 2160,
+              "quantity": 1200
+            },
+            {
+              "at": 3240,
+              "quantity": 1200
+            },
+            {
+              "at": 3330,
+              "quantity": 1200
+            },
+            {
+              "at": 3420,
+              "quantity": 1200
+            },
+            {
+              "at": 3510,
+              "quantity": 1200
+            },
+            {
+              "at": 3600,
+              "quantity": 1200
+            },
+            {
+              "at": 4680,
+              "quantity": 1200
+            },
+            {
+              "at": 4770,
+              "quantity": 1200
+            },
+            {
+              "at": 4860,
+              "quantity": 1200
+            },
+            {
+              "at": 4950,
+              "quantity": 1200
+            },
+            {
+              "at": 5040,
+              "quantity": 1200
+            },
+            {
+              "at": 6120,
+              "quantity": 1200
+            },
+            {
+              "at": 6210,
+              "quantity": 1200
+            },
+            {
+              "at": 6300,
+              "quantity": 1200
+            },
+            {
+              "at": 6390,
+              "quantity": 1200
+            },
+            {
+              "at": 6480,
+              "quantity": 1200
+            }
+          ]
+        }
+      },
+      "name": "Inbound trailers"
+    },
+    {
+      "id": "q_receiving",
+      "type": "queue",
+      "name": "Trailers waiting to unload"
+    },
+    {
+      "id": "receiving",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.45,
+          "mode": 0.6,
+          "max": 0.8
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "receiver",
+          "units": 1
+        }
+      ],
+      "name": "Unloading and receiving"
+    },
+    {
+      "id": "q_putaway",
+      "type": "queue",
+      "capacity": 600,
+      "name": "Inbound staging"
+    },
+    {
+      "id": "putaway",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 3,
+          "mode": 4,
+          "max": 6
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "forklift",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 24,
+        "max_size": 48,
+        "max_wait": 20
+      },
+      "name": "Put-away (a pallet of up to 48 cases)"
+    },
+    {
+      "id": "storage",
+      "type": "queue",
+      "capacity": 6000,
+      "name": "Reserve storage"
+    },
+    {
+      "id": "picking",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.35,
+          "mode": 0.45,
+          "max": 0.75
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "picker",
+          "units": 1
+        }
+      ],
+      "name": "Case picking"
+    },
+    {
+      "id": "q_packing",
+      "type": "queue",
+      "capacity": 300,
+      "name": "Picked cases waiting for packing"
+    },
+    {
+      "id": "packing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 0.2,
+          "mode": 0.25,
+          "max": 0.35
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "packer",
+          "units": 1
+        }
+      ],
+      "name": "Labeling and packing"
+    },
+    {
+      "id": "scan_check",
+      "type": "decision",
+      "name": "Scan and weight check"
+    },
+    {
+      "id": "pick_error",
+      "type": "failure",
+      "name": "Pick error"
+    },
+    {
+      "id": "q_correction",
+      "type": "queue",
+      "name": "Waiting for correction"
+    },
+    {
+      "id": "correction",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 5,
+          "mode": 8,
+          "max": 12
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "problem_solver",
+          "units": 1
+        }
+      ],
+      "name": "Correction and re-pack"
+    },
+    {
+      "id": "corrected",
+      "type": "rework",
+      "name": "Corrected"
+    },
+    {
+      "id": "q_shipping",
+      "type": "queue",
+      "capacity": 2400,
+      "name": "Outbound staging lanes"
+    },
+    {
+      "id": "loading",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 30,
+          "mode": 45,
+          "max": 60
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "dock_door",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 600,
+        "max_size": 1200,
+        "max_wait": 60
+      },
+      "name": "Loading outbound trailers"
+    },
+    {
+      "id": "shipped",
+      "type": "sink",
+      "outcome": "completed",
+      "name": "Shipped"
+    }
+  ],
+  "flows": [
+    {
+      "id": "inbound_trailers__q_receiving",
+      "from": "inbound_trailers",
+      "to": "q_receiving",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_receiving__receiving",
+      "from": "q_receiving",
+      "to": "receiving",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "receiving__q_putaway",
+      "from": "receiving",
+      "to": "q_putaway",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_putaway__putaway",
+      "from": "q_putaway",
+      "to": "putaway",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "putaway__storage",
+      "from": "putaway",
+      "to": "storage",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "storage__picking",
+      "from": "storage",
+      "to": "picking",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "picking__q_packing",
+      "from": "picking",
+      "to": "q_packing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_packing__packing",
+      "from": "q_packing",
+      "to": "packing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "packing__scan_check",
+      "from": "packing",
+      "to": "scan_check",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "scan_check__q_shipping",
+      "from": "scan_check",
+      "to": "q_shipping",
+      "routing": {
+        "type": "probability",
+        "probability": 0.997
+      }
+    },
+    {
+      "id": "scan_check__pick_error",
+      "from": "scan_check",
+      "to": "pick_error",
+      "routing": {
+        "type": "probability",
+        "probability": 0.003
+      }
+    },
+    {
+      "id": "pick_error__q_correction",
+      "from": "pick_error",
+      "to": "q_correction",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_correction__correction",
+      "from": "q_correction",
+      "to": "correction",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "correction__corrected",
+      "from": "correction",
+      "to": "corrected",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "corrected__q_shipping",
+      "from": "corrected",
+      "to": "q_shipping",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_shipping__loading",
+      "from": "q_shipping",
+      "to": "loading",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "loading__shipped",
+      "from": "loading",
+      "to": "shipped",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "scan_check",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "picker_utilization",
+      "type": "resource_utilization",
+      "resource_id": "picker"
+    },
+    {
+      "id": "forklift_utilization",
+      "type": "resource_utilization",
+      "resource_id": "forklift"
+    },
+    {
+      "id": "storage_wait",
+      "type": "queue_wait",
+      "node_id": "storage"
+    },
+    {
+      "id": "pick_errors",
+      "type": "failure_count"
+    },
+    {
+      "id": "corrections",
+      "type": "rework_count"
+    }
+  ],
+  "calendars": [
+    {
+      "id": "two_shift_weekdays",
+      "period": 10080,
+      "shifts": [
+        {
+          "start": 360,
+          "end": 840,
+          "label": "early"
+        },
+        {
+          "start": 840,
+          "end": 1320,
+          "label": "late"
+        },
+        {
+          "start": 1800,
+          "end": 2280,
+          "label": "early"
+        },
+        {
+          "start": 2280,
+          "end": 2760,
+          "label": "late"
+        },
+        {
+          "start": 3240,
+          "end": 3720,
+          "label": "early"
+        },
+        {
+          "start": 3720,
+          "end": 4200,
+          "label": "late"
+        },
+        {
+          "start": 4680,
+          "end": 5160,
+          "label": "early"
+        },
+        {
+          "start": 5160,
+          "end": 5640,
+          "label": "late"
+        },
+        {
+          "start": 6120,
+          "end": 6600,
+          "label": "early"
+        },
+        {
+          "start": 6600,
+          "end": 7080,
+          "label": "late"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "inbound_trailers": {
+          "x": 0,
+          "y": 0
+        },
+        "q_receiving": {
+          "x": 240,
+          "y": 0
+        },
+        "receiving": {
+          "x": 480,
+          "y": 0
+        },
+        "q_putaway": {
+          "x": 720,
+          "y": 0
+        },
+        "putaway": {
+          "x": 960,
+          "y": 0
+        },
+        "storage": {
+          "x": 1200,
+          "y": 0
+        },
+        "picking": {
+          "x": 1440,
+          "y": 0
+        },
+        "q_packing": {
+          "x": 1680,
+          "y": 0
+        },
+        "packing": {
+          "x": 1920,
+          "y": 0
+        },
+        "scan_check": {
+          "x": 2160,
+          "y": 0
+        },
+        "pick_error": {
+          "x": 2160,
+          "y": 120
+        },
+        "q_correction": {
+          "x": 2160,
+          "y": 240
+        },
+        "correction": {
+          "x": 2400,
+          "y": 240
+        },
+        "corrected": {
+          "x": 2400,
+          "y": 120
+        },
+        "q_shipping": {
+          "x": 2640,
+          "y": 0
+        },
+        "loading": {
+          "x": 2880,
+          "y": 0
+        },
+        "shipped": {
+          "x": 3120,
+          "y": 0
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "source": "synthetic, for demonstration",
+    "origin": "Synthetic demonstration values of docs/domains/PRODUCTION_LOGISTICS.md (H-045, H-046): realistic structure and magnitudes from the sources listed there, scaled; NOT customer data, plant measurements or any company's data.",
+    "assumptions": [
+      "Time unit minute; t=0 is Monday 00:00 model time (no time zone).",
+      "Two shifts 06:00-14:00 and 14:00-22:00, Monday to Friday; 9 receivers (three trailer crews) early and 3 late, 4 pickers early and 3 late.",
+      "One item is a case. Five floor-loaded inbound trailers of 1,200 cases arrive every 90 min from 06:00 to 12:00 on weekdays (6,000 cases a day).",
+      "Unloading takes about 0.6 receiver-minutes a case (a crew of three empties a trailer in about four hours).",
+      "Case picking is the bottleneck: tri(0.35, 0.45, 0.75) min a case, about 116 cases an hour a picker with travel included, about 90% busy on shift. Pick paths are not modelled.",
+      "Orders are assumed to be waiting for every stored case, so picking is limited by pickers, not by orders; reserve storage holds 6,000 cases, and a full storage blocks put-away.",
+      "Put-away takes pallets of 24 to 48 cases (at most 20 min wait to fill once 24 are waiting), tri(3, 4, 6) min a pallet with three reach trucks that break down.",
+      "The scan and weight check finds a pick error in 0.3% of cases (a model input); the problem solver corrects and re-packs them.",
+      "Outbound trailers load 600 to 1,200 cases (at most 60 min wait to fill once 600 are waiting), tri(30, 45, 60) min a trailer at two dock doors.",
+      "Breakdowns count on-shift time only; the time to failure and repair parameters are estimates."
+    ]
+  }
+}

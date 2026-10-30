@@ -1,0 +1,45 @@
+{
+  "entity_types": {
+    "high_top": "高筒帆布鞋",
+    "low_top": "低筒帆布鞋"
+  },
+  "resources": {
+    "cutter": "裁斷人員",
+    "stitcher": "針車人員",
+    "lasting_machine": "攀幫機",
+    "sole_operator": "貼底與圍條人員",
+    "autoclave": "硫化罐",
+    "finisher": "成型後整理人員",
+    "inspector": "品檢人員",
+    "repairer": "修補人員",
+    "packer": "包裝人員"
+  },
+  "nodes": {
+    "release_high_top": "裁斷工單：高筒",
+    "release_low_top": "裁斷工單：低筒",
+    "q_cutting": "待裁斷工單",
+    "cutting": "裁斷",
+    "q_stitching": "待針車裁片",
+    "stitching": "針車（鞋面縫合）",
+    "q_lasting": "待攀幫鞋面",
+    "lasting": "攀幫",
+    "q_sole": "待貼底",
+    "sole_attaching": "貼底與圍條",
+    "q_vulcanizing": "待硫化鞋架",
+    "vulcanizing": "硫化（硫化罐批次）",
+    "q_finishing": "脫楦前冷卻架",
+    "finishing": "脫楦與整理",
+    "q_inspection": "品檢前緩衝",
+    "inspection": "成品檢驗",
+    "inspection_result": "檢驗結果",
+    "defect": "發現不良",
+    "defect_disposition": "修補或報廢",
+    "q_repair": "修補前緩衝",
+    "repair": "修補",
+    "repaired": "修補完成",
+    "q_packing": "包裝前緩衝",
+    "packing": "包裝",
+    "packed": "包裝完成",
+    "scrap": "報廢"
+  }
+}

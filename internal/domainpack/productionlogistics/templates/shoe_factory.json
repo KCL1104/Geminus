@@ -1,0 +1,1076 @@
+{
+  "schema_version": "0.1",
+  "model_id": "mdl_01M4YDQK00SH0EFACT0RY00000",
+  "domain": "production_logistics",
+  "name": "Synthetic vulcanized sneaker factory",
+  "time_unit": "minute",
+  "entity_types": [
+    {
+      "id": "high_top",
+      "name": "High-top canvas sneakers"
+    },
+    {
+      "id": "low_top",
+      "name": "Low-top canvas sneakers"
+    }
+  ],
+  "resources": [
+    {
+      "id": "cutter",
+      "type": "human",
+      "role": "operator",
+      "name": "Cutters",
+      "capacity": 12,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 12,
+        "afternoon": 12
+      }
+    },
+    {
+      "id": "stitcher",
+      "type": "human",
+      "role": "operator",
+      "name": "Stitchers",
+      "capacity": 72,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 72,
+        "afternoon": 72
+      }
+    },
+    {
+      "id": "lasting_machine",
+      "type": "machine",
+      "role": "machine",
+      "name": "Lasting machines",
+      "capacity": 4,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 480
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 10,
+            "mode": 20,
+            "max": 45
+          }
+        }
+      }
+    },
+    {
+      "id": "sole_operator",
+      "type": "human",
+      "role": "operator",
+      "name": "Sole and foxing operators",
+      "capacity": 34,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 34,
+        "afternoon": 34
+      }
+    },
+    {
+      "id": "autoclave",
+      "type": "machine",
+      "role": "machine",
+      "name": "Vulcanizing autoclave",
+      "capacity": 1,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "breakdowns": {
+        "time_to_failure": {
+          "distribution": {
+            "type": "exponential",
+            "mean": 4800
+          }
+        },
+        "time_to_repair": {
+          "distribution": {
+            "type": "triangular",
+            "min": 30,
+            "mode": 60,
+            "max": 120
+          }
+        }
+      }
+    },
+    {
+      "id": "finisher",
+      "type": "human",
+      "role": "operator",
+      "name": "Finishing operators",
+      "capacity": 14,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 14,
+        "afternoon": 14
+      }
+    },
+    {
+      "id": "inspector",
+      "type": "human",
+      "role": "inspector",
+      "name": "Inspectors",
+      "capacity": 4,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 4,
+        "afternoon": 4
+      }
+    },
+    {
+      "id": "repairer",
+      "type": "human",
+      "role": "operator",
+      "name": "Repair operators",
+      "capacity": 2,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 2,
+        "afternoon": 2
+      }
+    },
+    {
+      "id": "packer",
+      "type": "human",
+      "role": "operator",
+      "name": "Packers",
+      "capacity": 3,
+      "queue_discipline": "fifo",
+      "calendar_id": "day_shift",
+      "shift_capacity": {
+        "morning": 3,
+        "afternoon": 3
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "release_high_top",
+      "type": "source",
+      "entity_type": "high_top",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 480,
+              "quantity": 75
+            },
+            {
+              "at": 600,
+              "quantity": 75
+            },
+            {
+              "at": 780,
+              "quantity": 75
+            },
+            {
+              "at": 900,
+              "quantity": 75
+            },
+            {
+              "at": 1920,
+              "quantity": 75
+            },
+            {
+              "at": 2040,
+              "quantity": 75
+            },
+            {
+              "at": 2220,
+              "quantity": 75
+            },
+            {
+              "at": 2340,
+              "quantity": 75
+            },
+            {
+              "at": 3360,
+              "quantity": 75
+            },
+            {
+              "at": 3480,
+              "quantity": 75
+            },
+            {
+              "at": 3660,
+              "quantity": 75
+            },
+            {
+              "at": 3780,
+              "quantity": 75
+            },
+            {
+              "at": 4800,
+              "quantity": 75
+            },
+            {
+              "at": 4920,
+              "quantity": 75
+            },
+            {
+              "at": 5100,
+              "quantity": 75
+            },
+            {
+              "at": 5220,
+              "quantity": 75
+            },
+            {
+              "at": 6240,
+              "quantity": 75
+            },
+            {
+              "at": 6360,
+              "quantity": 75
+            },
+            {
+              "at": 6540,
+              "quantity": 75
+            },
+            {
+              "at": 6660,
+              "quantity": 75
+            }
+          ]
+        }
+      },
+      "name": "Cutting orders: high-tops"
+    },
+    {
+      "id": "release_low_top",
+      "type": "source",
+      "entity_type": "low_top",
+      "arrival": {
+        "schedule": {
+          "process": "table",
+          "period": 10080,
+          "releases": [
+            {
+              "at": 540,
+              "quantity": 75
+            },
+            {
+              "at": 660,
+              "quantity": 75
+            },
+            {
+              "at": 840,
+              "quantity": 75
+            },
+            {
+              "at": 960,
+              "quantity": 75
+            },
+            {
+              "at": 1980,
+              "quantity": 75
+            },
+            {
+              "at": 2100,
+              "quantity": 75
+            },
+            {
+              "at": 2280,
+              "quantity": 75
+            },
+            {
+              "at": 2400,
+              "quantity": 75
+            },
+            {
+              "at": 3420,
+              "quantity": 75
+            },
+            {
+              "at": 3540,
+              "quantity": 75
+            },
+            {
+              "at": 3720,
+              "quantity": 75
+            },
+            {
+              "at": 3840,
+              "quantity": 75
+            },
+            {
+              "at": 4860,
+              "quantity": 75
+            },
+            {
+              "at": 4980,
+              "quantity": 75
+            },
+            {
+              "at": 5160,
+              "quantity": 75
+            },
+            {
+              "at": 5280,
+              "quantity": 75
+            },
+            {
+              "at": 6300,
+              "quantity": 75
+            },
+            {
+              "at": 6420,
+              "quantity": 75
+            },
+            {
+              "at": 6600,
+              "quantity": 75
+            },
+            {
+              "at": 6720,
+              "quantity": 75
+            }
+          ]
+        }
+      },
+      "name": "Cutting orders: low-tops"
+    },
+    {
+      "id": "q_cutting",
+      "type": "queue",
+      "name": "Cutting orders waiting"
+    },
+    {
+      "id": "cutting",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 5,
+          "mode": 7,
+          "max": 10
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "cutter",
+          "units": 1
+        }
+      ],
+      "name": "Cutting"
+    },
+    {
+      "id": "q_stitching",
+      "type": "queue",
+      "capacity": 150,
+      "name": "Cut kits waiting for stitching"
+    },
+    {
+      "id": "stitching",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 42,
+          "mode": 50,
+          "max": 67
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "stitcher",
+          "units": 1
+        }
+      ],
+      "name": "Stitching (closing)"
+    },
+    {
+      "id": "q_lasting",
+      "type": "queue",
+      "capacity": 40,
+      "name": "Uppers waiting for lasting"
+    },
+    {
+      "id": "lasting",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.4,
+          "mode": 1.8,
+          "max": 2.6
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "lasting_machine",
+          "units": 1
+        }
+      ],
+      "name": "Lasting"
+    },
+    {
+      "id": "q_sole",
+      "type": "queue",
+      "capacity": 40,
+      "name": "Lasted uppers waiting for soles"
+    },
+    {
+      "id": "sole_attaching",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 17,
+          "mode": 21,
+          "max": 28
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "sole_operator",
+          "units": 1
+        }
+      ],
+      "name": "Sole attaching and foxing"
+    },
+    {
+      "id": "q_vulcanizing",
+      "type": "queue",
+      "capacity": 400,
+      "name": "Racks waiting for the autoclave"
+    },
+    {
+      "id": "vulcanizing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "constant",
+          "value": 90
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "autoclave",
+          "units": 1
+        }
+      ],
+      "batch": {
+        "min_size": 150,
+        "max_size": 300,
+        "max_wait": 30
+      },
+      "name": "Vulcanizing (autoclave batch)"
+    },
+    {
+      "id": "q_finishing",
+      "type": "queue",
+      "capacity": 600,
+      "name": "Cooling racks before de-lasting"
+    },
+    {
+      "id": "finishing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 6,
+          "mode": 8,
+          "max": 12
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "finisher",
+          "units": 1
+        }
+      ],
+      "name": "De-lasting and finishing"
+    },
+    {
+      "id": "q_inspection",
+      "type": "queue",
+      "capacity": 60,
+      "name": "Buffer before inspection"
+    },
+    {
+      "id": "inspection",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.5,
+          "mode": 2,
+          "max": 3
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "inspector",
+          "units": 1
+        }
+      ],
+      "name": "Final inspection"
+    },
+    {
+      "id": "inspection_result",
+      "type": "decision",
+      "name": "Inspection result"
+    },
+    {
+      "id": "defect",
+      "type": "failure",
+      "name": "Defect found"
+    },
+    {
+      "id": "defect_disposition",
+      "type": "decision",
+      "name": "Repair or scrap"
+    },
+    {
+      "id": "q_repair",
+      "type": "queue",
+      "name": "Buffer before repair"
+    },
+    {
+      "id": "repair",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 8,
+          "mode": 12,
+          "max": 20
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "repairer",
+          "units": 1
+        }
+      ],
+      "name": "Repair"
+    },
+    {
+      "id": "repaired",
+      "type": "rework",
+      "name": "Repaired"
+    },
+    {
+      "id": "q_packing",
+      "type": "queue",
+      "capacity": 100,
+      "name": "Buffer before packing"
+    },
+    {
+      "id": "packing",
+      "type": "process",
+      "service_time": {
+        "distribution": {
+          "type": "triangular",
+          "min": 1.2,
+          "mode": 1.5,
+          "max": 2.2
+        }
+      },
+      "requires": [
+        {
+          "resource_id": "packer",
+          "units": 1
+        }
+      ],
+      "name": "Packing"
+    },
+    {
+      "id": "packed",
+      "type": "sink",
+      "outcome": "completed",
+      "name": "Packed"
+    },
+    {
+      "id": "scrap",
+      "type": "sink",
+      "outcome": "abandoned",
+      "name": "Scrap"
+    }
+  ],
+  "flows": [
+    {
+      "id": "release_high_top__q_cutting",
+      "from": "release_high_top",
+      "to": "q_cutting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "release_low_top__q_cutting",
+      "from": "release_low_top",
+      "to": "q_cutting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_cutting__cutting",
+      "from": "q_cutting",
+      "to": "cutting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "cutting__q_stitching",
+      "from": "cutting",
+      "to": "q_stitching",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_stitching__stitching",
+      "from": "q_stitching",
+      "to": "stitching",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "stitching__q_lasting",
+      "from": "stitching",
+      "to": "q_lasting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_lasting__lasting",
+      "from": "q_lasting",
+      "to": "lasting",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "lasting__q_sole",
+      "from": "lasting",
+      "to": "q_sole",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_sole__sole_attaching",
+      "from": "q_sole",
+      "to": "sole_attaching",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "sole_attaching__q_vulcanizing",
+      "from": "sole_attaching",
+      "to": "q_vulcanizing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_vulcanizing__vulcanizing",
+      "from": "q_vulcanizing",
+      "to": "vulcanizing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "vulcanizing__q_finishing",
+      "from": "vulcanizing",
+      "to": "q_finishing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_finishing__finishing",
+      "from": "q_finishing",
+      "to": "finishing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "finishing__q_inspection",
+      "from": "finishing",
+      "to": "q_inspection",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_inspection__inspection",
+      "from": "q_inspection",
+      "to": "inspection",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "inspection__inspection_result",
+      "from": "inspection",
+      "to": "inspection_result",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "inspection_result__q_packing",
+      "from": "inspection_result",
+      "to": "q_packing",
+      "routing": {
+        "type": "probability",
+        "probability": 0.94
+      }
+    },
+    {
+      "id": "inspection_result__defect",
+      "from": "inspection_result",
+      "to": "defect",
+      "routing": {
+        "type": "probability",
+        "probability": 0.06
+      }
+    },
+    {
+      "id": "defect__defect_disposition",
+      "from": "defect",
+      "to": "defect_disposition",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "defect_disposition__q_repair",
+      "from": "defect_disposition",
+      "to": "q_repair",
+      "routing": {
+        "type": "probability",
+        "probability": 0.83
+      }
+    },
+    {
+      "id": "defect_disposition__scrap",
+      "from": "defect_disposition",
+      "to": "scrap",
+      "routing": {
+        "type": "probability",
+        "probability": 0.17
+      }
+    },
+    {
+      "id": "q_repair__repair",
+      "from": "q_repair",
+      "to": "repair",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "repair__repaired",
+      "from": "repair",
+      "to": "repaired",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "repaired__q_inspection",
+      "from": "repaired",
+      "to": "q_inspection",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "q_packing__packing",
+      "from": "q_packing",
+      "to": "packing",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    },
+    {
+      "id": "packing__packed",
+      "from": "packing",
+      "to": "packed",
+      "routing": {
+        "type": "probability",
+        "probability": 1
+      }
+    }
+  ],
+  "constraints": [
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "inspection_result",
+      "equals": 1
+    },
+    {
+      "type": "outgoing_probability_sum",
+      "node_id": "defect_disposition",
+      "equals": 1
+    }
+  ],
+  "metrics": [
+    {
+      "id": "lead_time",
+      "type": "entity_cycle_time"
+    },
+    {
+      "id": "throughput",
+      "type": "sink_throughput"
+    },
+    {
+      "id": "stitching_utilization",
+      "type": "resource_utilization",
+      "resource_id": "stitcher"
+    },
+    {
+      "id": "autoclave_utilization",
+      "type": "resource_utilization",
+      "resource_id": "autoclave"
+    },
+    {
+      "id": "stitching_queue_wait",
+      "type": "queue_wait",
+      "node_id": "q_stitching"
+    },
+    {
+      "id": "defects",
+      "type": "failure_count"
+    },
+    {
+      "id": "repairs",
+      "type": "rework_count"
+    }
+  ],
+  "calendars": [
+    {
+      "id": "day_shift",
+      "period": 10080,
+      "shifts": [
+        {
+          "start": 480,
+          "end": 720,
+          "label": "morning"
+        },
+        {
+          "start": 780,
+          "end": 1020,
+          "label": "afternoon"
+        },
+        {
+          "start": 1920,
+          "end": 2160,
+          "label": "morning"
+        },
+        {
+          "start": 2220,
+          "end": 2460,
+          "label": "afternoon"
+        },
+        {
+          "start": 3360,
+          "end": 3600,
+          "label": "morning"
+        },
+        {
+          "start": 3660,
+          "end": 3900,
+          "label": "afternoon"
+        },
+        {
+          "start": 4800,
+          "end": 5040,
+          "label": "morning"
+        },
+        {
+          "start": 5100,
+          "end": 5340,
+          "label": "afternoon"
+        },
+        {
+          "start": 6240,
+          "end": 6480,
+          "label": "morning"
+        },
+        {
+          "start": 6540,
+          "end": 6780,
+          "label": "afternoon"
+        }
+      ]
+    }
+  ],
+  "views": {
+    "2d": {
+      "positions": {
+        "release_high_top": {
+          "x": 0,
+          "y": 0
+        },
+        "release_low_top": {
+          "x": 0,
+          "y": 120
+        },
+        "q_cutting": {
+          "x": 240,
+          "y": 0
+        },
+        "cutting": {
+          "x": 480,
+          "y": 0
+        },
+        "q_stitching": {
+          "x": 720,
+          "y": 0
+        },
+        "stitching": {
+          "x": 960,
+          "y": 0
+        },
+        "q_lasting": {
+          "x": 1200,
+          "y": 0
+        },
+        "lasting": {
+          "x": 1440,
+          "y": 0
+        },
+        "q_sole": {
+          "x": 1680,
+          "y": 0
+        },
+        "sole_attaching": {
+          "x": 1920,
+          "y": 0
+        },
+        "q_vulcanizing": {
+          "x": 2160,
+          "y": 0
+        },
+        "vulcanizing": {
+          "x": 2400,
+          "y": 0
+        },
+        "q_finishing": {
+          "x": 2640,
+          "y": 0
+        },
+        "finishing": {
+          "x": 2880,
+          "y": 0
+        },
+        "q_inspection": {
+          "x": 3120,
+          "y": 0
+        },
+        "inspection": {
+          "x": 3360,
+          "y": 0
+        },
+        "inspection_result": {
+          "x": 3600,
+          "y": 0
+        },
+        "defect": {
+          "x": 3600,
+          "y": 120
+        },
+        "defect_disposition": {
+          "x": 3600,
+          "y": 240
+        },
+        "q_repair": {
+          "x": 3360,
+          "y": 240
+        },
+        "repair": {
+          "x": 3120,
+          "y": 240
+        },
+        "repaired": {
+          "x": 3120,
+          "y": 120
+        },
+        "q_packing": {
+          "x": 3840,
+          "y": 0
+        },
+        "packing": {
+          "x": 4080,
+          "y": 0
+        },
+        "packed": {
+          "x": 4320,
+          "y": 0
+        },
+        "scrap": {
+          "x": 3840,
+          "y": 240
+        }
+      }
+    },
+    "3d": {
+      "layout_mode": "derived_from_2d"
+    }
+  },
+  "metadata": {
+    "synthetic": true,
+    "source": "synthetic, for demonstration",
+    "origin": "Synthetic demonstration values of docs/domains/PRODUCTION_LOGISTICS.md (H-045, H-046): realistic structure and magnitudes from the sources listed there, scaled; NOT customer data, plant measurements or any company's data.",
+    "assumptions": [
+      "Time unit minute; t=0 is Monday 00:00 model time (no time zone).",
+      "One 8-hour day shift, 08:00-12:00 and 13:00-17:00, Monday to Friday.",
+      "One item is a pair of canvas sneakers. 600 pairs a day in eight cutting orders of 75 pairs, alternating high-tops and low-tops every hour of the shift.",
+      "Crew sizes follow a 500-700 pairs a day line scaled to 600 pairs: 12 cutters, 72 stitchers, 34 sole and foxing operators, 14 finishing operators.",
+      "Stitching (closing) is the bottleneck: tri(42, 50, 67) min of stitcher time a pair with 72 stitchers, about 90% busy on shift; the cut-kit buffer before it holds 150 pairs, so cutting blocks behind it.",
+      "Vulcanizing: one autoclave, 150 to 300 pairs a load (at most 30 min wait once 150 are waiting), 90 min a load (75 min cure plus loading and unloading).",
+      "The lasts travel with each pair, so the two families need no machine changeover; they differ only in their cutting orders.",
+      "Final inspection is a model input: 94% pass; of the 6% with a defect, 83% are repaired and inspected again, 17% scrapped (about 1% of pairs).",
+      "Breakdowns count on-shift time only; the time to failure and repair parameters are estimates."
+    ]
+  }
+}

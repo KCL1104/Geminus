@@ -291,7 +291,7 @@
       "additionalProperties": false
     },
     "CreateModel": {
-      "$comment": "T-051 (H-029): one alternative per domain pack that offers templates, each naming its pack's template; a template of another domain is refused at the discriminator.",
+      "$comment": "T-051 (H-029): one alternative per domain pack that offers templates, each naming its pack's templates (const for one, enum for several, H-045); a template of another domain is refused at the discriminator.",
       "oneOf": [
         {
           "type": "object",
@@ -334,6 +334,38 @@
             "template": {
               "const": "electronics_assembly_test_line",
               "description": "The synthetic electronics assembly and test line of ELECTRONICS_LINE §4 (T-051): SMT, AOI, ICT, FCT, burn-in batches and packing, two board families with changeovers, breakdowns, shifts and finite buffers; synthetic, for demonstration."
+            },
+            "locale": {
+              "$ref": "common.schema.json#/$defs/Locale",
+              "description": "Language of the template's default names (REQ-022); en when absent. IDs are the same in every language, and the names become user data once created."
+            }
+          },
+          "required": [
+            "name",
+            "domain",
+            "template"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "domain": {
+              "const": "production_logistics"
+            },
+            "template": {
+              "enum": [
+                "shoe_factory",
+                "food_plant",
+                "carton_plant",
+                "warehouse"
+              ],
+              "description": "A synthetic template of the production and logistics pack (H-045, docs/domains/PRODUCTION_LOGISTICS.md §3): a shoe factory, a food plant (bakery), a corrugated carton plant or a distribution warehouse, built only from the generic primitives (finite buffers, batches, shifts, breakdowns, changeovers, yields and rework); synthetic, for demonstration."
             },
             "locale": {
               "$ref": "common.schema.json#/$defs/Locale",

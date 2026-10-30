@@ -1,7 +1,12 @@
 "use client";
 import Link from "next/link";
-import { use } from "react";
+import { useRouter } from "next/navigation";
+import { use, useEffect, useRef, useState } from "react";
+import { NewModelForm } from "../../../features/models/new-model";
 import { useApi } from "../../../lib/api/provider";
+import { canEdit, useAuth } from "../../../lib/auth/session";
+import { Button } from "../../../ui/button";
+import { PlusIcon } from "../../../ui/icons";
 import { PageHeader } from "../../../ui/page-header";
 import { useI18n } from "../../../lib/i18n/provider";
 import list from "../../../ui/list.module.css";
@@ -36,13 +41,48 @@ function Models({ projectId }: { projectId: string }) {
   );
 }
 
+// An editor or owner can start a new model from a template (H-045): the
+// header's action opens the form above the list in its place, and Cancel
+// gives the action back with the focus on it. A viewer is not offered it.
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
   const { t } = useI18n();
+  const { session, role } = useAuth();
+  const router = useRouter();
+  const [creating, setCreating] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (!creating && refocus.current) {
+      refocus.current = false;
+      opener.current?.focus();
+    }
+  }, [creating]);
+  const offered = session !== null && canEdit(role);
   return (
     <>
-      <PageHeader trail={[]} title={t("models.title")} />
+      <PageHeader
+        trail={[]}
+        title={t("models.title")}
+        actions={
+          offered && !creating ? (
+            <Button ref={opener} icon={<PlusIcon />} onPress={() => setCreating(true)}>
+              {t("newModel.open")}
+            </Button>
+          ) : undefined
+        }
+      />
       <RequireSession>
+        {offered && creating && (
+          <NewModelForm
+            projectId={projectId}
+            onCreated={(id) => router.push(`/models/${id}`)}
+            onCancel={() => {
+              refocus.current = true;
+              setCreating(false);
+            }}
+          />
+        )}
         <Models projectId={projectId} />
       </RequireSession>
     </>
