@@ -2375,6 +2375,107 @@
       "expected_error_paths": [
         "/source_image"
       ]
+    },
+    {
+      "id": "valid-ready-proposal-researched",
+      "instance": "testdata/contracts/valid-ready-proposal-researched.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-sources-without-web-search",
+      "instance": "testdata/contracts/invalid-proposal-sources-without-web-search.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by"
+      ]
+    },
+    {
+      "id": "invalid-proposal-source-not-https",
+      "instance": "testdata/contracts/invalid-proposal-source-not-https.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/sources/0/url"
+      ]
+    },
+    {
+      "id": "invalid-proposal-source-extra-member",
+      "instance": "testdata/contracts/invalid-proposal-source-extra-member.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/sources/0"
+      ]
+    },
+    {
+      "id": "invalid-proposal-web-search-dropped-over-limit",
+      "instance": "testdata/contracts/invalid-proposal-web-search-dropped-over-limit.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by/web_search/sources_dropped"
+      ]
+    },
+    {
+      "id": "invalid-proposal-invalid-with-sources",
+      "instance": "testdata/contracts/invalid-proposal-invalid-with-sources.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-generating-with-sources",
+      "instance": "testdata/contracts/invalid-proposal-generating-with-sources.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-proposal-request-research",
+      "instance": "testdata/contracts/valid-proposal-request-research.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-request-research-not-boolean",
+      "instance": "testdata/contracts/invalid-proposal-request-research-not-boolean.json",
+      "schema": "schemas/http.schema.json#/$defs/ProposalRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/research"
+      ]
+    },
+    {
+      "id": "valid-proposal-output-with-sources",
+      "instance": "testdata/contracts/valid-proposal-output-with-sources.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-output-source-extra-member",
+      "instance": "testdata/contracts/invalid-proposal-output-source-extra-member.json",
+      "schema": "schemas/proposal-output.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
     }
   ]
 }

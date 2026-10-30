@@ -16,5 +16,12 @@
   "risk_level": "low",
   "server_risk_level": "low",
   "provider_risk_claim": "low",
-  "confidence": 0.8
+  "confidence": 0.8,
+  "research": {
+    "generated_by": { "provider": "meta", "model": "muse-spark-1.3", "web_search": { "queries": 3, "sources_dropped": 1 } },
+    "sources": [
+      { "url": "https://example.com/code-review/reviewer-capacity", "title": "Code review capacity planning (test page)" },
+      { "url": "https://docs.example.org/queues/littles-law", "title": "Little's law for review queues (test page)" }
+    ]
+  }
 }

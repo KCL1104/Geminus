@@ -61,6 +61,13 @@ type ProposalContext struct {
 	Mode           Mode
 	Prompt         Prompt
 	Attribution    Attribution
+	// Markers are the request's own identifiers (the organization's, the
+	// model's, its version's and the proposal's IDs, the ID pool, the
+	// model's distinctive entity IDs; internal/ai/aicontext) for a research
+	// call (H-046 (2)): never sent. A source whose query string carries one
+	// is dropped, and the steps that carry one are counted
+	// (WebSearch.StepsWithIDs).
+	Markers []string
 }
 
 // MappingContext is a sanitized mapping suggestion request.
@@ -118,12 +125,21 @@ type Metadata struct {
 	// held, which is recorded all the same (T-053 review round 1, M2, M3).
 	InferenceGeo         string `json:"inference_geo,omitzero"`
 	SpendOverReservation bool   `json:"spend_over_reservation,omitzero"`
+	// WebSearch is what a research call's web search did (H-046 (2)):
+	// counts only, never a query, a page or its URL; nil for a call
+	// without research.
+	WebSearch *WebSearch `json:"web_search,omitzero"`
 }
 
 type ProposalResult struct {
+	// Output is the schema-valid answer; its Sources are always empty: the
+	// sources kept are Sources.
 	Output   ProposalOutput
 	Raw      jsontext.Value // the schema-valid answer, untrusted
 	Metadata Metadata
+	// Sources are the answer's sources the research call opened
+	// (FilterSources, H-046 (2)); none for a call without research.
+	Sources []WebSource
 }
 
 type MappingResult struct {
@@ -171,6 +187,10 @@ type Response struct {
 	// so its usage is unknown; it is one of the UnknownAttempts, and the
 	// call settles at its whole reservation at least (review round 1, I1).
 	Undecoded bool
+	// Research is what the answer's web search did (a research call,
+	// H-046 (2)); zero for a call without research. Its tool calls are
+	// billed (meter.go) even when the answer is refused.
+	Research Research
 }
 
 // Backend is one provider mode. Complete returns *Error for every failure
@@ -257,34 +277,45 @@ func (c *Client) release(org string) {
 
 func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 
-// call runs one checked request and returns the schema-valid answer. A
-// metered client also reserves before the call and settles after it
-// (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, out any) (jsontext.Value, Metadata, error) {
+// call runs one checked request and returns the schema-valid answer and,
+// for a research call, what its web search did. A metered client also
+// reserves before the call and settles after it (meter.go).
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, out any) (jsontext.Value, Metadata, Research, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, Metadata{}, NewError(CodeCancelled, 0, "").WithCause(err)
+		return nil, Metadata{}, Research{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
 	if d, ok := c.backend.(Disabled); ok {
-		return nil, Metadata{}, d.err()
+		return nil, Metadata{}, Research{}, d.err()
 	}
 	if role == "" || !organizationID.MatchString(org) || p.OrganizationID != org || p.Role != role || p.Verify() != nil {
-		return nil, Metadata{}, invalidRequest()
+		return nil, Metadata{}, Research{}, invalidRequest()
 	}
 	if c.meter != nil && !attr.complete() {
-		return nil, Metadata{}, invalidRequest()
+		return nil, Metadata{}, Research{}, invalidRequest()
 	}
 	if len(p.Images) > 0 {
 		// Images go only to a backend that sends them under its approval's
 		// data policy (T-055); no other backend ever sees the call.
 		if ii, ok := c.backend.(ImageInput); !ok || !ii.AcceptsImages() {
-			return nil, Metadata{}, invalidRequest()
+			return nil, Metadata{}, Research{}, invalidRequest()
+		}
+	}
+	if p.Research {
+		// Web research goes only to a backend that can search and may for
+		// the role (H-046 (2)); no other backend ever sees the call.
+		r, ok := c.backend.(Researcher)
+		if !ok {
+			return nil, Metadata{}, Research{}, NewError(CodeResearchUnsupported, 0, "")
+		}
+		if !r.AcceptsResearch(role) {
+			return nil, Metadata{}, Research{}, NewError(CodePolicyNotApproved, 0, "")
 		}
 	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
-		return nil, Metadata{}, NewError(CodeContextTooLarge, 0, "")
+		return nil, Metadata{}, Research{}, NewError(CodeContextTooLarge, 0, "")
 	}
 	if !c.acquire(org) {
-		return nil, Metadata{}, NewError(CodeConcurrencyLimited, 0, "")
+		return nil, Metadata{}, Research{}, NewError(CodeConcurrencyLimited, 0, "")
 	}
 	defer c.release(org)
 
@@ -296,6 +327,10 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if len(p.Images) > 0 {
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
 	}
+	if p.Research {
+		req.MaxOutputTokens, req.AttemptTimeout, timeout = ResearchMaxOutputTokens, c.budget.ResearchTimeout(req.AttemptTimeout), c.budget.ResearchTimeout(timeout)
+		req.MaxRetries = ResearchMaxRetries
+	}
 	// One deadline for the whole call: a billable backend's quote (which may
 	// ask the provider, H-037) and the call itself.
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -304,7 +339,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if c.meter != nil {
 		var err error
 		if m, err = c.reserve(ctx, callCtx, org, role, attr, req); err != nil {
-			return nil, meta, err
+			return nil, meta, Research{}, err
 		}
 		req.Reservation = m.res.ID
 	}
@@ -316,30 +351,39 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	}
 	meta.Model, meta.Credential, meta.FailedOver = resp.Model, resp.Credential, resp.FailedOver
 	meta.Usage, meta.ProviderRequestID = resp.Usage, resp.ProviderRequestID
+	if p.Research {
+		meta.WebSearch = &WebSearch{Queries: max(0, resp.Research.Queries), ToolCalls: max(0, resp.Research.ToolCalls),
+			PagesOpened: pagesOpened(resp.Research.Opened), StepsWithIDs: StepsWithIDs(resp.Research, markers)}
+	}
 	switch {
 	case ctx.Err() != nil:
-		return nil, meta, NewError(CodeCancelled, 0, resp.Credential).WithCause(ctx.Err())
+		return nil, meta, Research{}, NewError(CodeCancelled, 0, resp.Credential).WithCause(ctx.Err())
 	case err != nil && errors.Is(callCtx.Err(), context.DeadlineExceeded):
-		return nil, meta, NewError(CodeTimeout, 0, resp.Credential).WithCause(context.DeadlineExceeded)
+		return nil, meta, Research{}, NewError(CodeTimeout, 0, resp.Credential).WithCause(context.DeadlineExceeded)
 	case err != nil:
 		var pe *Error
 		if errors.As(err, &pe) {
-			return nil, meta, pe
+			return nil, meta, Research{}, pe
 		}
-		return nil, meta, NewError(CodeUnavailable, 0, resp.Credential)
+		return nil, meta, Research{}, NewError(CodeUnavailable, 0, resp.Credential)
 	}
 
-	invalid := func(issues ...model.ValidationIssue) (jsontext.Value, Metadata, error) {
+	invalid := func(issues ...model.ValidationIssue) (jsontext.Value, Metadata, Research, error) {
 		e := NewError(CodeInvalidOutput, 0, resp.Credential)
 		e.Issues = issues
-		return nil, meta, e
+		return nil, meta, Research{}, e
+	}
+	if !p.Research && !resp.Research.None() {
+		// A backend that searched for a call that did not ask: not an
+		// answer this request may take (H-046 (2)).
+		return invalid(model.NewIssue(OutputInvalid, "", "the answer used web search, which the request did not offer", model.SeverityError))
 	}
 	if len(resp.Text) == 0 || len(resp.Text) > c.budget.MaxOutputBytes {
 		return invalid(model.NewIssue(OutputInvalid, "", "the answer is empty or larger than the output budget", model.SeverityError))
 	}
 	issues, err := validate.Document(resp.Text, role.OutputSchema(), OutputInvalid)
 	if err != nil {
-		return nil, meta, NewError(CodeInvalidOutput, 0, resp.Credential)
+		return nil, meta, Research{}, NewError(CodeInvalidOutput, 0, resp.Credential)
 	}
 	if len(issues) > 0 {
 		// Keep where the answer is wrong, never what it says (AI_SPEC §4).
@@ -357,23 +401,33 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if h, err := hashing.Of(raw); err == nil {
 		meta.OutputHash = h
 	}
-	return raw, meta, nil
+	return raw, meta, resp.Research, nil
 }
 
-// GenerateModelProposal asks for an edit or scenario proposal.
+// GenerateModelProposal asks for an edit or scenario proposal. For a
+// research call the answer's sources are kept only when the call opened
+// them (FilterSources); a call without research keeps none, whatever the
+// answer names.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, &out)
+	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, &out)
 	if err != nil {
 		return ProposalResult{Metadata: meta}, err
 	}
-	return ProposalResult{Output: out, Raw: raw, Metadata: meta}, nil
+	var kept []WebSource
+	if meta.WebSearch != nil {
+		var dropped int
+		kept, dropped = FilterSources(out.Sources, research.Opened, in.Markers...)
+		meta.WebSearch.SourcesKept, meta.WebSearch.SourcesDropped = len(kept), dropped
+	}
+	out.Sources = nil
+	return ProposalResult{Output: out, Raw: raw, Metadata: meta, Sources: kept}, nil
 }
 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return MappingResult{Metadata: meta}, err
 	}
@@ -383,7 +437,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, &out)
 	if err != nil {
 		return AnalysisResult{Metadata: meta}, err
 	}

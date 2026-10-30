@@ -307,6 +307,59 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     });
   }
 
+  // H-046 (2): the opt-in to research on the web, from the keyboard, and the
+  // proposal's sources and searches as the fake answers a researched request
+  // (fake/proposal-answer.json "research": fixed test pages, nothing searched).
+  test("en: asks with web research on, and the proposal lists the pages the AI read and its searches", async ({ page, request }) => {
+    const research = (JSON.parse(readFileSync(join(import.meta.dirname, "../fake/proposal-answer.json"), "utf8")) as { research: { sources: { url: string; title: string }[] } }).research;
+    await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
+    const before = (await apiCalls(request)).length;
+    const ask = page.locator("[data-ask]");
+    const box = ask.getByRole("checkbox", { name: en["ask.research"] });
+    await expect(box).not.toBeChecked();
+    await expect(box).toHaveAccessibleDescription(en["ask.researchHint"]);
+    await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
+    await keyTo(page, box);
+    await page.keyboard.press("Space");
+    await expect(box).toBeChecked();
+    expect(await violations(page), "the model page, research ticked").toEqual([]);
+    await keyTo(page, ask.getByRole("button", { name: en["ask.send"] }));
+    await page.keyboard.press("Enter");
+    await page.waitForURL(new RegExp(`^${APP}/proposals/aip_[0-9A-Z]{26}$`));
+    await expect(page.locator("[data-proposal-status]")).toHaveAttribute("data-proposal-status", "ready", { timeout: 15_000 });
+    await settled(page, "en");
+
+    // Who wrote it and how many searches it made, then the pages it read: links to a new tab, without referrer or opener.
+    await expect(page.locator("header dl > div").filter({ hasText: en["ai.writtenBy"] })).toHaveText(`${en["ai.writtenBy"]}${fill(en["ai.webSearch"].other, { writer: "Muse Spark 1.3 (Meta)", count: "3" })}`);
+    const sources = page.locator("[data-section=sources]");
+    await expect(sources.getByRole("heading", { level: 2 })).toHaveText(en["proposal.sources"]);
+    const links = sources.getByRole("link");
+    await expect(links).toHaveCount(research.sources.length);
+    for (const [i, s] of research.sources.entries()) {
+      const a = links.nth(i);
+      await expect(a).toHaveAttribute("href", s.url);
+      await expect(a).toHaveAttribute("target", "_blank");
+      await expect(a).toHaveAttribute("rel", "noopener noreferrer nofollow");
+      await expect(a).toHaveAccessibleName(`${s.title} ${en["proposal.sources.newTab"]}`);
+    }
+    await expect(sources.locator("li > bdi")).toHaveText(research.sources.map((s) => new URL(s.url).hostname));
+    await expect(sources).toContainText(en["proposal.sources.dropped"].one);
+    await keyTo(page, links.first());
+    expect(await violations(page), "the researched proposal").toEqual([]);
+
+    // What reached the API: research: true, nothing else new.
+    const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
+    expect(posts.map((c) => [c.path, c.body])).toEqual([
+      [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: "en", research: true }],
+    ]);
+
+    // At 390 px the long titles and addresses wrap inside the page.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await settled(page, "en");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no horizontal scroll at 390 px").toBe(true);
+    expect(await violations(page), "the researched proposal at 390 px").toEqual([]);
+  });
+
   test("en: rejects with a reason through the BFF, and the model stays on version 1", async ({ page, request }) => {
     await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
     const before = (await apiCalls(request)).length;

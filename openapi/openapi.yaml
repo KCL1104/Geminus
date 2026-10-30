@@ -793,7 +793,19 @@ paths:
         The worker builds the sanitized context, asks the provider, and the server reviews the answer (patch profile,
         full candidate validation, ID pool, domain rules, dataset bindings, qualitative expected effects) and computes
         the risk; the proposal becomes ready, needs_input or invalid with the job''s completion, or failed when the job
-        fails or is cancelled (getProposal). No AI tool writes anything; approval is approveProposal (T-026).'
+        fails or is cancelled (getProposal). No AI tool writes anything; approval is approveProposal (T-026). H-046 (2):
+        research true asks the AI to research the real-world process on the web first, per request (absent is false):
+        the deployment''s provider may then use its built-in web search (Meta''s search grounding), so the intent the
+        person typed is used for the provider''s web searches. It is taken only when the provider may search for the
+        request''s role under its recorded approval (H-029, amended by H-046: the modeler and scenario roles; never the
+        analyst or the importer), decided from the settings, never a key; otherwise 503 AI_PROVIDER_NOT_CONFIGURED (a
+        provider without web search, or AI off) or AI_POLICY_NOT_APPROVED (a live provider that is off or not approved
+        for research), details[0].code AI_RESEARCH_UNSUPPORTED at /research, and nothing is stored. The job carries the
+        choice and has a single attempt (a research call that fails is not run again), the audit event says research (a
+        flag, never the intent), and the answer is reviewed, risk-scored and approved exactly as any other: the pages it
+        asked its search tool to open are shown as sources (getProposal), kept only when the call itself asked for them
+        (the provider returns no tool result, so that a page loaded is not known) and never with one of the request''s
+        identifiers in their query string, and change neither the validation nor the risk.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -850,6 +862,22 @@ paths:
           application/json:
             schema:
               $ref: ../schemas/http.schema.json#/$defs/ProposalRequest
+            examples:
+              in_words:
+                summary: An edit asked for in words, without research
+                value:
+                  base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                  mode: edit
+                  intent: Raise the tester capacity from 2 to 3.
+                  output_locale: en
+              with_research:
+                summary: A scenario asked for with web research first (H-046 (2)); the intent is used for the provider's web searches
+                value:
+                  base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                  mode: scenario
+                  intent: Use typical reflow oven conveyor speeds for a mid-volume SMT line.
+                  output_locale: en
+                  research: true
     get:
       operationId: listProposals
       summary: List model proposals
@@ -1113,7 +1141,13 @@ paths:
         T-026 (D-068 APPROVED): approved, rejected and conflicted have decided_by and decided_at (who decided, or
         whose approval found that the base had moved, and when); approved and rejected have decision_comment when
         the person gave one; approved has new_version_id (edit) or scenario_id (scenario), and keeps the content
-        that was reviewed, as rejected and conflicted do.'
+        that was reviewed, as rejected and conflicted do. H-043: generated_by names the provider and model once there
+        is an answer. H-046 (2): a proposal asked for with research has generated_by.web_search (how many web searches
+        the call made, and how many sources the answer named that the server did not keep) and, in the states that
+        keep what the provider wrote (needs_input, ready, approved, rejected, conflicted), sources: the pages the AI
+        said it relied on that the call itself asked its search tool to open (https only, at most 20, titles cleaned; that
+        a page loaded is not known), untrusted text that
+        the server checks nothing of; never for an invalid or a failed proposal.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1184,6 +1218,53 @@ paths:
                       valid: true
                       issues: []
                     dataset_bindings: []
+                ready_researched:
+                  summary: Asked for with web research (H-046 (2)); the server kept the two pages the call asked to open and dropped one it did not
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZC
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    status: ready
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-29T08:30:00Z'
+                    requires_confirmation: true
+                    summary: Set the reflow oven's service time to a typical published value for a mid-volume line.
+                    assumptions:
+                    - The conveyor speed is a typical published value from an equipment maker's data sheet, not this line's.
+                    risk_level: medium
+                    server_risk_level: medium
+                    provider_risk_claim: low
+                    confidence: 0.7
+                    changes:
+                    - op: test
+                      path: /nodes/4/id
+                      value: reflow
+                    - op: replace
+                      path: /nodes/4/service_time/distribution
+                      value:
+                        type: triangular
+                        min: 3.5
+                        mode: 4
+                        max: 5
+                    patch_hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+                    expected_effects:
+                    - Boards may wait less before the oven; a simulation will tell by how much.
+                    validation:
+                      valid: true
+                      issues: []
+                    dataset_bindings: []
+                    generated_by:
+                      provider: meta
+                      model: muse-spark-1.3
+                      web_search:
+                        queries: 3
+                        sources_dropped: 1
+                    sources:
+                    - url: https://example.com/reflow-oven-data-sheet
+                      title: Reflow oven data sheet (example)
+                    - url: https://example.org/smt-line-balancing
                 ready_from_photo:
                   summary: Asked for with a photo (T-056); reviewed by the server, which raised the risk the provider claimed
                   value:

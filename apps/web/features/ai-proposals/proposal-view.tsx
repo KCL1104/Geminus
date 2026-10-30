@@ -22,7 +22,10 @@
 // The AI's words (summary, assumptions, expectations, questions, names in
 // the patch) are data: always text, never markup or links, with what would
 // hide or reorder text shown (shown.ts; names and values isolated in a
-// <bdi>, words.tsx).
+// <bdi>, words.tsx). The one exception is a researched proposal's sources
+// (H-046 (2), sources.tsx): pages the server kept because the call opened
+// them, each an https link to a new tab with no referrer or opener, its
+// title text, and the Written-by line says how many searches the call made.
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ProblemView, validationKey } from "../../app/_components/problem-view";
@@ -37,13 +40,14 @@ import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { ApproveIcon, CloseIcon } from "../../ui/icons";
 import { PageHeader } from "../../ui/page-header";
-import { useReader, useWriter } from "./generated-by";
+import { useReader, useWriterWithSearch } from "./generated-by";
 import { RailModel } from "../../app/_components/rail";
 import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { ChangeList } from "./change-list";
 import { loadProposalPage, type ProposalPage } from "./load";
+import { Sources } from "./sources";
 import { visible } from "./shown";
 import { data, useRich, Words } from "./words";
 import styles from "./proposal.module.css";
@@ -108,8 +112,8 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
   const ids = { question: useId(), status: useId() };
 
   const p = page.proposal;
-  // H-043: which Meta model (or other provider) wrote it, and what read the photo.
-  const writer = useWriter(p.generated_by);
+  // H-043: which Meta model (or other provider) wrote it, and what read the photo; H-046 (2): whether it searched the web.
+  const writer = useWriterWithSearch(p.generated_by);
   const reader = useReader(p.generated_by);
   const id = p.proposal_id;
 
@@ -325,6 +329,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           </ul>
         </section>
       )}
+
+      {/* H-046 (2): the pages the AI read, when it was asked to research on the web. */}
+      <Sources sources={p.sources} search={p.generated_by?.web_search} />
 
       {/* What was decided, when the page opened on a decided proposal. */}
       {outcome === null && p.status === "approved" && (

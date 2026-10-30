@@ -44,6 +44,44 @@ type ProposalInput struct {
 	Pool              Pool
 	OutputLocale      string
 	Budget            provider.Budget
+	// Research: the person asked for web research first (H-046 (2)). The
+	// research template (prompts/research) follows the role's in the system
+	// text, the prompt's template version names both
+	// ("<role>-x.y.z+research-x.y.z"), and the prompt is sealed with
+	// Research, so the client hands it only to a backend that may search.
+	// Without it the prompt is exactly what it was before research existed.
+	Research bool
+}
+
+// markers are the request's own identifiers a research call's steps and
+// sources are checked for (provider.ProposalContext.Markers, H-046 (2)):
+// the organization's, the model's, the base version's and the proposal's
+// IDs, every ID of the pool, and the model's entity IDs that look like
+// identifiers rather than words (with a '_' or a digit, at least
+// provider.MinMarker bytes), in a fixed order, once each. Never sent.
+func markers(in ProposalInput) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(s string) {
+		if len(s) >= provider.MinMarker && !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	for _, s := range []string{in.Scope.OrganizationID, in.Scope.ModelID, in.Base.VersionID, in.Pool.ProposalID} {
+		add(s)
+	}
+	for _, k := range idpool.Kinds {
+		for _, id := range in.Pool.IDs.IDs(k) {
+			add(id)
+		}
+	}
+	for _, id := range modelIDs(in.Base.IR) {
+		if strings.ContainsAny(id, "_0123456789") {
+			add(id)
+		}
+	}
+	return out
 }
 
 func modeRules(mode provider.Mode) string {
@@ -339,6 +377,14 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 	}
 	modeText := " in mode " + string(in.Mode)
 	system := text + serverRules(role, modeText, loc) + modeRules(in.Mode) + indexRule + domainRules(in.Domain)
+	if in.Research {
+		research, rversion, err := template("research")
+		if err != nil {
+			return provider.ProposalContext{}, err
+		}
+		system += "\n" + research
+		version += "+" + rversion
+	}
 
 	levels := []int{levelFull, levelNoExtras, levelSlice, levelIndex}
 	if len(selected) == 0 {
@@ -412,8 +458,19 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 		if err != nil {
 			return provider.ProposalContext{}, err
 		}
+		if in.Research {
+			// Sealed again with Research, which the hash covers.
+			p.Research = true
+			if p, err = provider.Seal(p); err != nil {
+				return provider.ProposalContext{}, err
+			}
+		}
 		if fits(p, in.Budget) {
-			return provider.ProposalContext{OrganizationID: in.Scope.OrganizationID, Mode: in.Mode, Prompt: p}, nil
+			pc := provider.ProposalContext{OrganizationID: in.Scope.OrganizationID, Mode: in.Mode, Prompt: p}
+			if in.Research {
+				pc.Markers = markers(in)
+			}
+			return pc, nil
 		}
 	}
 	return provider.ProposalContext{}, fail(TooLarge, "")

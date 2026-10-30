@@ -489,7 +489,7 @@
     },
     "GeneratedBy": {
       "type": "object",
-      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash or latency. A label for people, not a check of anything: the server's validation and risk stand on their own.",
+      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash or latency. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own.",
       "properties": {
         "provider": {
           "type": "string",
@@ -523,10 +523,52 @@
             "objects"
           ],
           "additionalProperties": false
+        },
+        "web_search": {
+          "type": "object",
+          "description": "H-046 (2): present only when the call ran with research on. queries is how many web searches the call made (0 when the model made none; asking to open a page or to find text in one is not counted), sources_dropped how many sources the answer named that the server did not keep: not asked for by this call, not an https URL the server accepts, carrying one of the request's identifiers in its query string, a repeat, or past the first 20.",
+          "properties": {
+            "queries": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "sources_dropped": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 20
+            }
+          },
+          "required": [
+            "queries",
+            "sources_dropped"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
         "provider"
+      ],
+      "additionalProperties": false
+    },
+    "WebSource": {
+      "type": "object",
+      "description": "H-046 (2): a web page the AI asked its provider's web search tool to open while it researched a proposal (an open_page or find_in_page step). The provider returns no tool result, so that the page loaded, or what it held, is not known: this is where the model asked to go, not proof that it read the page. The server keeps a source only when the call itself asked to open that URL, only an https URL of a public-looking DNS name (no IP address, single-label or private host) of printable ASCII without user info, at most 2048 characters, with its fragment removed, and never one whose query string carries one of the request's own identifiers; the title is the AI's own words for the page, with control, format and bidirectional characters removed, white space collapsed and at most 200 characters. Untrusted text for people to follow up: the server checks nothing the page or the title says, and neither changes the proposal's validation or risk.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 2048,
+          "pattern": "^https://[!-~]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "url"
       ],
       "additionalProperties": false
     }

@@ -47,6 +47,17 @@ import (
 //     and Metadata.SpendOverReservation says so (review round 1, M3, L1).
 //     A settlement that fails leaves the reservation counted at its bound.
 //
+// A research call (H-046 (2)) is one attempt (ResearchMaxRetries) and its
+// reservation also holds the web search steps the backend's Quote names
+// (MaxToolCalls), each at the model's search price (spend.SearchPriceOf);
+// its settlement adds every step the answer lists at that price. Meta
+// documents no bound on its search loop, and the loop's usage is summed over
+// its steps, so a research reservation is NOT a ceiling: one call can cost
+// more than it and more than a daily cap, and the only hard limit is the
+// attempt's timeout. A call above its reservation is recorded at what it
+// cost (SpendOverReservation), and the caps then refuse later calls
+// (internal/ai/provider/meta's Quote; docs/AI_SPEC.md §2).
+//
 // Only 401, 402 and 403 make the adapter fail over (D-018), and only while
 // every attempt on the credential was answered with an error status, which
 // is not billed: after an attempt that may have been billed it fails the
@@ -99,6 +110,12 @@ type Quote struct {
 	// report: the count against the tokens billed); the reservation is
 	// MaxInputTokens.
 	Counted int64
+	// MaxToolCalls is the most server tool calls (web searches, pages
+	// opened, finds in a page) one attempt of a research call is reserved
+	// for (H-046 (2)), each at the model's search price; 0 for a call
+	// without research. A research call quoted without it, or of a model
+	// without a search price, is refused (invalid_request).
+	MaxToolCalls int64
 }
 
 // Billable is a backend that costs money. Quote is called before the
@@ -152,6 +169,9 @@ type Settlement struct {
 	// (spend.GeoGlobal, spend.GeoUS, or spend.GeoUnknown when the answer
 	// named none this build knows); empty when no usage was priced.
 	InferenceGeo string
+	// ServerToolCalls are the research call's web search tool calls priced
+	// in NanoUSD (H-046 (2)); 0 for a call without research.
+	ServerToolCalls int
 }
 
 // Meter is the spend ledger (internal/storage/aispend; MemoryMeter for a
@@ -199,10 +219,13 @@ func addSat(a, b int64) int64 {
 // metering is one call's reservation. geo: the model's provider prices
 // inference geos (spend.GeoPriced: Anthropic's), so the attempt's bound is
 // at the dearest geo and an answer is priced at the geo it reports;
-// otherwise both are the list price (the Meta Model API, T-055).
+// otherwise both are the list price (the Meta Model API, T-055). search is
+// the price of one server tool call of a research call (H-046 (2)), 0 for
+// a call without research.
 type metering struct {
 	price      spend.Price
 	geo        bool
+	search     int64
 	perAttempt int64
 	res        Reservation
 }
@@ -227,6 +250,18 @@ func (c *Client) reserve(ctx, callCtx context.Context, org string, role Role, at
 	if geo {
 		per = spend.AtDearestGeo(per)
 	}
+	// A research call's web search is billed per query on top of its
+	// tokens (H-046 (2)): every tool call it may make is reserved at the
+	// search price. One the backend does not bound, or a model this build
+	// has no search price for, is not a call this client reserves for.
+	var search int64
+	if req.Prompt.Research {
+		var ok bool
+		if search, ok = spend.SearchPriceOf(q.Model); !ok || q.MaxToolCalls <= 0 {
+			return nil, invalidRequest()
+		}
+		per = addSat(per, mulSat(q.MaxToolCalls, search))
+	}
 	most := mulSat(per, int64(1+max(0, req.MaxRetries)))
 	res, err := c.meter.Reserve(ctx, Charge{OrganizationID: org, Role: role, Model: q.Model, Attribution: attr, NanoUSD: most})
 	if err != nil {
@@ -239,7 +274,7 @@ func (c *Client) reserve(ctx, callCtx context.Context, org string, role Role, at
 	if res.ID == "" {
 		return nil, NewError(CodeSpendUnavailable, 0, "")
 	}
-	return &metering{price: price, geo: geo, perAttempt: per, res: res}, nil
+	return &metering{price: price, geo: geo, search: search, perAttempt: per, res: res}, nil
 }
 
 // settlement is what the call that answered resp cost (step 5).
@@ -255,6 +290,13 @@ func (m *metering) settlement(resp Response) Settlement {
 			cost = spend.AtGeo(cost, s.InferenceGeo)
 		}
 	}
+	// A research call's server tool calls, each priced as a search query
+	// (H-046 (2)): billed with the answer that lists them, whatever the
+	// server makes of the answer.
+	if calls := int64(resp.Research.ToolCalls); calls > 0 && m.search > 0 {
+		s.ServerToolCalls = int(calls)
+		cost = addSat(cost, mulSat(calls, m.search))
+	}
 	switch {
 	case resp.UnknownAttempts > 0:
 		s.Outcome = SpendUnknown
@@ -264,7 +306,7 @@ func (m *metering) settlement(resp Response) Settlement {
 			// up to what the whole call was reserved for (review round 1, I1).
 			s.NanoUSD = max(s.NanoUSD, m.res.Charge.NanoUSD)
 		}
-	case u != (Usage{}):
+	case u != (Usage{}) || s.ServerToolCalls > 0:
 		s.Outcome, s.NanoUSD = SpendUsage, cost
 	default:
 		s.Outcome = SpendNone

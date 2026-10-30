@@ -159,6 +159,20 @@ export function readyEdit(id: string): Proposal {
   return { ...server(id, "edit"), status: "ready", ...burnInContent };
 }
 
+/**
+ * What a proposal asked for with web research on carries (H-046 (2)): which
+ * model wrote it and how many searches it made, and the pages the server
+ * kept as its sources. Written for the tests and the review page, clearly
+ * not real pages (example.com, a reserved domain); no AI searched anything.
+ */
+export const researched: Pick<Proposal, "generated_by" | "sources"> = {
+  generated_by: { provider: "meta", model: "muse-spark-1.3", web_search: { queries: 3, sources_dropped: 1 } },
+  sources: [
+    { url: "https://example.com/burn-in/batch-sizing", title: "Burn-in chamber batch sizing (test page)" },
+    { url: "https://docs.example.com/smt/line-balancing", title: "Line balancing for board assembly (test page)" },
+  ],
+};
+
 /** The scenario proposal, for the review page and for a scenario asked from the model page. */
 export function readyScenario(id: string): Proposal {
   return {

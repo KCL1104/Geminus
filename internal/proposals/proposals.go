@@ -90,10 +90,25 @@ type UnavailableError struct {
 	// (Service.Photo; the T-056 follow-up), details[0].code
 	// CodeImageUnsupported.
 	Photo bool
+	// Research: the request asks for web research, refused because this
+	// deployment's provider may not search for it (Service.Research, H-046
+	// (2)), details[0].code CodeResearchUnsupported.
+	Research bool
 }
+
+// CodeResearchUnsupported: the request asks for web research and this
+// deployment's provider may not search for it (Service.Research), so the
+// worker would refuse the call; the code the job would fail it with
+// (provider.CodeResearchUnsupported, as internal/proposals/generator writes
+// it).
+const CodeResearchUnsupported = "AI_RESEARCH_UNSUPPORTED"
 
 func (e *UnavailableError) Error() string {
 	switch {
+	case e.Research && e.Availability == PolicyNotApproved:
+		return "proposals: web research is not approved for this deployment's provider (AI_POLICY_NOT_APPROVED, AI_RESEARCH_UNSUPPORTED)"
+	case e.Research:
+		return "proposals: this deployment's provider does not research (AI_PROVIDER_NOT_CONFIGURED, AI_RESEARCH_UNSUPPORTED)"
 	case e.Photo && e.Availability == PolicyNotApproved:
 		return "proposals: the photo path is not approved (AI_POLICY_NOT_APPROVED, AI_IMAGE_UNSUPPORTED)"
 	case e.Photo:
@@ -121,6 +136,12 @@ type Service struct {
 	// D-044); nil when object storage is disabled, so a photo is refused
 	// (503) and a proposal in words is not affected.
 	Objects objects.Store
+	// Research is whether this deployment's provider may search the web for
+	// both proposal roles (H-046 (2); cmd/api derives it from the settings
+	// the worker's live gate reads and the approval's data policy, never
+	// from a key); the zero value refuses every request that asks for
+	// research, whatever AI says of proposals without it.
+	Research Availability
 }
 
 // The roles each operation requires (x-required-roles, planning/api-operations.json).
@@ -148,6 +169,8 @@ type CreateRequest struct {
 	Intent        string          `json:"intent"`
 	Context       *RequestContext `json:"context,omitzero"`
 	OutputLocale  string          `json:"output_locale,omitzero"`
+	// Research: the person asks for web research first (H-046 (2)).
+	Research bool `json:"research,omitzero"`
 }
 
 // RequestContext is ProposalRequest.context.
@@ -197,6 +220,9 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if s.AI != Available {
 			return &UnavailableError{Availability: s.AI}
 		}
+		if req.Research && s.Research != Available {
+			return &UnavailableError{Availability: s.Research, Research: true}
+		}
 		p, err := s.prepare(ctx, tx, m, modelID, req)
 		if err != nil {
 			return err
@@ -204,16 +230,19 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if p, err = store.Insert(ctx, tx, p); err != nil {
 			return err
 		}
-		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.ModelProposal,
-			Resource: jobs.Resource{AIProposalID: p.ID}, Payload: map[string]any{"proposal_id": p.ID, "request_id": requestID}}, s.policy()); err != nil {
+		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research), s.policy()); err != nil {
 			return err
 		}
 		// IDs, the mode, the language and a count: never the intent
-		// (customer prose) or the selected IDs (SECURITY §9).
+		// (customer prose) or the selected IDs (SECURITY §9); whether the
+		// person asked for research (H-046 (2)).
+		meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
+			"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}
+		if req.Research {
+			meta["research"] = true
+		}
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID,
-			Metadata: map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
-				"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}}); err != nil {
+			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID, Metadata: meta}); err != nil {
 			return err
 		}
 		data, err := json.Marshal(Accepted{ProposalID: p.ID, Status: string(store.Generating)})
@@ -227,6 +256,26 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		return idempotency.Complete(ctx, tx, k, idempotency.Response{Status: status, Body: out})
 	})
 	return status, out, err
+}
+
+// ResearchJobAttempts is the attempts of a research proposal's job (H-046
+// (2), review round 1 M1): one. A research attempt may be billed for a
+// whole server-side search loop whose cost nothing bounds but the attempt's
+// timeout (provider.ResearchMaxRetries), so a failed one is never run
+// again on its own: the proposal fails, and the person asks again.
+const ResearchJobAttempts = 1
+
+// proposalJob is the model_proposal job of proposal id: its frozen input
+// (the proposal and the request; the person's choice of research, absent
+// for a proposal without it) and, for research, a single attempt.
+func proposalJob(org, id, requestID string, research bool) jobs.New {
+	j := jobs.New{ID: ids.New("job"), OrganizationID: org, Type: jobs.ModelProposal, Resource: jobs.Resource{AIProposalID: id},
+		Payload: map[string]any{"proposal_id": id, "request_id": requestID}}
+	if research {
+		j.Payload["research"] = true
+		j.MaxAttempts = ResearchJobAttempts
+	}
+	return j
 }
 
 // prepare checks req against the organization's model and version and

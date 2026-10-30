@@ -181,6 +181,11 @@ const version = {
 // here) onto it; approving a scenario gives a scenario ID and no version;
 // rejecting keeps the model. A key used again with the same request gets
 // the first answer (D-011), with another request 409. A viewer is 403.
+// H-046 (2): a request with research: true (a boolean when present, as the
+// schema has it) is answered with the answer's "research" part too: which
+// model wrote it, how many searches it made, and two fixed test pages as its
+// sources (example.com and example.org, reserved for tests); nothing
+// searched anything, and a request without it gets what it got before.
 const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
 const jcs = (v) =>
   Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
@@ -299,6 +304,7 @@ function tenantPost(org, role, path, key, payload) {
   }
   if (create) {
     if (!["edit", "scenario"].includes(payload.mode) || typeof payload.intent !== "string" || payload.intent.trim() === "") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
+    if ("research" in payload && typeof payload.research !== "boolean") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/research", reason: "research is true or false" }]);
     if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
     const id = serial("aip", "P", live.proposals.size + 1);
     const server = { proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true };
@@ -307,6 +313,7 @@ function tenantPost(org, role, path, key, payload) {
       ...server, status: "ready", ...words, changes: answer.changes, patch_hash: sha(answer.changes),
       risk_level: answer.risk_level, server_risk_level: answer.server_risk_level, provider_risk_claim: answer.provider_risk_claim, confidence: answer.confidence,
       validation: { valid: true, issues: [] }, dataset_bindings: [],
+      ...(payload.research === true ? { generated_by: answer.research.generated_by, sources: answer.research.sources } : {}),
     };
     live.proposals.set(id, { proposal: { ...server, status: "generating" }, answer: ready, reads: 0, request: payload });
     return kept({ status: 202, body: { proposal_id: id, status: "generating" } });

@@ -90,6 +90,22 @@ func ImagePriceOf(model string) (NanoUSD, bool) {
 	return p, ok
 }
 
+// searchPrices are the models this build prices web search for (H-046 (2),
+// a research call's web_search tool): "Web search grounding: $2.50 per
+// 1,000 search queries, in addition to the request's token cost. This
+// applies to the web_search tool on text models such as Muse Wonder and
+// Muse Spark" (MetaPriceSource, saved copy of 2026-10-27, restated by the
+// coordinator on 2026-10-29), USD 0.0025 a query. A model without a search
+// price cannot be reserved for a research call, so it never researches.
+var searchPrices = map[string]NanoUSD{"muse-spark-1.3": 2_500_000}
+
+// SearchPriceOf is the price of one web search query of a research call on
+// model, if this build has one.
+func SearchPriceOf(model string) (NanoUSD, bool) {
+	p, ok := searchPrices[model]
+	return p, ok
+}
+
 // geoPriced are the models whose provider prices inference geos
 // (Anthropic, T-053 review round 1 M2, D-116): a reservation assumes the
 // dearest geo and an answer is priced at the geo it reports. Every other

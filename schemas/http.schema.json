@@ -459,6 +459,10 @@
         "output_locale": {
           "$ref": "common.schema.json#/$defs/Locale",
           "description": "Language of the AI's prose (REQ-022, AI_SPEC §3); en when absent. The server validates it and states it in the provider instruction. Only prose follows it, never IDs, JSON Pointers, enum or reason codes, metric paths or units."
+        },
+        "research": {
+          "type": "boolean",
+          "description": "H-046 (2): the person asks the AI to research the real-world process on the web before it drafts the proposal (Meta's search grounding: the intent the person typed is used for the provider's web searches). false when absent; asked per request, never a default the server turns on. Taken only when this deployment's provider may search for the request's role (the modeler for edit, the scenario role for scenario) under its recorded approval (H-029, amended by H-046): otherwise 503 AI_PROVIDER_NOT_CONFIGURED or AI_POLICY_NOT_APPROVED with details[0].code AI_RESEARCH_UNSUPPORTED, and nothing is stored. The answer is reviewed, risk-scored and approved exactly as any other proposal; the pages it asked to open are only shown as sources."
         }
       },
       "required": [

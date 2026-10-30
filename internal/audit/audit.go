@@ -143,6 +143,14 @@ var (
 		// T-053: what a metered call cost and the reservation it was
 		// charged to.
 		"cost_nano_usd": {shape: count}, "spend_reservation_id": idOf("asr"), "spend_unsettled": {shape: flag},
+		// H-046 (2): a research call's web search by its counts: searches,
+		// every step, distinct pages opened, the sources kept and dropped;
+		// never a query, a page or a URL.
+		"web_search_queries": {shape: count}, "web_search_calls": {shape: count}, "web_search_pages": {shape: count},
+		"sources_kept": {shape: count}, "sources_dropped": {shape: count},
+		// Review round 1, M2: the steps that carried one of the request's
+		// own identifiers (provider.StepsWithIDs), a count only.
+		"web_search_steps_with_ids": {shape: count},
 	}
 	// photoCall is what the generator records of a photo proposal's image
 	// and segmentation (T-056, on T-055's provider.SegmentMetadata): the
@@ -195,7 +203,9 @@ var catalogue = map[string]spec{
 		"output_locale": locales, "selected_entities": {shape: count},
 		// T-056: asked for in words or with a photo, by the stored image's
 		// hash and size.
-		"source": oneOf("intent", "image"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count}}},
+		"source": oneOf("intent", "image"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count},
+		// H-046 (2): the person asked for web research first.
+		"research": {shape: flag}}},
 	"proposal.conflict": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"latest_version_id": idOf("mv")}},
 	"proposal.approve": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
@@ -255,7 +265,10 @@ var catalogue = map[string]spec{
 		"credential_label": {shape: label},
 		// T-053 review round 1: the geo the answer was priced at (M2), and a
 		// settlement above its reservation, recorded at what was billed (L1).
-		"inference_geo": oneOf("global", "us", "unknown"), "over_reservation": {shape: flag}}},
+		"inference_geo": oneOf("global", "us", "unknown"), "over_reservation": {shape: flag},
+		// H-046 (2): a research call's web search steps, each priced as a
+		// search query.
+		"web_search_calls": {shape: count}}},
 	// A refused reservation writes nothing but this event (best effort:
 	// the call is refused whether or not it is recorded).
 	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},

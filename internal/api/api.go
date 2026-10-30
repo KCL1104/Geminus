@@ -39,6 +39,7 @@ type options struct {
 	upload    upload.Options
 	ai        proposals.Availability
 	photo     proposals.Availability
+	research  proposals.Availability
 }
 
 // WithObjects gives the API private object storage (D-044): dataset
@@ -77,6 +78,14 @@ func WithAI(a proposals.Availability) Option { return func(o *options) { o.ai = 
 // nothing is stored, whatever WithAI says of proposals in words.
 func WithPhotoAI(a proposals.Availability) Option { return func(o *options) { o.photo = a } }
 
+// WithResearchAI says whether this deployment's provider may search the web
+// for a proposal that asks for research (H-046 (2); cmd/api derives it from
+// the same settings and the approval's data policy). Without it every such
+// request is refused with 503 AI_PROVIDER_NOT_CONFIGURED (details[0].code
+// AI_RESEARCH_UNSUPPORTED) and nothing is stored, whatever WithAI says of
+// proposals without research.
+func WithResearchAI(a proposals.Availability) Option { return func(o *options) { o.research = a } }
+
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
 func Domains() ([]string, error) {
@@ -113,7 +122,7 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
-	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Objects: o.objects})
+	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Research: o.research, Objects: o.objects})
 	// A person's decision (T-026): it calls no provider, so it does not
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.

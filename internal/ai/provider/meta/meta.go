@@ -47,6 +47,31 @@
 //   - Errors name the HTTP status and an error type from the documented
 //     list (errorTypes), any other "other"; never the provider's message,
 //     the key or the URL.
+//
+// Research (H-046 (2); https://dev.meta.ai/docs/search-grounding and the
+// Messages page's "Tools", retrieved 2026-10-29; the coordinator's probe of
+// 2026-10-29): a research prompt of a role the approval names research for
+// (aiapproval.Approval.AllowsResearch) is sent with the built-in tool
+// {"type":"web_search"} and nothing else of it (no user_location: nothing
+// says where the person is; allowed_domains, blocked_domains and max_uses
+// are a 400). The provider searches, opens pages and finds text in them
+// server-side within the one call; the answer lists each step as a
+// server_tool_use block named web_search whose input says what it did
+// ({"type":"search","query":...}, {"type":"open_page","url":...},
+// {"type":"find_in_page","url":...,"pattern":...}), between narration text
+// blocks, and no tool result block: a step says what the model asked the
+// tool to do, never whether a page loaded or what it held. The adapter
+// counts the steps (searches apart), keeps the URLs the model asked to open
+// or search in for the client's source filter (provider.FilterSources) and
+// the query texts for its identifier count (provider.StepsWithIDs), and
+// takes the last text block, after the last step, as the answer; the
+// narration is dropped unread. Any other tool, block or a step that is not web_search fails the
+// answer (invalid_output), its usage and steps billed all the same. A
+// research call is one attempt (provider.ResearchMaxRetries) with
+// provider.ResearchMaxOutputTokens, reserved at the whole context window and
+// researchMaxToolCalls steps (Quote): a reservation, not a ceiling (the
+// attempt's timeout is the only hard limit). Nothing of a query, a page or a
+// URL is logged or put in an error.
 package meta
 
 import (
@@ -96,6 +121,17 @@ const (
 	// maxResponseBytes bounds a response body the adapter reads; a larger
 	// answer is not read (it may have been billed: Undecoded).
 	maxResponseBytes = 8 << 20
+	// researchMaxToolCalls is the web search steps (searches, pages asked
+	// for, finds in a page) one research attempt is reserved for (H-046
+	// (2)). Meta documents no bound on its server-side loop (max_uses is a
+	// 400), so this is an assumption, not a limit anyone keeps: the probe of
+	// 2026-10-29 took 5 steps for a small question. A call that takes more
+	// is settled at what it took (provider.Metadata.SpendOverReservation,
+	// warned of in the log).
+	researchMaxToolCalls = 64
+	// webSearchTool is the built-in tool's type and the name of its steps
+	// (server_tool_use.name).
+	webSearchTool = "web_search"
 )
 
 // ErrNotApproved: New or NewSegmenter was given no recorded, complete
@@ -141,6 +177,9 @@ type Backend struct {
 	allows func(role string) bool
 	// images: the approval's data policy names images (demo images).
 	images bool
+	// research: the approval's data policy names web research for the role
+	// (H-046 (2)); nil for none.
+	research func(role string) bool
 
 	// project is structured.Project; only the tests change it
 	// (export_test.go), to send a schema the projection never makes.
@@ -151,6 +190,7 @@ type Backend struct {
 var (
 	_ provider.Billable   = (*Backend)(nil)
 	_ provider.ImageInput = (*Backend)(nil)
+	_ provider.Researcher = (*Backend)(nil)
 )
 
 // New returns the Muse Spark backend for an approved configuration:
@@ -163,7 +203,12 @@ func New(cfg Config) (*Backend, error) {
 	if cfg.Model != cfg.Approval.Model() {
 		return nil, errors.New("meta: the model is not the approval's model")
 	}
-	return newBackend(cfg, productionURL, nil, cfg.Approval.AllowsRole, cfg.Approval.AllowsImages())
+	b, err := newBackend(cfg, productionURL, nil, cfg.Approval.AllowsRole, cfg.Approval.AllowsImages())
+	if err != nil {
+		return nil, err
+	}
+	b.research = cfg.Approval.AllowsResearch
+	return b, nil
 }
 
 // newBackend checks the rest of cfg. Only New, which checks the approval,
@@ -184,6 +229,12 @@ func (b *Backend) Name() string { return "meta" }
 // AcceptsImages: the approval's data policy names images (H-029, H-033:
 // demo images).
 func (b *Backend) AcceptsImages() bool { return b.images }
+
+// AcceptsResearch: the approval's data policy names web research for role,
+// a proposal role it serves (H-046 (2)).
+func (b *Backend) AcceptsResearch(role provider.Role) bool {
+	return role.Researches() && b.allows != nil && b.allows(string(role)) && b.research != nil && b.research(string(role))
+}
 
 // projected is an output schema's projection and its size as sent.
 type projected struct {
@@ -231,6 +282,25 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Quote{}, err
+	}
+	if req.Prompt.Research {
+		// A research call (H-046 (2)): the pages the provider reads are
+		// input tokens of the call that this build never sees before it is
+		// billed, so no count of the request bounds them. One attempt is
+		// reserved at the whole context window and researchMaxToolCalls
+		// steps. This is NOT a ceiling: the context window bounds one
+		// sampling step ("input_tokens + max_output_tokens must fit within
+		// it", /docs/error-handling), but the loop's usage is summed over its
+		// steps, each of which reads the context again (the probe's 41,356
+		// input tokens for 5 steps), so one call can cost more than its
+		// reservation, and more than an organization's daily cap. Meta states
+		// no bound on how many steps the loop takes; the only hard limit is
+		// the attempt's timeout (provider.Budget.ResearchTimeout). A call that
+		// costs more is recorded at what it cost (docs/AI_SPEC.md §2).
+		if !b.AcceptsResearch(req.Prompt.Role) {
+			return provider.Quote{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
+		}
+		return provider.Quote{Model: b.model, MaxInputTokens: contextWindowTokens, MaxToolCalls: researchMaxToolCalls}, nil
 	}
 	if len(req.Prompt.Images) == 0 {
 		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
@@ -316,7 +386,8 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	if req.Reservation == "" {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
-	if b.allows == nil || !b.allows(string(req.Prompt.Role)) || (len(req.Prompt.Images) > 0 && !b.images) {
+	if b.allows == nil || !b.allows(string(req.Prompt.Role)) || (len(req.Prompt.Images) > 0 && !b.images) ||
+		(req.Prompt.Research && !b.AcceptsResearch(req.Prompt.Role)) {
 		return provider.Response{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
 	}
 	proj, err := b.projection(req.OutputSchema)
@@ -343,7 +414,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		resp.UnknownAttempts, resp.Undecoded = t.unknown, t.undecoded
 		return resp, provider.NewError(provider.CodeUnavailable, 0, b.c.label)
 	}
-	out, err := b.answer(msg, resp, proj.Projection)
+	out, err := b.answer(msg, resp, proj.Projection, req.Prompt.Research)
 	out.UnknownAttempts, out.Undecoded = t.unknown, t.undecoded
 	return out, err
 }
@@ -351,17 +422,26 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 // The Messages request (https://dev.meta.ai/docs/protocols/messages,
 // "Request fields"): model, max_tokens, system as one text block, one user
 // message of the prompt's images (base64 image blocks, first) and its text,
-// and output_config.format, the projected schema. Nothing else: no tools,
-// no thinking ("disabled" is a 400; the model's own default decides how
-// much it reasons), no sampling, no metadata, no stop_sequences, top_k,
-// container or inference_geo (each a 400), no cache_control (caching is
-// automatic), no service_tier, no stream.
+// and output_config.format, the projected schema; for a research prompt
+// (H-046 (2)) also tools, the one built-in web_search tool, without
+// user_location or any other member. Nothing else: no other tool and no
+// tool_choice (the model decides whether to search), no thinking
+// ("disabled" is a 400; the model's own default decides how much it
+// reasons), no sampling, no metadata, no stop_sequences, top_k, container or
+// inference_geo (each a 400), no cache_control (caching is automatic), no
+// service_tier, no stream.
 type messagesRequest struct {
 	Model        string        `json:"model"`
 	MaxTokens    int64         `json:"max_tokens"`
 	System       []textBlock   `json:"system"`
 	Messages     []userMessage `json:"messages"`
 	OutputConfig outputConfig  `json:"output_config"`
+	Tools        []builtinTool `json:"tools,omitzero"`
+}
+
+// builtinTool is a built-in tool of the request: {"type":"web_search"}.
+type builtinTool struct {
+	Type string `json:"type"`
 }
 
 type textBlock struct {
@@ -414,8 +494,12 @@ func messagesOf(modelID string, req provider.Request, schema map[string]any) (me
 			Data: base64.StdEncoding.EncodeToString(im.Data)}})
 	}
 	content = append(content, textBlock{Type: "text", Text: req.Prompt.User()})
-	return messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
-		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}}, nil
+	m := messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
+		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}}
+	if req.Prompt.Research {
+		m.Tools = []builtinTool{{Type: webSearchTool}}
+	}
+	return m, nil
 }
 
 func messagesBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
@@ -452,6 +536,56 @@ type message struct {
 type contentBlock struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
+	// Name and Input are a server_tool_use block's (a research call's web
+	// search step, H-046 (2)); untrusted, never logged.
+	Name  string         `json:"name"`
+	Input jsontext.Value `json:"input"`
+}
+
+// toolStep is what a web search step's input says the model asked for, as
+// this build reads it: the kind (search, open_page, find_in_page or
+// another), the URL of the two that name one, and a search's query text.
+// Its pattern is not read. None of it is logged.
+type toolStep struct {
+	Type  string `json:"type"`
+	URL   string `json:"url"`
+	Query string `json:"query"`
+}
+
+// research reads a research answer's web search steps: every
+// server_tool_use block is one step (each priced as a query, an upper
+// bound), a search one a query (its text kept for the identifier count),
+// and an open_page or find_in_page one names a URL the model asked for (no
+// tool result says whether it loaded). ok is false when a step is not the
+// web_search tool's: the request offered no other.
+func research(m message) (r provider.Research, ok bool) {
+	ok = true
+	for _, blk := range m.Content {
+		if blk.Type != "server_tool_use" {
+			continue
+		}
+		r.ToolCalls++
+		if blk.Name != webSearchTool {
+			ok = false
+			continue
+		}
+		var st toolStep
+		if json.Unmarshal(blk.Input, &st) != nil {
+			continue
+		}
+		switch st.Type {
+		case "search":
+			r.Queries++
+			if st.Query != "" {
+				r.Searched = append(r.Searched, st.Query)
+			}
+		case "open_page", "find_in_page":
+			if st.URL != "" {
+				r.Opened = append(r.Opened, st.URL)
+			}
+		}
+	}
+	return r, ok
 }
 
 type usage struct {
@@ -493,12 +627,20 @@ func safeID(id string) string {
 
 // answer takes the text of a complete message from the model asked for;
 // reasoning blocks are dropped unread. The text's encoded places are
-// decoded (structured.Projection.Decode, fail closed).
-func (b *Backend) answer(m message, resp provider.Response, proj structured.Projection) (provider.Response, error) {
+// decoded (structured.Projection.Decode, fail closed). A research answer
+// (H-046 (2)) has its web search steps read first, so they are billed
+// whatever becomes of the answer, and its answer is its last text block,
+// which must come after its last step; the narration before is dropped
+// unread.
+func (b *Backend) answer(m message, resp provider.Response, proj structured.Projection, researched bool) (provider.Response, error) {
 	resp.Usage = provider.Usage{InputTokens: m.Usage.InputTokens, OutputTokens: m.Usage.OutputTokens,
 		CacheReadInputTokens: m.Usage.CacheReadInputTokens, CacheCreationInputTokens: m.Usage.CacheCreationInputTokens,
 		ThinkingTokens: m.Usage.OutputTokensDetails.ThinkingTokens}
 	resp.ProviderRequestID = safeID(m.ID)
+	stepsOK := true
+	if researched {
+		resp.Research, stepsOK = research(m)
+	}
 	invalid := func(msg string) (provider.Response, error) {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)
 		if msg != "" {
@@ -520,6 +662,9 @@ func (b *Backend) answer(m message, resp provider.Response, proj structured.Proj
 	default: // tool_use, pause_turn, stop_sequence (none was sent) or a reason this build does not know
 		return invalid("")
 	}
+	if researched {
+		return b.researchAnswer(m, resp, proj, stepsOK)
+	}
 	var text strings.Builder
 	for _, blk := range m.Content {
 		switch blk.Type {
@@ -530,7 +675,41 @@ func (b *Backend) answer(m message, resp provider.Response, proj structured.Proj
 			return invalid("")
 		}
 	}
-	decoded, issues := proj.Decode([]byte(text.String()))
+	return b.decoded(resp, proj, text.String())
+}
+
+// researchAnswer is answer's end for a research call: the last text block,
+// after the last web search step, is the answer; earlier text is narration.
+// A block of another type (a tool of the developer's, a tool result, an
+// unknown one) or a step of another tool is not an answer this build takes.
+func (b *Backend) researchAnswer(m message, resp provider.Response, proj structured.Projection, stepsOK bool) (provider.Response, error) {
+	invalid := func() (provider.Response, error) {
+		return resp, provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)
+	}
+	if !stepsOK {
+		return invalid()
+	}
+	last, lastStep := -1, -1
+	for i, blk := range m.Content {
+		switch blk.Type {
+		case "text":
+			last = i
+		case "server_tool_use":
+			lastStep = i
+		case "thinking", "redacted_thinking":
+		default:
+			return invalid()
+		}
+	}
+	if last < 0 || last < lastStep {
+		return invalid()
+	}
+	return b.decoded(resp, proj, m.Content[last].Text)
+}
+
+// decoded is resp with text, the answer, decoded from the projection.
+func (b *Backend) decoded(resp provider.Response, proj structured.Projection, text string) (provider.Response, error) {
+	decoded, issues := proj.Decode([]byte(text))
 	if len(issues) > 0 {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)
 		e.Issues = issues
