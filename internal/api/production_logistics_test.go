@@ -3,6 +3,7 @@ package api_test
 import (
 	"encoding/json/jsontext"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,7 +35,7 @@ func TestProductionLogisticsTemplatesClosedLoop(t *testing.T) {
 		"under another domain":      `{"name":"x","domain":"electronics_line","template":"shoe_factory"}`,
 		"an unknown template":       `{"name":"x","domain":"production_logistics","template":"steel_mill"}`,
 	} {
-		r = e.do("POST", models, editor.Subject, e.a.ID, map[string]string{"Idempotency-Key": "key-" + t.Name() + "-" + name}, body)
+		r = e.do("POST", models, editor.Subject, e.a.ID, map[string]string{"Idempotency-Key": "key-" + t.Name() + "-" + strings.ReplaceAll(name, " ", "-")}, body)
 		if r.status != 422 || code(t, r) != "REQUEST_VALIDATION_FAILED" {
 			t.Errorf("%s: %d %s", name, r.status, r.body)
 		}
