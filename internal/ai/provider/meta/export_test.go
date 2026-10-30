@@ -29,6 +29,14 @@ func SetResearch(b *Backend, roles ...string) {
 	b.research = func(role string) bool { return slices.Contains(roles, role) }
 }
 
+// SetModels makes the backend ask, besides its own, the models for the
+// proposal roles, as an approval's model choice would (H-049).
+func SetModels(b *Backend, models ...string) {
+	b.chooses = func(role, model string) bool {
+		return (role == "modeler" || role == "scenario") && slices.Contains(models, model)
+	}
+}
+
 // NewSegmenterForTest points the SAM backend at a local test server.
 func NewSegmenterForTest(cfg Config, baseURL string, client *http.Client) (*Segmenter, error) {
 	return newSegmenter(cfg, baseURL, client, func(string) bool { return true }, true)

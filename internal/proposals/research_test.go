@@ -100,11 +100,11 @@ func TestResearchInTheResource(t *testing.T) {
 // payload without research.
 func TestResearchJobIsOneAttempt(t *testing.T) {
 	const org, id, req = "org_01M4YDQK00Y5H2929M9WWZWTVH", "aip_01M4YDQK00ADN261CME3WV5HZ6", "req_01M4YDQK00ADN261CME3WV5HZ6"
-	j := proposalJob(org, id, req, true)
+	j := proposalJob(org, id, req, true, "")
 	if j.MaxAttempts != 1 || ResearchJobAttempts != 1 || j.Payload["research"] != true || j.Resource.AIProposalID != id || j.OrganizationID != org {
 		t.Errorf("research job %+v", j)
 	}
-	j = proposalJob(org, id, req, false)
+	j = proposalJob(org, id, req, false, "")
 	if _, ok := j.Payload["research"]; ok || j.MaxAttempts != 0 || j.Payload["proposal_id"] != id || j.Payload["request_id"] != req {
 		t.Errorf("job without research %+v", j)
 	}

@@ -96,9 +96,10 @@ function Step({ step, t }: { step: StepProps; t: Translator }) {
   );
 }
 
-/** Meta's models, and the one tool of the Meta Model API that Muse Spark uses (review round 1, M1: a tool, not a model). */
+/** Meta's models, and the one tool of the Meta Model API that the Muse models use (review round 1, M1: a tool, not a model). H-049: Muse Wonder 1.0, a person's choice for a proposal. */
 const meta: { name: MessageKey; kind: MessageKey; body: MessageKey }[] = [
   { name: "ai.model.muse-spark-1.3", kind: "ai.provider.meta", body: "landing.meta.muse" },
+  { name: "ai.model.muse-wonder-1.0", kind: "ai.provider.meta", body: "landing.meta.wonder" },
   { name: "ai.model.sam-3.1", kind: "ai.provider.meta", body: "landing.meta.sam" },
   { name: "landing.meta.searchName", kind: "landing.meta.tool", body: "landing.meta.search" },
 ];

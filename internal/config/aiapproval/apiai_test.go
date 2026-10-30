@@ -72,7 +72,17 @@ func TestTheAPIsGateIsTheWorkers(t *testing.T) {
 			settings: map[string]string{"AI_PROVIDER": "meta", "AI_POLICY_APPROVAL": "H-029", "AI_MODEL": "muse-spark-1.3"},
 			keys:     map[string]string{"GEMINUS_MUSE_API_KEY": museKey},
 			changes: map[string]func(*aiapproval.Record) string{
-				"an unpriced Standard model": func(r *aiapproval.Record) string { r.Model = "muse-spark-1.2"; return "muse-spark-1.2" },
+				"an unpriced Standard model": func(r *aiapproval.Record) string {
+					r.Model, r.ProposalModels = "muse-spark-1.2", nil
+					return "muse-spark-1.2"
+				},
+				// H-049: every model a person may choose is priced, or live AI
+				// stays off.
+				"an unpriced Standard model to choose": func(r *aiapproval.Record) string {
+					r.ProposalModels = []string{"muse-spark-1.3", "muse-spark-1.2"}
+					return ""
+				},
+				"no model choice": func(r *aiapproval.Record) string { r.ProposalModels = nil; return "" },
 				"the Contributor model": func(r *aiapproval.Record) string {
 					r.Model = "muse-spark-1.3-contributor"
 					return "muse-spark-1.3-contributor"
@@ -88,7 +98,8 @@ func TestTheAPIsGateIsTheWorkers(t *testing.T) {
 				"no credential": "record_incomplete", "customer data": "policy_unsupported", "raw text in logs": "policy_unsupported",
 				"the importer's role": "policy_unsupported", "no budget": "budget_missing", "retention unconfirmed": "retention_unconfirmed",
 				"retention undated": "retention_unconfirmed", "spend limits unconfirmed": "", "another provider's record": "provider_mismatch",
-				"an unpriced Standard model": "model_unpriced", "the Contributor model": "model_not_standard", "another segmenter": "model_not_standard",
+				"an unpriced Standard model": "model_unpriced", "an unpriced Standard model to choose": "model_unpriced", "no model choice": "",
+				"the Contributor model": "model_not_standard", "another segmenter": "model_not_standard",
 				"text only, no segmentation": "", "Anthropic's arrangement": "retention_unconfirmed"},
 		},
 	}

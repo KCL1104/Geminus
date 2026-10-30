@@ -171,6 +171,8 @@ var providerMessages = map[provider.Code]string{
 	provider.CodeSpendUnavailable: "the live AI spend ledger could not reserve for the call; no provider call was made",
 	// H-046 (2): refused before any provider call.
 	provider.CodeResearchUnsupported: "web research is not available with this deployment's AI provider; no provider call was made",
+	// H-049: refused before any provider call.
+	provider.CodeModelNotApproved: "the model chosen for this proposal is not approved in this deployment; no provider call was made",
 }
 
 // providerFailure is the job failure of a provider error.
@@ -196,12 +198,18 @@ func final(err error) error {
 }
 
 // payload is the job's reference (internal/proposals Create). Research is
-// the person's choice of web research (H-046 (2)): absent is false.
+// the person's choice of web research (H-046 (2)): absent is false. Model is
+// the person's choice of model (H-049): absent is the deployment's.
 type payload struct {
 	ProposalID string `json:"proposal_id"`
 	RequestID  string `json:"request_id"`
 	Research   bool   `json:"research"`
+	Model      string `json:"model"`
 }
+
+// modelIDs is the shape of a model the job may name (the ledger's, migration
+// 0016); whether the provider may ask it is the client's to say.
+var modelIDs = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,63}$`)
 
 // started is what an attempt read under the lease.
 type started struct {
@@ -215,7 +223,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	job := hr.Job()
 	var p payload
 	if err := json.Unmarshal(job.Payload, &p); err != nil || p.ProposalID != job.Resource.AIProposalID ||
-		!proposalIDs.MatchString(p.ProposalID) || !reqIDs.MatchString(p.RequestID) {
+		!proposalIDs.MatchString(p.ProposalID) || !reqIDs.MatchString(p.RequestID) || (p.Model != "" && !modelIDs.MatchString(p.Model)) {
 		return failure(InputInvalid, "the job does not name its proposal and request", false)
 	}
 	org := job.OrganizationID
@@ -263,9 +271,9 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		// research): a job that says so is not one this server queued.
 		return failure(InputInvalid, "the job asks for research on a photo proposal", false)
 	case st.proposal.Image != nil:
-		gen, err = h.generatePhoto(ctx, org, st, attr) // T-056: asked for with a photo
+		gen, err = h.generatePhoto(ctx, org, st, attr, p.Model) // T-056: asked for with a photo
 	default:
-		gen, err = h.generateAsked(ctx, org, st, attr, p.Research)
+		gen, err = h.generateAsked(ctx, org, st, attr, p.Research, p.Model)
 	}
 	if err != nil {
 		return failed(err, gen)
@@ -363,12 +371,13 @@ type generation struct {
 // after a paid call (D-061 (c)); the binding stage after the call reads
 // the copies, never storage.
 func (h *Handler) generate(ctx context.Context, org string, st started, attr provider.Attribution) (generation, error) {
-	return h.generateAsked(ctx, org, st, attr, false)
+	return h.generateAsked(ctx, org, st, attr, false, "")
 }
 
 // generateAsked is generate as the person asked: with web research first
-// when research is set (H-046 (2)).
-func (h *Handler) generateAsked(ctx context.Context, org string, st started, attr provider.Attribution, research bool) (generation, error) {
+// when research is set (H-046 (2)), of the model they chose ("" for the
+// deployment's, H-049).
+func (h *Handler) generateAsked(ctx context.Context, org string, st started, attr provider.Attribution, research bool, chosen string) (generation, error) {
 	pr, v := st.proposal, st.version
 	var ir model.ModelIR
 	if err := model.Decode(v.IR, &ir); err != nil {
@@ -412,6 +421,7 @@ func (h *Handler) generateAsked(ctx context.Context, org string, st started, att
 	}
 
 	pc.Attribution = attr // what the spend ledger charges the call to (T-053)
+	pc.Model = chosen     // H-049: exactly this model, or the call is refused
 	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
 	meta := res.Metadata
 	h.logCall(ctx, meta, err)

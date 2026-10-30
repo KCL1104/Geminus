@@ -157,7 +157,7 @@ func newPhotoRig(t *testing.T, name string, edit ...func(*Config)) *photoRig {
 
 func (r *photoRig) run(t *testing.T, ctx context.Context) (generation, error) {
 	t.Helper()
-	return r.h.generatePhoto(ctx, photoOrg, r.st, testAttribution)
+	return r.h.generatePhoto(ctx, photoOrg, r.st, testAttribution, "")
 }
 
 // The demo: the segmenter asked for the pack's eight concepts, its ten

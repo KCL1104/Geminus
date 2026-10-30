@@ -35,7 +35,7 @@ const imageTimeout = 2 * time.Minute
 // maxImageField bounds a form field's value (the longest is an ID).
 const maxImageField = 128
 
-var imageFieldParts = map[string]bool{"base_version_id": true, "output_locale": true}
+var imageFieldParts = map[string]bool{"base_version_id": true, "output_locale": true, "model": true}
 
 func malformed(message string) error {
 	return &httpapi.Error{Code: httpapi.InvalidRequest, Message: message, Details: []httpapi.Detail{{Path: "", Reason: "multipart/form-data body"}}}
@@ -78,7 +78,7 @@ func imageParts(mr *multipart.Reader) (ImageFields, *multipart.Part, error) {
 				return ImageFields{}, nil, fieldIssue("/base_version_id", "base_version_id is required, before the file part")
 			}
 			// The file's name is never kept: the image is the request.
-			return ImageFields{BaseVersionID: values["base_version_id"], OutputLocale: values["output_locale"]}, p, nil
+			return ImageFields{BaseVersionID: values["base_version_id"], OutputLocale: values["output_locale"], Model: values["model"]}, p, nil
 		}
 		if !imageFieldParts[name] {
 			return ImageFields{}, nil, fieldIssue(validate.Pointer(name), "the request has no part of this name")
@@ -130,6 +130,15 @@ func (h handlers) createImage(w http.ResponseWriter, r *http.Request, sc tenant.
 	if err != nil {
 		return Refused(err)
 	}
+	// H-049: the model the person chose, before the file is read: one of the
+	// contract's (422 at /model), and one the photo path's approval lists
+	// (503 AI_MODEL_NOT_APPROVED).
+	if err := f.checkModel(); err != nil {
+		return Refused(err)
+	}
+	if err := h.s.checkModel(f.Model, true); err != nil {
+		return Refused(err)
+	}
 	data, err := photo.Read(file)
 	if err != nil {
 		if errors.Is(err, photo.ErrTooLarge) {
@@ -160,7 +169,7 @@ func refusedImage(err error) error {
 	}
 	var ue *UnavailableError
 	switch {
-	case errors.As(err, &ue) && ue.Photo:
+	case errors.As(err, &ue) && ue.Photo && !ue.Model:
 		// The photo path is off (the T-056 follow-up): the proposals' code
 		// for its availability, and the code the worker would fail the
 		// photo with.

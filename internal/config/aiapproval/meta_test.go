@@ -35,6 +35,7 @@ func TestTheH029Record(t *testing.T) {
 			Roles:         []string{"modeler", "scenario", "analyst"}, // H-038
 			ResearchRoles: []string{"modeler", "scenario"},            // H-046 (2)
 		},
+		ProposalModels:   []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-049
 		MonthlyBudgetUSD: 100,
 		Credentials:      []string{"meta"},
 		ApprovedBy:       "KCL1104 (repository owner)",
@@ -87,6 +88,53 @@ func TestTheH029Record(t *testing.T) {
 	}
 }
 
+// H-049: a person chooses the model of a proposal, Muse Spark 1.3 (the
+// record's model, the default) or Muse Wonder 1.0; an explanation of results
+// (the analyst) stays on the record's model. A model the record does not list,
+// a Contributor model among them, is never allowed, nor any model for a role
+// the record does not serve. H-018 lists no choice: its one model only.
+func TestH049ModelChoice(t *testing.T) {
+	a, ok := aiapproval.Recorded("H-029")
+	if !ok {
+		t.Fatal("no H-029 approval")
+	}
+	if got := a.ProposalModels(); !slices.Equal(got, []string{"muse-spark-1.3", "muse-wonder-1.0"}) {
+		t.Fatalf("proposal models %q", got)
+	}
+	got := a.ProposalModels()
+	got[0] = "changed"
+	if a.ProposalModels()[0] != "muse-spark-1.3" {
+		t.Fatal("ProposalModels hands out the record's own list")
+	}
+	for _, c := range []struct {
+		role, model string
+		want        bool
+	}{
+		{"modeler", "muse-spark-1.3", true}, {"scenario", "muse-spark-1.3", true}, {"analyst", "muse-spark-1.3", true},
+		{"modeler", "muse-wonder-1.0", true}, {"scenario", "muse-wonder-1.0", true},
+		{"analyst", "muse-wonder-1.0", false}, // explanations stay on Muse Spark 1.3
+		{"importer", "muse-spark-1.3", false}, {"importer", "muse-wonder-1.0", false},
+		{"modeler", "muse-spark-1.3-contributor", false}, {"modeler", "Muse-Wonder-1.0", false}, {"modeler", "claude-opus-5-5", false},
+		{"modeler", "sam-3.1", false}, {"modeler", "", false}, {"", "muse-spark-1.3", false},
+	} {
+		if got := a.AllowsModel(c.role, c.model); got != c.want {
+			t.Errorf("H-029 allows %q for %q: %v, want %v", c.model, c.role, got, c.want)
+		}
+	}
+	h018, ok := aiapproval.Recorded("H-018")
+	if !ok {
+		t.Fatal("no H-018 approval")
+	}
+	if h018.ProposalModels() != nil || !h018.AllowsModel("modeler", "claude-opus-5-5") || h018.AllowsModel("modeler", "muse-wonder-1.0") ||
+		h018.AllowsModel("modeler", "muse-spark-1.3") || h018.AllowsModel("analyst", "claude-opus-5-5") {
+		t.Errorf("H-018: %q", h018.ProposalModels())
+	}
+	var zero aiapproval.Approval
+	if zero.ProposalModels() != nil || zero.AllowsModel("modeler", "muse-spark-1.3") {
+		t.Error("the zero Approval allows a model")
+	}
+}
+
 func h029(t *testing.T) aiapproval.Record {
 	t.Helper()
 	r, ok := aiapproval.Lookup("H-029")
@@ -111,22 +159,23 @@ func TestMetaGapReasons(t *testing.T) {
 		"text only, no segmentation": {func(r *aiapproval.Record) {
 			r.SegmentationModel, r.DataPolicy.Inputs = "", aiapproval.InputsSyntheticAndUserText
 		}, ""},
-		"muse spark 1.2":          {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2" }, ""},
-		"no model":                {func(r *aiapproval.Record) { r.Model = "" }, aiapproval.ReasonIncomplete},
-		"no approver":             {func(r *aiapproval.Record) { r.ApprovedBy = "" }, aiapproval.ReasonIncomplete},
-		"no source":               {func(r *aiapproval.Record) { r.Source = "" }, aiapproval.ReasonIncomplete},
-		"the Anthropic labels":    {func(r *aiapproval.Record) { r.Credentials = []string{"org-a", "org-b"} }, aiapproval.ReasonIncomplete},
-		"two keys":                {func(r *aiapproval.Record) { r.Credentials = []string{"meta", "meta-b"} }, aiapproval.ReasonIncomplete},
-		"no key":                  {func(r *aiapproval.Record) { r.Credentials = nil }, aiapproval.ReasonIncomplete},
-		"contributor":             {func(r *aiapproval.Record) { r.Model = "muse-spark-1.3-contributor" }, aiapproval.ReasonModelNotStandard},
-		"contributor 1.2":         {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2-contributor" }, aiapproval.ReasonModelNotStandard},
-		"another spelling":        {func(r *aiapproval.Record) { r.Model = "Muse-Spark-1.3" }, aiapproval.ReasonModelNotStandard},
-		"a Claude model":          {func(r *aiapproval.Record) { r.Model = "claude-opus-5-5" }, aiapproval.ReasonModelNotStandard},
-		"another segmenter":       {func(r *aiapproval.Record) { r.SegmentationModel = "sam-3" }, aiapproval.ReasonModelNotStandard},
-		"segmentation, text only": {func(r *aiapproval.Record) { r.DataPolicy.Inputs = aiapproval.InputsSyntheticAndUserText }, aiapproval.ReasonPolicyUnsupported},
-		"customer data":           {func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_photos" }, aiapproval.ReasonPolicyUnsupported},
-		"raw text in logs":        {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
-		"importer role":           {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"modeler", "importer"} }, aiapproval.ReasonPolicyUnsupported},
+		"muse spark 1.2":                         {func(r *aiapproval.Record) { r.Model, r.ProposalModels = "muse-spark-1.2", nil }, ""},
+		"muse spark 1.2, the choice not changed": {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2" }, aiapproval.ReasonIncomplete},
+		"no model":                               {func(r *aiapproval.Record) { r.Model = "" }, aiapproval.ReasonIncomplete},
+		"no approver":                            {func(r *aiapproval.Record) { r.ApprovedBy = "" }, aiapproval.ReasonIncomplete},
+		"no source":                              {func(r *aiapproval.Record) { r.Source = "" }, aiapproval.ReasonIncomplete},
+		"the Anthropic labels":                   {func(r *aiapproval.Record) { r.Credentials = []string{"org-a", "org-b"} }, aiapproval.ReasonIncomplete},
+		"two keys":                               {func(r *aiapproval.Record) { r.Credentials = []string{"meta", "meta-b"} }, aiapproval.ReasonIncomplete},
+		"no key":                                 {func(r *aiapproval.Record) { r.Credentials = nil }, aiapproval.ReasonIncomplete},
+		"contributor":                            {func(r *aiapproval.Record) { r.Model = "muse-spark-1.3-contributor" }, aiapproval.ReasonModelNotStandard},
+		"contributor 1.2":                        {func(r *aiapproval.Record) { r.Model = "muse-spark-1.2-contributor" }, aiapproval.ReasonModelNotStandard},
+		"another spelling":                       {func(r *aiapproval.Record) { r.Model = "Muse-Spark-1.3" }, aiapproval.ReasonModelNotStandard},
+		"a Claude model":                         {func(r *aiapproval.Record) { r.Model = "claude-opus-5-5" }, aiapproval.ReasonModelNotStandard},
+		"another segmenter":                      {func(r *aiapproval.Record) { r.SegmentationModel = "sam-3" }, aiapproval.ReasonModelNotStandard},
+		"segmentation, text only":                {func(r *aiapproval.Record) { r.DataPolicy.Inputs = aiapproval.InputsSyntheticAndUserText }, aiapproval.ReasonPolicyUnsupported},
+		"customer data":                          {func(r *aiapproval.Record) { r.DataPolicy.Inputs = "customer_photos" }, aiapproval.ReasonPolicyUnsupported},
+		"raw text in logs":                       {func(r *aiapproval.Record) { r.DataPolicy.LogsKeepRawText = true }, aiapproval.ReasonPolicyUnsupported},
+		"importer role":                          {func(r *aiapproval.Record) { r.DataPolicy.Roles = []string{"modeler", "importer"} }, aiapproval.ReasonPolicyUnsupported},
 		// H-046 (2): research for the proposal roles only, each a role the
 		// record serves, each once; none is a complete record too.
 		"no research":           {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = nil }, ""},
@@ -140,6 +189,22 @@ func TestMetaGapReasons(t *testing.T) {
 		"research named twice": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler", "modeler"} },
 			aiapproval.ReasonPolicyUnsupported},
 		"research of another role": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"Modeler"} }, aiapproval.ReasonPolicyUnsupported},
+		// H-049: the models a person may choose, the record's model among
+		// them, each a Standard one, each once; none is a complete record too
+		// (every proposal on the record's model).
+		"no model choice":       {func(r *aiapproval.Record) { r.ProposalModels = nil }, ""},
+		"the default only":      {func(r *aiapproval.Record) { r.ProposalModels = []string{"muse-spark-1.3"} }, ""},
+		"without the default":   {func(r *aiapproval.Record) { r.ProposalModels = []string{"muse-wonder-1.0"} }, aiapproval.ReasonIncomplete},
+		"a model named twice":   {func(r *aiapproval.Record) { r.ProposalModels = []string{"muse-spark-1.3", "muse-spark-1.3"} }, aiapproval.ReasonIncomplete},
+		"an empty model choice": {func(r *aiapproval.Record) { r.ProposalModels = []string{"muse-spark-1.3", ""} }, aiapproval.ReasonModelNotStandard},
+		"a Contributor model to choose": {func(r *aiapproval.Record) {
+			r.ProposalModels = []string{"muse-spark-1.3", "muse-spark-1.3-contributor"}
+		}, aiapproval.ReasonModelNotStandard},
+		"a Claude model to choose": {func(r *aiapproval.Record) { r.ProposalModels = []string{"muse-spark-1.3", "claude-opus-5-5"} },
+			aiapproval.ReasonModelNotStandard},
+		"Muse Wonder as the default": {func(r *aiapproval.Record) {
+			r.Model, r.ProposalModels = "muse-wonder-1.0", []string{"muse-wonder-1.0", "muse-spark-1.3"}
+		}, ""},
 		"no role":                  {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
 		"no budget":                {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = 0 }, aiapproval.ReasonBudgetMissing},
 		"retention not confirmed":  {func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} }, aiapproval.ReasonRetentionUnconfirmed},
@@ -166,6 +231,9 @@ func TestMetaGapReasons(t *testing.T) {
 		// H-046 (2): the Anthropic adapter has no web search, so no
 		// Anthropic record may name research.
 		"research": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler"} }, aiapproval.ReasonPolicyUnsupported},
+		// H-049: the Anthropic adapter asks its one model; no Anthropic
+		// record lists a choice.
+		"a model choice": {func(r *aiapproval.Record) { r.ProposalModels = []string{"claude-opus-5-5"} }, aiapproval.ReasonIncomplete},
 	} {
 		r := complete(t)
 		c.mutate(&r)

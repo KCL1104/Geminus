@@ -129,7 +129,7 @@ describe("asking for a change from a photo on the model page", () => {
     expect(c!.key).toMatch(/^key-/);
     // The parts in the contract's order, the file under the client's name, no Content-Type of the client's.
     expect([c!.body, c!.contentType]).toEqual([
-      { parts: ["base_version_id", "output_locale", "file"], base_version_id: api.baseVersionId, output_locale: "en", file: { name: "photo", type: "image/png", size: 11 } } satisfies FormCall,
+      { parts: ["base_version_id", "output_locale", "file"], base_version_id: api.baseVersionId, output_locale: "en", model: null, file: { name: "photo", type: "image/png", size: 11 } } satisfies FormCall,
       null,
     ]);
     expect(api.proposals().find((p) => p.proposal_id === created[0])?.source_image?.media_type).toBe("image/png");

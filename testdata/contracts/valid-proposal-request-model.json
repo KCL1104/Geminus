@@ -1,0 +1,8 @@
+{
+  "base_version_id": "mv_01M4YDQK00TA00000000000001",
+  "mode": "scenario",
+  "intent": "Try a second reflow oven and see whether the line still waits on it.",
+  "output_locale": "en",
+  "research": true,
+  "model": "muse-wonder-1.0"
+}

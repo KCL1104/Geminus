@@ -805,7 +805,15 @@ paths:
         flag, never the intent), and the answer is reviewed, risk-scored and approved exactly as any other: the pages it
         asked its search tool to open are shown as sources (getProposal), kept only when the call itself asked for them
         (the provider returns no tool result, so that a page loaded is not known) and never with one of the request''s
-        identifiers in their query string, and change neither the validation nor the risk.'
+        identifiers in their query string, and change neither the validation nor the risk. H-049: model names the model
+        the person chose for this proposal, per request: muse-spark-1.3 (Muse Spark 1.3, faster, costs less) or
+        muse-wonder-1.0 (Muse Wonder 1.0, Meta''s most capable model, in preview: slower, costs more); absent is the
+        deployment''s model (AI_MODEL). It is taken only when this deployment''s recorded approval lists it for proposals
+        (H-029, amended by H-049, lists both), decided from the settings, never a key; otherwise 503
+        AI_POLICY_NOT_APPROVED with details[0].code AI_MODEL_NOT_APPROVED at /model, and nothing is stored (an unknown
+        model is 422 at /model). The job carries the choice, the audit event names it, and the worker asks exactly that
+        model: it is never swapped for another, and an answer that names another model is refused; generated_by.model
+        is the model that answered. Spend is reserved at the chosen model''s price.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -855,7 +863,30 @@ paths:
         '500':
           $ref: '#/components/responses/Error500'
         '503':
-          $ref: '#/components/responses/Error503'
+          description: 'Nothing was stored. AI is off in this deployment (AI_PROVIDER_NOT_CONFIGURED or
+            AI_POLICY_NOT_APPROVED, no details); or the request asks for web research this deployment''s provider may not
+            do (details[0].code AI_RESEARCH_UNSUPPORTED at /research, H-046 (2)); or it names a model this deployment''s
+            approval does not list for proposals (AI_POLICY_NOT_APPROVED, details[0].code AI_MODEL_NOT_APPROVED at
+            /model, H-049). Codes: AI_PROVIDER_NOT_CONFIGURED, AI_POLICY_NOT_APPROVED, SERVICE_UNAVAILABLE.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                model_not_approved:
+                  summary: The request names a model this deployment's approval does not list (here muse-wonder-1.0 on the Claude deployment, H-018)
+                  value:
+                    error:
+                      code: AI_POLICY_NOT_APPROVED
+                      message: this model is not approved for proposals in this deployment; ask with its default model
+                      details:
+                      - path: /model
+                        reason: this deployment's approval does not list the model for proposals
+                        code: AI_MODEL_NOT_APPROVED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
       requestBody:
         required: true
         content:
@@ -878,6 +909,14 @@ paths:
                   intent: Use typical reflow oven conveyor speeds for a mid-volume SMT line.
                   output_locale: en
                   research: true
+              with_wonder:
+                summary: An edit asked of Muse Wonder 1.0, the person's choice (H-049); absent, the deployment's model answers
+                value:
+                  base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                  mode: edit
+                  intent: Balance the line so no station waits more than a minute.
+                  output_locale: en
+                  model: muse-wonder-1.0
     get:
       operationId: listProposals
       summary: List model proposals
@@ -938,9 +977,12 @@ paths:
         or AI_POLICY_NOT_APPROVED, details[0].code AI_IMAGE_UNSUPPORTED: decided from the photo path''s settings as the worker
         decides whether it takes a photo, never from a key; D-124) and object storage (503 SERVICE_UNAVAILABLE) are checked
         before any of the body is read. The
-        parts base_version_id and, optionally, output_locale (en or zh-Hant; en when absent) come first, each once, and file is
+        parts base_version_id and, optionally, output_locale (en or zh-Hant; en when absent) and model (H-049: the vision
+        model the person chose, muse-spark-1.3 or muse-wonder-1.0; absent is the photo path''s model; one the photo path''s
+        approval does not list is 503 AI_POLICY_NOT_APPROVED with details[0].code AI_MODEL_NOT_APPROVED at /model, and an
+        unknown one 422 at /model, both before the file is read) come first, each once, and file is
         the last part; another or a repeated part, or a part after file, is refused. The Idempotency-Key fingerprint is the
-        model ID, the two fields and the uploaded file''s SHA-256 and size: a key used before is decided first, as createProposal
+        model ID, the fields and the uploaded file''s SHA-256 and size: a key used before is decided first, as createProposal
         does (D-011), so a retry with the same key and file replays the first response even when base_version_id is no longer
         the model''s latest, and the same key with another request is 409 IDEMPOTENCY_KEY_CONFLICT; such a file is only hashed,
         never decoded or stored again. For a key not used yet, base_version_id is checked first, as createProposal does: a
@@ -1059,7 +1101,9 @@ paths:
             (D-124): AI_PROVIDER_NOT_CONFIGURED when the photo path is disabled, AI_POLICY_NOT_APPROVED when its live provider is
             not on (an approval that names no image, such as H-018''s, another model, the switch off), both with
             details[0].code AI_IMAGE_UNSUPPORTED. Proposals in words (createProposal) are decided on their own and are not
-            affected. Object storage that is not configured, or a request to retry with the same Idempotency-Key, is
+            affected. H-049: a model part naming a model the photo path''s approval does not list is AI_POLICY_NOT_APPROVED
+            with details[0].code AI_MODEL_NOT_APPROVED at /model, refused before the file is read (the fields come first).
+            Object storage that is not configured, or a request to retry with the same Idempotency-Key, is
             SERVICE_UNAVAILABLE (no details). Codes: AI_PROVIDER_NOT_CONFIGURED, AI_POLICY_NOT_APPROVED, SERVICE_UNAVAILABLE.'
           headers:
             X-Request-ID:
@@ -1109,6 +1153,8 @@ paths:
                   $ref: ../schemas/common.schema.json#/$defs/ModelVersionID
                 output_locale:
                   $ref: ../schemas/common.schema.json#/$defs/Locale
+                model:
+                  $ref: ../schemas/common.schema.json#/$defs/ProposalModel
                 file:
                   type: string
                   format: binary

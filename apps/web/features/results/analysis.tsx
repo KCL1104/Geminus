@@ -16,11 +16,13 @@ import { newIdempotencyKey } from "../../lib/api/client";
 import { errorCodeStatus, type Problem, problemFromResponse } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
-import type { AnalysisOutput, AnalysisRecord, ErrorCode, GeneratedBy, ProposalRequest, Run } from "../../lib/contracts";
+import type { AnalysisOutput, AnalysisRecord, ErrorCode, GeneratedBy, ProposalModel, ProposalRequest, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { AskIcon, SendIcon } from "../../ui/icons";
+import { advice } from "../ai-proposals/ask-form";
 import { useWriter } from "../ai-proposals/generated-by";
+import { DEFAULT_MODEL, ModelChoice, modelField } from "../ai-proposals/model-choice";
 import { visible } from "../ai-proposals/shown";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
@@ -180,9 +182,10 @@ function Cited({ path, rows }: { path: string; rows: MetricRow[] }) {
  * proposal on the model's latest version, in the reader's language; the
  * proposal opens on its own page for a person to review, approve and run.
  * Nothing runs and nothing is saved until then. The same request again (a
- * retry) reuses its key (D-011).
+ * retry) reuses its key (D-011). H-049: of the model the person chose above
+ * the suggestions (only Muse Wonder adds model to the request).
  */
-function ProposeNext({ modelId, name, intent }: { modelId: string; name: string; intent: string }) {
+function ProposeNext({ modelId, name, intent, aiModel }: { modelId: string; name: string; intent: string; aiModel: ProposalModel }) {
   const api = useApi();
   const router = useRouter();
   const { t, locale } = useI18n();
@@ -208,7 +211,7 @@ function ProposeNext({ modelId, name, intent }: { modelId: string; name: string;
       setProblem(model.problem);
       return;
     }
-    const body: ProposalRequest = { base_version_id: model.data.latest_version.id, mode: "scenario", intent, output_locale: locale };
+    const body: ProposalRequest = { base_version_id: model.data.latest_version.id, mode: "scenario", intent, output_locale: locale, ...modelField(aiModel) };
     const request = `${modelId} ${JSON.stringify(body)}`;
     if (sent.current?.request !== request) sent.current = { request, key: newIdempotencyKey() };
     const r = await api.createProposal(modelId, body, sent.current.key);
@@ -222,7 +225,7 @@ function ProposeNext({ modelId, name, intent }: { modelId: string; name: string;
       <Button variant="ai" icon={<SendIcon />} aria-label={t("analysis.proposeNamed", { name: visible(name, "prose") })} blocked={busy} onPress={() => void propose()}>
         {t("analysis.propose")}
       </Button>
-      {problem && <ProblemView problem={problem} headingLevel={3} />}
+      {problem && <ProblemView problem={problem} headingLevel={3} guidance={advice(problem)} />}
     </div>
   );
 }
@@ -231,6 +234,8 @@ function Explained({ analysis, rows, generatedBy, modelId }: { analysis: Analysi
   const i18n = useI18n();
   const { t } = i18n;
   const writer = useWriter(generatedBy);
+  // H-049: the model that writes a suggestion up as a scenario; the explanation itself stays on the deployment's.
+  const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const byPath = new Map(rows.map((r) => [r.path, r]));
   const list = (heading: string, items: string[]) =>
     items.length > 0 && (
@@ -321,11 +326,12 @@ function Explained({ analysis, rows, generatedBy, modelId }: { analysis: Analysi
         <>
           <h3>{t("analysis.next")}</h3>
           <p className={styles.note}>{t("analysis.nextNote")}</p>
+          {modelId !== null && <ModelChoice value={aiModel} onChange={setAiModel} label={t("analysis.model")} />}
           <ul className={styles.explained}>
             {analysis.suggested_next_experiments.map((x, i) => (
               <li key={i}>
                 <strong>{x.name}</strong>: {x.hypothesis}
-                {modelId !== null && <ProposeNext modelId={modelId} name={x.name} intent={`${x.name}: ${x.hypothesis}`} />}
+                {modelId !== null && <ProposeNext modelId={modelId} name={x.name} intent={`${x.name}: ${x.hypothesis}`} aiModel={aiModel} />}
               </li>
             ))}
           </ul>

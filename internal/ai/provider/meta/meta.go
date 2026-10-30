@@ -72,6 +72,16 @@
 // researchMaxToolCalls steps (Quote): a reservation, not a ceiling (the
 // attempt's timeout is the only hard limit). Nothing of a query, a page or a
 // URL is logged or put in an error.
+//
+// Model choice (H-049): a proposal's request may name another model than the
+// backend's own (provider.Request.Model): Muse Wonder 1.0 beside Muse Spark
+// 1.3, when the approval lists it for the request's role
+// (aiapproval.Approval.AllowsModel: the proposal roles only; the analyst
+// stays on the approval's model). That model is quoted, sent, and the only
+// one whose answer is taken; any other is refused before any I/O
+// (model_not_approved). The context window bound below is Muse Spark's; Meta
+// states none for Muse Wonder that this build has read, so its quotes use the
+// same bound (a reservation, as for research, not a ceiling).
 package meta
 
 import (
@@ -180,6 +190,9 @@ type Backend struct {
 	// research: the approval's data policy names web research for the role
 	// (H-046 (2)); nil for none.
 	research func(role string) bool
+	// chooses: the approval lists the model for the role (H-049,
+	// aiapproval.Approval.AllowsModel); nil for the backend's own model only.
+	chooses func(role, model string) bool
 
 	// project is structured.Project; only the tests change it
 	// (export_test.go), to send a schema the projection never makes.
@@ -188,9 +201,10 @@ type Backend struct {
 }
 
 var (
-	_ provider.Billable   = (*Backend)(nil)
-	_ provider.ImageInput = (*Backend)(nil)
-	_ provider.Researcher = (*Backend)(nil)
+	_ provider.Billable     = (*Backend)(nil)
+	_ provider.ImageInput   = (*Backend)(nil)
+	_ provider.Researcher   = (*Backend)(nil)
+	_ provider.ModelChooser = (*Backend)(nil)
 )
 
 // New returns the Muse Spark backend for an approved configuration:
@@ -208,6 +222,7 @@ func New(cfg Config) (*Backend, error) {
 		return nil, err
 	}
 	b.research = cfg.Approval.AllowsResearch
+	b.chooses = cfg.Approval.AllowsModel
 	return b, nil
 }
 
@@ -234,6 +249,27 @@ func (b *Backend) AcceptsImages() bool { return b.images }
 // a proposal role it serves (H-046 (2)).
 func (b *Backend) AcceptsResearch(role provider.Role) bool {
 	return role.Researches() && b.allows != nil && b.allows(string(role)) && b.research != nil && b.research(string(role))
+}
+
+// AcceptsModel: the approval lists model for role (H-049): a proposal
+// role, Muse Spark 1.3 or Muse Wonder 1.0 under H-029; the analyst its
+// model only.
+func (b *Backend) AcceptsModel(role provider.Role, model string) bool {
+	return b.chooses != nil && model != "" && b.chooses(string(role), model)
+}
+
+// modelOf is the model req asks for: the backend's own when it names none
+// (or names it), else one the approval lists for the request's role; false
+// for any other, which is never asked (H-049).
+func (b *Backend) modelOf(req provider.Request) (string, bool) {
+	if req.Model == "" || req.Model == b.model {
+		return b.model, true
+	}
+	return req.Model, b.AcceptsModel(req.Prompt.Role, req.Model)
+}
+
+func modelNotApproved() *provider.Error {
+	return provider.NewError(provider.CodeModelNotApproved, 0, "")
 }
 
 // projected is an output schema's projection and its size as sent.
@@ -279,6 +315,10 @@ func (b *Backend) projection(schema string) (projected, error) {
 //
 // ctx is the call's (its deadline and the caller's cancellation).
 func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quote, error) {
+	asked, ok := b.modelOf(req)
+	if !ok {
+		return provider.Quote{}, modelNotApproved()
+	}
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Quote{}, err
@@ -300,17 +340,17 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 		if !b.AcceptsResearch(req.Prompt.Role) {
 			return provider.Quote{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
 		}
-		return provider.Quote{Model: b.model, MaxInputTokens: contextWindowTokens, MaxToolCalls: researchMaxToolCalls}, nil
+		return provider.Quote{Model: asked, MaxInputTokens: contextWindowTokens, MaxToolCalls: researchMaxToolCalls}, nil
 	}
 	if len(req.Prompt.Images) == 0 {
 		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
-		return provider.Quote{Model: b.model, MaxInputTokens: min(n, contextWindowTokens)}, nil
+		return provider.Quote{Model: asked, MaxInputTokens: min(n, contextWindowTokens)}, nil
 	}
 	n, err := b.count(ctx, req, proj)
 	if err != nil {
 		return provider.Quote{}, err
 	}
-	return provider.Quote{Model: b.model, MaxInputTokens: min(n+(n+countMarginDivisor-1)/countMarginDivisor, contextWindowTokens), Counted: n}, nil
+	return provider.Quote{Model: asked, MaxInputTokens: min(n+(n+countMarginDivisor-1)/countMarginDivisor, contextWindowTokens), Counted: n}, nil
 }
 
 // countPath is the Messages endpoint's token count ("Endpoints | POST
@@ -343,7 +383,11 @@ func (b *Backend) count(ctx context.Context, req provider.Request, proj projecte
 	if b.allows == nil || !b.allows(string(req.Prompt.Role)) || !b.images {
 		return 0, provider.NewError(provider.CodePolicyNotApproved, 0, "")
 	}
-	body, err := countBody(b.model, req, proj.Schema)
+	asked, ok := b.modelOf(req)
+	if !ok {
+		return 0, modelNotApproved()
+	}
+	body, err := countBody(asked, req, proj.Schema)
 	if err != nil {
 		return 0, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
@@ -380,12 +424,17 @@ func decodeCount(body []byte) (int64, bool) {
 
 // Complete sends req as one Messages call. It refuses, before any I/O, a
 // request without a spend reservation, a role the approval's data policy
-// does not name and images it does not name.
+// does not name, images it does not name and a model it does not list for
+// the role (H-049).
 func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
-	resp := provider.Response{Model: b.model, Credential: b.c.label}
 	if req.Reservation == "" {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
+	asked, ok := b.modelOf(req)
+	if !ok {
+		return provider.Response{}, modelNotApproved()
+	}
+	resp := provider.Response{Model: asked, Credential: b.c.label}
 	if b.allows == nil || !b.allows(string(req.Prompt.Role)) || (len(req.Prompt.Images) > 0 && !b.images) ||
 		(req.Prompt.Research && !b.AcceptsResearch(req.Prompt.Role)) {
 		return provider.Response{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")
@@ -394,7 +443,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
-	body, err := messagesBody(b.model, req, proj.Schema)
+	body, err := messagesBody(asked, req, proj.Schema)
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
@@ -625,8 +674,8 @@ func safeID(id string) string {
 	return ""
 }
 
-// answer takes the text of a complete message from the model asked for;
-// reasoning blocks are dropped unread. The text's encoded places are
+// answer takes the text of a complete message from the model asked for
+// (resp.Model); reasoning blocks are dropped unread. The text's encoded places are
 // decoded (structured.Projection.Decode, fail closed). A research answer
 // (H-046 (2)) has its web search steps read first, so they are billed
 // whatever becomes of the answer, and its answer is its last text block,
@@ -648,7 +697,7 @@ func (b *Backend) answer(m message, resp provider.Response, proj structured.Proj
 		}
 		return resp, e
 	}
-	if m.Model != b.model {
+	if m.Model != resp.Model {
 		// Standard mode is the model ID; the Terms say a request may be
 		// routed to a Contributor model. Refused, whatever it says.
 		return invalid("the answer is not from the Standard-mode model the request named")

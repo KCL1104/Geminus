@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -155,7 +156,9 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 // its own: T-053 I5, the T-056 follow-up) and the object storage, when one
 // is configured.
 func handlerOptions(ai config.APIAI, store objects.Store) []api.Option {
-	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai)), api.WithResearchAI(researchAvailability(ai))}
+	opts := []api.Option{api.WithAI(aiAvailability(ai)), api.WithPhotoAI(photoAvailability(ai)), api.WithResearchAI(researchAvailability(ai)),
+		api.WithProposalModels(proposalModels(ai.Provider, ai.LiveEnabled(), ai.Approval.ProposalModels()),
+			proposalModels(ai.Vision.Provider, ai.Vision.LiveEnabled(), ai.Vision.Approval.ProposalModels()))}
 	if store != nil {
 		opts = append(opts, api.WithObjects(store))
 	}
@@ -203,6 +206,24 @@ func researchAvailability(ai config.APIAI) proposals.Availability {
 		return proposals.PolicyNotApproved
 	}
 	return proposals.NotConfigured
+}
+
+// proposalModels are the models a person may choose for a path's proposals
+// (H-049): with the fake, the contract's (it answers as itself whichever is
+// named); with a live provider that is on, the ones its recorded approval
+// lists (aiapproval.Approval.ProposalModels: Muse Spark 1.3 and Muse Wonder
+// 1.0 under H-029; none under H-018, whose adapter asks its one model); none
+// otherwise (the path refuses every proposal anyway). Decided from the
+// settings alone, as the availabilities are; the worker's adapter checks the
+// same approval again before any I/O.
+func proposalModels(p config.AIProvider, live bool, listed []string) []string {
+	switch {
+	case p == config.AIProviderFake:
+		return slices.Clone(proposals.ProposalModels)
+	case live:
+		return listed
+	}
+	return nil
 }
 
 // availability is a path's: available with the fake or a live provider that

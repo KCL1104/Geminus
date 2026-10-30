@@ -24,6 +24,7 @@ import type {
   Projects,
   Proposal,
   ProposalAccepted,
+  ProposalModel,
   ProposalRequest,
   Proposals,
   Publish,
@@ -100,8 +101,8 @@ export function newIdempotencyKey(): string {
 
 export type ApiClient = ReturnType<typeof createApiClient>;
 
-/** createImageProposal's form fields besides the file (openapi createImageProposal, T-056). */
-export type ImageProposalFields = { base_version_id: string; output_locale?: ProposalRequest["output_locale"] };
+/** createImageProposal's form fields besides the file (openapi createImageProposal, T-056; model: H-049). */
+export type ImageProposalFields = { base_version_id: string; output_locale?: ProposalRequest["output_locale"]; model?: ProposalModel };
 
 const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
 
@@ -327,6 +328,7 @@ export function createApiClient(cfg: ClientConfig) {
       const form = new FormData();
       form.append("base_version_id", fields.base_version_id);
       if (fields.output_locale !== undefined) form.append("output_locale", fields.output_locale);
+      if (fields.model !== undefined) form.append("model", fields.model);
       form.append("file", file, "photo");
       return call<ProposalAccepted>({ method: "POST", path: `/models/${modelId}/ai-proposals/image`, body: form, idempotencyKey: key, signal: opts.signal });
     },

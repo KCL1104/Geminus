@@ -44,8 +44,8 @@ type Price struct {
 
 // prices is every model this build can price per token, by its exact
 // model ID. Only the models an approval names are listed (H-018's Claude
-// Opus 5.5; H-029's Muse Spark 1.3, T-055): a model without a price cannot
-// be reserved for, so it cannot be called live.
+// Opus 5.5; H-029's Muse Spark 1.3, T-055, and Muse Wonder 1.0, H-049): a
+// model without a price cannot be reserved for, so it cannot be called live.
 var prices = map[string]Price{
 	// Claude Opus 5.5: USD 4 / 5 / 8 / 0.20 / 20 per million tokens
 	// (input, 5m write, 1h write, cache hit, output), pricing page
@@ -62,6 +62,12 @@ var prices = map[string]Price{
 	// (muse-spark-1.3-contributor, whose content Meta may use for training)
 	// is not priced, so it cannot be called.
 	"muse-spark-1.3": {Input: 1250, Output: 4250, CacheWrite5m: 1250, CacheWrite1h: 1250, CacheRead: 150},
+	// Muse Wonder 1.0, Standard mode (H-049, a person's choice for a
+	// proposal): USD 4.00 / 0.20 / 20.00 per million tokens (input, cached
+	// input, output), MetaPriceSource as H-049 records it (2026-10-30). A
+	// cache-write token is priced as an input token, reasoning tokens as
+	// output tokens, as for Muse Spark.
+	"muse-wonder-1.0": {Input: 4000, Output: 20000, CacheWrite5m: 4000, CacheWrite1h: 4000, CacheRead: 200},
 }
 
 // PriceOf is model's price, if this build has one.
@@ -97,7 +103,7 @@ func ImagePriceOf(model string) (NanoUSD, bool) {
 // Muse Spark" (MetaPriceSource, saved copy of 2026-10-27, restated by the
 // coordinator on 2026-10-29), USD 0.0025 a query. A model without a search
 // price cannot be reserved for a research call, so it never researches.
-var searchPrices = map[string]NanoUSD{"muse-spark-1.3": 2_500_000}
+var searchPrices = map[string]NanoUSD{"muse-spark-1.3": 2_500_000, "muse-wonder-1.0": 2_500_000}
 
 // SearchPriceOf is the price of one web search query of a research call on
 // model, if this build has one.
@@ -122,7 +128,12 @@ var sources = map[string][2]string{
 	"claude-opus-5-5": {PriceSource, PriceRetrieved},
 	"muse-spark-1.3":  {MetaPriceSource, MetaPriceRetrieved},
 	"sam-3.1":         {MetaPriceSource, MetaPriceRetrieved},
+	"muse-wonder-1.0": {MetaPriceSource, WonderPriceRetrieved},
 }
+
+// WonderPriceRetrieved is when Muse Wonder 1.0's price was read
+// (MetaPriceSource; H-049).
+const WonderPriceRetrieved = "2026-10-30"
 
 // SourceOf is where model's price was read and when.
 func SourceOf(model string) (source, retrieved string, ok bool) {

@@ -425,11 +425,43 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(nav.push.mock.calls).toEqual([[`/proposals/${PROPOSAL}`]]);
   });
 
+  // H-049: the model that writes a suggestion up as a scenario is the
+  // editor's choice, Muse Spark 1.3 by default; Muse Wonder 1.0 adds model to
+  // the request. The explanation itself is the deployment's.
+  it("proposes a suggested next experiment with the model the editor chose", async () => {
+    const PROPOSAL = "aip_01M4YDQK00TA0000000000H049";
+    const model = { id: boardScenario.model_id, organization_id: ORG, project_id: "prj_01M4YDQK00TA00000000000001", domain: "electronics_line",
+      name: "Board line", draft: { revision: 2, base_version_id: boardVersion.id, out_of_date: false }, latest_version: { id: boardVersion.id, version: 3 },
+      created_at: "2026-10-28T08:00:00Z" };
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, explained), [`GET ${v1}/models/${model.id}`]: json(200, model),
+      [`POST ${v1}/models/${model.id}/ai-proposals`]: json(202, { proposal_id: PROPOSAL, status: "generating" }) });
+    nav.push.mockClear();
+    const { el } = await page(api, ANA);
+    await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
+    const done = section(el)!;
+    const choice = done.querySelector("[data-model-choice]")!;
+    const trigger = [...choice.querySelectorAll("button")].find((b) => b.getAttribute("aria-labelledby")?.split(" ").some((id) => text(document.getElementById(id)!) === en["analysis.model"]))!;
+    expect(text(trigger)).toBe(en["ai.model.muse-spark-1.3"]);
+    expect(text(choice)).toContain(en["ask.modelHint.muse-spark-1.3"]);
+    await press(trigger);
+    const wonder = [...document.querySelectorAll("[role=option]")].find((o) => text(o) === en["ai.model.muse-wonder-1.0"])!;
+    await press(wonder);
+    expect(text(choice)).toContain(en["ask.modelHint.muse-wonder-1.0"]);
+    expect(await violations()).toEqual([]);
+    const propose = [...done.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === en["analysis.proposeNamed"].replace("{name}", "Faster AOI"))!;
+    await press(propose);
+    await waitFor(() => nav.push.mock.calls.length > 0, "the proposal page");
+    const post = api.calls.find((c) => c.method === "POST" && c.path.endsWith("/ai-proposals"))!;
+    expect(post.body).toEqual({ base_version_id: boardVersion.id, mode: "scenario", intent: "Faster AOI: AOI may become the next constraint.", output_locale: "en",
+      model: "muse-wonder-1.0" });
+  });
+
   it("offers a viewer no next-experiment proposal (H-043)", async () => {
     const api = fakeApi({ ...completedRuns, [`GET ${v1}/analyses/${ANA}`]: json(200, explained) });
     const { el } = await page(api, ANA, viewer);
     await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
     expect([...section(el)!.querySelectorAll("button")].map((b) => text(b))).not.toContain(en["analysis.propose"]);
+    expect(section(el)!.querySelector("[data-model-choice]"), "no model choice for a viewer (H-049)").toBeNull();
     // Without generated_by (an analysis from before H-043) the note says "the AI" and names no model.
     expect(text(section(el)!)).toContain(en["analysis.provenance"]);
     expect(text(section(el)!)).not.toContain("Muse Spark");

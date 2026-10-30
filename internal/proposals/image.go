@@ -8,6 +8,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"regexp"
+	"slices"
 	"sync"
 
 	"github.com/kcl1104/geminus/internal/ai/locale"
@@ -127,6 +128,18 @@ const (
 type ImageFields struct {
 	BaseVersionID string
 	OutputLocale  string
+	// Model is the vision model the person chose (H-049); "" for the photo
+	// path's.
+	Model string
+}
+
+// checkModel reports a model that is not one of the contract's
+// (ProposalModels) at /model; "" is the photo path's model.
+func (f ImageFields) checkModel() error {
+	if f.Model == "" || slices.Contains(ProposalModels, f.Model) {
+		return nil
+	}
+	return fieldIssue("/model", "model is muse-spark-1.3 or muse-wonder-1.0")
 }
 
 var versionIDs = regexp.MustCompile(`^mv_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
@@ -140,6 +153,10 @@ func (f ImageFields) check() (locale.Locale, error) {
 	loc, err := locale.Parse(f.OutputLocale)
 	if err != nil {
 		issues = append(issues, model.NewIssue(validate.ConstraintFailed, "/output_locale", "output_locale is en or zh-Hant", model.SeverityError))
+	}
+	var re *RequestError
+	if errors.As(f.checkModel(), &re) {
+		issues = append(issues, re.Issues...)
 	}
 	if len(issues) > 0 {
 		return "", &RequestError{Issues: issues}
@@ -198,11 +215,17 @@ func checkBase(ctx context.Context, tx tenant.Tx, org, modelID, baseVersionID st
 }
 
 // imageFingerprint is the request an Idempotency-Key stands for: the model,
-// the fields and the uploaded file's SHA-256 and size (API_DATABASE §7).
+// the fields and the uploaded file's SHA-256 and size (API_DATABASE §7). The
+// model the person chose (H-049) is named only when it was sent, so a
+// request without one has the fingerprint it had before.
 func imageFingerprint(modelID string, f ImageFields, loc locale.Locale, data []byte) (string, error) {
 	sum := sha256.Sum256(data)
-	doc, err := json.Marshal(map[string]any{"model_id": modelID, "base_version_id": f.BaseVersionID, "output_locale": string(loc),
-		"file_sha256": "sha256:" + hex.EncodeToString(sum[:]), "file_size": len(data)}, json.Deterministic(true))
+	fields := map[string]any{"model_id": modelID, "base_version_id": f.BaseVersionID, "output_locale": string(loc),
+		"file_sha256": "sha256:" + hex.EncodeToString(sum[:]), "file_size": len(data)}
+	if f.Model != "" {
+		fields["model"] = f.Model
+	}
+	doc, err := json.Marshal(fields, json.Deterministic(true))
 	if err != nil {
 		return "", err
 	}
@@ -298,6 +321,9 @@ func (s *Service) CreateFromImage(ctx context.Context, sc tenant.Scope, requestI
 		if s.Photo != Available {
 			return &UnavailableError{Availability: s.Photo, Photo: true}
 		}
+		if err := s.checkModel(f.Model, true); err != nil {
+			return err
+		}
 		// The model's row first, as every write about its versions takes
 		// it (ADR-022).
 		mdl, v, err := checkBase(ctx, tx, m.OrganizationID, modelID, f.BaseVersionID, true)
@@ -314,16 +340,19 @@ func (s *Service) CreateFromImage(ctx context.Context, sc tenant.Scope, requestI
 		if err := store.InsertImage(ctx, tx, m.OrganizationID, p.ID, *stored); err != nil {
 			return err
 		}
-		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.ModelProposal,
-			Resource: jobs.Resource{AIProposalID: p.ID}, Payload: map[string]any{"proposal_id": p.ID, "request_id": requestID}}, s.policy()); err != nil {
+		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, false, f.Model), s.policy()); err != nil {
 			return err
 		}
 		// IDs, the language and the stored image's hash and size: never the
-		// file's name or content (SECURITY §9).
+		// file's name or content (SECURITY §9); the model the person chose
+		// (H-049).
+		meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode, "output_locale": p.OutputLocale,
+			"selected_entities": 0, "source": "image", "image_content_hash": stored.SHA256, "image_size_bytes": stored.Size}
+		if f.Model != "" {
+			meta["requested_model"] = f.Model
+		}
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID,
-			Metadata: map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode, "output_locale": p.OutputLocale,
-				"selected_entities": 0, "source": "image", "image_content_hash": stored.SHA256, "image_size_bytes": stored.Size}}); err != nil {
+			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID, Metadata: meta}); err != nil {
 			return err
 		}
 		data, err := json.Marshal(Accepted{ProposalID: p.ID, Status: string(store.Generating)})

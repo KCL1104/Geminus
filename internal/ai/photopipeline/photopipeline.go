@@ -59,6 +59,19 @@ func TakesImages(vision provider.LLMProvider) bool {
 	return ok && it.AcceptsImages()
 }
 
+// TakesModel reports whether the vision client asks model for a photo
+// proposal (provider.Client.AcceptsModel, H-049); "" is its own model.
+// Asked before the segmenter spends anything.
+func TakesModel(vision provider.LLMProvider, model string) bool {
+	if model == "" {
+		return true
+	}
+	m, ok := vision.(interface {
+		AcceptsModel(provider.Role, string) bool
+	})
+	return ok && m.AcceptsModel(provider.ModeEdit.Role(), model)
+}
+
 // Clients are the photo path's two clients.
 type Clients struct {
 	Segmenter provider.Segmenter
@@ -81,6 +94,9 @@ type Request struct {
 	OutputLocale string
 	Budget       provider.Budget
 	Attribution  provider.Attribution
+	// Model is the vision model the person chose (H-049); "" for the
+	// vision client's own.
+	Model string
 }
 
 // Observer is told of each call's end (the worker's log lines); either may
@@ -148,6 +164,11 @@ func Propose(ctx context.Context, c Clients, req Request, obs Observer) (Result,
 	if c.Segmenter == nil || c.Vision == nil {
 		return r, provider.NewError(provider.CodeNotConfigured, 0, "")
 	}
+	if !TakesModel(c.Vision, req.Model) {
+		// A vision model the client may not ask (H-049): refused before the
+		// segmenter spends anything.
+		return r, provider.NewError(provider.CodeModelNotApproved, 0, "")
+	}
 	seg, err := c.Segmenter.Segment(ctx, provider.SegmentRequest{OrganizationID: req.OrganizationID, Role: provider.ModeEdit.Role(),
 		Attribution: req.Attribution, Image: req.Image, Concepts: req.Concepts})
 	r.Segmenter, r.Segments = &seg.Metadata, len(seg.Segments)
@@ -187,7 +208,7 @@ func Propose(ctx context.Context, c Clients, req Request, obs Observer) (Result,
 	if err != nil {
 		return r, &ContextError{Code: aicontext.CodeOf(err), Err: err}
 	}
-	pctx.Attribution = req.Attribution
+	pctx.Attribution, pctx.Model = req.Attribution, req.Model
 	res, err := c.Vision.GenerateModelProposal(ctx, pctx)
 	meta := res.Metadata
 	r.Vision = &meta

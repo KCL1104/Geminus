@@ -338,6 +338,9 @@ var errorCodes = map[string]string{
 	// H-046 (2): the configured provider does not research (the API
 	// refuses such a request first; a worker set up otherwise refuses it).
 	"AI_RESEARCH_UNSUPPORTED": "AI_PROVIDER_NOT_CONFIGURED",
+	// H-049: the configured provider may not ask the model the person
+	// chose (the API refuses such a request first).
+	"AI_MODEL_NOT_APPROVED": "AI_POLICY_NOT_APPROVED",
 }
 
 // FailureError is failureError for the other AI jobs' resources (T-030's

@@ -2,7 +2,7 @@
 // Value shapes only: ranges, patterns and cross-field rules are enforced by the
 // schema and semantic validators, not by these types.
 import type { AnalysisOutput } from "./analysis-output";
-import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, GeneratedBy, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
+import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, GeneratedBy, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, ProposalModel, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
 import type { ImportMapping } from "./import-mapping";
 import type { JsonPatch } from "./json-patch";
 import type { ModelIR } from "./model-ir";
@@ -119,6 +119,8 @@ export type ProposalRequest = {
   output_locale?: Locale;
   /** H-046 (2): the person asks the AI to research the real-world process on the web before it drafts the proposal (Meta's search grounding: the intent the person typed is used for the provider's web searches). false when absent; asked per request, never a default the server turns on. Taken only when this deployment's provider may search for the request's role (the modeler for edit, the scenario role for scenario) under its recorded approval (H-029, amended by H-046): otherwise 503 AI_PROVIDER_NOT_CONFIGURED or AI_POLICY_NOT_APPROVED with details[0].code AI_RESEARCH_UNSUPPORTED, and nothing is stored. The answer is reviewed, risk-scored and approved exactly as any other proposal; the pages it asked to open are only shown as sources. */
   research?: boolean;
+  /** H-049: the model the person chose for this proposal, per request; absent is the deployment's model (AI_MODEL: muse-spark-1.3 in the H-029 deployment). Taken only when this deployment's recorded approval lists it for proposals (H-029, amended by H-049, lists both): otherwise 503 AI_POLICY_NOT_APPROVED with details[0].code AI_MODEL_NOT_APPROVED at /model, and nothing is stored. Never answered by another model: the worker asks exactly this one, and refuses an answer that names another; generated_by.model is the model that answered. */
+  model?: ProposalModel;
 };
 
 export type ProposalAccepted = {

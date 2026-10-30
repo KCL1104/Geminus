@@ -186,6 +186,10 @@ const version = {
 // model wrote it, how many searches it made, and two fixed test pages as its
 // sources (example.com and example.org, reserved for tests); nothing
 // searched anything, and a request without it gets what it got before.
+// H-049: a request that names a model (one of the contract's two, else 422
+// at /model) is answered as written by that model of Meta (generated_by.model;
+// with research, its searches too); nothing ran it, and a request without it
+// gets what it got before.
 const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
 const jcs = (v) =>
   Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
@@ -305,15 +309,20 @@ function tenantPost(org, role, path, key, payload) {
   if (create) {
     if (!["edit", "scenario"].includes(payload.mode) || typeof payload.intent !== "string" || payload.intent.trim() === "") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema");
     if ("research" in payload && typeof payload.research !== "boolean") return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/research", reason: "research is true or false" }]);
+    if ("model" in payload && !["muse-spark-1.3", "muse-wonder-1.0"].includes(payload.model)) return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/model", reason: "model is muse-spark-1.3 or muse-wonder-1.0" }]);
     if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
     const id = serial("aip", "P", live.proposals.size + 1);
     const server = { proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true };
     const words = answer[payload.output_locale === "zh-Hant" ? "zh-Hant" : "en"];
+    const researched = payload.research === true ? { generated_by: answer.research.generated_by, sources: answer.research.sources } : {};
+    // H-049: the chosen model, as the answer's writer.
+    const chosen = typeof payload.model === "string" ? { generated_by: { ...(researched.generated_by ?? { provider: "meta" }), model: payload.model } } : {};
     const ready = {
       ...server, status: "ready", ...words, changes: answer.changes, patch_hash: sha(answer.changes),
       risk_level: answer.risk_level, server_risk_level: answer.server_risk_level, provider_risk_claim: answer.provider_risk_claim, confidence: answer.confidence,
       validation: { valid: true, issues: [] }, dataset_bindings: [],
-      ...(payload.research === true ? { generated_by: answer.research.generated_by, sources: answer.research.sources } : {}),
+      ...researched,
+      ...chosen,
     };
     live.proposals.set(id, { proposal: { ...server, status: "generating" }, answer: ready, reads: 0, request: payload });
     return kept({ status: 202, body: { proposal_id: id, status: "generating" } });

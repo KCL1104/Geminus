@@ -88,11 +88,14 @@ const RetentionMetaStandard = "meta_standard_services"
 // 2026-10-12, retrieved 2026-10-26: "Standard Models ... Muse Spark 1.1,
 // Muse Spark 1.2, Muse Spark 1.3 ... SAM 3.1"; "Contributor Models ...
 // Muse Spark 1.2 Contributor, Muse Spark 1.3 Contributor") with the IDs of
-// https://dev.meta.ai/docs/models. Only the language models a proposal can
-// use and the segmentation model are listed; a designation that changes
-// is a reviewed change here.
+// https://dev.meta.ai/docs/models. Muse Wonder 1.0 (muse-wonder-1.0, "Meta's
+// most capable model", in preview) is offered in Standard mode only, its
+// content not used for training (https://dev.meta.ai/docs/models, as H-049
+// records it, 2026-10-30). Only the language models a proposal can use and
+// the segmentation model are listed; a designation that changes is a
+// reviewed change here.
 var (
-	metaStandardModels     = []string{"muse-spark-1.1", "muse-spark-1.2", "muse-spark-1.3"}
+	metaStandardModels     = []string{"muse-spark-1.1", "muse-spark-1.2", "muse-spark-1.3", "muse-wonder-1.0"}
 	metaStandardSegmenters = []string{"sam-3.1"}
 )
 
@@ -164,7 +167,15 @@ type Retention struct {
 type Record struct {
 	ID       string // the decision that records it
 	Provider string // "anthropic" (H-001) or "meta" (H-029, T-055)
-	Model    string // the exact model ID
+	// Model is the exact model ID: the default of a proposal, and the only
+	// model of every other role (the analyst's explanations among them).
+	Model string
+	// ProposalModels are the exact model IDs a person may choose for a
+	// proposal (H-049: the modeler and scenario roles, in words or from a
+	// photo), Model among them, each once; none for no choice (every
+	// proposal on Model). Only a Meta record lists them: the Anthropic
+	// adapter asks its one model.
+	ProposalModels []string
 	// SegmentationModel is the exact model ID of the segmentation model the
 	// approval covers (a Meta record: SAM 3.1 for the photo path, H-033);
 	// empty for none.
@@ -222,8 +233,8 @@ func (p DataPolicy) researchOK() bool {
 // Console spend limits and the retention arrangement confirmed.
 func (r Record) anthropicGap() Reason {
 	switch {
-	case r.ID == "" || r.Model == "" || r.SegmentationModel != "" || r.ApprovedBy == "" || r.ApprovedAt == "" || r.Source == "" ||
-		!slices.Equal(r.Credentials, []string{"org-a", "org-b"}):
+	case r.ID == "" || r.Model == "" || r.SegmentationModel != "" || len(r.ProposalModels) > 0 || r.ApprovedBy == "" || r.ApprovedAt == "" ||
+		r.Source == "" || !slices.Equal(r.Credentials, []string{"org-a", "org-b"}):
 		return ReasonIncomplete
 	case r.DataPolicy.Inputs != InputsSyntheticAndUserText || r.DataPolicy.LogsKeepRawText || !r.DataPolicy.rolesOK() ||
 		len(r.DataPolicy.ResearchRoles) > 0: // the Anthropic adapter has no web search (H-046 (2))
@@ -249,8 +260,11 @@ func (r Record) metaGap() Reason {
 	switch {
 	case r.ID == "" || r.Model == "" || r.ApprovedBy == "" || r.ApprovedAt == "" || r.Source == "" || !slices.Equal(r.Credentials, []string{"meta"}):
 		return ReasonIncomplete
-	case !slices.Contains(metaStandardModels, r.Model) || (r.SegmentationModel != "" && !slices.Contains(metaStandardSegmenters, r.SegmentationModel)):
+	case !slices.Contains(metaStandardModels, r.Model) || (r.SegmentationModel != "" && !slices.Contains(metaStandardSegmenters, r.SegmentationModel)) ||
+		slices.ContainsFunc(r.ProposalModels, func(m string) bool { return !slices.Contains(metaStandardModels, m) }):
 		return ReasonModelNotStandard
+	case !r.proposalModelsOK():
+		return ReasonIncomplete
 	case (p.Inputs != InputsSyntheticAndUserText && p.Inputs != InputsSyntheticDemoImagesAndUserText) || p.LogsKeepRawText || !p.rolesOK() ||
 		!p.researchOK() || (r.SegmentationModel != "" && p.Inputs != InputsSyntheticDemoImagesAndUserText):
 		return ReasonPolicyUnsupported
@@ -262,7 +276,22 @@ func (r Record) metaGap() Reason {
 	return ""
 }
 
+// proposalModelsOK reports whether a record's model choice (H-049) is none,
+// or lists its model and no model twice.
+func (r Record) proposalModelsOK() bool {
+	if len(r.ProposalModels) == 0 {
+		return true
+	}
+	for i, m := range r.ProposalModels {
+		if slices.Contains(r.ProposalModels[:i], m) {
+			return false
+		}
+	}
+	return slices.Contains(r.ProposalModels, r.Model)
+}
+
 func (r Record) clone() Record {
+	r.ProposalModels = slices.Clone(r.ProposalModels)
 	r.DataPolicy.Roles = slices.Clone(r.DataPolicy.Roles)
 	r.DataPolicy.ResearchRoles = slices.Clone(r.DataPolicy.ResearchRoles)
 	r.Credentials = slices.Clone(r.Credentials)
@@ -350,6 +379,17 @@ var h018 = Record{
 // and a person approves; spend stays under the existing caps. The analyst
 // and the importer never research. Live only on independently reviewed
 // code (H-046: one independent review).
+//
+// Model choice: H-049, 2026-10-30, the owner asked whether modeling should
+// use Muse Wonder, Meta's most capable model, and answered 「不然就讓 user 可選
+// 就好」 ("then just let the user choose"): a person asking for a proposal (a
+// change in words, a model from a photo or floor plan, a scenario, with or
+// without research) chooses Muse Spark 1.3 (the default) or Muse Wonder 1.0
+// (in preview, Standard mode only, USD 4.00 / 0.20 / 20.00 per million
+// input, cached input and output tokens), per request; explanations of
+// results stay on Muse Spark 1.3. The data policy, roles, budget and caps do
+// not change. Live only on independently reviewed code (H-049: one
+// independent review).
 var h029 = Record{
 	ID:                "H-029",
 	Provider:          "meta",
@@ -360,6 +400,7 @@ var h029 = Record{
 		Roles:         []string{"modeler", "scenario", "analyst"},
 		ResearchRoles: []string{"modeler", "scenario"}, // H-046 (2)
 	},
+	ProposalModels:   []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-049
 	MonthlyBudgetUSD: 100,
 	Credentials:      []string{"meta"},
 	ApprovedBy:       "KCL1104 (repository owner)",
@@ -448,6 +489,26 @@ func (a Approval) AllowsRole(role string) bool {
 // for the role, which it also serves.
 func (a Approval) AllowsResearch(role string) bool {
 	return a.AllowsRole(role) && slices.Contains(a.rec.DataPolicy.ResearchRoles, role)
+}
+
+// ProposalModels are the models a person may choose for a proposal (H-049),
+// the approval's model among them; nil for no choice (and for no approval).
+func (a Approval) ProposalModels() []string {
+	if !a.Valid() || len(a.rec.ProposalModels) == 0 {
+		return nil
+	}
+	return slices.Clone(a.rec.ProposalModels)
+}
+
+// AllowsModel reports whether a live call of the prompt role may ask model:
+// a role the approval serves, and the approval's model, or for a proposal
+// role (modeler, scenario) a model its choice lists (H-049). Every other
+// role (the analyst) has the approval's model only.
+func (a Approval) AllowsModel(role, model string) bool {
+	if !a.AllowsRole(role) || model == "" {
+		return false
+	}
+	return model == a.rec.Model || (slices.Contains(researchRoles, role) && slices.Contains(a.rec.ProposalModels, model))
 }
 
 // Provider is the provider the approval covers ("anthropic", "meta");

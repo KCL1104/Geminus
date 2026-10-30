@@ -125,8 +125,9 @@ func (h *Handler) readImage(ctx context.Context, org string, im store.Image) (pr
 	return img, nil
 }
 
-// generatePhoto is generate for a proposal asked for with a photo.
-func (h *Handler) generatePhoto(ctx context.Context, org string, st started, attr provider.Attribution) (generation, error) {
+// generatePhoto is generate for a proposal asked for with a photo, of the
+// vision model the person chose ("" for the photo path's, H-049).
+func (h *Handler) generatePhoto(ctx context.Context, org string, st started, attr provider.Attribution, chosen string) (generation, error) {
 	pr, v := st.proposal, st.version
 	if pr.Image == nil || pr.Mode != string(provider.ModeEdit) || pr.Intent != "" {
 		return generation{}, failure(InputInvalid, "a photo proposal is an edit with an image and no intent", false)
@@ -149,6 +150,10 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 	}
 	if !photopipeline.TakesImages(h.cfg.Vision) {
 		return generation{photo: pc}, failure(ImageUnsupported, "the photo path's AI provider is off or does not take images; no provider call was made", false)
+	}
+	if !photopipeline.TakesModel(h.cfg.Vision, chosen) {
+		// H-049: before the segmenter spends anything.
+		return generation{photo: pc}, providerFailure(provider.NewError(provider.CodeModelNotApproved, 0, ""))
 	}
 	var pool idpool.Pool
 	if err := json.Unmarshal(pr.IDPool, &pool); err != nil {
@@ -180,6 +185,7 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		OutputLocale:   pr.OutputLocale,
 		Budget:         h.cfg.Budget,
 		Attribution:    attr,
+		Model:          chosen,
 	}, photopipeline.Observer{
 		Segmented: func(m provider.SegmentMetadata, n int, err error) { h.logSegment(ctx, m, n, err) },
 		Answered:  func(m provider.Metadata, err error) { h.logCall(ctx, m, err) },

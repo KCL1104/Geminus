@@ -49,6 +49,53 @@ func TestThePipelinesChecks(t *testing.T) {
 	}
 }
 
+// imageOnly takes images but asks its own model only (no ModelChooser).
+type imageOnly struct{ b *fake.Backend }
+
+func (i imageOnly) Name() string        { return i.b.Name() }
+func (i imageOnly) AcceptsImages() bool { return true }
+func (i imageOnly) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	return i.b.Complete(ctx, req)
+}
+
+// H-049: the vision model the person chose goes with the vision call; a
+// vision client that cannot ask it is refused before the segmenter spends
+// anything (model_not_approved).
+func TestThePipelineAsksTheChosenVisionModel(t *testing.T) {
+	pack := electronicsline.Pack{}
+	img, err := provider.NewImage(provider.ImagePNG, contracttest.LoadPhotoDemo(t, "electronics-line-demo").Image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req := photopipeline.Request{OrganizationID: "org_01M4YDQK00TA00000000000000", Pack: pack, Concepts: pack.PhotoConcepts(), Image: img,
+		Model: "muse-wonder-1.0"}
+	seg := fake.NewSegmenter()
+	segClient, err := provider.NewSegmentClient(seg, provider.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	only, err := provider.New(imageOnly{b: fake.New()}, provider.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !photopipeline.TakesModel(only, "") || photopipeline.TakesModel(only, "muse-wonder-1.0") {
+		t.Error("TakesModel of a client without a model choice")
+	}
+	r, err := photopipeline.Propose(context.Background(), photopipeline.Clients{Segmenter: segClient, Vision: only}, req, photopipeline.Observer{})
+	if provider.CodeOf(err) != provider.CodeModelNotApproved || r.Segmenter != nil || len(seg.Calls()) != 0 {
+		t.Errorf("a vision client that cannot ask the model: %+v %v, %d segmenter calls", r, err, len(seg.Calls()))
+	}
+	// The fake asks a chosen model (the vision call carrying it is the
+	// generator's photo tests', on a real base).
+	visionClient, err := provider.New(fake.New(), provider.DefaultBudget())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !photopipeline.TakesModel(visionClient, "muse-wonder-1.0") || !photopipeline.TakesModel(visionClient, "") {
+		t.Error("TakesModel of the fake")
+	}
+}
+
 // A segmenter that fails is the call's error, and the result still has the
 // segmentation's metadata (what it spent: the worker audits it with the
 // attempt's failure, the smoke reports it); the vision model is not asked.
