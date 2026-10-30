@@ -361,7 +361,7 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
   });
 
   // H-049, H-051: this build is production's, with Muse Wonder 1.0 not on
-  // offer (NEXT_PUBLIC_GEMINUS_OFFER_WONDER unset, playwright.config.ts): the
+  // offer (NEXT_PUBLIC_GEMINUS_OFFER_WONDER empty, playwright.config.ts): the
   // model page has no model choice, the request carries no model, and the
   // proposal names the deployment's model (the fake API answers as Muse Spark
   // 1.3 wrote it; no AI ran). Choosing Muse Wonder is the unit tests'

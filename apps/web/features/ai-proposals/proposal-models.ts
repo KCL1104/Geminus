@@ -12,8 +12,8 @@ export const DEFAULT_MODEL: ProposalModel = "muse-spark-1.3";
 
 /**
  * The models this build offers: both when NEXT_PUBLIC_GEMINUS_OFFER_WONDER
- * is "1", the default alone otherwise. Next inlines the variable at build
- * time; it is read here, on each call, so a test can stub it.
+ * is "1", the default alone otherwise. next.config.ts inlines it at build
+ * time, set or not; it is read here, on each call, so a test can stub it.
  */
 export function offeredModels(): readonly ProposalModel[] {
   return process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER === "1" ? PROPOSAL_MODELS : [DEFAULT_MODEL];
