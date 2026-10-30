@@ -8,12 +8,14 @@
 // default is what it was; a deployment that does not offer the model is
 // refused with its own advice; the proposal names the model that wrote it.
 // The stand-in answers a request that names a model as written by it; no AI
-// is called.
+// is called. H-051: Muse Wonder is off unless NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1;
+// the tests that choose it build as with the flag on (wonderOn), and without
+// it there is no choice and every request is on the default.
 import { act } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_MODEL_ID } from "../app/ui-gallery/editor/sample-line";
 import { createProposalStandIn, type FormCall, type ProposalStandIn, type ProposalStandInOptions } from "../app/ui-gallery/proposal/stand-in";
-import { DEFAULT_MODEL, modelField, PROPOSAL_MODELS } from "../features/ai-proposals/model-choice";
+import { DEFAULT_MODEL, modelField, offeredModels, PROPOSAL_MODELS } from "../features/ai-proposals/model-choice";
 import { ProposalRoute } from "../features/ai-proposals/proposal-view";
 import { ModelView } from "../features/model-editor/model-view";
 import { createApiClient } from "../lib/api/client";
@@ -25,6 +27,12 @@ import { createTranslator } from "../lib/i18n/translate";
 import { mount, press, settle, unmountAll, violations } from "./ui-harness";
 
 vi.setConfig({ testTimeout: 120_000 });
+afterEach(() => vi.unstubAllEnvs());
+
+/** H-051: as a build with NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1, which offers Muse Wonder 1.0. */
+const wonderOn = () => vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
+/** H-051: as the production build, the flag unset. */
+const wonderOff = () => vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
 
 const en = createTranslator("en");
 
@@ -102,7 +110,42 @@ describe("the model choice", () => {
     expect(modelField("muse-wonder-1.0")).toEqual({ model: "muse-wonder-1.0" });
   });
 
+  it("offers Muse Spark 1.3 alone unless NEXT_PUBLIC_GEMINUS_OFFER_WONDER is 1 (H-051)", () => {
+    wonderOff();
+    expect(offeredModels()).toEqual(["muse-spark-1.3"]);
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "0");
+    expect(offeredModels()).toEqual(["muse-spark-1.3"]);
+    wonderOn();
+    expect(offeredModels()).toEqual(PROPOSAL_MODELS);
+  });
+
+  it.each(["en", "zh-Hant"] as const)("without Muse Wonder on offer, in %s: the model page shows no choice, and a request in words or with a photo carries no model (H-051)", async (locale) => {
+    wonderOff();
+    const t = createTranslator(locale);
+    const { el, api, created } = await modelPage({ locale });
+    expect(ask(el).querySelector("[data-model-choice]")).toBeNull();
+    expect(text(ask(el))).not.toContain(t("ai.model.muse-wonder-1.0"));
+    expect(text(ask(el))).not.toContain(t("ask.modelHint.muse-spark-1.3"));
+    expect(await violations()).toEqual([]);
+    await type(fieldOf(ask(el), t("ask.intent")), "Balance the line");
+    await press(button(ask(el), t("ask.send")));
+    await waitFor(() => created.length === 1, "the proposal");
+    expect(creates(api)[0]!.body).toEqual({ base_version_id: api.baseVersionId, mode: "edit", intent: "Balance the line", output_locale: locale });
+
+    const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])], "line.png", { type: "image/png", lastModified: 1_700_000_000_000 });
+    await act(async () => {
+      Object.defineProperty(chooser, "files", { configurable: true, value: [png] });
+      chooser.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    await waitFor(() => created.length === 2, "the photo proposal");
+    const body = uploads(api)[0]!.body as FormCall;
+    expect([body.parts, body.model]).toEqual([["base_version_id", "output_locale", "file"], null]);
+  });
+
   it.each(["en", "zh-Hant"] as const)("on the model page, in %s: a labelled choice on Muse Spark 1.3 whose line says what it means", async (locale) => {
+    wonderOn();
     const t = createTranslator(locale);
     const { el } = await modelPage({ locale });
     const b = trigger(ask(el), t("ask.model"));
@@ -120,6 +163,7 @@ describe("the model choice", () => {
   });
 
   it("sends no model on the default, model: muse-wonder-1.0 when chosen, with a new key, and the proposal names Muse Wonder 1.0", async () => {
+    wonderOn();
     const { el, api, created } = await modelPage();
     await type(fieldOf(ask(el), en("ask.intent")), "Balance the line");
     await press(button(ask(el), en("ask.send")));
@@ -148,6 +192,7 @@ describe("the model choice", () => {
   });
 
   it("sends the chosen model with a photo, as a field before the file", async () => {
+    wonderOn();
     const { el, api, created } = await modelPage();
     await choose(ask(el), en("ask.model"), en("ai.model.muse-wonder-1.0"));
     const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
@@ -163,6 +208,7 @@ describe("the model choice", () => {
   });
 
   it("says to choose Muse Spark 1.3 when this deployment does not offer the model, and keeps the words", async () => {
+    wonderOn();
     const { el } = await modelPage({
       refuseNext: { status: 503, code: "AI_POLICY_NOT_APPROVED", message: "this model is not approved for proposals in this deployment", details: [{ path: "/model", reason: "this deployment's approval does not list the model for proposals", code: "AI_MODEL_NOT_APPROVED" }] },
     });

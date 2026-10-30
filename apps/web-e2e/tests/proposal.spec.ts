@@ -360,41 +360,34 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     expect(await violations(page), "the researched proposal at 390 px").toEqual([]);
   });
 
-  // H-049: the person chooses the model, from the keyboard: Muse Spark 1.3 by
-  // default, Muse Wonder 1.0 chosen; its line says what it means, the request
-  // carries model only for Muse Wonder, and the proposal names the model that
-  // wrote it (the fake API answers as written by the model named; no AI ran).
-  test("en: chooses Muse Wonder 1.0 with the keyboard, and the proposal names it", async ({ page, request }) => {
+  // H-049, H-051: this build is production's, with Muse Wonder 1.0 not on
+  // offer (NEXT_PUBLIC_GEMINUS_OFFER_WONDER unset, playwright.config.ts): the
+  // model page has no model choice, the request carries no model, and the
+  // proposal names the deployment's model (the fake API answers as Muse Spark
+  // 1.3 wrote it; no AI ran). Choosing Muse Wonder is the unit tests'
+  // (proposal-model.test.tsx), with the flag on.
+  test("en: offers no model choice, and the proposal it sends carries no model and names Muse Spark 1.3", async ({ page, request }) => {
     await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
     const before = (await apiCalls(request)).length;
     const ask = page.locator("[data-ask]");
-    // React Aria's Select: a button named by its value and its label.
-    const choice = ask.locator("[data-model-choice] button");
-    await expect(choice).toHaveAccessibleName(`${en["ai.model.muse-spark-1.3"]} ${en["ask.model"]}`);
-    await expect(choice).toContainText(en["ai.model.muse-spark-1.3"]);
-    await expect(ask.locator("[data-model-choice]")).toContainText(en["ask.modelHint.muse-spark-1.3"]);
+    await expect(ask.getByLabel(en["ask.intent"])).toBeVisible();
+    await expect(page.locator("[data-model-choice]")).toHaveCount(0);
+    await expect(ask).not.toContainText(en["ai.model.muse-wonder-1.0"]);
+    await expect(ask).not.toContainText(en["ask.modelHint.muse-spark-1.3"]);
+    expect(await violations(page), "the model page").toEqual([]);
     await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
-    await keyTo(page, choice);
-    await page.keyboard.press("Enter");
-    const wonder = page.getByRole("option", { name: en["ai.model.muse-wonder-1.0"] });
-    await expect(wonder).toBeVisible();
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Enter");
-    await expect(choice).toContainText(en["ai.model.muse-wonder-1.0"]);
-    await expect(ask.locator("[data-model-choice]")).toContainText(en["ask.modelHint.muse-wonder-1.0"]);
-    expect(await violations(page), "the model page, Muse Wonder chosen").toEqual([]);
     await keyTo(page, ask.getByRole("button", { name: en["ask.send"] }));
     await page.keyboard.press("Enter");
     await page.waitForURL(new RegExp(`^${APP}/proposals/aip_[0-9A-Z]{26}$`));
     await expect(page.locator("[data-proposal-status]")).toHaveAttribute("data-proposal-status", "ready", { timeout: 15_000 });
     await settled(page, "en");
-    await expect(page.locator("header dl > div").filter({ hasText: en["ai.writtenBy"] })).toHaveText(`${en["ai.writtenBy"]}${fill(en["ai.byProvider"], { model: en["ai.model.muse-wonder-1.0"], provider: en["ai.provider.meta"] })}`);
-    expect(await violations(page), "the Muse Wonder proposal").toEqual([]);
+    await expect(page.locator("header dl > div").filter({ hasText: en["ai.writtenBy"] })).toHaveText(`${en["ai.writtenBy"]}${fill(en["ai.byProvider"], { model: en["ai.model.muse-spark-1.3"], provider: en["ai.provider.meta"] })}`);
+    expect(await violations(page), "the proposal").toEqual([]);
 
-    // What reached the API: model: muse-wonder-1.0, nothing else new.
+    // What reached the API: no model, nothing else new.
     const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
     expect(posts.map((c) => [c.path, c.body])).toEqual([
-      [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: "en", model: "muse-wonder-1.0" }],
+      [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: "en" }],
     ]);
   });
 

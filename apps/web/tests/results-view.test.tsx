@@ -32,7 +32,10 @@ const nav = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => ({ push: nav.push, refresh: () => {} }) }));
 vi.setConfig({ testTimeout: 30_000 });
 beforeEach(() => nav.push.mockReset());
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+});
 
 const ORG = "org_01M4YDQK00Y5H2929M9WWZWTVH";
 const REQ = "req_01M4YDQK00V6H8S0ST4F7510KR";
@@ -400,6 +403,8 @@ describe("the AI explanation of the results (T-030)", () => {
   // can have the AI write a suggested next experiment as a scenario
   // proposal; it opens for review, nothing runs or is saved here.
   it("names the model that wrote it and turns a suggested next experiment into a scenario proposal", async () => {
+    // H-051: as the production build, without Muse Wonder on offer.
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
     const PROPOSAL = "aip_01M4YDQK00TA0000000000H043";
     const model = { id: boardScenario.model_id, organization_id: ORG, project_id: "prj_01M4YDQK00TA00000000000001", domain: "electronics_line",
       name: "Board line", draft: { revision: 2, base_version_id: boardVersion.id, out_of_date: false }, latest_version: { id: boardVersion.id, version: 3 },
@@ -416,6 +421,8 @@ describe("the AI explanation of the results (T-030)", () => {
     const propose = [...done.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === en["analysis.proposeNamed"].replace("{name}", "Faster AOI"))!;
     expect(text(propose)).toBe(en["analysis.propose"]);
     expect(propose.getAttribute("data-variant")).toBe("ai");
+    expect(done.querySelector("[data-model-choice]"), "no model choice unless Muse Wonder is offered (H-051)").toBeNull();
+    expect(text(done)).not.toContain(en["analysis.model"]);
     expect(await violations()).toEqual([]);
     await press(propose);
     await waitFor(() => nav.push.mock.calls.length > 0, "the proposal page");
@@ -427,8 +434,10 @@ describe("the AI explanation of the results (T-030)", () => {
 
   // H-049: the model that writes a suggestion up as a scenario is the
   // editor's choice, Muse Spark 1.3 by default; Muse Wonder 1.0 adds model to
-  // the request. The explanation itself is the deployment's.
+  // the request. The explanation itself is the deployment's. H-051: only in a
+  // build with NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1.
   it("proposes a suggested next experiment with the model the editor chose", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
     const PROPOSAL = "aip_01M4YDQK00TA0000000000H049";
     const model = { id: boardScenario.model_id, organization_id: ORG, project_id: "prj_01M4YDQK00TA00000000000001", domain: "electronics_line",
       name: "Board line", draft: { revision: 2, base_version_id: boardVersion.id, out_of_date: false }, latest_version: { id: boardVersion.id, version: 3 },

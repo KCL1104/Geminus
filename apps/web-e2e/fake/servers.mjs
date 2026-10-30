@@ -188,8 +188,9 @@ const version = {
 // searched anything, and a request without it gets what it got before.
 // H-049: a request that names a model (one of the contract's two, else 422
 // at /model) is answered as written by that model of Meta (generated_by.model;
-// with research, its searches too); nothing ran it, and a request without it
-// gets what it got before.
+// with research, its searches too); nothing ran it. H-051: a request without
+// one is answered as written by the deployment's model, Muse Spark 1.3, as
+// the live demo's are.
 const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
 const jcs = (v) =>
   Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
@@ -315,8 +316,8 @@ function tenantPost(org, role, path, key, payload) {
     const server = { proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true };
     const words = answer[payload.output_locale === "zh-Hant" ? "zh-Hant" : "en"];
     const researched = payload.research === true ? { generated_by: answer.research.generated_by, sources: answer.research.sources } : {};
-    // H-049: the chosen model, as the answer's writer.
-    const chosen = typeof payload.model === "string" ? { generated_by: { ...(researched.generated_by ?? { provider: "meta" }), model: payload.model } } : {};
+    // H-049: the chosen model, as the answer's writer; H-051: the deployment's, Muse Spark 1.3, when none is named.
+    const chosen = { generated_by: { ...(researched.generated_by ?? { provider: "meta" }), model: typeof payload.model === "string" ? payload.model : "muse-spark-1.3" } };
     const ready = {
       ...server, status: "ready", ...words, changes: answer.changes, patch_hash: sha(answer.changes),
       risk_level: answer.risk_level, server_risk_level: answer.server_risk_level, provider_risk_claim: answer.provider_risk_claim, confidence: answer.confidence,
