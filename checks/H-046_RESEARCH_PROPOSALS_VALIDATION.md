@@ -1,6 +1,6 @@
 # H-046 (2) validation report: research-grounded AI proposals (hackathon slice)
 
-**Date: 2026-10-30 | Status: agent self-check; review round 1 (no High, 3 Medium, 5 Low) fixed (section 9), then the coordinator's live run | Decision: H-046 (2) (owner, 2026-10-29), with H-018, H-029, H-033, H-038, H-043 and D-112 kept | Requirements: REQ-008, REQ-009, REQ-022 (proposals and their review), AGENTS.md §2 (AI only suggests) | Live AI: NOT RUN (no request was sent to api.meta.ai or any provider)**
+**Date: 2026-10-30 | Status: agent self-check; review round 1 (no High, 3 Medium, 5 Low) fixed (section 9), then the coordinator's live run | Decision: H-046 (2) (owner, 2026-10-29), with H-018, H-029, H-033, H-038, H-043 and D-112 kept | Requirements: REQ-008, REQ-009, REQ-022 (proposals and their review), AGENTS.md §2 (AI only suggests) | Live AI: one research proposal after the review, US$0.155, ready for review ([H-045_H-048_LIVE_VALIDATION.md](H-045_H-048_LIVE_VALIDATION.md) §5)**
 
 ## 1. What the owner decided
 

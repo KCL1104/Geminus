@@ -76,7 +76,7 @@ Recorded evidence:
 
 - Web: https://web-production-16041.up.railway.app
 - Sign-in is through the owner's Auth0 tenant. Self sign-up is off. Only the owner and one judge account can sign in (H-035 (2)). The judge account has access only to the demo organization. Its credentials are given in the hackathon submission, not in this repository.
-- The demo project is "Demo electronics line (synthetic)" with the electronics line template as version 1 and the five what-ifs above.
+- The demo project is "Demo electronics line (synthetic)". Its "Board assembly and test line" is the researched electronics template (H-046 (1)) with the five what-ifs above; it also holds one model of each production and logistics template: "Sneaker factory", "Bread bakery", "Corrugated box plant" and "Distribution center" (H-045). The earlier electronics model is kept as it was. Live checks: [checks/H-045_H-048_LIVE_VALIDATION.md](checks/H-045_H-048_LIVE_VALIDATION.md).
 - All data on the demo is synthetic. The deployment is a public demo, not production (H-032).
 
 ## Architecture at a glance
