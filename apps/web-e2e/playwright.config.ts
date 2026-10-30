@@ -66,7 +66,9 @@ export default defineConfig({
       url: `http://127.0.0.1:${port}/`,
       timeout: 300_000,
       reuseExistingServer: false,
-      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", ...session },
+      // H-051: built as production is, without Muse Wonder 1.0 on offer,
+      // whatever the shell running the tests has set.
+      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: "", ...session },
       stdout: "ignore",
       stderr: "pipe",
     },

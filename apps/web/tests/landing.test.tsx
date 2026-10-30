@@ -9,7 +9,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Bootstrap } from "../lib/auth/bootstrap";
 import { type Account, type Auth, AuthProvider } from "../lib/auth/session";
 import { I18nProvider } from "../lib/i18n/provider";
@@ -40,6 +40,7 @@ const auth = {
   ready: { session: { organizationId: ORG }, role: "editor", account: account({ state: "ready", organizations: [organization], organization, truncated: false }) } satisfies Auth,
 };
 const catalogs = { en, "zh-Hant": zhHant } as const;
+afterEach(() => vi.unstubAllEnvs());
 
 async function page(value: Auth, locale: Locale = "en") {
   return mount(
@@ -82,6 +83,8 @@ describe("the landing's one action (H-048)", () => {
 
 describe("the landing's content (H-048)", () => {
   it.each(["en", "zh-Hant"] as const)("%s: the promise, the loop in five steps, the Meta models, the industries and the safety rules, in order", async (locale) => {
+    // H-051: as a build with NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1, which offers Muse Wonder 1.0.
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
     const c = catalogs[locale];
     const el = await page(auth.signedOut, locale);
     // Review round 1, M3: the product's name stands above the promise.
@@ -113,6 +116,17 @@ describe("the landing's content (H-048)", () => {
     expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dt")].map(text)).toEqual(
       (["proposes", "checks", "person", "versions", "synthetic"] as const).map((k) => c[`landing.safe.${k}`]),
     );
+    expect(await violations()).toEqual([]);
+  });
+
+  it.each(["en", "zh-Hant"] as const)("%s, without Muse Wonder on offer (H-051, the production build): the Meta models are Muse Spark 1.3 and SAM 3.1, and web search", async (locale) => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
+    const c = catalogs[locale];
+    const meta = c["ai.provider.meta"];
+    const el = await page(auth.signedOut, locale);
+    expect([...el.querySelectorAll("dl")[0]!.querySelectorAll("dt")].map(text)).toEqual([`Muse Spark 1.3 ${meta}`, `SAM 3.1 ${meta}`, `${c["landing.meta.searchName"]} ${c["landing.meta.tool"]}`]);
+    expect(text(el)).not.toContain("Muse Wonder");
+    expect(text(el)).not.toContain(c["landing.meta.wonder"]);
     expect(await violations()).toEqual([]);
   });
 

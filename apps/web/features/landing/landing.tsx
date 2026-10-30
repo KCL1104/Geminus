@@ -25,6 +25,7 @@
 // FORM: the decision record (candidate 7 of 7; seed 7d827b6e).
 import type { MessageKey, Translator } from "../../lib/i18n/translate";
 import shell from "../../ui/shell.module.css";
+import { offeredModels } from "../ai-proposals/proposal-models";
 import { templateName } from "../models/templates";
 import { LandingAction } from "./cta";
 import styles from "./landing.module.css";
@@ -104,6 +105,12 @@ const meta: { name: MessageKey; kind: MessageKey; body: MessageKey }[] = [
   { name: "landing.meta.searchName", kind: "landing.meta.tool", body: "landing.meta.search" },
 ];
 
+/** The meta list this build shows: without Muse Wonder 1.0 unless it is offered (H-051: off unless NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1). */
+function metaShown() {
+  const wonder = offeredModels().includes("muse-wonder-1.0");
+  return meta.filter((m) => wonder || m.name !== "ai.model.muse-wonder-1.0");
+}
+
 const industries: { name: MessageKey; detail?: MessageKey }[] = [
   // The picker's own names (H-045), so the landing and the product agree.
   { name: templateName("electronics_assembly_test_line"), detail: "landing.industry.electronics.steps" },
@@ -156,7 +163,7 @@ export function Landing({ t }: { t: Translator }) {
         <h2 id="landing-meta">{t("landing.meta.title")}</h2>
         <p className={styles.intro}>{t("landing.meta.intro")}</p>
         <dl className={styles.facts}>
-          {meta.map((m) => (
+          {metaShown().map((m) => (
             <div key={m.body} className={styles.pair}>
               <dt>
                 <span>{t(m.name)}</span>{" "}
