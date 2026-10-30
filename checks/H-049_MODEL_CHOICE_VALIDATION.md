@@ -115,3 +115,14 @@ Commands after the fixes (2026-10-31):
 | `make frontend-test` | exit 0; 58 files, 1211 tests passed |
 | `make architecture-check` | exit 0; PASS, 101 packages, 26 rules, 16 build configurations |
 | `make e2e-test`, `make backend-test` | not run again after these fixes (the round's fixes are covered by the targeted runs above); the section 4 runs are of 0bb5647 |
+
+## 10. Live (2026-10-31, after the deploy of `8956a06`)
+
+As the judge, on "Board assembly and test line" (`mdl_01M66SRJ4B94FBT0ABMT2K4KDE`), Muse Wonder 1.0 chosen in the Model menu (the deployed UI):
+
+| Request | Proposal | Result | Worker log |
+|---|---|---|---|
+| Research on: "Add a conformal coating step after FCT and before burn-in. Research real selective conformal coating lines for industrial control boards and use realistic coating and curing times." (the request Muse Spark 1.3 answered, ready, in 56 s for USD 0.155) | `aip_01M672BAVQFVTAQYWK437Y2J6F` | **failed**: "the AI answer did not fit the output budget" | `latency_ms=215151`, `input_tokens=108398`, `output_tokens=32000`, `AI_OUTPUT_TRUNCATED`, `cost_nano_usd=1201604800` (USD 1.20); one job attempt (review M1) |
+| The demo photo (`testdata/photos/electronics-line-demo.png`) | `aip_01M672JJTX54AW8WVF230GXX7G` | **refused by Geminus**: "The AI's answer is not a proposal that can be reviewed" at `/changes`; written by Muse Wonder 1.0, photo read by SAM 3.1 (10 objects) | `latency_ms=136237`, `output_tokens=13343`, `AI_INVALID_OUTPUT`, `cost_nano_usd=319448000` (USD 0.32) |
+
+The model ID Meta answered with was exactly `muse-wonder-1.0` (review L1). A coordinator probe (one synthetic question, web search, json_schema) with `output_config.effort` `medium` answered in 22 s (11 searches, 1,713 output tokens, about USD 0.24 by token count) but its JSON note was garbled text. The owner's rule (H-051) then hid Muse Wonder from the UI.
