@@ -26,7 +26,7 @@ import (
 // The pin is a regression lock on this generator and des-go, not an
 // oracle: TestTheLogIsTheEngineReplication and the shape tests below are
 // the independent checks of what the log says.
-const goldenCSVSHA256 = "sha256:7ad4a396aa034c4b1538377dba593aa9e55b8a2e3d34e4be0f06378ce1214cc5"
+const goldenCSVSHA256 = "sha256:42eb1055186869c3eb5893a70e106c5ac8e93c53114cf5e68b2add1ef762e1bc"
 
 func generate(t *testing.T, cfg Config) *Output {
 	t.Helper()
@@ -262,7 +262,7 @@ var (
 	// equipmentOf: the machine of each station's steps ("" for the
 	// stations of people: an operator instead).
 	equipmentOf = map[string]string{"smt": "smt_line", "aoi": "aoi_machine", "ict": "ict_tester", "fct": "fct_tester", "burn_in": "burn_in_chamber"}
-	units       = map[string]int{"smt_line": 1, "aoi_machine": 1, "ict_tester": 2, "fct_tester": 3, "burn_in_chamber": 6}
+	units       = map[string]int{"smt_line": 1, "aoi_machine": 1, "ict_tester": 2, "fct_tester": 3, "burn_in_chamber": 9}
 	serials     = regexp.MustCompile(`^SYN-([AB])-[0-9]{6}$`)
 	equipments  = regexp.MustCompile(`^([a-z_]+)_([1-9])$`)
 	operators   = regexp.MustCompile(`^op-[0-9]{2}$`)
@@ -458,7 +458,7 @@ func TestRoutesFollowTheLine(t *testing.T) {
 }
 
 // The first board after a changeover starts at least the shortest
-// changeover (15 min) after the board before it on the SMT line ends: the
+// changeover (20 min) after the board before it on the SMT line ends: the
 // log's start is after the changeover (ELECTRONICS_LINE §6).
 func TestChangeoversShowAsGaps(t *testing.T) {
 	var smt []logRow
@@ -471,7 +471,7 @@ func TestChangeoversShowAsGaps(t *testing.T) {
 	for i := 1; i < len(smt); i++ {
 		if smt[i].product != smt[i-1].product {
 			changes++
-			if gap := smt[i].startTick - smt[i-1].endTick; gap < 15*60000-1000 {
+			if gap := smt[i].startTick - smt[i-1].endTick; gap < 20*60000-1000 {
 				t.Errorf("line %d: a changeover gap of %d ms", smt[i].line, gap)
 			}
 		}

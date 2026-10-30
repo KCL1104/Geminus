@@ -2,7 +2,7 @@
 
 Status: **APPROVED** (2026-10-20, owner H-018: 「全都照建議」 ("follow all the recommendations")). Proposed on 2026-10-19 by T-046 phase 1. Basis: H-016, [ADR-025](../adr/ADR-025-p0-domain-electronics-line.md), [PRD](../PRD.md) REQ-003/004/013/015/024/025, [TEST_PLAN](../TEST_PLAN.md) TEST-034–036. The engine's new primitives are in [ADR-026](../adr/ADR-026-line-flow-primitives.md) (D-047–D-057); this document's own decisions are D-058–D-060 (§10). The status of every decision is as recorded in [DECISIONS_AND_TBD](../DECISIONS_AND_TBD.md) and `planning/decisions.json`.
 
-**Numbers and sources.** Every value in this document is a **synthetic illustrative value**: it exists only so the template can run and show behavior. It is not a measured value from any factory, and it is not a "typical value". Statements about factory data and about what engineers expect come from the agent's research draft (not committed, not verified). They are input only, not fact.
+**Numbers and sources.** The template is **synthetic**: it holds no real company's data, and no value in it was measured in a factory. Since H-046 (2026-10-29) its **magnitudes follow the sources cited in §4.5**: each parameter there has its value, its unit and either a source (URL and retrieval date) or the word "estimate" with the reasoning. §4.5 also says what the template simplifies compared with a real line. Simulation outputs of the template are outputs of this synthetic model, not predictions for any real line. Elsewhere in this document, statements about factory data and about what engineers expect come from the agent's earlier research draft (not committed, not verified); they are input only, not fact.
 
 ## 1. Scope
 
@@ -108,7 +108,7 @@ flowchart LR
   FRR -- 0.90 --> QB
   FRR -- 0.10 --> FF
   QB --> BI[burn_in batch] --> BR{burnin_result}
-  BR -- 0.995 --> QP[q_pack 400] --> PACK[pack_ship] --> SHIP[(shipped)]
+  BR -- 0.995 --> QP[q_pack 500] --> PACK[pack_ship] --> SHIP[(shipped)]
   BR -- 0.005 --> BF[burnin_fail] --> QFD
 ```
 
@@ -116,7 +116,7 @@ The number after a queue name is its synthetic `capacity`. A queue without a num
 
 **Deadlock check (D-050).** The shared components of holders: {ict, ict_retest} (`ict_tester`), {fct, fct_retest} (`fct_tester`), {aoi_touchup, ict_debug, fct_debug} (`debug_operator`); every other holder is its own component. Blocking edges: smt→aoi, aoi→ICT, debug→ICT (through `aoi_rework` into `q_ict`), ICT→FCT, FCT→burn-in, burn-in→packing. The buffers before debug are unlimited, so no edge points into the debug component; the graph has no cycle and passes. If `q_ict_debug` is made finite, ICT failures can be blocked by the debug area (ICT→debug), and debug can already be blocked by `q_ict` (debug→ICT); that forms a cycle and is rejected. The same holds when `q_fct_debug` is made finite (FCT→debug→ICT→FCT). Making only `q_ict_retest` finite does not: it only adds to the existing "debug→ICT" edge, and no edge enters the debug component. The other three D-050 rules: each bundle has only one resource, so R2 (calendar intersection) and R3 (units = 1 for a resource with breakdowns) hold trivially, and R4 (on-shift time of the resource with breakdowns and of its partners) also holds.
 
-### 4.2 Parameters (all synthetic)
+### 4.2 Parameters (synthetic; magnitudes and sources in §4.5)
 
 The time unit is minute. Triangular distributions are written tri(min, mode, max).
 
@@ -126,7 +126,7 @@ The time unit is minute. Triangular distributions are written tri(min, mode, max
 | `aoi` | machine | 1 | `two_shift_weekdays` | exponential(mean 1200) | tri(5, 10, 30) |
 | `ict_tester` | machine | 2 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 20, 60) |
 | `fct_tester` | machine | 3 | `two_shift_weekdays` | exponential(mean 900) | tri(10, 30, 90) |
-| `burn_in_chamber` | machine | 6 | none (24/7) | exponential(mean 10080) | tri(60, 120, 480) |
+| `burn_in_chamber` | machine | 9 | none (24/7) | exponential(mean 10080) | tri(60, 120, 480) |
 | `debug_operator` | human | 4 | `two_shift_weekdays` | — | — |
 | `pack_station` | human | 2 | `two_shift_weekdays` | — | — |
 
@@ -134,32 +134,32 @@ TTF is counted in on-shift time (the D-051 clock advances only on shift), so mea
 
 | Process | Needs | Service time |
 |---|---|---|
-| `smt` | smt_line ×1 | tri(0.9, 1.0, 1.4) |
-| `aoi` | aoi ×1 | tri(0.8, 0.9, 1.1) |
+| `smt` | smt_line ×1 | tri(0.75, 0.85, 1.15) |
+| `aoi` | aoi ×1 | tri(0.2, 0.25, 0.35) |
 | `aoi_touchup` | debug_operator ×1 | tri(3, 5, 10) |
-| `ict`, `ict_retest` | ict_tester ×1 | tri(1.8, 2.0, 2.6) |
+| `ict`, `ict_retest` | ict_tester ×1 | tri(1.4, 1.7, 2.3) |
 | `ict_debug` | debug_operator ×1 | tri(5, 10, 30) |
 | `fct`, `fct_retest` | fct_tester ×1 | tri(2.8, 3.2, 4.0) |
 | `fct_debug` | debug_operator ×1 | tri(10, 20, 60) |
-| `burn_in` | burn_in_chamber ×1 (per batch) | constant 240 (per batch); batch min 20, max 40, max_wait 120 |
+| `burn_in` | burn_in_chamber ×1 (per batch) | constant 480 (per batch); batch min 20, max 40, max_wait 120 |
 | `pack_ship` | pack_station ×1 (2 units) | tri(0.8, 1.0, 1.5) |
 
 - **Calendar** `two_shift_weekdays`: period 10080 (one week); the shifts are [360, 1320) + d·1440 for Monday to Friday (06:00–22:00, two back-to-back 8-hour shifts with no break); t=0 is Monday 00:00 (model local time, D-052).
 - **Release**: `board_release` uses a release schedule (D-053): deterministic, period 10080, rate 0.75/minute (45/hour) in the on-shift periods above, and 0 otherwise.
 - **Routing probabilities**: see the diagram in §4.1.
-- **Rough capacity estimate (review L7; not verified with the engine)**: estimated from on-shift averages. λ = arrival rate (units/minute), w = mean time each unit holds the resource (including retests, minutes), m = number of units, A ≈ MTTF/(MTTF + MTTR) (time availability in on-shift time), ρ = λ·w/(m·A). Retest counts come from the geometric series of the routing probabilities: 0.054 per unit at ICT and 0.079 per unit at FCT (including burn-in failures that return to FCT).
+- **Rough capacity estimate (review L7; checked with the engine in §11)**: estimated from on-shift averages. λ = arrival rate (units/minute), w = mean time each unit holds the resource (including retests, minutes), m = number of units, A ≈ MTTF/(MTTF + MTTR) (time availability in on-shift time), ρ = λ·w/(m·A). Retest counts come from the geometric series of the routing probabilities: 0.054 per unit at ICT and 0.079 per unit at FCT (including burn-in failures that return to FCT).
 
 | Station | λ | w | m | A | ρ | Note |
 |---|---|---|---|---|---|---|
-| SMT | 0.750 | 1.100 | 1 | 0.938 | 0.88 | |
-| AOI | 0.750 | 0.933 | 1 | 0.988 | 0.71 | |
-| ICT | 0.750 | 2.248 | 2 | 0.968 | 0.87 | About 0.58 after adding 1 tester |
+| SMT | 0.750 | 0.917 | 1 | 0.938 | 0.73 | About 0.82 with the changeovers of §4.4 |
+| AOI | 0.750 | 0.267 | 1 | 0.988 | 0.20 | Inline AOI is much faster than the line's pace (§4.5) |
+| ICT | 0.750 | 1.897 | 2 | 0.968 | 0.74 | About 0.49 after adding 1 tester |
 | **FCT** | 0.749 | 3.596 | 3 | 0.954 | **0.94** | Highest; expected bottleneck |
-| Burn-in | 0.749 (including boards burned again after a burn-in failure is repaired) | 6.0 (per chamber per unit; a full batch is 40 units/240 minutes) | 6 | 0.979 | 0.77 (on-shift periods) | Runs 24/7; the whole-week average is about 0.36; it finishes the daytime backlog off shift |
+| Burn-in | 0.749 (including boards burned again after a burn-in failure is repaired) | 12.0 (per chamber per unit; a full batch is 40 units/480 minutes) | 9 | 0.979 | 1.02 (on-shift periods) | Runs 24/7; the whole-week average is about 0.49; it carries the daytime backlog (in `q_burnin`, at most 120) into the evening |
 | Debug | 0.750 | 3.50 (touch-up, ICT debug and FCT debug combined) | 4 | — | 0.66 | |
 | Packing | 0.746 | 1.100 | 2 | — | 0.41 | At shift start it must first clear the boards that burn-in finished overnight |
 
-Burn-in keeps running at night and on weekends. The finished boards are at most about 120 (`q_burnin`) + 6×40 (in the chambers) = 360, which fits in `q_pack`'s 400, so the chambers are not blocked all night while packing is off shift. That is why the original 4 chambers, `q_burnin` 80, `q_pack` 30 and 1 packing station were changed (under the original settings, burn-in and packing were the constraint). FCT can do about 3,820 boards per week against a weekly release of 3,600 boards, a margin of about 6%. FCT starvation caused by upstream breakdowns directly loses output, so "enlarge the buffer before FCT" should have a visible effect, while "add 1 ICT tester" should have a small effect because ICT is not the bottleneck. This is only a rough steady-state average; it does not account for blocking, shift boundaries or variability. T-051 must confirm it with engine runs and adjust the parameters if needed (CB-24 once found the original template's reviewer overloaded); any adjustment is marked synthetic as well.
+Burn-in keeps running at night and on weekends. The finished boards are at most about 120 (`q_burnin`) + 9×40 (in the chambers) = 480, which fits in `q_pack`'s 500, so the chambers are not blocked all night while packing is off shift. That is why the original 4 chambers, `q_burnin` 80, `q_pack` 30 and 1 packing station were changed (under the original settings, burn-in and packing were the constraint), and why H-046, which made burn-in 8 hours instead of 4 (§4.5), raised the chambers from 6 to 9 and `q_pack` from 400 to 500. FCT can do about 3,820 boards per week against a weekly release of 3,600 boards, a margin of about 6%: FCT is the one bottleneck. This is only a rough steady-state average; it does not account for blocking, shift boundaries or variability. The engine runs of §11 confirm the order (FCT's on-shift work ratio is the highest). They also show that a bigger buffer before FCT and a third ICT tester change lead time and output by less than 1%: FCT is starved only 2.7% of the time (its `starved_ratio`, the same with buffers of 30), so a bigger buffer has little to protect, and ICT is not the bottleneck ([H-046 report](../../checks/H-046_ELECTRONICS_REALISM_VALIDATION.md)). CB-24 once found the original template's reviewer overloaded; every adjustment stays synthetic.
 - Names are provided in two languages, en and zh-Hant (the TemplateProvider of ARCHITECTURE §7); IDs do not change.
 
 ### 4.3 Rack integration test variant (AI servers)
@@ -178,9 +178,51 @@ Limitation: in practice a rack is often debugged inside its test slot (the slot 
 ### 4.4 Multi-product and setup variant (synthetic)
 
 - Two product families, `board_a` and `board_b`, each with its own source, released in whole batches with table-type release (D-053): `board_a` releases 360 boards at 06:00 each weekday (offset 360 + d·1440), and `board_b` releases 360 boards at 14:00 each weekday (840 + d·1440). The daily total is the same as in §4.2 (720 boards). The rest of the topology is the same as §4.1 (stations do not differ by product).
-- `setups` of `smt_line`: A→B and B→A are both tri(15, 25, 45) minute, and `initial` is `board_a`; other resources have no setups. Whole-batch release plus FIFO gives about 2 setups per day (about 57 minutes), which raises SMT's ρ from 0.88 to about 0.94, level with FCT as a constraint. If the two products were released interleaved, almost every board would need a setup under FIFO and SMT would be overloaded. Dispatching grouped by product is PRD P1.
+- `setups` of `smt_line`: A→B and B→A are both tri(20, 35, 60) minute (H-046, §4.5; before it tri(15, 25, 45)), and `initial` is `board_a`; other resources have no setups. Whole-batch release plus FIFO gives about 2 setups per day (about 77 minutes), which raises SMT's ρ from 0.73 to about 0.81, still below FCT's 0.94. If the two products were released interleaved, almost every board would need a setup under FIFO and SMT would be overloaded. Dispatching grouped by product is PRD P1.
 - Breakdown repair times can use lognormal instead (for example, TTR of `smt_line` as lognormal(mean 25, cv 0.8)) to demonstrate D-056; these values are synthetic as well.
 - This variant also makes "halve the SMT setup time" a comparable scenario (D-055 distributions can be changed under D-057).
+
+### 4.5 Sources and realism of the template (H-046)
+
+The owner asked that the template be realistic (H-046: 「我希望範本要是符合真實性的」, "the templates must be realistic"). The template stays **synthetic**: it is no real company's line and holds no real company's data. Its magnitudes follow the sources below, which the agent read on 2026-10-29. A value that no source gives is marked **estimate**, with the reasoning. The sources are mostly equipment makers, EMS and test vendors, trade magazines and one journal paper; vendor figures are often best cases. None of them describes this line, so a value "follows" a source when it is inside or next to the range the source gives, for the kind of board assumed here: a mid-volume, two-family line of mid-complexity boards (several hundred placements each) built on one SMT line in two shifts.
+
+**Scale.** One SMT line, 720 boards a day, 3,600 a week. That is a realistic mid-volume output for one line (about 45 boards an hour on shift), so nothing is scaled down: a 28-day run with 5 replications takes well under a second on the development machine (the lock run of §11). The one value at the edge of its sources' range is burn-in: 8 hours is the low end of the range given for consumer products (see the table); a longer burn-in would need proportionally more chambers.
+
+| Parameter | Value in the template | Unit | Source (retrieved 2026-10-29) or estimate |
+|---|---|---|---|
+| SMT line pace (`smt` service) | tri(0.75, 0.85, 1.15), mean 0.92 (about 55 s a board) | minute per board | The line runs at the pace of its slowest machine, usually placement. Estimate from: a 60,000 CPH (components per hour) line in a contract manufacturer ([I-Connect007, Downing and Owen](https://iconnect007.com/article/51662/implementing-aoi-in-a-cm-environment/51665/smt)); real placement rates up to 40% below the rated speed ([CircuitNet, Bliss, 2007](https://www.circuitnet.com/experts/40004.html)) or about 60% of the IPC speed as a rule of thumb ([I-Connect007, Klaver, 2014](https://iconnect007.com/article/80564/smt-trends-and-technologies-what-is-your-real-output/80567/smt)); about 600 placements a board at about 40,000 CPH real is about 54 s. Worked examples elsewhere use a 40 s line cycle ([Indium](https://www.indium.com/blog/selecting-a-reflow-oven-length/); [I-Connect007, van Gastel](https://iconnect007.com/article/44038/placement-quality-affects-costs/44041/smt)). The printer is not the limit: core cycle 6.5–8 s ([ASMPT DEK NeoHorizon](https://smt.asmpt.com/en/products/printing-solutions/dek-neohorizon)). |
+| Changeover between families (`smt_line` setups) | tri(20, 35, 60), mean 38 | minute | Feeder replacement "may take longer than 30 minutes" and a line "must stop for more than 30 minutes" when printer and mounter changeovers follow each other; a case study went from about 20 to 5 minutes with automated setup ([Yamaha](https://global.yamaha-motor.com/business/smt/concept/recipe/)); a TV-board SMT line went from over 80 to 40 minutes ([de Jesus et al., ITEGAM-JETIA 2018](https://sumarios.org/node/124707)). The range is a line with offline feeder preparation but no automated changeover. |
+| Inline AOI (`aoi` service) | tri(0.2, 0.25, 0.35), mean 0.27 (16 s) | minute per board | 10 s for a 260 × 200 mm board including load and unload ([D-TEK Xceed 3D AOI](https://dtek.com.tw/en/product/smt/aoi/xceed---new-generation-3d-aoi)); the range adds board transfer and slower programs (estimate). |
+| Boards needing touch-up after AOI (`aoi_result`) | 0.03 (FPY 0.97) | ratio | Estimate, near a worked example for a 1,000-component board gives a yield of 97.26% ([I-Connect007, van Gastel](https://iconnect007.com/article/44038/placement-quality-affects-costs/44041/smt)). False calls are taken to be cleared at the AOI review within its cycle (estimate); a CM measured them below 0.5% ([Downing and Owen](https://iconnect007.com/article/51662/implementing-aoi-in-a-cm-environment/51665/smt)). |
+| Touch-up (`aoi_touchup`) | tri(3, 5, 10) | minute | Estimate: a hand-soldering repair of one or two joints and a look under the microscope. |
+| ICT test (`ict`, `ict_retest`) | tri(1.4, 1.7, 2.3), mean 1.8 | minute per board | ICT "typically ~30 s to 2 min per board" ([NextPCB, 2025](https://www.nextpcb.com/blog/ict-vs-fct-pcba-test-strategy)); about 15–30 s more to load and unload a manual fixture (estimate). |
+| ICT first-pass yield (`ict_result`) | 0.95 | ratio | More than 95% FPY with an inline ICT ([Keysight case study 5992-2445](https://www.keysight.com.cn/cn/zh/assets/7018-05838/case-studies/5992-2445.pdf)); a CM went from 75% to more than 93% at ICT after adding AOI ([Downing and Owen](https://iconnect007.com/article/51662/implementing-aoi-in-a-cm-environment/51665/smt)); FPY "as low as 76%" with a fixture contact problem ([Keysight case study 5992-3792](https://www.keysight.com/hk/en/assets/7018-06552/case-studies/5992-3792.pdf.html)). |
+| FCT test (`fct`, `fct_retest`) | tri(2.8, 3.2, 4.0), mean 3.3 | minute per board | FCT "typically about 1 to 10 min per board for production tests" ([NextPCB, 2025](https://www.nextpcb.com/blog/ict-vs-fct-pcba-test-strategy)); unchanged by H-046. |
+| FCT first-pass yield (`fct_result`) | 0.93 | ratio | Estimate: "for modern day top tier manufacturing yields are well above 90%" ([Mini-Circuits, 2025](https://blog.minicircuits.com/rf-measurement-devices-in-modern-production-test-lines/)); 0.93 keeps a visible debug loop. No source with an FCT figure was found. |
+| ICT and FCT debug (`ict_debug`, `fct_debug`) | tri(5, 10, 30); tri(10, 20, 60) | minute | Estimate. For orientation: diagnosing a board "ROUGHLY 15 minutes", 10 minutes to replace a chip, about 20–25 minutes a board in all, for detector boards repaired at a university ([Penn SNO](https://www.hep.upenn.edu/SNO/daq/testing/ASICS-DBs-Part-2.html)); ICT names the failing part, FCT does not, so FCT debug is longer. |
+| Retest pass, repaired or scrapped | retest 0.90; repaired 0.97 (ICT), 0.95 (FCT) | ratio | Estimate. |
+| Burn-in time (`burn_in`) | constant 480 (8 h) | minute per batch | Consumer electronics 8–24 hours, industrial 24–72 hours ([Best Technology, 2026](https://www.bestpcbs.com/blog/2026/02/burn-in-test-a-complete-guide-for-electronics-pcb-reliability/)); commercial and industrial "24-72 hours at 85°C" ([Anzer, 2026](https://www.anzer-usa.com/resources/?p=3334)). 8 h is the low end (see Scale). |
+| Burn-in batch and chambers | batch 20–40 boards, max wait 120 min; 9 chambers | boards; minute; units | Estimate: a chamber (or rack) of 40 boards; 9 chambers are what 720 boards a day need at 8 h (§4.2). |
+| Burn-in yield (`burnin_result`) | 0.995 | ratio | An aerospace case: a burn-in failure rate of 4% on the first run, brought "to 0.5%" after process changes ([Anzer, 2026](https://www.anzer-usa.com/resources/?p=3334)); estimate for this line. |
+| Breakdowns (all machines) | TTF and TTR of §4.2 | minute | Estimate. No source with MTBF or MTTR of SMT machines or testers was found. The values give each machine 94–99% time availability; electronics OEE benchmarks are "roughly in the 75–88% range", with minor stops weighing more than breakdowns on SMT lines ([TeepTrak, 2026](https://teeptrak.com/en/us-electronics-semiconductor-oee-case-study-2026/)); the template does not model minor stops. |
+| Shifts | two 8-hour shifts, 06:00–14:00 and 14:00–22:00, Monday to Friday | — | Two shifts Monday to Friday, 7:00–15:30 and 15:00–23:15, at an electronics assembler ([job posting, Burnaby](https://www.simplyhired.ca/job/8wKd1WwYxvEG3YcuCyCuJNaYDEgcOB5AZWCcYa3TaqfX1iJriacSBQ)); breaks are not modelled (estimate). |
+| Release | 360 boards of each family at its shift's start, every weekday | boards | Estimate: one shift's work order released as a whole. |
+| Packing (`pack_ship`) | tri(0.8, 1.0, 1.5); 2 stations | minute per board | Estimate: bag, label and box one board. |
+| Buffers | `q_aoi` 20, `q_ict` 10, `q_fct` 10, `q_burnin` 120, `q_pack` 500 | boards | Estimate: conveyor and rack space. `q_pack` holds what burn-in finishes overnight (§4.2). |
+| Debug crew, testers | 4 debug and repair operators a shift; 2 ICT, 3 FCT testers | units | Estimate, sized so that FCT is the bottleneck at about 0.94 (§4.2). |
+
+**What H-046 changed** (old → new): SMT pace tri(0.9, 1.0, 1.4) → tri(0.75, 0.85, 1.15); changeover tri(15, 25, 45) → tri(20, 35, 60); AOI tri(0.8, 0.9, 1.1) → tri(0.2, 0.25, 0.35); ICT tri(1.8, 2.0, 2.6) → tri(1.4, 1.7, 2.3); burn-in 240 → 480 min; burn-in chambers 6 → 9; `q_pack` 400 → 500. The other values were checked against the sources (or kept as estimates) and did not change. The values the demo's what-ifs replace (`deploy/demo/whatifs.json`: ICT testers 2, debug crew 4, burn-in batch 20–40, `q_ict` and `q_fct` 10, 360 boards a release) are unchanged, so the what-ifs still apply to models created from the template.
+
+**What the template simplifies compared with a real line**:
+
+- The SMT line (printer, SPI, placement, reflow) is one server at the pace of its slowest machine (§2). The reflow oven's transit time (about 4.5 minutes in the heated zones in [Indium's example](https://www.indium.com/blog/selecting-a-reflow-oven-length/)) and the balance between the machines are not modelled; the oven holds several boards at once, so it does not limit throughput, but every board's lead time is a few minutes too short.
+- Panels: one entity is one board; real lines often build and test several boards per panel, then depanelize (§1, §9).
+- AOI false calls and their review are not separate steps: only boards with a confirmed defect go to touch-up.
+- Breakdowns stop a machine for minutes to hours; minor stops (feeder reloads, vision rejects) and speed losses are not modelled, nor are planned maintenance and breaks.
+- Test results are fixed probabilities (probability routing, §5): a real FPY drifts with the process, the fixture and the board revision.
+- Operators have no skills or names; a debug operator can do every repair, and the debug crew is the same on both shifts.
+- Releases are whole work orders at shift start with first-in, first-out at every station; real lines dispatch by priority and group work by family (PRD P1).
+- The rack variant of §4.3 is not part of the template and was not researched.
 
 ## 5. Domain metrics (REQ-015)
 
@@ -344,24 +386,24 @@ This section records what the T-051 hackathon slice has implemented. Details the
 
 **Pack.** `internal/domainpack/electronicsline`, domain `electronics_line`, registered by `internal/packs` together with the software delivery example pack. The catalogs are §3.1 and §3.2 (tests compare against this document's two tables). The rules are §3.4: rule 1 `STATION_RESOURCE_INVALID` (error), rule 3 `RETEST_RESOURCE_MISMATCH` (error), rule 2 `TEST_RESULT_NOT_IDENTIFIED` (warning); an unusable `station`/`pass`/`result_of` is `DOMAIN_ATTRIBUTES_INVALID` (warning); rule 4 is confirmed by the template's tests (`metadata.synthetic: true`, `source: "synthetic, for demonstration"`); rule 5: the generic validator's rules are not repeated. `InferFromEvents` returns `ErrUnavailable` until T-027.
 
-**Template `electronics_assembly_test_line`.** The §4.1 topology (41 nodes, 47 flows) and the §4.2 parameters, plus the two product families and the SMT setups of §4.4. All are synthetic illustrative values (not measured values from any factory):
+**Template `electronics_assembly_test_line`.** The §4.1 topology (41 nodes, 47 flows) and the §4.2 parameters, plus the two product families and the SMT setups of §4.4. All are synthetic (not measured values from any factory); since H-046 their magnitudes follow the sources of §4.5:
 
 | Item | Value in the template | Source |
 |---|---|---|
 | Release | `release_a` (`board_a`) at 06:00 on weekdays and `release_b` (`board_b`) at 14:00 on weekdays, 360 boards each, table, period 10080 | §4.4 |
 | Calendar `two_shift_weekdays` | Monday to Friday 06:00–14:00 `early`, 14:00–22:00 `late` (the [360, 1320) + d·1440 of §4.2 split into two labeled shifts; S(t) unchanged) | §4.2; the labels are D-117 (g) |
-| SMT line `smt_line` | 1 line, calendar, TTF exp(600), TTR tri(10, 20, 90); setup A↔B tri(15, 25, 45), initial `board_a`; service tri(0.9, 1.0, 1.4); printing, SPI, placement and reflow treated as one server (§2) | §4.2, §4.4 |
-| AOI `aoi_machine` (role `aoi`) | 1 machine, TTF exp(1200), TTR tri(5, 10, 30), service tri(0.8, 0.9, 1.1); yield 0.97, defects go through touch-up (`debug_operator`, tri(3, 5, 10)) into ICT | §4.1, §4.2 |
-| ICT `ict_tester` | 2 testers, TTF exp(900), TTR tri(10, 20, 60); first test and retest tri(1.8, 2.0, 2.6); yield 0.95, retest 0.90; debug tri(5, 10, 30), repaired 0.97, the rest scrapped | Same as above |
+| SMT line `smt_line` | 1 line, calendar, TTF exp(600), TTR tri(10, 20, 90); setup A↔B tri(20, 35, 60), initial `board_a`; service tri(0.75, 0.85, 1.15); printing, SPI, placement and reflow treated as one server (§2) | §4.2, §4.4, §4.5 |
+| AOI `aoi_machine` (role `aoi`) | 1 machine, TTF exp(1200), TTR tri(5, 10, 30), service tri(0.2, 0.25, 0.35); yield 0.97, defects go through touch-up (`debug_operator`, tri(3, 5, 10)) into ICT | §4.1, §4.2 |
+| ICT `ict_tester` | 2 testers, TTF exp(900), TTR tri(10, 20, 60); first test and retest tri(1.4, 1.7, 2.3); yield 0.95, retest 0.90; debug tri(5, 10, 30), repaired 0.97, the rest scrapped | Same as above |
 | FCT `fct_tester` | 3 testers, TTF exp(900), TTR tri(10, 30, 90); first test and retest tri(2.8, 3.2, 4.0); yield 0.93, retest 0.90; debug tri(10, 20, 60), repaired 0.95 | Same as above |
-| Burn-in `burn_in_chamber` | 6 chambers, 24/7, TTF exp(10080), TTR tri(60, 120, 480); batch min 20, max 40, max_wait 120, constant 240 per batch; yield 0.995, defects return to FCT debug | Same as above |
+| Burn-in `burn_in_chamber` | 9 chambers, 24/7, TTF exp(10080), TTR tri(60, 120, 480); batch min 20, max 40, max_wait 120, constant 480 per batch; yield 0.995, defects return to FCT debug | Same as above |
 | Debug `debug_operator`, packing `pack_station` | 4 people, 2 stations, calendar; `shift_capacity` equals capacity in both shifts (numbers unchanged; there for D-057 per-shift staffing scenarios) | §4.2; D-117 (g) |
-| Buffers | `q_aoi` 20, `q_ict` 10, `q_fct` 10, `q_burnin` 120, `q_pack` 400; unlimited before SMT, touch-up, debug and retest | §4.1 |
+| Buffers | `q_aoi` 20, `q_ict` 10, `q_fct` 10, `q_burnin` 120, `q_pack` 500; unlimited before SMT, touch-up, debug and retest | §4.1 |
 | 2D positions | The main line is in the first row (x from left to right); each station's touch-up, debug and retest loops are below it; processes sorted by x, then by y, give the row order of the Marey chart (SMT, AOI, touch-up, ICT, ICT debug, ICT retest, FCT, FCT debug, FCT retest, burn-in, packing) | D-117 (g) |
 
 Names come in two languages, en and zh-Hant (`templates/*.zh-Hant.names.json`); IDs and all other content are the same in both languages.
 
-**Confirming the §4.2 estimate with the engine.** The template runs on des-go-0.5.0 (horizon 28 days, warmup 7 days, 5 replications, seed 2026; the result's digest is locked in `internal/domainpack/electronicsline/testdata/template-run-lock.json`, a regression lock on engine output, not an independent oracle). Over the measured 21 days, an average of 10,756 boards shipped (about 3,585 per week against a release of 3,600; WIP did not keep accumulating). The on-shift work ratio (w_s of §5) is highest at FCT, 0.898, followed by ICT 0.843, SMT 0.825, AOI 0.701, packing 0.411 and burn-in 0.365 (24/7), consistent with §4.2's "FCT is the expected bottleneck". SMT setups are about 2 per day (30 in 21 days). The mean burn-in batch size is 39.2 boards. These are simulation outputs of a synthetic model, not factory numbers; the parameters were not adjusted because of them.
+**Confirming the §4.2 estimate with the engine.** The template runs on des-go-0.5.0 (horizon 28 days, warmup 7 days, 5 replications, seed 2026; the result's digest is locked in `internal/domainpack/electronicsline/testdata/template-run-lock.json`, a regression lock on engine output, not an independent oracle). Over the measured 21 days, an average of 10,733 boards shipped (about 3,578 per week against a release of 3,600; WIP did not keep accumulating). The on-shift work ratio (w_s of §5) is highest at FCT, 0.897, followed by ICT 0.710, SMT 0.687, burn-in 0.486 (24/7), packing 0.410 and AOI 0.200, consistent with §4.2's "FCT is the expected bottleneck". SMT setups are about 2 per day (30 in 21 days). The mean burn-in batch size is 39.2 boards. These are the numbers of H-046's template; T-051's template gave 10,756 boards and work ratios FCT 0.898, ICT 0.843, SMT 0.825, AOI 0.701, packing 0.411, burn-in 0.365, and the lock was re-taken for H-046 ([H-046 report](../../checks/H-046_ELECTRONICS_REALISM_VALIDATION.md)). These are simulation outputs of a synthetic model, not factory numbers; H-046 tuned the parameters to the sources of §4.5, not to these outputs.
 
 **Metrics (`metrics.domain`).** Line metric keys are the metric name; station metric keys are `<name>.<first-test node ID>`. Each has one value per replication and is aggregated across replications the same way as the Result's other statistics (population replication, mean, Type 7, Student-t CI). This build:
 
@@ -379,13 +421,13 @@ Names come in two languages, en and zh-Hant (`templates/*.zh-Hant.names.json`); 
 
 The UI labels (kinds and metric names, en and zh-Hant) are in `domain.electronics_line.*` in `apps/web/messages`. P0 does not compute OEE, and no metric is called OEE.
 
-**Review r1 fix (M1, 2026-10-26).** The original rolled throughput yield multiplied one FPY for each test process with `pass: first`. When a parallel FCT cell was added to the template (both cells with FPY 0.93), it gave 0.97·0.95·0.93·0.93·0.995 = 0.79302032325 instead of §5's series value 0.97·0.95·0.93·0.995 = 0.852710025, and the pack's rules raised no issue. Now it is once per station kind, by the rule in the table above. When parallel cells have different FPYs, that station kind has no single FPY (it would need weighting by routing share, which the pack does not derive), and the rolled throughput yield is unavailable. The pack does not analyze routing: two first tests of the same station kind that are actually in series (not the §2 structure) are also treated as parallel cells. The template has only one first test per test station kind, and the node order of the first tests is the line order, so the product is bit-for-bit identical to before the fix and the digest in `testdata/template-run-lock.json` is unchanged. Validation: "Review round 1 fixes" in [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md).
+**Review r1 fix (M1, 2026-10-26).** The original rolled throughput yield multiplied one FPY for each test process with `pass: first`. When a parallel FCT cell was added to the template (both cells with FPY 0.93), it gave 0.97·0.95·0.93·0.93·0.995 = 0.79302032325 instead of §5's series value 0.97·0.95·0.93·0.995 = 0.852710025, and the pack's rules raised no issue. Now it is once per station kind, by the rule in the table above. When parallel cells have different FPYs, that station kind has no single FPY (it would need weighting by routing share, which the pack does not derive), and the rolled throughput yield is unavailable. The pack does not analyze routing: two first tests of the same station kind that are actually in series (not the §2 structure) are also treated as parallel cells. The template has only one first test per test station kind, and the node order of the first tests is the line order, so the product is bit-for-bit identical to before the fix and the digest in `testdata/template-run-lock.json` is unchanged (H-046 later changed the template's parameters and so the digest, §4.5). Validation: "Review round 1 fixes" in [checks/T-051_VALIDATION.md](../../checks/T-051_VALIDATION.md).
 
 ## 12. T-052 implementation (hackathon slice, 2026-10-26, H-029)
 
 This section records what the T-052 hackathon slice has implemented. Details the approval text does not cover are D-118 (**PROPOSED**); validation is in [checks/T-052_VALIDATION.md](../../checks/T-052_VALIDATION.md). The rest of T-052's scope (D-073's transform, linking datasets and runs after commit, and so on) is in that report.
 
-**Synthetic data (step 1 of §8).** [`testdata/datasets/electronics-line`](../../testdata/datasets/electronics-line/README.md): one week of station log (22,739 rows, 2,626,641 bytes, every row `synthetic=true`), the ground-truth model (this pack's template, §11) and how the data was generated, and 7 negative fixtures. `scripts/gen-electronics-line-data` records the template's replication 0 (seed 52) with the engine's Observer, without writing a separate simulation. The same seed gives the same bytes (SHA-256 pinned in a test), and the engine's own counts for that replication in the same window (shipped, test failures, repairs, downtime per machine, SMT setups) equal the log's. Time uses 2026-09-28T00:00+08:00 as model time 0 (the anchor of §6).
+**Synthetic data (step 1 of §8).** [`testdata/datasets/electronics-line`](../../testdata/datasets/electronics-line/README.md): one week of station log (22,569 rows, 2,606,756 bytes, every row `synthetic=true`; regenerated when H-046 changed the template, before it 22,739 rows), the ground-truth model (this pack's template, §11) and how the data was generated, and 7 negative fixtures. `scripts/gen-electronics-line-data` records the template's replication 0 (seed 52) with the engine's Observer, without writing a separate simulation. The same seed gives the same bytes (SHA-256 pinned in a test), and the engine's own counts for that replication in the same window (shipped, test failures, repairs, downtime per machine, SMT setups) equal the log's. Time uses 2026-09-28T00:00+08:00 as model time 0 (the anchor of §6).
 
 **The data-quality rules of §6.** Import validation uses the base version the import is bound to as its vocabulary and checks the D-059 rules on every valid row. The results are warnings (D-072 (b)), and the import stays VALIDATED: `EVENT_TYPE_UNKNOWN`, `EVENT_STAGE_MISSING`, `EVENT_STAGE_UNKNOWN`, `EVENT_END_MISSING`, `EVENT_OUTCOME_MISSING` (test stations), `EVENT_OUTCOME_UNKNOWN`, `EVENT_PRODUCT_MISSING` (multiple products), `EVENT_PRODUCT_UNKNOWN` (D-118 (b)). An end earlier than start is still a D-072 (b) invalid row. The cross-row checks listed in §6 (overlapping operations of a serial, exceeding capacity, station order, operations during downtime, data gaps) are not implemented yet.
 
@@ -393,9 +435,11 @@ This section records what the T-052 hackathon slice has implemented. Details the
 
 | Quantity | Observed (log) | Simulated (seed 2026, 5 replications, horizon 14 days, warmup 7 days) | Note |
 |---|---|---|---|
-| `line_output_per_week` | 3,588 | Mean 3,613, range (min–max) 3,555–3,677, absolute error 25, relative 0.70%, within range | With the generator's seed (52) and 1 replication, the simulation is the log and the error is 0 |
-| `first_pass_yield.fct` | 0.9399 | Model input 0.93 | Input consistency |
-| `mean_cycle_minutes.fct` | 3.328 | Mean 3.333 of the model's tri(2.8, 3.2, 4.0) | Input consistency; log times are truncated to whole seconds |
+| `line_output_per_week` | 3,563 | Mean 3,567.4, range (min–max) 3,510–3,593, absolute error 4.4, relative 0.12%, within range | With the generator's seed (52) and 1 replication, the simulation is the log and the error is 0 |
+| `first_pass_yield.fct` | 0.9396 | Model input 0.93 | Input consistency |
+| `mean_cycle_minutes.fct` | 3.329 | Mean 3.333 of the model's tri(2.8, 3.2, 4.0) | Input consistency; log times are truncated to whole seconds |
+
+The table holds the numbers of the data regenerated for H-046's template (§4.5). With T-052's template they were 3,588 observed against a simulated mean of 3,613 (range 3,555–3,677, absolute error 25, relative 0.70%), FPY 0.9399 and mean FCT cycle 3.328.
 
 These are numbers from a synthetic model and from data it produced itself, not factory numbers. No pass verdict is given, and the model is not adjusted (D-060).
 

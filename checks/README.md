@@ -70,6 +70,7 @@ The task status of record is `planning/tasks.json`. Several hackathon slices are
 | [T-051_REVIEW_r1.md](T-051_REVIEW_r1.md) | Review round 1 of the T-051 slice | CHANGES REQUESTED: one Medium (M1), no High | Low findings recorded as post-hackathon follow-ups |
 | [T-052_VALIDATION.md](T-052_VALIDATION.md) | Hackathon slice: synthetic line data recorded from the engine's own runs, and a simulated-versus-observed comparison | Delivered. Review CHANGES REQUESTED (M1); fixes verified by the coordinator. D-118 PROPOSED. | D-073 transforms and dataset commit (T-018) not done. The data is synthetic ground truth from the same model, so the comparison checks the pipeline, not the model. |
 | [T-052_REVIEW_r1.md](T-052_REVIEW_r1.md) | Review round 1 of the T-052 slice | CHANGES REQUESTED (M1), no High. Confirmed the generator only records the engine and gives the same bytes for the same seed. | Labeling of the data as synthetic (I2) |
+| [H-046_ELECTRONICS_REALISM_VALIDATION.md](H-046_ELECTRONICS_REALISM_VALIDATION.md) | H-046 (1): the electronics line template's parameters researched and tuned to cited sources (or marked estimate); synthetic data set regenerated; the five demo what-ifs re-run on the engine. Written in English. | Delivered, not reviewed. Backend, frontend and spec checks as listed in the report. | NOT RUN: e2e, integration, live. Open: "One more debug operator" is a no-op (shift crews), the demo's one-day horizon, no what-if at the FCT bottleneck |
 
 ## Simulation engine and runs
 
