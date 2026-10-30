@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func repoRoot(t *testing.T) string {
@@ -51,6 +53,27 @@ func TestRepositoryConforms(t *testing.T) {
 
 // overlay writes a go build overlay adding files (repository path -> source)
 // and returns its path.
+// uniqueProbes gives each probe's zz_probe.go a name of its own: under load,
+// a go list run with an overlay of internal/simulation/engine/zz_probe.go
+// was seen to report another probe's contents for the same path (2026-10-30,
+// three times, also with the runs serialized), so the go command keeps
+// something keyed by the path across runs. names maps the old base name to
+// the new one, for a probe that expects the file's name in its detail.
+var probeSeq atomic.Int64
+
+func uniqueProbes(files map[string]string) (out, names map[string]string) {
+	out, names = map[string]string{}, map[string]string{}
+	for path, src := range files {
+		if filepath.Base(path) == "zz_probe.go" {
+			n := fmt.Sprintf("zz_probe_%d_%d.go", time.Now().UnixNano(), probeSeq.Add(1))
+			names["zz_probe.go"] = n
+			path = filepath.Join(filepath.Dir(path), n)
+		}
+		out[path] = src
+	}
+	return out, names
+}
+
 func overlay(t *testing.T, root string, files map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -638,7 +661,12 @@ func TestReviewProbes(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			g, err := load(root, []string{"-overlay=" + overlay(t, root, c.files)}, matrix, defaultPatterns...)
+			files, names := uniqueProbes(c.files)
+			want := c.want
+			if n, ok := names[want]; ok {
+				want = n
+			}
+			g, err := load(root, []string{"-overlay=" + overlay(t, root, files)}, matrix, defaultPatterns...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -647,11 +675,11 @@ func TestReviewProbes(t *testing.T) {
 				t.Fatal(errs)
 			}
 			for _, v := range violations {
-				if v.rule == c.rule && (rel(v.pkg) == c.pkg || v.pkg == c.pkg) && (strings.HasPrefix(v.detail, c.want) || (v.detail == "" && rel(v.chain[len(v.chain)-1]) == c.want)) {
+				if v.rule == c.rule && (rel(v.pkg) == c.pkg || v.pkg == c.pkg) && (strings.HasPrefix(v.detail, want) || (v.detail == "" && rel(v.chain[len(v.chain)-1]) == want)) {
 					return
 				}
 			}
-			t.Errorf("no %s violation of %s for %s; got %v", c.rule, c.pkg, c.want, violations)
+			t.Errorf("no %s violation of %s for %s; got %v", c.rule, c.pkg, want, violations)
 		})
 	}
 }
@@ -717,7 +745,12 @@ func TestRound2Probes(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			g, err := load(root, []string{"-overlay=" + overlay(t, root, c.files)}, host, defaultPatterns...)
+			files, names := uniqueProbes(c.files)
+			want := c.want
+			if n, ok := names[want]; ok {
+				want = n
+			}
+			g, err := load(root, []string{"-overlay=" + overlay(t, root, files)}, host, defaultPatterns...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -726,11 +759,11 @@ func TestRound2Probes(t *testing.T) {
 				t.Fatal(errs)
 			}
 			for _, v := range violations {
-				if v.rule == c.rule && rel(v.pkg) == c.pkg && (strings.HasPrefix(v.detail, c.want) || (v.detail == "" && rel(v.chain[len(v.chain)-1]) == c.want)) {
+				if v.rule == c.rule && rel(v.pkg) == c.pkg && (strings.HasPrefix(v.detail, want) || (v.detail == "" && rel(v.chain[len(v.chain)-1]) == want)) {
 					return
 				}
 			}
-			t.Errorf("no %s violation of %s for %s; got %v", c.rule, c.pkg, c.want, violations)
+			t.Errorf("no %s violation of %s for %s; got %v", c.rule, c.pkg, want, violations)
 		})
 	}
 	// The pack's own subpackages, and the pack imported from outside, are fine.
