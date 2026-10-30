@@ -81,7 +81,7 @@ export const en = {
   "landing.meta.title": "Which Meta model does what",
   "landing.meta.intro": "Geminus calls three Meta models through the Meta Model API, and the Muse models can use one of the API's tools. None of them can change a model, approve a proposal or start a run.",
   "landing.meta.muse": "Writes proposals from your words by default, a change to the model or a scenario to simulate. Explains two completed runs and suggests next experiments, and writes a suggested experiment as a scenario proposal.",
-  "landing.meta.sam": "Reads a photo or floor plan of a line and finds the machines, conveyors and similar objects; Muse Spark then proposes the stations and the flow between them. When it finds nothing, Geminus asks you for more instead of guessing.",
+  "landing.meta.sam": "Reads a photo or floor plan of a line and finds the machines, conveyors and similar objects; the Muse model you chose then proposes the stations and the flow between them. When it finds nothing, Geminus asks you for more instead of guessing.",
   "landing.meta.wonder": "Meta's most capable model, in preview. Choose it for a proposal when a better answer is worth the wait: it is slower and costs more. Explanations stay on Muse Spark 1.3.",
   "landing.meta.search": "When you turn research on, the Muse model you chose uses Meta's web search tool before it proposes; the proposal lists the pages it asked to open. Only your words are searched, never a photo.",
   "landing.meta.named": "Every proposal and explanation names the model that wrote it.",

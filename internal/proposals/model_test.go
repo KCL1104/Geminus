@@ -96,19 +96,25 @@ func TestModelRefusal(t *testing.T) {
 }
 
 // The job carries the model the person chose (absent: the deployment's),
-// beside research; its attempts are the research rule's alone.
+// beside research. Review round 1, M1: a job of a slow model (Muse Wonder
+// 1.0) has a single attempt, as a research job has, so a call that ran to
+// its 300 s deadline (settled at its bound) is never run, and billed, again
+// by the queue; one on Muse Spark 1.3 keeps the queue's attempts.
 func TestTheJobCarriesTheModel(t *testing.T) {
 	const org, id, req = "org_01M4YDQK00Y5H2929M9WWZWTVH", "aip_01M4YDQK00ADN261CME3WV5HZ6", "req_01M4YDQK00ADN261CME3WV5HZ6"
 	j := proposalJob(org, id, req, false, "muse-wonder-1.0")
-	if j.Payload["model"] != "muse-wonder-1.0" || j.MaxAttempts != 0 {
-		t.Errorf("job %+v", j)
+	if j.Payload["model"] != "muse-wonder-1.0" || j.MaxAttempts != 1 || SlowModelJobAttempts != 1 {
+		t.Errorf("a Muse Wonder job %+v", j)
+	}
+	if j := proposalJob(org, id, req, false, "muse-spark-1.3"); j.Payload["model"] != "muse-spark-1.3" || j.MaxAttempts != 0 {
+		t.Errorf("a Muse Spark job %+v", j)
 	}
 	j = proposalJob(org, id, req, true, "muse-wonder-1.0")
 	if j.Payload["model"] != "muse-wonder-1.0" || j.Payload["research"] != true || j.MaxAttempts != ResearchJobAttempts {
 		t.Errorf("research job %+v", j)
 	}
-	if j := proposalJob(org, id, req, false, ""); len(j.Payload) != 2 {
-		t.Errorf("a job without a model: %+v", j.Payload)
+	if j := proposalJob(org, id, req, false, ""); len(j.Payload) != 2 || j.MaxAttempts != 0 {
+		t.Errorf("a job without a model: %+v", j)
 	}
 }
 

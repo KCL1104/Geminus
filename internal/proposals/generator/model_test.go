@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
@@ -55,6 +56,45 @@ func TestTheChosenModelIsAsked(t *testing.T) {
 		RequestID: "req_01M4YDQK00ADN261CME3WV5HZ6"}, "")
 	if err != nil || pub.Error.Error.Code != "AI_POLICY_NOT_APPROVED" || pub.Error.Error.Details[0].Code != "AI_MODEL_NOT_APPROVED" {
 		t.Errorf("shown as %+v %v", pub.Error, err)
+	}
+}
+
+// Review round 1, M1: a Muse Wonder attempt's failure is final whatever its
+// code (its job has a single attempt too, internal/proposals): a call that
+// timed out at 300 s is not run, and billed, again. The same failure on Muse
+// Spark 1.3, or on the deployment's model, stays retryable.
+func TestASlowModelsFailureIsFinal(t *testing.T) {
+	ctx := context.Background()
+	for _, code := range []provider.Code{provider.CodeTimeout, provider.CodeUnavailable, provider.CodeRateLimited} {
+		f := fake.New()
+		f.Fail(provider.RoleModeler, "Busy.", provider.NewError(code, 0, "meta"))
+		h, err := New(Config{Provider: client(t, f), Packs: packs(t), Actor: "worker-1", Log: discard()})
+		if err != nil {
+			t.Fatal(err)
+		}
+		st := stored(t, "edit", "Busy.")
+		var jf *jobs.Failure
+		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, false, "muse-wonder-1.0")
+		if !errors.As(err, &jf) || jf.Retryable || jf.Code != "AI_"+strings.ToUpper(string(code)) {
+			t.Errorf("%s on Muse Wonder: %+v", code, jf)
+		}
+		for _, m := range []string{"muse-spark-1.3", ""} {
+			_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, false, m)
+			if !errors.As(err, &jf) || !jf.Retryable {
+				t.Errorf("%s on %q: %+v", code, m, jf)
+			}
+		}
+	}
+	// A photo on Muse Wonder whose vision call fails: final too.
+	r := newPhotoRig(t, "electronics-line-demo")
+	r.script(-1)
+	r.vision.Fail(provider.RoleModeler, r.demo.Segments.StoredDigest, provider.NewError(provider.CodeTimeout, 0, "meta"))
+	var jf *jobs.Failure
+	if _, err := r.h.generatePhoto(ctx, photoOrg, r.st, testAttribution, "muse-wonder-1.0"); !errors.As(err, &jf) || jf.Retryable || jf.Code != "AI_TIMEOUT" {
+		t.Errorf("a photo on Muse Wonder: %+v", jf)
+	}
+	if _, err := r.h.generatePhoto(ctx, photoOrg, r.st, testAttribution, ""); !errors.As(err, &jf) || !jf.Retryable {
+		t.Errorf("a photo on the deployment's model: %+v", jf)
 	}
 }
 

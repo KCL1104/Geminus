@@ -30,6 +30,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/locale"
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
@@ -316,16 +317,26 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 // again on its own: the proposal fails, and the person asks again.
 const ResearchJobAttempts = 1
 
+// SlowModelJobAttempts is the attempts of a job whose chosen model is a slow
+// one (provider.SlowModel: Muse Wonder 1.0, H-049; review round 1, M1): one,
+// as for research. Its call may run to the 300 s deadline and is then
+// settled as an attempt that may have been billed, at its bound, so a
+// failed one is never run again on its own: the person asks again.
+const SlowModelJobAttempts = 1
+
 // proposalJob is the model_proposal job of proposal id: its frozen input
 // (the proposal and the request; the person's choice of research and of
-// model, H-049, each absent when not made) and, for research, a single
-// attempt.
+// model, H-049, each absent when not made) and, for research or a slow
+// model, a single attempt.
 func proposalJob(org, id, requestID string, research bool, model string) jobs.New {
 	j := jobs.New{ID: ids.New("job"), OrganizationID: org, Type: jobs.ModelProposal, Resource: jobs.Resource{AIProposalID: id},
 		Payload: map[string]any{"proposal_id": id, "request_id": requestID}}
 	if research {
 		j.Payload["research"] = true
 		j.MaxAttempts = ResearchJobAttempts
+	}
+	if provider.SlowModel(model) {
+		j.MaxAttempts = SlowModelJobAttempts
 	}
 	if model != "" {
 		j.Payload["model"] = model

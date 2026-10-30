@@ -1,6 +1,6 @@
 # H-049 validation report: a person chooses Muse Spark 1.3 or Muse Wonder 1.0 for a proposal
 
-**Date: 2026-10-31 | Status: agent self-check, not reviewed; no live call | Decision: H-049 (owner, 2026-10-30), with H-029, H-033, H-038, H-046 (2) and D-007, D-110, D-111 kept | Requirements: REQ-008, REQ-009, REQ-022 (proposals and their language), TEST-033 (browser checks)**
+**Date: 2026-10-31 | Status: agent self-check, then review round 1 (no High, 2 Medium, 4 Low): M1, L2, L3 fixed, M2 and L1 resolved, L4 left for the owner (section 9); no live call | Decision: H-049 (owner, 2026-10-30), with H-029, H-033, H-038, H-046 (2) and D-007, D-110, D-111 kept | Requirements: REQ-008, REQ-009, REQ-022 (proposals and their language), TEST-033 (browser checks)**
 
 ## 1. What the owner decided
 
@@ -27,7 +27,7 @@ Facts used (from H-049 and the coordinator's brief; nothing was probed again, no
 
 ### Timeouts (D-007's 300 s is the cap)
 
-Muse Wonder took 117 s for one small research question in the coordinator's probe, more than the 90 s default attempt. So a call that names it gets a research call's timeouts, `Budget.ResearchTimeout` (scaled by the research output bound over the budget's, at most `BudgetCaps.Timeout`, D-007's 300 s job timeout), for each attempt and for the whole call: 300 s and 300 s at the defaults, never more, whatever the deployment's budget. Its output bound and retries stay the call's own (8,192 tokens, 2 retries inside the one 300 s deadline). A research call or a photo already had these bounds on Muse Spark, so they are unchanged there. Muse Spark's plain calls keep 90 s / 120 s.
+Muse Wonder took 117 s for one small research question in the coordinator's probe, more than the 90 s default attempt. So a call that names it gets a research call's timeouts, `Budget.ResearchTimeout` (scaled by the research output bound over the budget's, at most `BudgetCaps.Timeout`, D-007's 300 s job timeout), for each attempt and for the whole call: 300 s and 300 s at the defaults, never more, whatever the deployment's budget. Its output bound and retries stay the call's own (8,192 tokens, 2 retries inside the one 300 s deadline). A research call or a photo already had these bounds on Muse Spark, so they are unchanged there. Muse Spark's plain calls keep 90 s / 120 s. Since review round 1 (M1, section 9), a Muse Wonder proposal's job has a single attempt and its provider failure is final, so the queue never runs a 300 s call again.
 
 ### Reservations at the defaults
 
@@ -73,8 +73,8 @@ The Muse Wonder research reservation is just under D-110's default USD 5 organiz
 
 ## 6. Risks
 
-- **Muse Wonder research vs. the daily caps**: its reservation is USD 4.994304, just under D-110's USD 5 organization day (PROPOSED), so a Muse Wonder research proposal is refused (`AI_QUOTA_EXCEEDED`, shown as RATE_LIMITED) as soon as the organization has committed more than about half a cent that day, and two in one day never fit. The deployment's `AI_ORGANIZATION_DAILY_LIMIT_USD` decides it in practice; this slice changes no cap.
-- **Timeouts**: 300 s is the most any call gets (D-007). A Muse Wonder research proposal on a real model prompt may need more than the probe's 117 s; one that runs out is `AI_TIMEOUT`, its attempt settled at its whole reservation (billed or not), and a research job is never retried. A plain Muse Wonder call's retries share the one 300 s deadline, so in practice a slow first attempt leaves none.
+- **Muse Wonder research vs. the daily caps**: its reservation is USD 4.994304. Against D-110's default USD 5 organization day it barely fit; the owner's H-050 has since set the live daily caps to USD 20 per organization and USD 20 for the deployment (section 9, M2). This slice changes no cap.
+- **Timeouts**: 300 s is the most any call gets (D-007). A Muse Wonder research proposal on a real model prompt may need more than the probe's 117 s; one that runs out is `AI_TIMEOUT`, its attempt settled at its whole reservation (billed or not), and its job is never retried (a single attempt, for research and, since review round 1, for every Muse Wonder job). A plain Muse Wonder call's retries share the one 300 s deadline, so in practice a slow first attempt leaves none. With one job attempt, a Muse Wonder photo whose image read fails transiently (`PHOTO_STORAGE_FAILED`, before any AI call) is not retried by the queue either; the person asks again.
 - **Not verified for Muse Wonder**: image input (the probe was text with web search; a photo proposal on it may be refused by Meta, `AI_REQUEST_REJECTED`), its context window (quotes use Muse Spark's 1,048,576-token bound, which over-reserves if Wonder's is smaller and is not a ceiling if larger), and whether 8,192 output tokens leave room for its reasoning on a plain proposal (else `AI_OUTPUT_TRUNCATED`).
 - **The Claude fallback**: the UI sends `model` only for Muse Wonder. On the H-018 deployment the default request still works (Claude answers, and `generated_by` says so), but the control says Muse Spark 1.3 is the default; choosing Muse Wonder there is refused with its advice.
 
@@ -88,6 +88,30 @@ The Muse Wonder research reservation is just under D-110's default USD 5 organiz
 
 - **P1**: a request on the default sends no `model` (absent is the deployment's model), so requests on the default are what they were and the Claude fallback keeps working; only Muse Wonder adds the field.
 - **P2**: a model the approval does not list is 503 `AI_POLICY_NOT_APPROVED` with `details[0].code` `AI_MODEL_NOT_APPROVED` at `/model` (as research's refusal is shaped), and the job code `AI_MODEL_NOT_APPROVED` is shown as `AI_POLICY_NOT_APPROVED`.
-- **P3**: a Muse Wonder call has a research call's timeouts (300 s attempt and deadline at the defaults), its output bound and retries unchanged.
+- **P3**: a Muse Wonder call has a research call's timeouts (300 s attempt and deadline at the defaults), its output bound and retries unchanged; its job has a single attempt (review round 1, M1).
 - **P4**: the audit field `requested_model` on `proposal.create`.
 - **P5**: the last choice is not remembered per browser (left out: a stored choice would differ between server and client renders and between screenshot runs).
+
+## 9. Review round 1 (independent review of 0bb5647, relayed by the coordinator, 2026-10-31)
+
+No High. Findings and what was done:
+
+| Finding | Decision | What changed |
+|---|---|---|
+| **M1**: a plain (non-research) Muse Wonder job kept `jobs.DefaultPolicy`'s 3 attempts, and `AI_TIMEOUT` is retryable, so a Muse Wonder call that ran to 300 s (settled as an attempt that may have been billed, at its bound) was run twice more by the queue: about 15 minutes of waiting and up to 3 times the charge | Fixed | `proposals.SlowModelJobAttempts` = 1: every job whose chosen model is a slow one (`provider.SlowModel`: Muse Wonder 1.0), in words or from a photo, with or without research, is queued with a single attempt, as a research job is. The generator makes a Muse Wonder attempt's provider failure final whatever its code (words and photo), as it does for research. Tests that fail without the fix (checked by removing it: both FAIL): `TestTheJobCarriesTheModel` (a Muse Wonder job has `MaxAttempts` 1; a Muse Spark or default job keeps the queue's), `TestASlowModelsFailureIsFinal` (timeout, unavailable and rate-limited on Muse Wonder are final; the same on Muse Spark 1.3 or the default stay retryable; a Muse Wonder photo's failed vision call is final). The DB test `TestProposalModelChoice` now also checks `max_attempts = 1` (NOT RUN locally). Trade-off: a Muse Wonder photo whose image read fails transiently is not retried by the queue either. |
+| **M2**: the Muse Wonder research reservation (USD 4.994304) barely fit D-110's USD 5 organization day | Resolved by the owner's decision H-050: the live daily caps are now USD 20 per organization and USD 20 for the deployment; the monthly USD 100 is unchanged | No code change. The reviewer's point stands: one Muse Wonder research call in flight holds USD 4.99 of the deployment's daily cap for up to 300 s, so at most 4 can be reserved at once under the new USD 20 (2 under the old USD 10) before further calls are refused (`AI_QUOTA_EXCEEDED`) until a settlement frees the reservation |
+| **L1**: an answer naming another model is refused; was the exact model string Muse Wonder answers with known? | Resolved by evidence: the coordinator's 2026-10-30 probe of `muse-wonder-1.0` returned `"model": "muse-wonder-1.0"` exactly | No change |
+| **L2**: `landing.meta.sam` said "Muse Spark then proposes the stations", wrong when Muse Wonder is chosen for a photo | Fixed | English: "the Muse model you chose then proposes the stations and the flow between them"; zh-Hant: 「接著由你選的 Muse 模型提出工作站與它們之間的流程」. The `home-*` baselines change again (already listed in section 7) |
+| **L3**: the unit test's description check took the first `[aria-describedby]` in the container, not the Select trigger's | Fixed | `proposal-model.test.tsx` reads `aria-describedby` from the trigger button itself (React Aria's Select puts the hint's ID there) |
+| **L4**: the Claude fallback shows "Muse Spark 1.3" as the default (section 6) | Left as is, as acknowledged; listed for the owner | None |
+
+Commands after the fixes (2026-10-31):
+
+| Command | Result |
+|---|---|
+| `go vet ./internal/proposals/... ./internal/api/` and `go test -count=1 ./internal/proposals/... ./internal/api/ ./internal/ai/... ./cmd/api/ ./cmd/worker/` | exit 0; 19 packages ok, 1 without test files (the DB-gated tests skip: NOT RUN) |
+| Mutation check: the two M1 tests with the fix removed | both FAIL (`TestTheJobCarriesTheModel`, `TestASlowModelsFailureIsFinal`); restored, both pass |
+| `npx vitest run tests/proposal-model.test.tsx tests/landing.test.tsx` | 2 files, 17 tests passed |
+| `make frontend-test` | exit 0; 58 files, 1211 tests passed |
+| `make architecture-check` | exit 0; PASS, 101 packages, 26 rules, 16 build configurations |
+| `make e2e-test`, `make backend-test` | not run again after these fixes (the round's fixes are covered by the targeted runs above); the section 4 runs are of 0bb5647 |

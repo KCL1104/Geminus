@@ -80,7 +80,7 @@ export const zhHant: Catalog = {
   "landing.meta.title": "每一步由哪個 Meta 模型負責",
   "landing.meta.intro": "Geminus 透過 Meta Model API 呼叫三個 Meta 模型，Muse 模型也能使用這個 API 的一項工具。它們都不能修改模型、批准提案或開始執行。",
   "landing.meta.muse": "預設依你的文字撰寫提案，可以是對模型的修改，也可以是要模擬的情境。解讀兩次已完成的執行並建議下一個實驗，也能把建議的實驗寫成情境提案。",
-  "landing.meta.sam": "讀取產線的照片或平面圖，找出機台、輸送帶與類似的物件；接著 Muse Spark 提出工作站與它們之間的流程。什麼都沒找到時，Geminus 會請你提供更多資訊，而不是猜測。",
+  "landing.meta.sam": "讀取產線的照片或平面圖，找出機台、輸送帶與類似的物件；接著由你選的 Muse 模型提出工作站與它們之間的流程。什麼都沒找到時，Geminus 會請你提供更多資訊，而不是猜測。",
   "landing.meta.wonder": "Meta 能力最強的模型，預覽版。值得多等一下以換取更好的答案時，可在提案時選用：它較慢，費用也較高。解讀結果仍由 Muse Spark 1.3 負責。",
   "landing.meta.search": "開啟研究時，你選的 Muse 模型會在提出提案前使用 Meta 的網路搜尋工具；提案會列出它要求開啟的網頁。只會搜尋你的文字，不會搜尋照片。",
   "landing.meta.named": "每一份提案與解讀都會寫明是哪個模型撰寫的。",

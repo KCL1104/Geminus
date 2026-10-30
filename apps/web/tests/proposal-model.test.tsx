@@ -107,7 +107,8 @@ describe("the model choice", () => {
     const { el } = await modelPage({ locale });
     const b = trigger(ask(el), t("ask.model"));
     expect(text(b)).toBe(t("ai.model.muse-spark-1.3"));
-    const described = (b.closest("[data-model-choice]")?.querySelector("[aria-describedby]")?.getAttribute("aria-describedby") ?? b.getAttribute("aria-describedby") ?? "")
+    // Review round 1, L3: the line describes the Select's own trigger.
+    const described = (b.getAttribute("aria-describedby") ?? "")
       .split(" ")
       .filter(Boolean)
       .map((id) => text(document.getElementById(id)));

@@ -67,9 +67,10 @@ func TestProposalModelChoice(t *testing.T) {
 	if r := e.propose(editor.Subject, e.a.ID, m.ID, "prop-model-01", modelBody(m.LatestVersion.ID, "scenario", "Add a runner.", "muse-spark-1.3")); r.status != 409 {
 		t.Errorf("the key with another model: %d %s", r.status, r.body)
 	}
-	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND ai_proposal_id=$2 AND payload->>'model' = 'muse-wonder-1.0'`,
-		e.a.ID, id); n != 1 {
-		t.Errorf("%d jobs carry the model", n)
+	// Review round 1, M1: a Muse Wonder job has a single attempt.
+	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND ai_proposal_id=$2 AND payload->>'model' = 'muse-wonder-1.0'
+		AND max_attempts = 1`, e.a.ID, id); n != 1 {
+		t.Errorf("%d single-attempt jobs carry the model", n)
 	}
 	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND target_id=$2 AND action='proposal.create'
 		AND metadata->>'requested_model' = 'muse-wonder-1.0' AND NOT metadata ? 'intent'`, e.a.ID, id); n != 1 {

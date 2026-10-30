@@ -435,10 +435,12 @@ func (h *Handler) generateAsked(ctx context.Context, org string, st started, att
 			// and nothing of what it says (AI_SPEC §4).
 			return generation{outcome: review.InvalidOutput(pe.Issues), meta: &meta, manifest: manifest}, nil
 		}
-		if research {
-			// A research attempt is never run again (its job has one
-			// attempt, internal/proposals ResearchJobAttempts): its failure is
-			// final whatever the code says (review round 1, M1).
+		if research || provider.SlowModel(chosen) {
+			// A research attempt, or one of a slow model (H-049 review round
+			// 1, M1), is never run again (its job has one attempt,
+			// internal/proposals ResearchJobAttempts, SlowModelJobAttempts):
+			// its failure is final whatever the code says (H-046 review round
+			// 1, M1).
 			return generation{meta: &meta}, final(providerFailure(err))
 		}
 		return generation{meta: &meta}, providerFailure(err)

@@ -207,6 +207,11 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 			h.cfg.Log.ErrorContext(ctx, "reviewing a photo proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", re.Err.Error())
 			return generation{meta: res.Vision, photo: pc}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
 		}
+		if provider.SlowModel(chosen) {
+			// A slow vision model's attempt is never run again (H-049 review
+			// round 1, M1; its job has one attempt).
+			return generation{meta: res.Vision, photo: pc}, final(providerFailure(err))
+		}
 		return generation{meta: res.Vision, photo: pc}, providerFailure(err)
 	}
 	outcome := res.Outcome
