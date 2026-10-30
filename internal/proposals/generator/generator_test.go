@@ -78,7 +78,8 @@ func TestProviderFailures(t *testing.T) {
 		provider.CodeContextTooLarge, provider.CodeConcurrencyLimited, provider.CodeTimeout, provider.CodeRateLimited,
 		provider.CodeUnavailable, provider.CodeCredentialsExhausted, provider.CodeRejected, provider.CodeRefused, provider.CodeTruncated,
 		provider.CodeQuotaExceeded, provider.CodeSpendUnavailable, // T-053: refused before any call
-		provider.CodeResearchUnsupported} // H-046 (2): refused before any call
+		provider.CodeResearchUnsupported, // H-046 (2): refused before any call
+		provider.CodeModelNotApproved}    // H-049: refused before any call
 	retryable := map[provider.Code]bool{provider.CodeConcurrencyLimited: true, provider.CodeTimeout: true, provider.CodeRateLimited: true,
 		provider.CodeUnavailable: true, provider.CodeSpendUnavailable: true}
 	for _, c := range codes {

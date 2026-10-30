@@ -31,7 +31,7 @@ func TestTheMetaPrices(t *testing.T) {
 	// Only the Standard-mode model H-029 names: never the Contributor
 	// variant (content used for training), another version or spelling.
 	for _, m := range []string{"muse-spark-1.3-contributor", "muse-spark-1.2", "muse-spark-1.2-contributor", "muse-spark-1.1",
-		"muse-wonder-1.0", "MUSE-SPARK-1.3", "muse-spark-1.3 ", "muse-spark", "sam-3.1"} {
+		"MUSE-SPARK-1.3", "muse-spark-1.3 ", "muse-spark", "sam-3.1", "muse-wonder", "muse-wonder-1.0-contributor", "Muse-Wonder-1.0"} {
 		if _, ok := spend.PriceOf(m); ok {
 			t.Errorf("%q has a token price", m)
 		}
@@ -43,6 +43,43 @@ func TestTheMetaPrices(t *testing.T) {
 	for _, m := range []string{"sam-3", "sam-3.1-video", "SAM-3.1", "muse-spark-1.3", "claude-opus-5-5", ""} {
 		if _, ok := spend.ImagePriceOf(m); ok {
 			t.Errorf("%q has an image price", m)
+		}
+	}
+}
+
+// H-049: Muse Wonder 1.0, Standard mode, from
+// https://dev.meta.ai/docs/pricing-rate-limits as H-049 records it
+// (2026-10-30): USD 4.00 per million input tokens, 0.20 per million cached
+// input tokens, 20.00 per million output tokens; web search USD 2.50 per
+// 1,000 queries, as for Muse Spark. A cache-write token is priced as an
+// input token (the page names no cache-write price).
+func TestTheMuseWonderPrice(t *testing.T) {
+	p, ok := spend.PriceOf("muse-wonder-1.0")
+	if !ok {
+		t.Fatal("no price for muse-wonder-1.0")
+	}
+	want := spend.Price{Input: 4000, Output: 20000, CacheWrite5m: 4000, CacheWrite1h: 4000, CacheRead: 200}
+	if p != want {
+		t.Fatalf("price %+v, want %+v", p, want)
+	}
+	if got := p.Cost(spend.Tokens{Input: 1_000_000, Output: 1_000_000, CacheRead: 1_000_000}); got != 24_200_000_000 {
+		t.Errorf("a million of each: %d, want USD 24.20", got)
+	}
+	if got := p.AttemptBound(10_000, 8192); got != 10_000*4000+8192*20000 {
+		t.Errorf("attempt bound %d", got)
+	}
+	if s, ok := spend.SearchPriceOf("muse-wonder-1.0"); !ok || s != 2_500_000 {
+		t.Errorf("search price %d %v, want 2500000 nano-USD (USD 2.50 per 1,000 queries)", s, ok)
+	}
+	if spend.GeoPriced("muse-wonder-1.0") {
+		t.Error("Meta names no inference geo")
+	}
+	if src, at, ok := spend.SourceOf("muse-wonder-1.0"); !ok || src != "https://dev.meta.ai/docs/pricing-rate-limits" || at != "2026-10-30" {
+		t.Errorf("source %q %q %v", src, at, ok)
+	}
+	for _, m := range []string{"muse-wonder-1.0-contributor", "muse-wonder", ""} {
+		if _, ok := spend.SearchPriceOf(m); ok {
+			t.Errorf("%q has a search price", m)
 		}
 	}
 }

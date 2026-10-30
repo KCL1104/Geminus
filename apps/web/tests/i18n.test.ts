@@ -45,7 +45,7 @@ describe("catalogs", () => {
   it("translate everything except names that are the same in both", () => {
     const same = keys.filter((k) => JSON.stringify(zhHant[k]) === JSON.stringify(en[k]));
     // Product names (H-043: the AI models and their providers) are the same in both.
-    expect(same.sort()).toEqual(["ai.model.muse-spark-1.3", "ai.model.sam-3.1", "ai.provider.anthropic", "ai.provider.meta", "app.name", "editor.view.2d", "editor.view.3d", "home.title", "locale.en", "locale.zh-Hant"]);
+    expect(same.sort()).toEqual(["ai.model.muse-spark-1.3", "ai.model.muse-wonder-1.0", "ai.model.sam-3.1", "ai.provider.anthropic", "ai.provider.meta", "app.name", "editor.view.2d", "editor.view.3d", "home.title", "locale.en", "locale.zh-Hant"]);
   });
 
   it("cover every error code, validation code and problem kind", () => {

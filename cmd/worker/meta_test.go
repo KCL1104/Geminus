@@ -90,8 +90,22 @@ func TestTheMetaProviderIsTheConfigured(t *testing.T) {
 	if c, _, err := aiClient(live, nil, "test-worker"); err == nil || c != nil {
 		t.Error("the worker built a live client without the spend ledger")
 	}
-	if c, _, err := aiClient(live, unusedLedger(t), "test-worker"); err != nil || c == nil {
-		t.Errorf("the metered live client: %v", err)
+	c, _, err := aiClient(live, unusedLedger(t), "test-worker")
+	if err != nil || c == nil {
+		t.Fatalf("the metered live client: %v", err)
+	}
+	// H-049: the one live client asks Muse Wonder 1.0 for the proposal roles
+	// the person chose it for, never for the analyst; its photo judge too.
+	if !c.AcceptsModel(provider.RoleModeler, "muse-wonder-1.0") || !c.AcceptsModel(provider.RoleScenario, "muse-wonder-1.0") ||
+		c.AcceptsModel(provider.RoleAnalyst, "muse-wonder-1.0") || c.AcceptsModel(provider.RoleModeler, "muse-spark-1.3-contributor") {
+		t.Error("the live client's model choice")
+	}
+	if p, err := photoPath(live, provider.DefaultBudget(), unusedLedger(t), "test-worker"); err != nil || !p.Judge.AcceptsModel(provider.RoleModeler, "muse-wonder-1.0") {
+		t.Errorf("the live photo judge's model choice: %v", err)
+	}
+	claudeLive := loadAI(t, with(append(h018, "GEMINUS_AI_LIVE", "on")...))
+	if cc, _, err := aiClient(claudeLive, unusedLedger(t), "test-worker"); err != nil || cc.AcceptsModel(provider.RoleModeler, "muse-wonder-1.0") {
+		t.Errorf("Claude's client takes a model choice: %v", err)
 	}
 	// An approval goes to its own provider's adapter only.
 	if b, err := liveBackend(config.AIProviderAnthropic, live.Approval, "muse-spark-1.3", live.Credentials); err == nil {

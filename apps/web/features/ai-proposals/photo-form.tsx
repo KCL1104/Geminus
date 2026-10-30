@@ -12,19 +12,22 @@
 // While the editor has unsaved edits the button is blocked, focusable, with
 // the reason beside it, and it opens nothing. Choosing the same file again
 // (a retry) reuses its key (D-011); a file larger than the contract takes is
-// refused here, before anything is sent.
+// refused here, before anything is sent. H-049: the vision model is the one
+// the person chose in the ask form (aiModel); only Muse Wonder adds the model
+// field, and a deployment whose photo path does not offer it refuses it.
 import { useId, useRef, useState } from "react";
 import { FileTrigger } from "react-aria-components";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
 import { invalidRequestProblem, type Problem } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
-import type { Model } from "../../lib/contracts";
+import type { Model, ProposalModel } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import type { MessageKey } from "../../lib/i18n/translate";
 import { Button } from "../../ui/button";
 import { CameraIcon } from "../../ui/icons";
 import { StatusRegion } from "../../ui/status";
+import { DEFAULT_MODEL, modelField } from "./model-choice";
 import styles from "./proposal.module.css";
 
 /** The most bytes an image may have (proposal.schema.json source_image.size_bytes, the server's photo.MaxBytes: 5 MiB). */
@@ -44,6 +47,8 @@ export const PHOTO_DOMAINS: readonly Model["domain"][] = ["electronics_line"];
 function advice(p: Problem): MessageKey | undefined {
   const code = p.details[0]?.code ?? p.code;
   switch (code) {
+    case "AI_MODEL_NOT_APPROVED":
+      return "ask.model.unavailable";
     case "PAYLOAD_TOO_LARGE":
       return "photo.problem.tooLarge";
     case "IMAGE_FORMAT_REJECTED":
@@ -56,8 +61,10 @@ function advice(p: Problem): MessageKey | undefined {
   return undefined;
 }
 
-export function PhotoForm({ model, blockedReason, reasonId, noticeId, onCreated }: {
+export function PhotoForm({ model, aiModel = DEFAULT_MODEL, blockedReason, reasonId, noticeId, onCreated }: {
   model: Model;
+  /** The vision model the person chose (H-049). */
+  aiModel?: ProposalModel;
   /** Why sending must wait (unsaved edits the page would lose), or null. */
   blockedReason: string | null;
   /** The element that shows blockedReason on screen (the ask form's). */
@@ -86,11 +93,11 @@ export function PhotoForm({ model, blockedReason, reasonId, noticeId, onCreated 
       return;
     }
     // The same file again on the same version (a retry) takes the same key; another a new one.
-    const request = `${model.id} ${latest.id} ${locale} ${file.name} ${file.size} ${file.lastModified}`;
+    const request = `${model.id} ${latest.id} ${locale} ${aiModel} ${file.name} ${file.size} ${file.lastModified}`;
     if (sent.current?.request !== request) sent.current = { request, key: newIdempotencyKey() };
     busy.current = true;
     setSending(true);
-    const r = await api.createImageProposal(model.id, { base_version_id: latest.id, output_locale: locale }, file, sent.current.key);
+    const r = await api.createImageProposal(model.id, { base_version_id: latest.id, output_locale: locale, ...modelField(aiModel) }, file, sent.current.key);
     busy.current = false;
     setSending(false);
     if (r.ok) onCreated(r.data.proposal_id);

@@ -435,8 +435,8 @@ func keyFree(getenv func(string) string, p AIProvider, approval, approvalVar, mo
 // (LoadAPIAI, which never reads one; T-053 I5): the approval approvalVar
 // names (approval) is one this build records, of p, lacking nothing;
 // modelVar names its model exactly; this build prices its model (and its
-// segmentation model); with images, its data policy names images; and the
-// switch is on. It returns the model modelVar names and why, the typed
+// segmentation model, and each model a person may choose, H-049); with
+// images, its data policy names images; and the switch is on. It returns the model modelVar names and why, the typed
 // reason live AI is off for p ("" when every condition holds). A condition
 // that fails while the switch is on is an error, named after the variable
 // (the record's gaps and the price after switchVar); an approval this build
@@ -451,6 +451,10 @@ func liveGate(getenv func(string) string, p AIProvider, approval, approvalVar, m
 	}
 	model := getenv(modelVar)
 	_, priced := spend.PriceOf(rec.Model)
+	for _, m := range rec.ProposalModels { // H-049: every model a person may choose
+		_, ok := spend.PriceOf(m)
+		priced = priced && ok
+	}
 	if rec.SegmentationModel != "" {
 		_, imagePriced := spend.ImagePriceOf(rec.SegmentationModel)
 		priced = priced && imagePriced

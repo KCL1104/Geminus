@@ -41,7 +41,7 @@ func TestResearchGeneration(t *testing.T) {
 	}
 	f := scripted(t, "Drop a runner.", answer)
 	st := stored(t, "edit", "Drop a runner.")
-	gen, err := h(f).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true)
+	gen, err := h(f).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestResearchGeneration(t *testing.T) {
 
 	// needs_input keeps the sources too; without research nothing is
 	// stored of a web search, whatever the answer names.
-	gen, err = h(fake.New()).generateAsked(ctx, st.proposal.OrganizationID, stored(t, "scenario", "Faster ovens."), testAttribution, true)
+	gen, err = h(fake.New()).generateAsked(ctx, st.proposal.OrganizationID, stored(t, "scenario", "Faster ovens."), testAttribution, true, "")
 	if err != nil || gen.outcome.Status != review.NeedsInput || len(gen.sources) != 2 {
 		t.Fatalf("needs_input: %+v %v", gen.sources, err)
 	}
@@ -127,12 +127,12 @@ func TestResearchGeneration(t *testing.T) {
 
 	// A provider that may not research fails the job for good, before any
 	// call: the deployment refuses such a request first (cmd/api).
-	_, err = h(provider.Disabled{}).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true)
+	_, err = h(provider.Disabled{}).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true, "")
 	var jf *jobs.Failure
 	if !errors.As(err, &jf) || jf.Code != "AI_PROVIDER_NOT_CONFIGURED" || jf.Retryable {
 		t.Errorf("disabled: %v", err)
 	}
-	_, err = h(noResearch{fake.New()}).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true)
+	_, err = h(noResearch{fake.New()}).generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true, "")
 	if !errors.As(err, &jf) || jf.Code != "AI_RESEARCH_UNSUPPORTED" || jf.Retryable || jf.Message != providerMessages[provider.CodeResearchUnsupported] {
 		t.Errorf("a backend without web search: %v", err)
 	}
@@ -159,11 +159,11 @@ func TestResearchFailureIsFinal(t *testing.T) {
 		}
 		st := stored(t, "edit", "Busy.")
 		var jf *jobs.Failure
-		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true)
+		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, true, "")
 		if !errors.As(err, &jf) || jf.Retryable || jf.Code != "AI_"+strings.ToUpper(string(code)) || jf.Message != providerMessages[code] {
 			t.Errorf("%s with research: %+v", code, jf)
 		}
-		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, false)
+		_, err = h.generateAsked(ctx, st.proposal.OrganizationID, st, testAttribution, false, "")
 		if !errors.As(err, &jf) || !jf.Retryable {
 			t.Errorf("%s without research: %+v", code, jf)
 		}

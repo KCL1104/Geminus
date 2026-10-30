@@ -68,6 +68,10 @@ type ProposalContext struct {
 	// is dropped, and the steps that carry one are counted
 	// (WebSearch.StepsWithIDs).
 	Markers []string
+	// Model is the model the person chose for the proposal (H-049), by its
+	// exact ID; "" asks the backend's own model. Only a ModelChooser that
+	// may ask it for the role is handed the call (model.go).
+	Model string
 }
 
 // MappingContext is a sanitized mapping suggestion request.
@@ -164,6 +168,9 @@ type Request struct {
 	// Reservation is the spend reservation a metered client made for the
 	// call (T-053); a billable backend refuses a request without one.
 	Reservation string
+	// Model is the model the call asks for (H-049, ProposalContext.Model);
+	// "" for the backend's own. Only a ModelChooser is sent one.
+	Model string
 }
 
 // Response is a Backend's answer: untrusted text and accounting.
@@ -280,7 +287,7 @@ func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 // call runs one checked request and returns the schema-valid answer and,
 // for a research call, what its web search did. A metered client also
 // reserves before the call and settles after it (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, out any) (jsontext.Value, Metadata, Research, error) {
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, chosen string, out any) (jsontext.Value, Metadata, Research, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Metadata{}, Research{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -311,6 +318,11 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 			return nil, Metadata{}, Research{}, NewError(CodePolicyNotApproved, 0, "")
 		}
 	}
+	if chosen != "" && !c.AcceptsModel(role, chosen) {
+		// A model the backend cannot ask, or may not for the role (H-049):
+		// never asked of another model instead.
+		return nil, Metadata{}, Research{}, NewError(CodeModelNotApproved, 0, "")
+	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
 		return nil, Metadata{}, Research{}, NewError(CodeContextTooLarge, 0, "")
 	}
@@ -321,9 +333,14 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 
 	meta := Metadata{Provider: c.backend.Name(), Role: role, TemplateVersion: p.TemplateVersion, OutputSchema: role.OutputSchema(),
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
-	req := Request{Prompt: p, OutputSchema: role.OutputSchema(),
+	req := Request{Prompt: p, OutputSchema: role.OutputSchema(), Model: chosen,
 		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
 	timeout := c.budget.Timeout
+	if SlowModel(chosen) {
+		// A slow model (H-049): a research call's timeouts, at most D-007's
+		// job timeout; the output bound and retries are the call's own.
+		req.AttemptTimeout, timeout = c.budget.ResearchTimeout(req.AttemptTimeout), c.budget.ResearchTimeout(timeout)
+	}
 	if len(p.Images) > 0 {
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
 	}
@@ -378,6 +395,11 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// answer this request may take (H-046 (2)).
 		return invalid(model.NewIssue(OutputInvalid, "", "the answer used web search, which the request did not offer", model.SeverityError))
 	}
+	if req.Model != "" && c.meter != nil && resp.Model != req.Model {
+		// A live answer from another model than the one the person chose
+		// (H-049): never taken in its place (its usage is settled above).
+		return invalid(model.NewIssue(OutputInvalid, "", "the answer is not from the model the request asked for", model.SeverityError))
+	}
 	if len(resp.Text) == 0 || len(resp.Text) > c.budget.MaxOutputBytes {
 		return invalid(model.NewIssue(OutputInvalid, "", "the answer is empty or larger than the output budget", model.SeverityError))
 	}
@@ -410,7 +432,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 // answer names.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, &out)
+	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, in.Model, &out)
 	if err != nil {
 		return ProposalResult{Metadata: meta}, err
 	}
@@ -427,7 +449,7 @@ func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, "", &out)
 	if err != nil {
 		return MappingResult{Metadata: meta}, err
 	}
@@ -437,7 +459,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, &out)
+	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out)
 	if err != nil {
 		return AnalysisResult{Metadata: meta}, err
 	}

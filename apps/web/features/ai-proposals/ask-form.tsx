@@ -23,13 +23,17 @@
 // form says to send without it. A photo is never researched (createImageProposal
 // takes no research): where the photo button is offered, the opt-in's
 // description says it applies to what is sent in words only (review round 1,
-// L3), and the photo request is sent as it always was.
+// L3), and the photo request is sent as it always was. H-049: the person
+// chooses the model (ModelChoice: Muse Spark 1.3, the default, or Muse Wonder
+// 1.0), for what is sent in words and for a photo alike; only Muse Wonder adds
+// model to a request, and a deployment that does not offer it refuses it (503,
+// details[0].code AI_MODEL_NOT_APPROVED), the form saying to choose the default.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
 import type { Problem } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
-import type { Model, ProposalRequest } from "../../lib/contracts";
+import type { Model, ProposalModel, ProposalRequest } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import type { MessageKey } from "../../lib/i18n/translate";
 import { Button } from "../../ui/button";
@@ -38,14 +42,21 @@ import { SendIcon } from "../../ui/icons";
 import { TextField } from "../../ui/field";
 import { Select } from "../../ui/select";
 import { StatusRegion } from "../../ui/status";
+import { DEFAULT_MODEL, ModelChoice, modelField } from "./model-choice";
 import { PhotoForm } from "./photo-form";
 import styles from "./proposal.module.css";
 
 type Mode = ProposalRequest["mode"];
 
-/** What the form says for a refusal it knows: web research this deployment cannot do (H-046 (2)). */
-function advice(p: Problem): MessageKey | undefined {
-  return p.details[0]?.code === "AI_RESEARCH_UNSUPPORTED" ? "ask.research.unavailable" : undefined;
+/** What the form says for a refusal it knows: web research this deployment cannot do (H-046 (2)), a model it does not offer (H-049). */
+export function advice(p: Problem): MessageKey | undefined {
+  switch (p.details[0]?.code) {
+    case "AI_RESEARCH_UNSUPPORTED":
+      return "ask.research.unavailable";
+    case "AI_MODEL_NOT_APPROVED":
+      return "ask.model.unavailable";
+  }
+  return undefined;
 }
 
 export function AskForm({ model, blockedReason, onCreated, onReload, photo = false }: {
@@ -69,6 +80,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const [intent, setIntent] = useState("");
   const [mode, setMode] = useState<Mode>("edit");
   const [research, setResearch] = useState(false);
+  const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const [missing, setMissing] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [sending, setSending] = useState(false);
@@ -85,7 +97,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
     }
     setMissing(false);
     setProblem(null);
-    const body: ProposalRequest = { base_version_id: latest.id, mode, intent: words, output_locale: locale, ...(research ? { research: true } : {}) };
+    const body: ProposalRequest = { base_version_id: latest.id, mode, intent: words, output_locale: locale, ...(research ? { research: true } : {}), ...modelField(aiModel) };
     // The same request again (a retry) takes the same key; another request a new one.
     const request = `${model.id} ${JSON.stringify(body)}`;
     if (sent.current?.request !== request) sent.current = { request, key: newIdempotencyKey() };
@@ -133,6 +145,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         />
         <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
       </div>
+      <ModelChoice value={aiModel} onChange={setAiModel} />
       <div className={styles.askResearch}>
         <Checkbox isSelected={research} onChange={setResearch} aria-describedby={photo ? `${researchHintId} ${researchPhotoId}` : researchHintId} data-research>
           {t("ask.research")}
@@ -150,7 +163,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         <Button variant="ai" icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
           {t("ask.send")}
         </Button>
-        {photo && <PhotoForm model={model} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}
+        {photo && <PhotoForm model={model} aiModel={aiModel} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}
         {blockedReason !== null && (
           <p id={reasonId} className={styles.reason}>
             {blockedReason}

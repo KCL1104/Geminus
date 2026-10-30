@@ -17,7 +17,10 @@
 // ready and needs_input only; a key used again with the same body gets the
 // first answer (D-011). What it does NOT do is the server's work: it does
 // not call any AI, review a patch, validate a model or compute a risk; each
-// sample's validation and risk are written in samples.ts.
+// sample's validation and risk are written in samples.ts. H-049: a request
+// that names a model (model in the body, or the photo's model part) is
+// answered as written by that model of Meta (generated_by.model), as the e2e
+// fake API does; nothing ran it.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { applyPatch } from "../../../features/model-editor/patch";
@@ -49,7 +52,7 @@ export type ProposalStandInOptions = {
 export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
 
 /** What a multipart request carried, as a call records it: its parts in order, the fields, and the file's name, type and size. */
-export type FormCall = { parts: string[]; base_version_id: string | null; output_locale: string | null; file: { name: string; type: string; size: number } | null };
+export type FormCall = { parts: string[]; base_version_id: string | null; output_locale: string | null; model: string | null; file: { name: string; type: string; size: number } | null };
 
 function formCall(form: FormData): FormCall {
   const file = form.get("file");
@@ -61,6 +64,7 @@ function formCall(form: FormData): FormCall {
     parts: [...form.keys()],
     base_version_id: field("base_version_id"),
     output_locale: field("output_locale"),
+    model: field("model"),
     file: file instanceof Blob ? { name: file instanceof File ? file.name : "", type: file.type, size: file.size } : null,
   };
 }
@@ -199,6 +203,8 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const id = proposalId(proposals.size + 1);
         // H-046 (2): asked with web research on, the answer names the model, its searches and the pages it read.
         const answer = { ...(req.mode === "scenario" ? readyScenario(id) : readyEdit(id)), ...(req.research === true ? researched : {}) };
+        // H-049: the model the person chose wrote it, as the stand-in tells it.
+        if (req.model !== undefined) answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: req.model };
         const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true };
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
@@ -222,14 +228,17 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
       }
       const base = String(form.get("base_version_id") ?? "");
       const locale = form.get("output_locale");
+      const chosen = form.get("model");
       const digest = fakeHash(Array.from(bytes));
-      return once(key, `image:${base}:${String(locale)}:${digest}`, () => {
+      return once(key, `image:${base}:${String(locale)}:${String(chosen)}:${digest}`, () => {
         if (base !== latest().id) return { status: 409, body: { error: { code: "MODEL_VERSION_CONFLICT", message: "base_version_id is not the model's latest version", details: [{ path: "/base_version_id", reason: "not the model's latest version" }], request_id: REQUEST } }, keep: false };
         const id = proposalId(proposals.size + 1);
         // The stand-in reads no pixels: the size in pixels is the sample photo's.
         const photo = { ...samplePhoto, media_type: png ? ("image/png" as const) : ("image/jpeg" as const), size_bytes: file.size, content_hash: digest };
         const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: base, mode: "edit", status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, source_image: photo };
-        proposals.set(id, { proposal: generating, answer: { ...readyFromPhoto(id, photo), base_version_id: base }, polls: opts.generatingPolls ?? 2 });
+        const answer = readyFromPhoto(id, photo);
+        if (typeof chosen === "string") answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: chosen };
+        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: base }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });
     }

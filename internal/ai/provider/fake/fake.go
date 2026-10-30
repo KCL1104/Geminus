@@ -84,6 +84,14 @@ func ResearchSteps() provider.Research {
 // AcceptsResearch: the fake researches for the proposal roles (H-046 (2)).
 func (b *Backend) AcceptsResearch(role provider.Role) bool { return role.Researches() }
 
+// AcceptsModel: the fake takes a proposal request that names a model
+// (H-049) and answers as itself (its answer's model is "fake": it runs no
+// model and never claims to be the one chosen); Requests shows the model
+// asked for. The other roles take none.
+func (b *Backend) AcceptsModel(role provider.Role, model string) bool {
+	return role.Researches() && model != ""
+}
+
 // ScriptResearch makes a research call whose key block is key report r as
 // its web search instead of ResearchSteps.
 func (b *Backend) ScriptResearch(key string, r provider.Research) {

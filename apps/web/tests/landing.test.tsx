@@ -104,8 +104,8 @@ describe("the landing's content (H-048)", () => {
     // A Meta model's pill has the accent's edge (the AI), Geminus's the ink (its own check).
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="ai"]')).toHaveLength(2);
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="server"]')).toHaveLength(1);
-    // Review round 1, M1: two Meta models, and web search as a tool of the Meta Model API that Muse Spark uses, not a model.
-    expect([...el.querySelectorAll("dl")[0]!.querySelectorAll("dt")].map(text)).toEqual([`Muse Spark 1.3 ${meta}`, `SAM 3.1 ${meta}`, `${c["landing.meta.searchName"]} ${c["landing.meta.tool"]}`]);
+    // Review round 1, M1: the Meta models (H-049: three, Muse Wonder 1.0 the optional one for proposals), and web search as a tool of the Meta Model API that the Muse models use, not a model.
+    expect([...el.querySelectorAll("dl")[0]!.querySelectorAll("dt")].map(text)).toEqual([`Muse Spark 1.3 ${meta}`, `Muse Wonder 1.0 ${meta}`, `SAM 3.1 ${meta}`, `${c["landing.meta.searchName"]} ${c["landing.meta.tool"]}`]);
     // Review round 1, M2: the decision's screen is Muse Spark's own proposal from the live demo, which names its writer.
     expect([...el.querySelectorAll("ol > li")][2]!.querySelector("img")?.getAttribute("src")).toBe("/landing/proposed-1188.webp");
     expect([...el.querySelectorAll("ol > li")][2]!.querySelector("figcaption")?.textContent).toBe(c["landing.shot.proposed.caption"]);

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/kcl1104/geminus/internal/analyses"
@@ -40,6 +41,8 @@ type options struct {
 	ai        proposals.Availability
 	photo     proposals.Availability
 	research  proposals.Availability
+	// models and photoModels are the models a person may choose (H-049).
+	models, photoModels []string
 }
 
 // WithObjects gives the API private object storage (D-044): dataset
@@ -86,6 +89,16 @@ func WithPhotoAI(a proposals.Availability) Option { return func(o *options) { o.
 // proposals without research.
 func WithResearchAI(a proposals.Availability) Option { return func(o *options) { o.research = a } }
 
+// WithProposalModels says which models a person may choose for a proposal
+// in words (words) and from a photo (photo) (H-049; cmd/api derives them from
+// the approvals the worker's live gates accept). Without it a request that
+// names a model is refused with 503 AI_POLICY_NOT_APPROVED (details[0].code
+// AI_MODEL_NOT_APPROVED) and nothing is stored; one that names none asks the
+// deployment's model.
+func WithProposalModels(words, photo []string) Option {
+	return func(o *options) { o.models, o.photoModels = slices.Clone(words), slices.Clone(photo) }
+}
+
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
 func Domains() ([]string, error) {
@@ -122,7 +135,8 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	models.Register(mux, log, v, db, &models.Service{DB: db, Packs: served})
 	runs.Register(mux, log, v, db, &runs.Service{DB: db, Packs: served, Objects: o.objects, Limits: o.limits}, o.stream)
 	upload.Register(mux, log, v, db, &upload.Service{DB: db, Objects: o.objects, MaxBytes: o.maxUpload}, o.upload)
-	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Research: o.research, Objects: o.objects})
+	proposals.Register(mux, log, v, db, &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Research: o.research, Objects: o.objects,
+		Models: o.models, PhotoModels: o.photoModels})
 	// A person's decision (T-026): it calls no provider, so it does not
 	// depend on whether AI is available; it reads dataset snapshots again
 	// from the object storage given.

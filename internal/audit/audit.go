@@ -205,7 +205,9 @@ var catalogue = map[string]spec{
 		// hash and size.
 		"source": oneOf("intent", "image"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count},
 		// H-046 (2): the person asked for web research first.
-		"research": {shape: flag}}},
+		"research": {shape: flag},
+		// H-049: the model the person chose (absent: the deployment's).
+		"requested_model": oneOf("muse-spark-1.3", "muse-wonder-1.0")}},
 	"proposal.conflict": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"latest_version_id": idOf("mv")}},
 	"proposal.approve": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),

@@ -242,7 +242,9 @@ func (c *Client) reserve(ctx, callCtx context.Context, org string, role Role, at
 		return nil, invalidRequest()
 	}
 	price, ok := spend.PriceOf(q.Model)
-	if !ok {
+	if !ok || (req.Model != "" && q.Model != req.Model) {
+		// A model this build cannot price, or a quote of another model than
+		// the one the call asks for (H-049): nothing is reserved or sent.
 		return nil, invalidRequest()
 	}
 	geo := spend.GeoPriced(q.Model)

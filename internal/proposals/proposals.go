@@ -24,11 +24,13 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/locale"
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
@@ -94,6 +96,10 @@ type UnavailableError struct {
 	// deployment's provider may not search for it (Service.Research, H-046
 	// (2)), details[0].code CodeResearchUnsupported.
 	Research bool
+	// Model: the request names a model this deployment's approval does not
+	// list for proposals (Service.Models, Service.PhotoModels; H-049),
+	// details[0].code CodeModelNotApproved at /model.
+	Model bool
 }
 
 // CodeResearchUnsupported: the request asks for web research and this
@@ -103,8 +109,22 @@ type UnavailableError struct {
 // it).
 const CodeResearchUnsupported = "AI_RESEARCH_UNSUPPORTED"
 
+// CodeModelNotApproved: the request names a model this deployment's
+// approval does not list for proposals (H-049), so the worker would refuse
+// the call; the code the job would fail it with
+// (provider.CodeModelNotApproved, as internal/proposals/generator writes
+// it).
+const CodeModelNotApproved = "AI_MODEL_NOT_APPROVED"
+
+// ProposalModels are the models a request may name (common.schema.json
+// ProposalModel, H-049): Muse Spark 1.3 and Muse Wonder 1.0, by their exact
+// model IDs. Whether this deployment takes one is Service.Models'.
+var ProposalModels = []string{"muse-spark-1.3", "muse-wonder-1.0"}
+
 func (e *UnavailableError) Error() string {
 	switch {
+	case e.Model:
+		return "proposals: the model is not approved for proposals in this deployment (AI_POLICY_NOT_APPROVED, AI_MODEL_NOT_APPROVED)"
 	case e.Research && e.Availability == PolicyNotApproved:
 		return "proposals: web research is not approved for this deployment's provider (AI_POLICY_NOT_APPROVED, AI_RESEARCH_UNSUPPORTED)"
 	case e.Research:
@@ -142,6 +162,15 @@ type Service struct {
 	// from a key); the zero value refuses every request that asks for
 	// research, whatever AI says of proposals without it.
 	Research Availability
+	// Models are the models a person may choose for a proposal in words
+	// (H-049; cmd/api takes them from the approval the worker's live gate
+	// accepts, aiapproval.Approval.ProposalModels, never from a key; both of
+	// ProposalModels with the fake); a request that names another is
+	// refused, and nil refuses every request that names one. A request that
+	// names none asks the deployment's model.
+	Models []string
+	// PhotoModels are Models for a photo: the photo path's approval's.
+	PhotoModels []string
 }
 
 // The roles each operation requires (x-required-roles, planning/api-operations.json).
@@ -154,6 +183,20 @@ const (
 	createOperation = "createProposal"
 	maxLimit        = 100
 )
+
+// checkModel refuses a model this deployment's approval does not list for
+// proposals (H-049): Models, or PhotoModels for a photo. "" is the
+// deployment's model.
+func (s *Service) checkModel(model string, photo bool) error {
+	allowed := s.Models
+	if photo {
+		allowed = s.PhotoModels
+	}
+	if model == "" || slices.Contains(allowed, model) {
+		return nil
+	}
+	return &UnavailableError{Availability: PolicyNotApproved, Model: true}
+}
 
 func (s *Service) policy() jobs.Policy {
 	if s.Policy == (jobs.Policy{}) {
@@ -171,6 +214,8 @@ type CreateRequest struct {
 	OutputLocale  string          `json:"output_locale,omitzero"`
 	// Research: the person asks for web research first (H-046 (2)).
 	Research bool `json:"research,omitzero"`
+	// Model: the model the person chose (H-049); "" for the deployment's.
+	Model string `json:"model,omitzero"`
 }
 
 // RequestContext is ProposalRequest.context.
@@ -223,6 +268,9 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if req.Research && s.Research != Available {
 			return &UnavailableError{Availability: s.Research, Research: true}
 		}
+		if err := s.checkModel(req.Model, false); err != nil {
+			return err
+		}
 		p, err := s.prepare(ctx, tx, m, modelID, req)
 		if err != nil {
 			return err
@@ -230,16 +278,20 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		if p, err = store.Insert(ctx, tx, p); err != nil {
 			return err
 		}
-		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research), s.policy()); err != nil {
+		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research, req.Model), s.policy()); err != nil {
 			return err
 		}
 		// IDs, the mode, the language and a count: never the intent
 		// (customer prose) or the selected IDs (SECURITY §9); whether the
-		// person asked for research (H-046 (2)).
+		// person asked for research (H-046 (2)); the model they chose
+		// (H-049).
 		meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
 			"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}
 		if req.Research {
 			meta["research"] = true
+		}
+		if req.Model != "" {
+			meta["requested_model"] = req.Model
 		}
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
 			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID, Metadata: meta}); err != nil {
@@ -265,15 +317,29 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 // again on its own: the proposal fails, and the person asks again.
 const ResearchJobAttempts = 1
 
+// SlowModelJobAttempts is the attempts of a job whose chosen model is a slow
+// one (provider.SlowModel: Muse Wonder 1.0, H-049; review round 1, M1): one,
+// as for research. Its call may run to the 300 s deadline and is then
+// settled as an attempt that may have been billed, at its bound, so a
+// failed one is never run again on its own: the person asks again.
+const SlowModelJobAttempts = 1
+
 // proposalJob is the model_proposal job of proposal id: its frozen input
-// (the proposal and the request; the person's choice of research, absent
-// for a proposal without it) and, for research, a single attempt.
-func proposalJob(org, id, requestID string, research bool) jobs.New {
+// (the proposal and the request; the person's choice of research and of
+// model, H-049, each absent when not made) and, for research or a slow
+// model, a single attempt.
+func proposalJob(org, id, requestID string, research bool, model string) jobs.New {
 	j := jobs.New{ID: ids.New("job"), OrganizationID: org, Type: jobs.ModelProposal, Resource: jobs.Resource{AIProposalID: id},
 		Payload: map[string]any{"proposal_id": id, "request_id": requestID}}
 	if research {
 		j.Payload["research"] = true
 		j.MaxAttempts = ResearchJobAttempts
+	}
+	if provider.SlowModel(model) {
+		j.MaxAttempts = SlowModelJobAttempts
+	}
+	if model != "" {
+		j.Payload["model"] = model
 	}
 	return j
 }
