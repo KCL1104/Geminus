@@ -42,6 +42,10 @@ const (
 	Approved   Status = "approved"
 	Rejected   Status = "rejected"
 	Conflicted Status = "conflicted"
+	// Applied: an AI investigation acted on its own ready proposal for the
+	// person who started it (H-061, 0019): it saved its scenario or wrote
+	// its edit into the draft. Never a decision, and final.
+	Applied Status = "applied"
 )
 
 // Proposal is one row of twin.ai_proposals, with the request that created
@@ -87,6 +91,15 @@ type Proposal struct {
 	// Image is the photo the proposal was asked for with (T-056, 0017);
 	// nil for a proposal asked for in words.
 	Image *Image
+	// InvestigationID and InvestigationIndex are the AI's label (H-061,
+	// 0019): the investigation that asked for it and its place there (what-if
+	// 1..3, or 1 for its one edit), set by the database from the
+	// transaction's acting-for scope; nil for a person's proposal.
+	InvestigationID    *string
+	InvestigationIndex *int
+	// AppliedDraftRevision is the draft revision an applied edit was
+	// written into (status applied, mode edit); nil otherwise.
+	AppliedDraftRevision *int64
 }
 
 // Image is what the server records of a photo proposal's image (T-056,
@@ -162,7 +175,8 @@ const columns = `p.id, p.model_id, p.base_version_id, p.source_import_id, p.mode
 	p.candidate_dataset_bindings, p.server_risk_level, p.provider_risk_claim, p.risk_level, p.confidence, p.validation,
 	p.provider_metadata, p.error, p.new_version_id, p.scenario_id, p.decided_by, p.decided_at, p.decision_comment,
 	p.created_by, p.created_at, coalesce(j.payload->>'request_id', ''), coalesce(j.payload->>'model', ''),
-	i.object_key, i.content_hash, i.size_bytes, i.media_type, i.width, i.height`
+	i.object_key, i.content_hash, i.size_bytes, i.media_type, i.width, i.height,
+	p.investigation_id, p.investigation_index, p.applied_draft_revision`
 
 // from joins each proposal with its job (one at most, 0001), whose payload
 // holds the request that created it, and with its image (one at most,
@@ -183,7 +197,8 @@ func scan(row pgx.Row, org string) (Proposal, error) {
 		&bindings, &p.ServerRisk, &p.ProviderRisk, &p.Risk, &p.Confidence, &p.Validation,
 		&p.ProviderMetadata, &p.Failure, &p.NewVersionID, &p.ScenarioID, &p.DecidedBy, &p.DecidedAt, &p.DecisionComment,
 		&p.CreatedBy, &p.CreatedAt, &p.RequestID, &p.RequestedModel,
-		&imageKey, &imageHash, &imageSize, &imageType, &imageWidth, &imageHeight)
+		&imageKey, &imageHash, &imageSize, &imageType, &imageWidth, &imageHeight,
+		&p.InvestigationID, &p.InvestigationIndex, &p.AppliedDraftRevision)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Proposal{}, ErrNotFound
 	}
@@ -359,6 +374,18 @@ func Approve(ctx context.Context, tx pgx.Tx, org, id, user string, newVersionID,
 	return decided(tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='approved', decided_by=$3, new_version_id=$4, scenario_id=$5,
 		  decision_comment=$6
 		WHERE organization_id=$1 AND id=$2 AND status='ready'`, org, id, user, newVersionID, scenarioID, comment))
+}
+
+// Apply records the ready proposal id as applied by its own AI
+// investigation (H-061, 0019), with its one effect: scenarioID (scenario
+// mode) or draftRevision (edit mode), which the caller wrote from this
+// proposal earlier in the same transaction. No decider, time or comment:
+// it is not a decision. Only the investigation's acting-for transaction
+// for its requester may, while it runs and before its deadline; 0019
+// checks the effect and refuses any other.
+func Apply(ctx context.Context, tx pgx.Tx, org, id string, scenarioID *string, draftRevision *int64) error {
+	return decided(tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='applied', scenario_id=$3, applied_draft_revision=$4
+		WHERE organization_id=$1 AND id=$2 AND status='ready'`, org, id, scenarioID, draftRevision))
 }
 
 // Reject records the ready or needs_input proposal id as rejected by user,

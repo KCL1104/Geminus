@@ -650,12 +650,14 @@ var rules = []rule{
 		// AI package (TestPhotopipelineRuleKeepsTheAIPackagesLists); it
 		// reaches Eino's closure, which links net, os and syscall underneath,
 		// only through internal/aigraph/photo, which aigraph-has-no-storage
-		// holds. No other AI package has a gateway.
+		// holds. No other AI package has a gateway. Its third-party list is
+		// the AI packages' (aiThirdParty, which H-061 A2 widened with Unicode
+		// normalization; the A3 merge had left this copy behind).
 		name:       "photopipeline-is-pure-but-its-graph",
 		why:        "the photo pipeline does no I/O of its own, like every AI package outside the adapters; it reaches Eino only through the photo role graph (ADR-031, AGENTS.md §2, SECURITY §7)",
 		applies:    []string{"./internal/ai/photopipeline"},
 		forbid:     cat(ioStd, llmSDKs),
-		thirdParty: kernelThirdParty,
+		thirdParty: aiThirdParty,
 		stdOnly:    kernelStd,
 		goOnly:     true,
 		through:    []string{"./internal/aigraph/photo"},

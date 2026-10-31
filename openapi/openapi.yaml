@@ -1678,7 +1678,9 @@ paths:
         X-Request-ID). The server then takes the model row, its draft and the proposal, in that order (the lock order
         of publishVersion), and checks: the proposal is ready
         (approved, rejected or conflicted: 409 PROPOSAL_ALREADY_DECIDED, whatever the key, D-030; generating,
-        needs_input, invalid or failed: 409 LIFECYCLE_CONFLICT); its base is still the model''s latest version
+        needs_input, invalid or failed: 409 LIFECYCLE_CONFLICT; applied, H-061 PROPOSED: an AI investigation already
+        saved its scenario or wrote its edit into the draft, which is final and never approved: 409 LIFECYCLE_CONFLICT,
+        nothing changes); its base is still the model''s latest version
         (otherwise the proposal becomes conflicted, for the caller, with an audit event, and 409
         MODEL_VERSION_CONFLICT is stored as this key''s answer: the only refusal that changes anything; there is no
         auto-rebase); expected_base_version_id names that base (409 MODEL_VERSION_CONFLICT at
@@ -1915,7 +1917,8 @@ paths:
         transaction that takes the model row before the proposal, as approveProposal
         does, so an approval and a rejection of one proposal run one after the other. Nothing else changes: no model,
         draft, version or scenario (TEST-006). approved, rejected or conflicted: 409 PROPOSAL_ALREADY_DECIDED;
-        generating, invalid or failed: 409 LIFECYCLE_CONFLICT. The answer is the proposal as getProposal shows it.'
+        generating, invalid or failed: 409 LIFECYCLE_CONFLICT; applied (H-061, PROPOSED: an AI investigation acted on
+        it; final, what it made stays): 409 LIFECYCLE_CONFLICT. The answer is the proposal as getProposal shows it.'
       tags:
       - Proposals
       x-origin: SOURCE

@@ -28,8 +28,8 @@ type Scenario struct {
 	CreatedBy        string         `json:"created_by"`
 	CreatedAt        string         `json:"created_at"`
 	// MadeByAI is the label of a scenario an AI investigation saved (H-061,
-	// PROPOSED); nil, and left out, for every other scenario. Nothing sets
-	// it yet: the label columns arrive with migration 0019.
+	// PROPOSED), from the database's label (0019); nil, and left out, for
+	// every other scenario.
 	MadeByAI *proposals.MadeByAI `json:"made_by_ai,omitzero"`
 }
 
@@ -74,7 +74,19 @@ func Public(r store.Scenario) (Scenario, error) {
 	if !scenarioIDs.MatchString(r.ID) || !userIDs.MatchString(r.CreatedBy) || r.SourceProposalID != nil && !proposalIDs.MatchString(*r.SourceProposalID) {
 		return Scenario{}, fmt.Errorf("scenarios: scenario %q is not a stored scenario", r.ID)
 	}
-	return Scenario{ID: r.ID, OrganizationID: r.OrganizationID, ModelID: r.ModelID, BaseVersionID: r.BaseVersionID, Name: r.Name,
+	out := Scenario{ID: r.ID, OrganizationID: r.OrganizationID, ModelID: r.ModelID, BaseVersionID: r.BaseVersionID, Name: r.Name,
 		Patch: jsontext.Value(canonical), PatchHash: r.PatchHash, SourceProposalID: r.SourceProposalID, CreatedBy: r.CreatedBy,
-		CreatedAt: timestamp(r.CreatedAt)}, nil
+		CreatedAt: timestamp(r.CreatedAt)}
+	if l := r.AI; l != nil {
+		// 0019: the AI saves a scenario only from its own proposal.
+		if r.SourceProposalID == nil {
+			return Scenario{}, fmt.Errorf("scenarios: scenario %s is labelled the AI's without its proposal", r.ID)
+		}
+		label, err := proposals.PlannedBy(l.InvestigationID, l.RequestedBy, l.PlannerModel)
+		if err != nil {
+			return Scenario{}, fmt.Errorf("scenarios: scenario %s: %w", r.ID, err)
+		}
+		out.MadeByAI = label
+	}
+	return out, nil
 }

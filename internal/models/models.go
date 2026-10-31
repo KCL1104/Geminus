@@ -140,6 +140,27 @@ type Draft struct {
 	Hash          string                  `json:"hash"`
 	OutOfDate     bool                    `json:"out_of_date"`
 	Issues        []model.ValidationIssue `json:"issues"`
+	// AIEdit is present only while the draft holds a change an AI
+	// investigation wrote (H-061, PROPOSED); nil, and left out, otherwise,
+	// so a person's draft is byte for byte as before.
+	AIEdit *DraftAIEdit `json:"ai_edit,omitzero"`
+}
+
+// DraftAIEdit is http.schema.json's Draft.ai_edit: the applied edit
+// proposal, its investigation, the revision it was written at and its
+// operation count.
+type DraftAIEdit struct {
+	ProposalID      string `json:"proposal_id"`
+	InvestigationID string `json:"investigation_id"`
+	Revision        int64  `json:"revision"`
+	Operations      int    `json:"operations"`
+}
+
+// VersionAIEdit is http.schema.json's ModelVersion.ai_edit: the applied
+// edit proposal a person published and its investigation.
+type VersionAIEdit struct {
+	ProposalID      string `json:"proposal_id"`
+	InvestigationID string `json:"investigation_id"`
 }
 
 // Version is http.schema.json#/$defs/ModelVersion.
@@ -156,6 +177,9 @@ type Version struct {
 	Comment         *string                `json:"comment"` // D-041; null when there was none
 	CreatedBy       string                 `json:"created_by"`
 	CreatedAt       string                 `json:"created_at"`
+	// AIEdit is present only on a version a person published from a draft
+	// that held an AI investigation's change (H-061, PROPOSED).
+	AIEdit *VersionAIEdit `json:"ai_edit,omitzero"`
 }
 
 // Models is http.schema.json#/$defs/Models; Versions is …/Versions.
@@ -383,7 +407,8 @@ func (s *Service) GetDraft(ctx context.Context, sc tenant.Scope, modelID string)
 
 // PatchDraft applies a JSON Patch (application/json-patch+json) to the
 // draft if it is still at revision expected (If-Match). The result only has
-// to be schema-valid; its semantic issues are saved with it (D-028).
+// to be schema-valid; its semantic issues are saved with it (D-028). An AI
+// edit the draft holds (H-061) is kept: the person's write carries it.
 func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, modelID string, expected int64, patchDoc []byte) (Draft, error) {
 	var out Draft
 	err := s.DB.Run(ctx, sc, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
@@ -405,48 +430,88 @@ func (s *Service) PatchDraft(ctx context.Context, sc tenant.Scope, requestID, mo
 		if err != nil {
 			return err
 		}
-		res, err := patch.Apply(current, patchDoc, patch.ManualDraft)
+		next, err := s.WriteDraft(ctx, tx, m, requestID, d, DraftChange{From: current, Patch: patchDoc, Mode: patch.ManualDraft})
 		if err != nil {
-			return err
-		}
-		if !res.Applied() {
-			return &InvalidError{Issues: capped(validate.Sort(res.PatchIssues))}
-		}
-		if res.Validation.IR == nil { // not schema-valid: nothing is saved (D-028)
-			return &InvalidError{Issues: capped(validate.Sort(res.Validation.Issues))}
-		}
-		if at, ok := nulAt(res.Candidate); ok {
-			return &InvalidError{Issues: []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, at, "U+0000 cannot be stored", model.SeverityError)}}
-		}
-		base, err := store.GetVersion(ctx, tx, m.OrganizationID, d.BaseVersionID)
-		if err != nil {
-			return err
-		}
-		issues, err := s.issues(ctx, m.OrganizationID, res.Validation.IR, res.Validation.Issues, base.DatasetBindings)
-		if err != nil {
-			return err
-		}
-		hash, err := hashing.Model(res.Candidate)
-		if err != nil {
-			return err
-		}
-		next, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: modelID, BaseVersionID: d.BaseVersionID,
-			Revision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)
-		if errors.Is(err, store.ErrStale) {
-			return ErrConflict
-		}
-		if err != nil {
-			return err
-		}
-		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "model.draft.update", TargetType: "model", TargetID: modelID, RequestID: requestID,
-			Metadata: map[string]any{"revision": next.Revision}}); err != nil {
 			return err
 		}
 		out, err = publicDraft(next, mdl.LatestVersionID)
 		return err
 	})
 	return out, err
+}
+
+// DraftChange is one write of a draft (WriteDraft): Patch applied to From
+// under Mode's patch profile.
+type DraftChange struct {
+	// From is the IR the patch applies to: the draft's own content (a
+	// person's edit) or, for the AI's edit, the base version's, which the
+	// caller checked the draft still holds.
+	From  jsontext.Value
+	Patch []byte
+	Mode  patch.Mode
+	// AIProposal is the applied edit proposal an AI investigation writes
+	// (H-061, internal/proposals/effect); nil keeps the one the draft names,
+	// if any, as a person's write does. Only the investigation's
+	// acting-for transaction may set one (0019).
+	AIProposal *string
+}
+
+// WriteDraft is the draft write of patchDraft (H-061 A4: shared with the
+// AI's edit, internal/proposals/effect): it computes the IR from c.From
+// and c.Patch, keeps it only if it is schema-valid (D-028: its semantic
+// issues are saved with it, the dataset bindings checked against the base
+// version's manifest), and writes it as d's next revision if the draft is
+// still at d.Revision (a CAS: ErrConflict otherwise), then audits
+// model.draft.update (with the AI's mark in an acting-for transaction).
+// The caller holds the model row (store.LockModel) and read d after taking
+// it. It returns the draft as written, with the AI edit it now names.
+func (s *Service) WriteDraft(ctx context.Context, tx tenant.Tx, m tenant.Membership, requestID string, d store.Draft, c DraftChange) (store.Draft, error) {
+	res, err := patch.Apply(c.From, c.Patch, c.Mode)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	if !res.Applied() {
+		return store.Draft{}, &InvalidError{Issues: capped(validate.Sort(res.PatchIssues))}
+	}
+	if res.Validation.IR == nil { // not schema-valid: nothing is saved (D-028)
+		return store.Draft{}, &InvalidError{Issues: capped(validate.Sort(res.Validation.Issues))}
+	}
+	if at, ok := nulAt(res.Candidate); ok {
+		return store.Draft{}, &InvalidError{Issues: []model.ValidationIssue{model.NewIssue(validate.IRSchemaInvalid, at, "U+0000 cannot be stored", model.SeverityError)}}
+	}
+	base, err := store.GetVersion(ctx, tx, m.OrganizationID, d.BaseVersionID)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	issues, err := s.issues(ctx, m.OrganizationID, res.Validation.IR, res.Validation.Issues, base.DatasetBindings)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	hash, err := hashing.Model(res.Candidate)
+	if err != nil {
+		return store.Draft{}, err
+	}
+	ai, edit := d.AIProposalID, d.AIEdit
+	if c.AIProposal != nil {
+		// The AI's edit: the proposal becomes applied at this revision in
+		// the same transaction (0019 checks it at commit).
+		ai, edit = c.AIProposal, nil
+	}
+	next, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: d.ModelID, BaseVersionID: d.BaseVersionID,
+		Revision: d.Revision + 1, IR: res.Candidate, Hash: hash, Issues: issues, UpdatedBy: m.UserID, AIProposalID: ai}, d.Revision)
+	if errors.Is(err, store.ErrStale) {
+		return store.Draft{}, ErrConflict
+	}
+	if err != nil {
+		return store.Draft{}, err
+	}
+	next.AIEdit = edit
+	if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
+		Action: "model.draft.update", TargetType: "model", TargetID: d.ModelID, RequestID: requestID,
+		Metadata: auditlog.MarkAI(map[string]any{"revision": next.Revision}, m.ActingFor)}); err != nil {
+		return store.Draft{}, err
+	}
+	return next, nil
 }
 
 // ResetDraft discards the draft's changes: it becomes the latest version
@@ -561,20 +626,31 @@ func (s *Service) Publish(ctx context.Context, sc tenant.Scope, requestID, key, 
 		if slices.ContainsFunc(issues, isError) {
 			return &InvalidError{Issues: issues} // capped by check
 		}
+		// A draft that holds an AI investigation's edit (H-061) names it in
+		// the version a person publishes from it ("Includes a change the AI
+		// wrote"); the draft that follows the version no longer does.
 		v, err := store.InsertVersion(ctx, tx, store.Version{ID: ids.New("mv"), OrganizationID: m.OrganizationID, ModelID: modelID,
 			Version: base.Version + 1, SchemaVersion: res.IR.SchemaVersion, ParentVersionID: &base.ID, IR: candidate, Hash: d.Hash,
-			DatasetBindings: resolution.Manifest, Comment: comment, CreatedBy: m.UserID})
+			DatasetBindings: resolution.Manifest, Comment: comment, CreatedBy: m.UserID, AIEditProposalID: d.AIProposalID})
 		if err != nil {
 			return err
+		}
+		if d.AIEdit != nil {
+			v.AIEditInvestigationID = &d.AIEdit.InvestigationID
 		}
 		if err := s.advance(ctx, tx, m, mdl, d, base, v, res.IR.Name); err != nil {
 			return err
 		}
 		// The comment is the user's text: it is kept with the version
-		// (D-041); audit metadata holds IDs and counts only.
+		// (D-041); audit metadata holds IDs and counts only, and whether the
+		// draft held the AI's edit.
+		meta := map[string]any{"version": v.Version, "model_id": modelID}
+		if d.AIProposalID != nil {
+			meta["contains_ai_edit"] = true
+		}
 		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
 			Action: "model.publish", TargetType: "model_version", TargetID: v.ID, RequestID: requestID,
-			Metadata: map[string]any{"version": v.Version, "model_id": modelID}}); err != nil {
+			Metadata: meta}); err != nil {
 			return err
 		}
 		pv, err := publicVersion(v)
@@ -630,7 +706,9 @@ func (s *Service) Advance(ctx context.Context, tx tenant.Tx, m tenant.Membership
 	return s.syncDraft(ctx, tx, m, d, v)
 }
 
-// syncDraft makes the draft version v's content, one revision later.
+// syncDraft makes the draft version v's content, one revision later; the
+// AI edit it held, if any, is gone with its content (H-061: a reset or a
+// publish clears it), so the synced draft names none.
 func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membership, d store.Draft, v store.Version) (store.Draft, error) {
 	ir, err := storedIR(v.IR, v.Hash)
 	if err != nil {
@@ -648,7 +726,7 @@ func (s *Service) syncDraft(ctx context.Context, tx tenant.Tx, m tenant.Membersh
 		return store.Draft{}, err
 	}
 	next, err := store.UpdateDraft(ctx, tx, store.Draft{OrganizationID: m.OrganizationID, ModelID: d.ModelID, BaseVersionID: v.ID,
-		Revision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID}, d.Revision)
+		Revision: d.Revision + 1, IR: ir, Hash: v.Hash, Issues: issues, UpdatedBy: m.UserID, AIProposalID: nil}, d.Revision)
 	if errors.Is(err, store.ErrStale) {
 		return store.Draft{}, ErrConflict
 	}
@@ -887,8 +965,16 @@ func publicDraft(d store.Draft, latestVersionID string) (Draft, error) {
 	if issues == nil {
 		issues = []model.ValidationIssue{}
 	}
-	return Draft{ModelID: d.ModelID, BaseVersionID: d.BaseVersionID, Revision: d.Revision, IR: ir, Hash: d.Hash,
-		OutOfDate: d.BaseVersionID != latestVersionID, Issues: issues}, nil
+	out := Draft{ModelID: d.ModelID, BaseVersionID: d.BaseVersionID, Revision: d.Revision, IR: ir, Hash: d.Hash,
+		OutOfDate: d.BaseVersionID != latestVersionID, Issues: issues}
+	switch e := d.AIEdit; {
+	case d.AIProposalID == nil && e == nil:
+	case d.AIProposalID != nil && e != nil && e.ProposalID == *d.AIProposalID:
+		out.AIEdit = &DraftAIEdit{ProposalID: e.ProposalID, InvestigationID: e.InvestigationID, Revision: e.Revision, Operations: e.Operations}
+	default:
+		return Draft{}, fmt.Errorf("models: draft of %s: its AI edit was not read with it", d.ModelID)
+	}
+	return out, nil
 }
 
 func publicVersion(v store.Version) (Version, error) {
@@ -900,8 +986,16 @@ func publicVersion(v store.Version) (Version, error) {
 	if bindings == nil {
 		bindings = []model.DatasetBinding{}
 	}
-	return Version{ID: v.ID, OrganizationID: v.OrganizationID, ModelID: v.ModelID, Version: v.Version, SchemaVersion: v.SchemaVersion,
-		ParentVersionID: v.ParentVersionID, IR: ir, Hash: v.Hash, DatasetBindings: bindings, Comment: v.Comment, CreatedBy: v.CreatedBy, CreatedAt: timestamp(v.CreatedAt)}, nil
+	out := Version{ID: v.ID, OrganizationID: v.OrganizationID, ModelID: v.ModelID, Version: v.Version, SchemaVersion: v.SchemaVersion,
+		ParentVersionID: v.ParentVersionID, IR: ir, Hash: v.Hash, DatasetBindings: bindings, Comment: v.Comment, CreatedBy: v.CreatedBy, CreatedAt: timestamp(v.CreatedAt)}
+	switch {
+	case v.AIEditProposalID == nil:
+	case v.AIEditInvestigationID != nil:
+		out.AIEdit = &VersionAIEdit{ProposalID: *v.AIEditProposalID, InvestigationID: *v.AIEditInvestigationID}
+	default:
+		return Version{}, fmt.Errorf("models: version %s: its AI edit's investigation was not read with it", v.ID)
+	}
+	return out, nil
 }
 
 // publishComment is the comment a version keeps (D-041): nil for none or

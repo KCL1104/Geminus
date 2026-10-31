@@ -40,6 +40,12 @@ type Version struct {
 	Comment                     *string                // the publish comment (D-041); nil when there was none
 	CreatedBy                   string
 	CreatedAt                   time.Time
+	// AIEditProposalID names the applied edit proposal an AI investigation
+	// wrote into the draft a person published as this version (H-061,
+	// 0019); nil for every other version. AIEditInvestigationID is that
+	// proposal's investigation, read back with it (InsertVersion does not
+	// set it: the caller knows).
+	AIEditProposalID, AIEditInvestigationID *string
 }
 
 // Draft is the one row of twin.model_drafts of a model.
@@ -51,6 +57,23 @@ type Draft struct {
 	Issues                                 []model.ValidationIssue
 	UpdatedBy                              string
 	UpdatedAt                              time.Time
+	// AIProposalID names the applied edit proposal an AI investigation
+	// wrote into the draft (H-061, 0019): only the investigation sets it, a
+	// person's later write keeps it (UpdateDraft writes what this holds)
+	// and a reset or a publish clears it; nil otherwise.
+	AIProposalID *string
+	// AIEdit is what the draft shows of that edit, read with the draft
+	// (GetDraft, LockDraft); nil when AIProposalID is nil. UpdateDraft does
+	// not read it back: the caller carries it with AIProposalID.
+	AIEdit *AIEdit
+}
+
+// AIEdit is the AI's edit a draft holds: the applied proposal, its
+// investigation, the revision it was written at and its operation count.
+type AIEdit struct {
+	ProposalID, InvestigationID string
+	Revision                    int64
+	Operations                  int
 }
 
 var (
@@ -150,9 +173,10 @@ func InsertVersion(ctx context.Context, tx pgx.Tx, v Version) (Version, error) {
 	if err != nil {
 		return Version{}, fmt.Errorf("encoding the manifest: %w", err)
 	}
-	if err := tx.QueryRow(ctx, `INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,source_proposal_id,ir,hash,dataset_bindings,comment,created_by)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING created_at`,
-		v.ID, v.OrganizationID, v.ModelID, v.Version, v.SchemaVersion, v.ParentVersionID, v.SourceProposalID, v.IR, v.Hash, manifest, v.Comment, v.CreatedBy).Scan(&v.CreatedAt); err != nil {
+	if err := tx.QueryRow(ctx, `INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,source_proposal_id,ir,hash,dataset_bindings,comment,created_by,ai_edit_proposal_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING created_at`,
+		v.ID, v.OrganizationID, v.ModelID, v.Version, v.SchemaVersion, v.ParentVersionID, v.SourceProposalID, v.IR, v.Hash, manifest, v.Comment, v.CreatedBy,
+		v.AIEditProposalID).Scan(&v.CreatedAt); err != nil {
 		return Version{}, err
 	}
 	for _, b := range bindings {
@@ -165,17 +189,25 @@ func InsertVersion(ctx context.Context, tx pgx.Tx, v Version) (Version, error) {
 	return v, nil
 }
 
-const versionColumns = `id, model_id, version, schema_version, parent_version_id, source_proposal_id, ir, hash, dataset_bindings, comment, created_by, created_at`
+// versionColumns read from twin.model_versions (unaliased); the AI edit's
+// investigation is its proposal's (0019), in the same organization.
+const versionColumns = `id, model_id, version, schema_version, parent_version_id, source_proposal_id, ir, hash, dataset_bindings, comment, created_by, created_at,
+	ai_edit_proposal_id, (SELECT p.investigation_id FROM twin.ai_proposals p
+	  WHERE p.organization_id=model_versions.organization_id AND p.id=model_versions.ai_edit_proposal_id)`
 
 func scanVersion(row pgx.Row, org string) (Version, error) {
 	v := Version{OrganizationID: org}
 	var manifest []byte
-	err := row.Scan(&v.ID, &v.ModelID, &v.Version, &v.SchemaVersion, &v.ParentVersionID, &v.SourceProposalID, &v.IR, &v.Hash, &manifest, &v.Comment, &v.CreatedBy, &v.CreatedAt)
+	err := row.Scan(&v.ID, &v.ModelID, &v.Version, &v.SchemaVersion, &v.ParentVersionID, &v.SourceProposalID, &v.IR, &v.Hash, &manifest, &v.Comment, &v.CreatedBy, &v.CreatedAt,
+		&v.AIEditProposalID, &v.AIEditInvestigationID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Version{}, ErrNotFound
 	}
 	if err != nil {
 		return Version{}, err
+	}
+	if v.AIEditProposalID != nil && v.AIEditInvestigationID == nil {
+		return Version{}, fmt.Errorf("version %s: its AI edit proposal %s is not visible", v.ID, *v.AIEditProposalID)
 	}
 	if err := json.Unmarshal(manifest, &v.DatasetBindings); err != nil {
 		return Version{}, fmt.Errorf("version %s: stored manifest: %w", v.ID, err)
@@ -236,14 +268,24 @@ func GetDraft(ctx context.Context, tx pgx.Tx, org, modelID string) (Draft, error
 // transaction ends: an approval takes the model row, then the draft, then
 // the proposal (ADR-022, D-003's lock order; T-026).
 func LockDraft(ctx context.Context, tx pgx.Tx, org, modelID string) (Draft, error) {
-	return getDraft(ctx, tx, org, modelID, " FOR UPDATE")
+	return getDraft(ctx, tx, org, modelID, " FOR UPDATE OF d")
 }
 
 func getDraft(ctx context.Context, tx pgx.Tx, org, modelID, lock string) (Draft, error) {
 	d := Draft{OrganizationID: org, ModelID: modelID}
 	var issues []byte
-	err := tx.QueryRow(ctx, `SELECT base_version_id, revision, ir, hash, issues, updated_by, updated_at FROM twin.model_drafts
-		WHERE organization_id=$1 AND model_id=$2`+lock, org, modelID).Scan(&d.BaseVersionID, &d.Revision, &d.IR, &d.Hash, &issues, &d.UpdatedBy, &d.UpdatedAt)
+	var inv *string
+	var revision *int64
+	var operations *int
+	// The AI's edit (0019): the applied proposal the draft names, read
+	// without a lock (it never changes once applied), in the same
+	// organization and model.
+	err := tx.QueryRow(ctx, `SELECT d.base_version_id, d.revision, d.ir, d.hash, d.issues, d.updated_by, d.updated_at, d.ai_proposal_id,
+		  p.investigation_id, p.applied_draft_revision, jsonb_array_length(p.patch)
+		FROM twin.model_drafts d LEFT JOIN twin.ai_proposals p
+		  ON p.organization_id=d.organization_id AND p.model_id=d.model_id AND p.id=d.ai_proposal_id
+		WHERE d.organization_id=$1 AND d.model_id=$2`+lock, org, modelID).Scan(&d.BaseVersionID, &d.Revision, &d.IR, &d.Hash, &issues,
+		&d.UpdatedBy, &d.UpdatedAt, &d.AIProposalID, &inv, &revision, &operations)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Draft{}, ErrNotFound
 	}
@@ -253,20 +295,32 @@ func getDraft(ctx context.Context, tx pgx.Tx, org, modelID, lock string) (Draft,
 	if err := json.Unmarshal(issues, &d.Issues); err != nil {
 		return Draft{}, fmt.Errorf("draft of %s: stored issues: %w", modelID, err)
 	}
+	if d.AIProposalID != nil {
+		// 0019: a draft names only an applied edit proposal of its model,
+		// at its applied revision; anything else is an error, never shown.
+		if inv == nil || revision == nil || operations == nil {
+			return Draft{}, fmt.Errorf("draft of %s: its AI edit proposal %s is not an applied edit", modelID, *d.AIProposalID)
+		}
+		d.AIEdit = &AIEdit{ProposalID: *d.AIProposalID, InvestigationID: *inv, Revision: *revision, Operations: *operations}
+	}
 	return d, nil
 }
 
 // UpdateDraft replaces the draft if it is still at revision expected; d's
-// Revision is the new one. Anything else is ErrStale: the caller re-reads
-// rather than overwrite (TEST-005).
+// Revision is the new one, and d's AIProposalID the AI edit it names after
+// the write (a person's write passes the one it read, a reset or a
+// publish's sync nil; only an AI investigation's write sets a new one,
+// 0019). Anything else is ErrStale: the caller re-reads rather than
+// overwrite (TEST-005).
 func UpdateDraft(ctx context.Context, tx pgx.Tx, d Draft, expected int64) (Draft, error) {
 	issues, err := encodeIssues(d.Issues)
 	if err != nil {
 		return Draft{}, err
 	}
-	err = tx.QueryRow(ctx, `UPDATE twin.model_drafts SET base_version_id=$3, revision=$4, ir=$5, hash=$6, issues=$7, updated_by=$8, updated_at=now()
+	err = tx.QueryRow(ctx, `UPDATE twin.model_drafts SET base_version_id=$3, revision=$4, ir=$5, hash=$6, issues=$7, updated_by=$8, updated_at=now(),
+		  ai_proposal_id=$10
 		WHERE organization_id=$1 AND model_id=$2 AND revision=$9 RETURNING updated_at`,
-		d.OrganizationID, d.ModelID, d.BaseVersionID, d.Revision, d.IR, d.Hash, issues, d.UpdatedBy, expected).Scan(&d.UpdatedAt)
+		d.OrganizationID, d.ModelID, d.BaseVersionID, d.Revision, d.IR, d.Hash, issues, d.UpdatedBy, expected, d.AIProposalID).Scan(&d.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Draft{}, ErrStale
 	}

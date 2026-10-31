@@ -188,6 +188,12 @@ func valid() []audit.Event {
 		u("analysis.create", "ai_analysis", ana, map[string]any{"run_id": sim, "baseline_run_id": ids.New("sim"), "output_locale": "en",
 			"question": false, "investigation_id": inv, "by_ai": true}),
 		u("model.draft.update", "model", mdl, map[string]any{"revision": int64(4), "investigation_id": inv, "by_ai": true}),
+		// H-061 A4: the AI acted on its own ready proposal: the scenario it
+		// saved, or the draft revision it wrote.
+		u("proposal.apply", "ai_proposal", aip, map[string]any{"mode": "scenario", "model_id": mdl, "base_version_id": mv,
+			"patch_hash": hash("5"), "server_risk_level": "low", "risk_level": "medium", "scenario_id": scn, "investigation_id": inv, "by_ai": true}),
+		u("proposal.apply", "ai_proposal", aip, map[string]any{"mode": "edit", "model_id": mdl, "base_version_id": mv,
+			"patch_hash": hash("6"), "server_risk_level": "low", "risk_level": "low", "draft_revision": int64(4), "investigation_id": inv, "by_ai": true}),
 		// A person publishes a draft that holds the AI's change.
 		u("model.publish", "model_version", mv2, map[string]any{"version": 3, "model_id": mdl, "contains_ai_edit": true}),
 		// The investigation's job and its planner turns.
@@ -401,6 +407,29 @@ func TestRefused(t *testing.T) {
 		"a source of free text": func(e *audit.Event) {
 			e.Action, e.TargetType, e.TargetID = "proposal.create", "ai_proposal", aip
 			e.Metadata = map[string]any{"mode": "scenario", "source": "the AI's idea SENTINEL", "investigation_id": inv, "by_ai": true}
+		},
+		// H-061 A4: the AI's action on its proposal is always marked, and
+		// holds IDs, hashes, risk and a count only.
+		"an apply without the AI's mark": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn}
+		},
+		"an apply of a person's comment": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn, "comment": "SENTINEL looks fine", "investigation_id": inv, "by_ai": true}
+		},
+		"an apply's draft revision as text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "edit", "draft_revision": "4 SENTINEL", "investigation_id": inv, "by_ai": true}
+		},
+		"an apply naming a version": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "edit", "new_version_id": mv, "investigation_id": inv, "by_ai": true}
+		},
+		"an apply by the worker": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn, "investigation_id": inv, "by_ai": true}
 		},
 	} {
 		e := aiBase
