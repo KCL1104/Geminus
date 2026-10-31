@@ -2,7 +2,9 @@
 // §2, §6). It owns configuration and lifecycle only, never business rules:
 // it validates configuration, connects to PostgreSQL as the worker runtime
 // login (refusing an unsafe one) and runs internal/worker's loop over the
-// deployment's organizations until SIGINT or SIGTERM.
+// deployment's organizations until SIGINT or SIGTERM; with
+// WORKER_LANES=split, two loops: one for simulations, one for every other
+// type (lanes.go).
 //
 // The handlers this build registers: simulation runs (T-023,
 // internal/runs/runner), import profiling (T-016, internal/import/profiler),
@@ -64,6 +66,9 @@ const (
 	exitConfig         = 1
 	exitNotImplemented = 2
 	exitDatabase       = 3
+	// exitLane: with WORKER_LANES=split, a lane's loop panicked or ended
+	// while the worker ran; the other lane was stopped and drained first.
+	exitLane = 4
 )
 
 // The loop's timing (ADR-024): the queue's default lease, renewed every
@@ -444,11 +449,22 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 			log.Info("the photo path is off", "provider", string(v.Provider), "code", strings.ToUpper(v.LiveOff))
 		}
 	}
-	w, err := worker.New(scope, worker.Config{ID: wcfg.ID, Policy: jobs.DefaultPolicy, Heartbeat: heartbeat,
-		Idle: idle, ReapLimit: reapLimit, Handlers: handlers, Log: log})
+	// One loop per lane (WORKER_LANES; single: one, under WORKER_ID, with
+	// every handler), all built before the database is checked.
+	lanes, err := plan(wcfg.Lanes, wcfg.ID, handlers)
 	if err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
+	}
+	loops := make([]running, len(lanes))
+	for i, l := range lanes {
+		w, err := worker.New(scope, worker.Config{ID: l.id, Policy: jobs.DefaultPolicy, Heartbeat: heartbeat,
+			Idle: idle, ReapLimit: reapLimit, Handlers: l.handlers, Log: log})
+		if err != nil {
+			log.Error("invalid configuration", "error", err.Error())
+			return exitConfig
+		}
+		loops[i] = running{id: l.id, loop: w}
 	}
 	checkCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	err = tenant.CheckRuntimeRole(checkCtx, pool, tenant.WorkerRole)
@@ -482,8 +498,19 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 			log.Warn("flushing the telemetry failed", "error", err.Error())
 		}
 	}()
-	log.Info("running", "worker_id", wcfg.ID, "organizations", len(wcfg.Organizations))
-	w.Run(ctx)
+	if len(loops) == 1 {
+		log.Info("running", "worker_id", wcfg.ID, "organizations", len(wcfg.Organizations))
+		loops[0].loop.Run(ctx)
+		log.Info("stopped")
+		return 0
+	}
+	for _, l := range loops {
+		log.Info("running", "worker_id", l.id, "organizations", len(wcfg.Organizations))
+	}
+	if !runLanes(ctx, log, loops) {
+		log.Error("stopped after a lane failed")
+		return exitLane
+	}
 	log.Info("stopped")
 	return 0
 }
