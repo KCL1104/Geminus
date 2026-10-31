@@ -226,6 +226,28 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // Review round 1: on a phone the rows are laid out as grids (investigation.module.css), so the table states its roles, as
+  // the results' metrics table does, and its heads stay on screen in the same grid (the browser checks it at 390 px,
+  // apps/web-e2e/tests/investigation.spec.ts): a figure is never shown without saying whose it is.
+  it("states the candidate table's roles, so every figure keeps its column's head when a phone lays the rows out as grids", async () => {
+    const { el } = await page({ investigation: sampleInvestigation("finished") });
+    const table = el.querySelector("[data-candidates]")!;
+    expect(table.getAttribute("role")).toBe("table");
+    expect([...table.children].filter((c) => c.tagName !== "CAPTION").map((g) => [g.tagName, g.getAttribute("role")])).toEqual([["THEAD", "rowgroup"], ["TBODY", "rowgroup"]]);
+    expect([...table.querySelectorAll("tr")].map((r) => r.getAttribute("role"))).toEqual(["row", "row"]);
+    expect([...table.querySelectorAll("thead th")].map((h) => [h.getAttribute("role"), text(h)])).toEqual(
+      ["investigation.col.whatIf", "investigation.col.proposal", "investigation.col.baseline", "investigation.col.scenario", "investigation.col.change"].map((k) => ["columnheader", t(k as "investigation.col.whatIf")]),
+    );
+    expect([...table.querySelectorAll("tbody th")].map((h) => h.getAttribute("role"))).toEqual(["rowheader"]);
+    expect([...table.querySelectorAll("tbody td")].map((c) => c.getAttribute("role"))).toEqual(["cell", "cell", "cell", "cell"]);
+    // A pair not run yet: its one wide cell is a cell too.
+    const waiting = await page({ investigation: sampleInvestigation("refused") });
+    expect([...waiting.el.querySelectorAll("[data-candidates] tbody td")].map((c) => [c.getAttribute("role"), c.getAttribute("colspan")])).toEqual([["cell", null], ["cell", "3"]]);
+    // The phone layout never takes the heads away (display: none would drop them from the accessibility tree as well).
+    const css = readFileSync(join(process.cwd(), "features/investigations/investigation.module.css"), "utf8");
+    expect(css).not.toMatch(/thead[^{]*\{[^}]*display:\s*none/);
+  });
+
   it("says a pair that cannot be compared is not compared, with the server's reasons", async () => {
     const inv = sampleInvestigation("finished");
     const notComparable = { ...inv, best: null, candidates: [{ ...inv.candidates[0]!, comparison: { comparable: false, incomparable_reasons: ["ENGINE_VERSION_MISMATCH" as const], objective: null, metrics: [], warnings: ["SINGLE_REPLICATION" as const] } }],
@@ -249,9 +271,46 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
     expect(text(claim)).toContain(t("investigation.claim"));
     expect(text(claim)).toContain(t("investigation.outcome.improvement_found"));
     const line = text(outcome.querySelector("[data-closing]"));
-    expect(line).toContain(t("investigation.closing.improved", { index: "1", metric: t("metric.leadTimeMedian"), delta: "−2.6 min", percent: "−6.1%" }));
+    expect(line).toBe(t("investigation.closing.improved", { index: "1", best: t("investigation.best./metrics/lead_time_minutes/p50"), delta: "−2.6 min", percent: "−6.1%" }));
+    // Review round 1: a sentence, in H-056's shape ("Lowest median lead time: …"), not the table's label mid-sentence.
+    expect(line).toBe("Lowest median lead time, by Geminus's comparison: what-if 1, −2.6 min (−6.1%) against the baseline.");
+    expect(line).not.toContain(t("metric.leadTimeMedian"));
     expect(text(outcome)).toContain(t("investigation.noSignificance"));
     expect(fact(el, t("band.status"))).toBe(t("investigation.status.finished"));
+  });
+
+  // Review round 1: the contract's "improved" needs only absolute_delta; relative_delta is null when the baseline is 0
+  // (BASELINE_ZERO) or the ratio is out of range. The server's line is then said without a percentage, never dropped.
+  it("keeps the server's closing line when it has no percentage (a baseline of 0), so the AI's claim never stands alone", async () => {
+    const inv = sampleInvestigation("finished");
+    const objective = { metric_path: "/metrics/throughput/mean", baseline: 0, scenario: 3, absolute_delta: 3, relative_delta: null, status: "available", reason: "BASELINE_ZERO" } as const;
+    const zero: Investigation = {
+      ...inv, objective: { metric_path: "/metrics/throughput/mean", better: "higher" }, best: { index: 1, objective },
+      candidates: [{ ...inv.candidates[0]!, comparison: { comparable: true, incomparable_reasons: [], objective, metrics: [objective], warnings: [] } }],
+      closing_line: { key: "improved", candidate_index: 1, metric_path: "/metrics/throughput/mean", absolute_delta: 3, relative_delta: null, compared: 1, draft_revision: null },
+    };
+    for (const locale of ["en", "zh-Hant"] as const) {
+      const tr = createTranslator(locale);
+      const { el } = await page({ investigation: zero, locale });
+      const outcome = el.querySelector("[data-outcome]")!;
+      const line = text(outcome.querySelector("[data-closing]"));
+      expect(line).toBe(tr("investigation.closing.improved.noPercent", { index: "1", best: tr("investigation.best./metrics/throughput/mean"), delta: "+3" }));
+      expect(line).not.toContain("%");
+      // The AI's claim sits beside the server's line, not in its place.
+      expect(outcome.querySelector("[data-claim]")).not.toBeNull();
+    }
+    expect(text((await page({ investigation: zero })).el.querySelector("[data-closing]"))).toBe("Most completed work items, by Geminus's comparison: what-if 1, +3 against the baseline.");
+  });
+
+  it("names the aim's metric in words in a line that found no improvement", async () => {
+    const inv = sampleInvestigation("finished");
+    const none: Investigation = { ...inv, best: null, ai_outcome: "no_improvement",
+      closing_line: { key: "no_improvement", candidate_index: null, metric_path: "/metrics/lead_time_minutes/p50", absolute_delta: null, relative_delta: null, compared: 2, draft_revision: null } };
+    const { el } = await page({ investigation: none });
+    expect(text(el.querySelector("[data-closing]"))).toBe("None of the 2 compared what-ifs improved the median lead time on the baseline, by Geminus's comparison.");
+    const zh = await page({ investigation: none, locale: "zh-Hant" });
+    expect(text(zh.el.querySelector("[data-closing]"))).toBe(createTranslator("zh-Hant")("investigation.closing.no_improvement", { count: 2, metric: zhHant["investigation.metric./metrics/lead_time_minutes/p50"] }));
+    expect(text(zh.el.querySelector("[data-closing]"))).not.toContain(zhHant["metric.leadTimeMedian"]);
   });
 
   it("in edit mode, says the change is in the draft for a person to check and publish", async () => {
@@ -311,6 +370,44 @@ describe("stopping the AI (H-061 §13)", () => {
     expect(findButton(el, t("investigation.stop"))).toBeUndefined();
     expect(steps(el)).toHaveLength(3);
     expect(await violations()).toEqual([]);
+  });
+
+  // Review round 1: it ends (the AI finished, or the 20 minutes ran out) while the question is open. The question goes,
+  // since there is nothing left to stop, and the focus then moves to the outcome once (it would otherwise fall to the
+  // body when the dialog returns it to the Stop button, which is gone).
+  it("closes the stop question when the investigation ends while it is open, then moves focus to the outcome", async () => {
+    const running = sampleInvestigation("running");
+    const finished = sampleInvestigation("finished");
+    const standIn = createInvestigationStandIn({ investigation: running, caller: { userId: USER, role: "editor" } });
+    let ended = false;
+    const fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input), "http://stand-in.invalid").pathname;
+      if (ended && (init?.method ?? "GET") === "GET" && path === `/api/v1/investigations/${standIn.investigationId}`) {
+        return new Response(JSON.stringify(finished), { status: 200, headers: { "Content-Type": "application/json", "X-Request-ID": "req_01M4YDQK00V6H8S0ST4F7510KR" } });
+      }
+      return standIn.fetch(input, init);
+    }) as typeof globalThis.fetch;
+    const el = await mount(
+      <AuthProvider value={{ session: { organizationId: standIn.organizationId }, role: "editor", userId: USER }}>
+        <ApiProvider client={createApiClient({ session: () => ({ organizationId: standIn.organizationId }), fetch })}>
+          <InvestigationRoute investigationId={standIn.investigationId} pollMs={20} now={() => NOW} />
+        </ApiProvider>
+      </AuthProvider>,
+    );
+    await waitFor(() => findButton(el, t("investigation.stop")) !== undefined, "the Stop button");
+    await press(button(el, t("investigation.stop")));
+    await settle();
+    expect(document.querySelector("[role=alertdialog]")).not.toBeNull();
+    ended = true;
+    await waitFor(() => el.querySelector("[data-outcome]") !== null, "the outcome");
+    await waitFor(() => document.querySelector("[role=alertdialog]") === null, "the question to close");
+    const outcome = el.querySelector<HTMLElement>("[data-outcome]")!;
+    await waitFor(() => document.activeElement === outcome, "the focus on the outcome");
+    // It stays there: nothing returns it to the body afterwards.
+    await act(async () => new Promise((r) => setTimeout(r, 120)));
+    expect(document.activeElement).toBe(outcome);
+    expect([...el.querySelectorAll('p[role="status"]')].map((p) => text(p))).toContain(t("investigation.ended"));
+    expect(standIn.calls.some((c) => c.method === "POST"), "nothing was stopped").toBe(false);
   });
 
   it("is not stopped when the person cancels the question", async () => {
@@ -463,8 +560,9 @@ describe("the labels on what the AI made (H-056 §13)", () => {
     );
     await waitFor(() => el.querySelector("[data-ai-edit]") !== null, "the draft callout");
     expect(text(el.querySelector("[data-ai-edit]"))).toContain(t("aiEdit.draft"));
-    await waitFor(() => fact(el, t("aiEdit.versionLabel")) !== undefined, "the version fact");
-    expect(fact(el, t("aiEdit.versionLabel"))).toBe(t("aiEdit.version", { version: "1" }));
+    // H-056 §13's version fact, as approved: "Includes a change the AI wrote" (review round 1), on the version it names.
+    await waitFor(() => fact(el, t("aiEdit.versionLabel", { version: "1" })) !== undefined, "the version fact");
+    expect(fact(el, t("aiEdit.versionLabel", { version: "1" }))).toBe("Includes a change the AI wrote");
     await press(button(el, t("editor.publish")));
     await settle();
     const dialog = document.querySelector("[role=alertdialog]");
@@ -484,7 +582,8 @@ describe("the labels on what the AI made (H-056 §13)", () => {
     await waitFor(() => el.querySelector("h1") !== null, "the model page");
     await settle();
     expect(el.querySelector("[data-ai-edit]")).toBeNull();
-    expect(fact(el, t("aiEdit.versionLabel"))).toBeUndefined();
+    expect(fact(el, t("aiEdit.versionLabel", { version: "1" }))).toBeUndefined();
+    expect(facts(el).some(([, v]) => v === t("aiEdit.version"))).toBe(false);
   });
 });
 
@@ -546,6 +645,9 @@ describe("the catalogs (REQ-022): every code, reason, tool and outcome in both l
     ["investigation.status", investigation.$defs.Investigation!.properties!.status!.enum!],
     ["investigation.closing", investigation.$defs.InvestigationClosingLine!.properties!.key!.enum!],
     ["investigation.objective", investigation.$defs.InvestigationObjectiveMetric!.enum!],
+    // Review round 1: the closing line's words for the aim's metric (a sentence, not the table's label).
+    ["investigation.metric", investigation.$defs.InvestigationObjectiveMetric!.enum!],
+    ["investigation.best", investigation.$defs.InvestigationObjectiveMetric!.enum!],
     ["investigation.source", investigation.$defs.InvestigationCandidate!.properties!.source!.enum!],
   ];
 

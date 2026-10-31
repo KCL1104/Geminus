@@ -34,8 +34,10 @@
 // caps and that the AI never publishes; a scenario takes the settings of the
 // AI's runs and its aim; research is for the first what-if only; the planner
 // is a choice only where Muse Wonder is offered as planner. The photo is not
-// offered then (no photo inside an investigation, H-056 §17). Unticked, the
-// form is what it was.
+// offered then (no photo inside an investigation, H-056 §17). Ticked, the
+// form says nothing of a proposal's approval (review round 1): the intent's
+// hint, the mode's label and its hint say what the AI does and that only a
+// person publishes. Unticked, the form is what it was.
 import { useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -178,7 +180,8 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         multiline
         rows={3}
         label={t("ask.intent")}
-        description={t("ask.intentHint", { version: String(latest.version) })}
+        // H-061 A8 review round 1: while the AI acts on it, no word of a proposal's approval (REQ-019).
+        description={t(acting ? "investigation.intentHint" : "ask.intentHint", { version: String(latest.version) })}
         notice={{ id: noticeId, text: t("ask.dataNotice") }}
         value={intent}
         onChange={(v) => {
@@ -191,7 +194,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
       />
       <div className={styles.askMode}>
         <Select
-          label={t("ask.mode")}
+          label={t(acting ? "investigation.mode" : "ask.mode")}
           items={[
             { id: "edit", label: t("ask.mode.edit") },
             { id: "scenario", label: t("ask.mode.scenario") },
@@ -199,7 +202,11 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           value={mode}
           onChange={(id) => setMode(id === "scenario" ? "scenario" : "edit")}
         />
-        <p className={styles.hint}>{mode === "edit" ? t("ask.modeHint.edit", { version: String(latest.version + 1) }) : t("ask.modeHint.scenario", { version: String(latest.version) })}</p>
+        <p className={styles.hint}>
+          {mode === "edit"
+            ? t(acting ? "investigation.modeHint.edit" : "ask.modeHint.edit", { version: String(latest.version + 1) })
+            : t(acting ? "investigation.modeHint.scenario" : "ask.modeHint.scenario", { version: String(latest.version) })}
+        </p>
       </div>
       <ModelChoice value={aiModel} onChange={setAiModel} />
       {canAct && (
@@ -224,7 +231,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           {acting && (
             <>
               {gap}
-              {t("investigation.research")}
+              {t(mode === "edit" ? "investigation.research.edit" : "investigation.research")}
             </>
           )}
         </p>

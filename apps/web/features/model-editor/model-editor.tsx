@@ -286,7 +286,8 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
       title={model.name}
       facts={[
         ...header.facts,
-        ...(aiVersion ? [{ label: t("aiEdit.versionLabel"), value: t("aiEdit.version", { version: String(model.latest_version.version) }) }] : []),
+        // H-056 §13's version fact as approved ("Includes a change the AI wrote"), named by its version.
+        ...(aiVersion ? [{ label: t("aiEdit.versionLabel", { version: String(model.latest_version.version) }), value: t("aiEdit.version") }] : []),
         { label: t("band.draft"), value: statusLine },
       ]}
       actions={actions}

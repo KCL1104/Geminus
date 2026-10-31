@@ -107,6 +107,12 @@ const metricKey: Readonly<Record<InvestigationObjectiveMetric, MessageKey>> = {
 };
 const unitOf = (path: string): MetricUnit => (path.startsWith("/metrics/lead_time_minutes/") ? "minute" : "number");
 const metricName = (t: I18n["t"], path: string): string => (Object.hasOwn(metricKey, path) ? t(metricKey[path as InvestigationObjectiveMetric]) : path);
+const isObjective = (path: string): path is InvestigationObjectiveMetric => Object.hasOwn(metricKey, path);
+/**
+ * The aim's metric as the closing line says it, in a sentence ("the median lead time"), or the best of it ("Lowest
+ * median lead time"); not the table's label ("Lead time, median"). A path the contract does not have stays the path.
+ */
+const inWords = (t: I18n["t"], form: "metric" | "best", path: string): string => (isObjective(path) ? t(`investigation.${form}.${path}`) : path);
 
 function InvestigationView({ initial, pollMs, now, hrefs }: { initial: InvestigationPage; pollMs: number; now: () => number; hrefs: InvestigationHrefs }) {
   const api = useApi();
@@ -150,12 +156,22 @@ function InvestigationView({ initial, pollMs, now, hrefs }: { initial: Investiga
     };
   }, [api, id, inv, running, pollMs, pollAttempt]);
 
+  // It ended while the page was open: say so once, close the stop question (there is nothing left to stop), and move
+  // the focus to the outcome once that question has gone, so the dialog's return of the focus (to a Stop button that is
+  // gone) does not leave it on the body (review round 1).
+  const focusOutcome = useRef(false);
   useEffect(() => {
     if (running || !sawRunning.current) return;
     sawRunning.current = false;
+    focusOutcome.current = true;
+    setAsking(false);
     setAnnounce(t("investigation.ended"));
-    outcomeRef.current?.focus();
   }, [running, t]);
+  useEffect(() => {
+    if (running || asking || !focusOutcome.current) return;
+    focusOutcome.current = false;
+    outcomeRef.current?.focus();
+  }, [running, asking]);
 
   const stop = useCallback(async () => {
     if (busy.current) return;
@@ -269,7 +285,7 @@ function InvestigationView({ initial, pollMs, now, hrefs }: { initial: Investiga
       )}
 
       <ConfirmDialog
-        isOpen={asking}
+        isOpen={asking && running}
         onOpenChange={setAsking}
         heading={t("investigation.stop.heading")}
         confirmLabel={t("investigation.stop.confirm")}
@@ -397,22 +413,24 @@ function Candidates({ inv, hrefs, i18n }: { inv: Investigation; hrefs: Investiga
   const metric = inv.objective?.metric_path ?? "/metrics/lead_time_minutes/p50";
   return (
     <div className={styles.scroll}>
-      <table className={styles.table} data-candidates>
+      {/* On a phone each row is a grid under heads laid out the same way (investigation.module.css), so the table states
+          its roles, as the metrics table does: a table whose display changes may otherwise lose them. */}
+      <table role="table" className={styles.table} data-candidates>
         <caption>
           {t("investigation.candidates.caption")}
           {gap}
           {t("investigation.candidates.metric", { metric: metricName(t, metric) })}
         </caption>
-        <thead>
-          <tr>
-            <th scope="col">{t("investigation.col.whatIf")}</th>
-            <th scope="col">{t("investigation.col.proposal")}</th>
-            <th scope="col">{t("investigation.col.baseline")}</th>
-            <th scope="col">{t("investigation.col.scenario")}</th>
-            <th scope="col">{t("investigation.col.change")}</th>
+        <thead role="rowgroup">
+          <tr role="row">
+            <th scope="col" role="columnheader">{t("investigation.col.whatIf")}</th>
+            <th scope="col" role="columnheader">{t("investigation.col.proposal")}</th>
+            <th scope="col" role="columnheader">{t("investigation.col.baseline")}</th>
+            <th scope="col" role="columnheader">{t("investigation.col.scenario")}</th>
+            <th scope="col" role="columnheader">{t("investigation.col.change")}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody role="rowgroup">
           {inv.candidates.map((c) => (
             <CandidateRow key={c.index} c={c} inv={inv} hrefs={hrefs} i18n={i18n} />
           ))}
@@ -430,8 +448,8 @@ function CandidateRow({ c, inv, hrefs, i18n }: { c: InvestigationCandidate; inv:
   const unit = unitOf(o?.metric_path ?? "");
   const figure = (v: number | null, format: (n: number) => string) => (v === null ? t("compare.unavailable") : <data value={v}>{format(v)}</data>);
   return (
-    <tr data-candidate={c.index} data-best={best ? "" : undefined}>
-      <th scope="row">
+    <tr role="row" data-candidate={c.index} data-best={best ? "" : undefined}>
+      <th scope="row" role="rowheader">
         <p>
           <strong>{t("investigation.candidate", { index: String(c.index) })}</strong>
         </p>
@@ -455,14 +473,14 @@ function CandidateRow({ c, inv, hrefs, i18n }: { c: InvestigationCandidate; inv:
           </p>
         )}
       </th>
-      <td>
+      <td role="cell">
         {proposalLinked(inv, c.proposal_id) ? t(`proposals.state.${c.proposal_status}`) : <Link href={hrefs.proposal(c.proposal_id)}>{t(`proposals.state.${c.proposal_status}`)}</Link>}
       </td>
       {o ? (
         <>
-          <td>{figure(o.baseline, (n) => formatValue(i18n, n, unit))}</td>
-          <td>{figure(o.scenario, (n) => formatValue(i18n, n, unit))}</td>
-          <td>
+          <td role="cell">{figure(o.baseline, (n) => formatValue(i18n, n, unit))}</td>
+          <td role="cell">{figure(o.scenario, (n) => formatValue(i18n, n, unit))}</td>
+          <td role="cell">
             {figure(o.absolute_delta, (n) => formatAbsolute(i18n, n, unit))}
             {o.relative_delta !== null && (
               <>
@@ -474,7 +492,7 @@ function CandidateRow({ c, inv, hrefs, i18n }: { c: InvestigationCandidate; inv:
           </td>
         </>
       ) : (
-        <td colSpan={3}>
+        <td role="cell" colSpan={3}>
           {cmp === null ? (
             t("investigation.notRunYet")
           ) : (
@@ -519,16 +537,16 @@ function Outcome({ inv }: { inv: Investigation }) {
       case "improved": {
         const path = line.metric_path ?? "";
         const unit = unitOf(path);
-        if (line.candidate_index === null || line.absolute_delta === null || line.relative_delta === null) return null;
-        return t("investigation.closing.improved", {
-          index: String(line.candidate_index),
-          metric: metricName(t, path),
-          delta: formatAbsolute(i18n, line.absolute_delta, unit),
-          percent: formatRelative(i18n, line.relative_delta),
-        });
+        if (line.candidate_index === null || line.absolute_delta === null) return null;
+        const words = { index: String(line.candidate_index), best: inWords(t, "best", path), delta: formatAbsolute(i18n, line.absolute_delta, unit) };
+        // The contract's "improved" may have no relative delta (a baseline of 0, or a ratio out of range): the line is
+        // then said without a percentage, never dropped (review round 1).
+        return line.relative_delta === null
+          ? t("investigation.closing.improved.noPercent", words)
+          : t("investigation.closing.improved", { ...words, percent: formatRelative(i18n, line.relative_delta) });
       }
       case "no_improvement":
-        return t("investigation.closing.no_improvement", { count: line.compared, metric: metricName(t, line.metric_path ?? inv.objective?.metric_path ?? "") });
+        return t("investigation.closing.no_improvement", { count: line.compared, metric: inWords(t, "metric", line.metric_path ?? inv.objective?.metric_path ?? "") });
       case "draft_written":
         return t("investigation.closing.draft_written", { revision: String(line.draft_revision ?? "") });
       default:

@@ -135,6 +135,12 @@
   margin: 0 0 var(--gm-space-xs);
 }
 
+/* A phone (review round 1, as the results' metrics table, H-039): each row
+   is a grid under heads laid out the same way, so every figure stays under
+   its head on screen: the what-if and the proposal's state each take a
+   line, the baseline and the what-if's figure the next, side by side, and
+   the change the one after. The heads stay in the accessibility tree too
+   (the table states its roles, investigation-view.tsx); never display: none. */
 @media (max-width: 720px) {
   .table {
     min-width: 0;
@@ -147,12 +153,21 @@
     display: block;
   }
 
-  .table thead {
-    display: none;
-  }
-
   .table tr {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--gm-color-rule);
+  }
+
+  .table th,
+  .table td {
+    border-bottom: 0;
+  }
+
+  .table tr > :nth-child(1),
+  .table tr > :nth-child(2),
+  .table tr > :nth-child(5),
+  .table td[colspan="3"] {
+    grid-column: 1 / -1;
   }
 }

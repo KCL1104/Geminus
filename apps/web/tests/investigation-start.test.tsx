@@ -427,6 +427,55 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
     const viewer = await modelPage({ role: "viewer" });
     expect(viewer.el.querySelector("[data-ask]")).toBeNull();
   });
+
+  // Review round 1 (REQ-019): ticked, the form no longer says what a proposal does ("nothing changes until you approve
+  // it", "The AI proposes", "Once approved, …"): the AI acts within the caps, and a person only publishes. Unticked, the
+  // proposal's words come back.
+  it.each([
+    ["en", "scenario"],
+    ["en", "edit"],
+    ["zh-Hant", "scenario"],
+    ["zh-Hant", "edit"],
+  ] as const)("ticked, in %s %s mode, says what the AI will do and no word of a proposal's approval", async (locale, mode) => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    const tr = createTranslator(locale);
+    const { el, api } = await modelPage({ locale });
+    const form = ask(el);
+    const latest = 1;
+    if (mode === "scenario") await choose(form, tr("ask.mode"), tr("ask.mode.scenario"));
+    const proposal = [
+      tr("ask.intentHint", { version: String(latest) }),
+      tr(mode === "edit" ? "ask.modeHint.edit" : "ask.modeHint.scenario", { version: String(mode === "edit" ? latest + 1 : latest) }),
+    ];
+    for (const words of proposal) expect(text(form), "unticked").toContain(words);
+    await tick(checkbox(form, tr("investigation.act")));
+    const acting = text(form);
+    for (const words of proposal) expect(acting).not.toContain(words);
+    // No "The AI proposes" as the mode's label: the mode is chosen under the acting one.
+    expect(acting).not.toContain(tr("ask.mode"));
+    await choose(form, tr("investigation.mode"), tr(mode === "edit" ? "ask.mode.edit" : "ask.mode.scenario"));
+    expect(acting).toContain(tr("investigation.intentHint", { version: String(latest) }));
+    expect(acting).toContain(tr(mode === "edit" ? "investigation.modeHint.edit" : "investigation.modeHint.scenario", { version: String(mode === "edit" ? latest + 1 : latest) }));
+    // Research: for the first what-if, or in edit mode for the AI's one change (there is no what-if there).
+    expect(acting).toContain(tr(mode === "edit" ? "investigation.research.edit" : "investigation.research"));
+    if (mode === "edit") expect(acting).not.toContain(tr("investigation.research"));
+    expect(await violations()).toEqual([]);
+    await tick(checkbox(form, tr("investigation.act")));
+    for (const words of proposal) expect(text(form), "unticked again").toContain(words);
+    expect(text(form)).not.toContain(tr("investigation.intentHint", { version: String(latest) }));
+    expect(starts(api)).toHaveLength(0);
+  });
+
+  it("pins the acting words in English: no approval, the caps, a person publishes", () => {
+    expect(t("investigation.intentHint", { version: "3" })).toBe("The AI acts on it for you, on version 3, within the limits below. It never publishes.");
+    expect(t("investigation.mode")).toBe("The AI works on");
+    expect(t("investigation.modeHint.scenario", { version: "3" })).toBe("Each what-if is saved on version 3; the model stays as it is.");
+    expect(t("investigation.modeHint.edit", { version: "4" })).toBe("Once a person publishes it, it becomes version 4.");
+    expect(t("investigation.research.edit")).toBe("For the AI's one change only.");
+    for (const k of ["investigation.intentHint", "investigation.mode", "investigation.modeHint.scenario", "investigation.modeHint.edit", "investigation.research.edit"] as const) {
+      expect(t(k, { version: "3" }).toLowerCase(), k).not.toMatch(/approv|propos/);
+    }
+  });
 });
 
 // The explanation (entry B): "Let the AI test these".
@@ -475,7 +524,7 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
   });
   const editor: Auth = { session: { organizationId: ORG }, role: "editor", userId: ME };
 
-  async function page(api: ReturnType<typeof fakeApi>, auth: Auth = editor) {
+  async function page(api: ReturnType<typeof fakeApi>, auth: Auth = editor, locale: Locale = "en") {
     const { RunResults } = await import("../features/results/run-results");
     function WithAnalysis() {
       const [id, setId] = useState<string | null>(ANA);
@@ -487,6 +536,7 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
           <WithAnalysis />
         </ApiProvider>
       </AuthProvider>,
+      locale,
     );
     await settle();
     await waitFor(() => text(el).includes("A second ICT fixture"), "the explanation");
@@ -548,5 +598,51 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
     const viewer: Auth = { session: { organizationId: ORG }, role: "viewer", userId: ME };
     const el = await page(fakeApi(answers(), viewer), viewer);
     expect(text(section(el))).not.toContain(t("investigation.testThese"));
+  });
+
+  // Review round 1 (H-056 §14: "Let the AI test these" plus the revised note): where the AI can test the suggestions,
+  // the note above them no longer says that nothing runs unless a person asks for a scenario.
+  it("revises the note above the suggestions where the AI can test them, and keeps it as it was elsewhere", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    for (const locale of ["en", "zh-Hant"] as const) {
+      const tr = createTranslator(locale);
+      const el = await page(fakeApi(answers(), editor), editor, locale);
+      await waitFor(() => text(section(el)).includes(tr("investigation.testThese")), "the button");
+      expect(text(section(el))).toContain(tr("analysis.nextNote.act"));
+      expect(text(section(el))).not.toContain(tr("analysis.nextNote"));
+    }
+    expect(t("analysis.nextNote.act")).toBe("Nothing runs until you ask: propose one as a scenario to review, or let the AI test them by itself, within its limits.");
+    // A viewer can do neither: the note is as before.
+    const viewer: Auth = { session: { organizationId: ORG }, role: "viewer", userId: ME };
+    const seen = await page(fakeApi(answers(), viewer), viewer);
+    expect(text(section(seen))).toContain(t("analysis.nextNote"));
+    expect(text(section(seen))).not.toContain(t("analysis.nextNote.act"));
+    // A build without investigations: as before.
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", undefined);
+    const off = await page(fakeApi(answers(), editor), editor);
+    expect(text(section(off))).toContain(t("analysis.nextNote"));
+    expect(text(section(off))).not.toContain(t("analysis.nextNote.act"));
+  });
+
+  // H-056 §13: "Run by the AI for <person> · See the investigation" as the results header's fact; the link only in a
+  // build with the investigation's page.
+  it("says in the results header that the AI started the what-if run, for whom, and links the investigation only with the flag", async () => {
+    const made = { investigation_id: INV, requested_by: ME, generated_by: { provider: "meta" as const, model: "muse-spark-1.3" as const } };
+    const byAi = { [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun({ made_by_ai: made })) };
+    const startedBy = (el: Element) => [...el.querySelectorAll("header dl > div")].find((d) => text(d.querySelector("dt")) === t("aiMark.startedBy"));
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", undefined);
+    const off = await page(fakeApi(answers(byAi), editor));
+    await waitFor(() => startedBy(off) !== undefined, "the header fact");
+    expect(text(startedBy(off)!.querySelector("dd"))).toBe(t("aiMark.for.you"));
+    expect(off.querySelector('a[href^="/investigations/"]')).toBeNull();
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    const other: Auth = { ...editor, userId: "usr_01M4YDQK00TA0000000000ME02" };
+    const on = await page(fakeApi(answers(byAi), other), other);
+    await waitFor(() => startedBy(on) !== undefined, "the header fact");
+    expect(text(startedBy(on)!.querySelector("dd"))).toBe(`${t("aiMark.for.other")} · ${t("aiMark.seeInvestigation")}`);
+    expect(startedBy(on)!.querySelector(`a[href="/investigations/${INV}"]`)).not.toBeNull();
+    // A person's run carries no such fact.
+    const person = await page(fakeApi(answers(), editor));
+    expect(startedBy(person)).toBeUndefined();
   });
 });

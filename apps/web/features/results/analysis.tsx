@@ -329,7 +329,8 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
       {analysis.suggested_next_experiments.length > 0 && (
         <>
           <h3>{t("analysis.next")}</h3>
-          <p className={styles.note}>{t("analysis.nextNote")}</p>
+          {/* H-061 A8 review round 1: where the AI can also test them (H-056 §14's revised note), the note says both ways. */}
+          <p className={styles.note}>{t(modelId !== null && investigationsOffered() ? "analysis.nextNote.act" : "analysis.nextNote")}</p>
           {modelId !== null && <ModelChoice value={aiModel} onChange={setAiModel} label={t("analysis.model")} />}
           <ul className={styles.explained}>
             {analysis.suggested_next_experiments.map((x, i) => (
