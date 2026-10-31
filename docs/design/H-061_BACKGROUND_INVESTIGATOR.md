@@ -1,6 +1,6 @@
 # H-061: the background investigator (architecture delta to H-056)
 
-> **Status (2026-10-31): PROPOSED.** Synthesized from two independent architectures and two judges (both chose the worker agent with API effects over a ledger). It replaces sections 4 (clock), 5, 6.5, 9 and 10 of `docs/design/H-056_INVESTIGATIONS_ON_EINO.md` for investigations. The D-008 amendment, ADR-032, the worker grants on the two new tables, the approval-record change and the background clock copy wait for the owner's confirmation; until then investigations stay switched off on live (`GEMINUS_INVESTIGATIONS` unset).
+> **Status (2026-10-31): APPROVED by the owner (H-063)**, after being PROPOSED. Synthesized from two independent architectures and two judges (both chose the worker agent with API effects over a ledger). It replaces sections 4 (clock), 5, 6.5, 9 and 10 of `docs/design/H-056_INVESTIGATIONS_ON_EINO.md` for investigations. The owner confirmed the D-008 amendment, ADR-032, the worker grants on the two new tables, the approval-record change and the background clock copy (H-063). Investigations stay switched off on live (`GEMINUS_INVESTIGATIONS` unset) until every slice is reviewed and the closed-loop live checks pass.
 
 # H-061: the background investigator (architecture delta to the H-056 design)
 
