@@ -291,11 +291,12 @@ func TestSegmentation(t *testing.T) {
 // (/nodes/45) and, on the electronics template (41 nodes), "no source
 // reaches this step" at /nodes/41 to /nodes/45. A photo shows no split
 // share. Probability 1 a route sums to 2 (ROUTING_INVALID) on any base. On
-// the bare line, whose only probability is 1, any other share is no value
-// of the base, so the photo rule refuses it and the templates' shape (one
-// process step whose single resource has the testers' count as its
-// capacity) is the only one the server takes. Review round 1: that holds
-// on the bare line, not on any base. The template has the yield pairs
+// the bare line no split passes: a 0.5 / 0.5 share is no probability of
+// the base, so the photo rule refuses it. That is about splits only: the
+// bare line still takes other shapes, such as two ICT steps in series, so
+// the prompt, not the server, asks for the templates' one step whose
+// resource has the testers' count as its capacity. Review round 1: the
+// split refusal holds on the bare line, not on any base. The template has the yield pairs
 // 0.97 / 0.03, 0.95 / 0.05, 0.9 / 0.1, 0.93 / 0.07 and 0.995 / 0.005, so a
 // split that reuses one of them as its share is a valid model and passes
 // the photo rule: there, photo-0.3.0's words are the only guard against
