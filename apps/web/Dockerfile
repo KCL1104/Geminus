@@ -18,8 +18,6 @@ COPY apps/web/package.json apps/web/package-lock.json apps/web/.npmrc apps/web/.
 RUN npm ci --no-audit --no-fund
 COPY apps/web/ ./
 ENV GEMINUS_NEXT_STANDALONE=1
-# H-051: "1" offers Muse Wonder 1.0 in the UI; unset (the default), it is hidden.
-ARG NEXT_PUBLIC_GEMINUS_OFFER_WONDER=""
 RUN npm run build
 
 FROM node:24.21.0-trixie-slim@sha256:173f125896c3b47ddf056734c7ea789d04595a6a08769a8f78e0df642781fb66

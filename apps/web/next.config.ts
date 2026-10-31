@@ -12,8 +12,9 @@ const nextConfig: NextConfig = {
   // the variable; make frontend-build and the browser checks keep next start.
   // H-051: fixed at build time even when unset, so the server and the
   // browser always agree on whether Muse Wonder is offered (a runtime
-  // variable would change only the server's half). Set it for the image's
-  // build (apps/web/Dockerfile ARG) to offer Muse Wonder again.
+  // variable would change only the server's half). The image's build never
+  // sets it (the deploy check allows no build arguments), so Muse Wonder is
+  // hidden on the deployment; offering it again is a code change here.
   env: { NEXT_PUBLIC_GEMINUS_OFFER_WONDER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER ?? "" },
   ...(process.env.GEMINUS_NEXT_STANDALONE === "1" ? { output: "standalone" as const } : {}),
 };
