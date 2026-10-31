@@ -56,7 +56,9 @@
 //     an error status names its HTTP status and its error type from the
 //     API's list (errorTypes), any other type as "other".
 //
-// The request has no tools and no tool choice: the model can only answer
+// The request has no tools and no tool choice (H-060: a tool turn is refused
+// with tools_unsupported, before any I/O; this adapter is no
+// provider.ToolTurner): the model can only answer
 // with one JSON document, constrained by the projected output schema
 // (projection.go), whose encoded values (a JSON text in a string where the
 // canonical schema takes any JSON value) the adapter decodes before
@@ -339,6 +341,13 @@ func (b *tallyBody) Read(p []byte) (int, error) {
 // metered client calls it, T-053) and a prompt role the approval's data
 // policy does not name (PROPOSED D-112).
 func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	if len(req.Tools) > 0 || len(req.Steps) > 0 {
+		// H-060: this adapter offers no tool (it is no provider.ToolTurner,
+		// so the client refuses a tool turn before it; H-018's approval names
+		// no investigator, H-061): a request that offers tools is refused
+		// before any I/O, never sent without them.
+		return provider.Response{}, provider.NewError(provider.CodeToolsUnsupported, 0, "")
+	}
 	if req.Reservation == "" {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}

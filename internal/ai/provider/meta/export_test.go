@@ -37,6 +37,12 @@ func SetModels(b *Backend, models ...string) {
 	}
 }
 
+// SetTools makes the backend offer tools for roles only, as an approval's
+// data policy naming tool calls would (H-060); NewForTest offers none.
+func SetTools(b *Backend, roles ...string) {
+	b.tools = func(role string) bool { return slices.Contains(roles, role) }
+}
+
 // NewSegmenterForTest points the SAM backend at a local test server.
 func NewSegmenterForTest(cfg Config, baseURL string, client *http.Client) (*Segmenter, error) {
 	return newSegmenter(cfg, baseURL, client, func(string) bool { return true }, true)

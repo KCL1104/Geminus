@@ -23,6 +23,14 @@
 // one repair) is answered from ScriptRevision's script under the same key;
 // unscripted, as the first request was (the fake repeats itself). Every
 // answer it gives is also its Response.Answer.
+//
+// Tool turns (H-060): the fake is a provider.ToolTurner for every role. A
+// turn (a request that offers tools) is answered from ScriptTools' script
+// under the request's key, the n-th answer for the turn after n steps of
+// transcript; unscripted, it answers safely in text, with no tool call. Its
+// calls are what the script says, unchecked: the client checks them as it
+// checks a live model's. A request that offers no tool is answered as
+// before and never with a tool call.
 package fake
 
 import (
@@ -56,15 +64,90 @@ type Backend struct {
 	script   map[provider.Role]map[string]Answer
 	revision map[provider.Role]map[string]Answer
 	research map[string]provider.Research
+	turns    map[provider.Role]map[string][]ToolAnswer
 	seen     []provider.Request
 }
 
-var _ provider.Researcher = (*Backend)(nil)
+var (
+	_ provider.Researcher = (*Backend)(nil)
+	_ provider.ToolTurner = (*Backend)(nil)
+)
 
 // New returns an empty fake.
 func New() *Backend {
 	return &Backend{script: map[provider.Role]map[string]Answer{}, revision: map[provider.Role]map[string]Answer{},
-		research: map[string]provider.Research{}}
+		research: map[string]provider.Research{}, turns: map[provider.Role]map[string][]ToolAnswer{}}
+}
+
+// ToolAnswer is a scripted answer to a tool turn (H-060): text, tool calls,
+// both, or an error.
+type ToolAnswer struct {
+	Text  string
+	Calls []provider.ToolCall
+	Err   error
+}
+
+// ScriptTools makes role answer the tool turns of a request whose key block
+// is key: answers[n] answers the turn after n steps of transcript (the n-th
+// call of the conversation, from 0). A turn past the script is answered as
+// an unscripted one.
+func (b *Backend) ScriptTools(role provider.Role, key string, answers ...ToolAnswer) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.turns[role] == nil {
+		b.turns[role] = map[string][]ToolAnswer{}
+	}
+	out := make([]ToolAnswer, len(answers))
+	for i, a := range answers {
+		out[i] = ToolAnswer{Text: a.Text, Err: a.Err}
+		for _, c := range a.Calls {
+			out[i].Calls = append(out[i].Calls, provider.ToolCall{ID: c.ID, Name: c.Name, Input: slices.Clone(c.Input)})
+		}
+	}
+	b.turns[role][key] = out
+}
+
+// AcceptsTools: the fake takes tool turns of every role (H-060); no request
+// of a role but one that offers tools gets a tool call from it.
+func (b *Backend) AcceptsTools(role provider.Role) bool { return role.OutputSchema() != "" }
+
+// Turn answers a tool turn (H-060) from ScriptTools' script, or safely in
+// text when unscripted.
+func (b *Backend) Turn(ctx context.Context, req provider.Request) (provider.Response, error) {
+	if err := ctx.Err(); err != nil {
+		return provider.Response{}, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
+	}
+	b.mu.Lock()
+	b.seen = append(b.seen, req)
+	b.mu.Unlock()
+	if len(req.Tools) == 0 || !b.AcceptsTools(req.Prompt.Role) || req.Prompt.Research || len(req.Prompt.Images) > 0 {
+		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
+	}
+	key, _, err := keyOf(req.Prompt)
+	if err != nil {
+		return provider.Response{}, provider.NewError(provider.CodeRejected, 400, "")
+	}
+	b.mu.Lock()
+	script := b.turns[req.Prompt.Role][key]
+	b.mu.Unlock()
+	resp := provider.Response{Model: "fake"}
+	if n := len(req.Steps); n < len(script) {
+		a := script[n]
+		if a.Err != nil {
+			return resp, a.Err
+		}
+		resp.Text = []byte(a.Text)
+		for _, c := range a.Calls {
+			resp.ToolCalls = append(resp.ToolCalls, provider.ToolCall{ID: c.ID, Name: c.Name, Input: slices.Clone(c.Input)})
+		}
+		return resp, nil
+	}
+	text := "The deterministic fake provider has no scripted tool call for this request."
+	if req.Prompt.Locale == locale.TraditionalChinese {
+		text = "測試用的確定性回答器沒有這個請求的預設工具呼叫。"
+	}
+	resp.Text = []byte(text)
+	return resp, nil
 }
 
 // ScriptRevision makes role answer text to the repair (H-057: a prompt with
@@ -199,6 +282,10 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	b.mu.Lock()
 	b.seen = append(b.seen, req)
 	b.mu.Unlock()
+	if len(req.Tools) > 0 || len(req.Steps) > 0 {
+		// Tools go through Turn only (H-060).
+		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
+	}
 	key, blocks, err := keyOf(req.Prompt)
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeRejected, 400, "")

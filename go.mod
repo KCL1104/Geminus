@@ -10,6 +10,8 @@ ignore ./apps/web/node_modules
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.78.0
+	github.com/cloudwego/eino v0.9.21
+	github.com/eino-contrib/jsonschema v1.0.3
 	github.com/go-jose/go-jose/v4 v4.1.5
 	github.com/go-logr/logr v1.4.4
 	github.com/gowebpki/jcs v1.0.2
@@ -34,9 +36,7 @@ require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/cloudwego/eino v0.9.21 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/eino-contrib/jsonschema v1.0.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
