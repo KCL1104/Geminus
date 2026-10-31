@@ -11,7 +11,7 @@ Read in this order: README → DECISIONS_AND_TBD → PRD → ARCHITECTURE → th
 ## 2. P0 invariants that must not be violated
 
 - The four boundaries Generic Twin IR + DomainPack + SimulationEngine + ModelChangeProposal stay separate. The generic engine does not import any domain package (electronics-line, software-delivery, etc.), HTTP, pgx, an LLM SDK or frontend types.
-- AI can only suggest. It cannot approve, publish, write to the DB, run arbitrary code/SQL, call production tools or start a simulation on its own. Schema-valid is not authorized; risk/validation must be computed by the server.
+- AI can only suggest. It cannot approve, publish, write to the DB, run arbitrary code/SQL, call production tools or start a simulation on its own. Schema-valid is not authorized; risk/validation must be computed by the server. **Amended by H-056 (owner, 2026-10-31):** on a person's request and within their organization and role, the AI may start simulations, write its edits into a model's draft and save scenarios; publishing a model version still needs a person, and every AI write is audited, capped and labelled as the AI's.
 - ModelVersion, Scenario, dataset revision and completed result are never modified in place. A simulation is always bound to an immutable version, patch, dataset manifest and engine/config/seed.
 - A stale revision/base returns 409; no silent overwrite / auto-rebase. Approval completes revalidation, a one-time canonical effect, audit and the idempotency response in the same transaction.
 - Every tenant-owned row carries organization_id; application filter + RLS + composite tenant FKs. The API / worker roles must not be superuser, BYPASSRLS or table owner. Tenant context must be transaction-local and must not remain on a pool connection.
