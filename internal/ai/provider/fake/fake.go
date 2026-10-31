@@ -18,6 +18,11 @@
 // one it did not open, so the client's filter keeps two and drops one. A
 // scripted answer names what it names; ScriptResearch replaces the steps.
 // The pages are example.com addresses (RFC 2606): never a real source.
+//
+// Repair (H-057): a request with a Revision (the second turn of a proposal's
+// one repair) is answered from ScriptRevision's script under the same key;
+// unscripted, as the first request was (the fake repeats itself). Every
+// answer it gives is also its Response.Answer.
 package fake
 
 import (
@@ -49,6 +54,7 @@ type Answer struct {
 type Backend struct {
 	mu       sync.Mutex
 	script   map[provider.Role]map[string]Answer
+	revision map[provider.Role]map[string]Answer
 	research map[string]provider.Research
 	seen     []provider.Request
 }
@@ -57,7 +63,30 @@ var _ provider.Researcher = (*Backend)(nil)
 
 // New returns an empty fake.
 func New() *Backend {
-	return &Backend{script: map[provider.Role]map[string]Answer{}, research: map[string]provider.Research{}}
+	return &Backend{script: map[provider.Role]map[string]Answer{}, revision: map[provider.Role]map[string]Answer{},
+		research: map[string]provider.Research{}}
+}
+
+// ScriptRevision makes role answer text to the repair (H-057: a prompt with
+// a Revision) of a request whose key block is key. Unscripted, a repair is
+// answered as its first request was: the fake repeats itself, as a model
+// that fixes nothing would.
+func (b *Backend) ScriptRevision(role provider.Role, key string, text []byte) {
+	b.setRevision(role, key, Answer{Text: slices.Clone(text)})
+}
+
+// FailRevision makes the repair of role's request keyed key fail with err.
+func (b *Backend) FailRevision(role provider.Role, key string, err error) {
+	b.setRevision(role, key, Answer{Err: err})
+}
+
+func (b *Backend) setRevision(role provider.Role, key string, a Answer) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.revision[role] == nil {
+		b.revision[role] = map[string]Answer{}
+	}
+	b.revision[role][key] = a
 }
 
 // ResearchSources are the fixed pages the fake's research opens (H-046
@@ -176,6 +205,12 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	}
 	b.mu.Lock()
 	a, scripted := b.script[req.Prompt.Role][key]
+	if req.Prompt.Revision != nil {
+		// H-057: a repair's own answer when scripted, else the first one's.
+		if r, ok := b.revision[req.Prompt.Role][key]; ok {
+			a, scripted = r, true
+		}
+	}
 	steps, stepsScripted := b.research[key]
 	b.mu.Unlock()
 	// No usage: the fake runs no model and counts no tokens, and bytes
@@ -203,6 +238,8 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 		}
 		resp.Text = text
 	}
+	// The fake decodes nothing: the answer it took is the text (H-057).
+	resp.Answer = slices.Clone(resp.Text)
 	return resp, nil
 }
 

@@ -258,6 +258,10 @@ func (b *Backend) Quote(_ context.Context, req provider.Request) (provider.Quote
 		return provider.Quote{}, err
 	}
 	n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
+	if r := req.Prompt.Revision; r != nil {
+		// H-057: a repair's two turns, the prior answer and the follow-up.
+		n += int64(r.Prior.Len() + len(r.User()))
+	}
 	return provider.Quote{Model: b.model, MaxInputTokens: n}, nil
 }
 
@@ -362,6 +366,13 @@ func (b *Backend) complete(ctx context.Context, t *tally, req provider.Request) 
 		System:       []sdk.TextBlockParam{{Text: req.Prompt.System}},
 		Messages:     []sdk.MessageParam{sdk.NewUserMessage(sdk.NewTextBlock(req.Prompt.User()))},
 		OutputConfig: sdk.OutputConfigParam{Format: sdk.JSONOutputFormatParam{Schema: proj.Schema}},
+	}
+	if r := req.Prompt.Revision; r != nil {
+		// H-057: a repair goes on from the first request: the model's own
+		// previous answer as its assistant turn (its thinking not kept), then
+		// the server's follow-up.
+		params.Messages = append(params.Messages, sdk.NewAssistantMessage(sdk.NewTextBlock(string(r.Prior.Bytes()))),
+			sdk.NewUserMessage(sdk.NewTextBlock(r.User())))
 	}
 	var failed []string
 	for _, c := range b.creds {
@@ -491,7 +502,10 @@ func answer(msg *sdk.Message, resp provider.Response, proj Projection) (provider
 			return resp, provider.NewError(provider.CodeInvalidOutput, 0, resp.Credential)
 		}
 	}
-	decoded, issues := proj.Decode([]byte(text.String()))
+	// The text as the model wrote it, for one repair (H-057), also when it
+	// does not decode.
+	resp.Answer = []byte(text.String())
+	decoded, issues := proj.Decode(resp.Answer)
 	if len(issues) > 0 {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, resp.Credential)
 		e.Issues = issues

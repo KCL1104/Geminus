@@ -109,7 +109,9 @@ var fields = map[string]Kind{
 	"operation_id":  KindName,
 	"ai_provider":   KindToken,
 	// the AI provider call (D-095): labels and counts, never the prompt or
-	// the answer
+	// the answer; H-057: which call of the attempt it was (1, or 2 for the
+	// one repair)
+	"call_attempt":        KindNumber,
 	"provider":            KindName,
 	"model":               KindName,
 	"credential_label":    KindName,

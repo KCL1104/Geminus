@@ -37,6 +37,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/repair"
 	"github.com/kcl1104/geminus/internal/ai/review"
 	"github.com/kcl1104/geminus/internal/ai/spend"
 	"github.com/kcl1104/geminus/internal/audit"
@@ -246,7 +247,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 	// way).
 	failed := func(err error, gen generation) error {
 		var f *jobs.Failure
-		asked := gen.meta != nil || (gen.photo != nil && gen.photo.segmenter != nil)
+		asked := gen.meta != nil || (gen.photo != nil && gen.photo.segmenter != nil) || gen.repair != nil
 		if errors.As(err, &f) && ctx.Err() == nil && asked {
 			var call provider.Metadata
 			if gen.meta != nil {
@@ -254,6 +255,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 			}
 			if aerr := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
 				m := photoAuditMeta(call, gen.photo)
+				repairAuditMeta(m, gen.repair)
 				m["code"], m["retryable"] = f.Code, f.Retryable
 				return audit(ctx, tx, "proposal.attempt_failed", m)
 			}); aerr != nil {
@@ -300,10 +302,15 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		if g.ProviderMetadata, err = photoMetadata(g.ProviderMetadata, gen); err != nil {
 			return err
 		}
+		// H-057: and what the one repair did, when there was one.
+		if g.ProviderMetadata, err = repairMetadata(g.ProviderMetadata, gen.repair); err != nil {
+			return err
+		}
 		if err := store.Generate(ctx, tx, org, p.ProposalID, g); err != nil {
 			return finishFailure(err)
 		}
 		m := photoAuditMeta(call, gen.photo)
+		repairAuditMeta(m, gen.repair)
 		m["status"] = string(outcome.Status)
 		if outcome.Validation != nil {
 			m["issues"] = len(outcome.Validation.Issues)
@@ -362,6 +369,9 @@ type generation struct {
 	// sources are the pages a research call opened that the answer relied
 	// on (provider.FilterSources, H-046 (2)).
 	sources []provider.WebSource
+	// repair is what the one repair did (H-057), when the server refused
+	// the first answer for what it says; nil when there was none.
+	repair *repair.Record
 }
 
 // generate builds the context, reads and verifies the base's dataset
@@ -424,51 +434,82 @@ func (h *Handler) generateAsked(ctx context.Context, org string, st started, att
 	pc.Model = chosen     // H-049: exactly this model, or the call is refused
 	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
 	meta := res.Metadata
-	h.logCall(ctx, meta, err)
+	h.logCall(ctx, meta, err, 1)
+	// check is the server's checks of a schema-valid answer: the review, then
+	// the dataset binding stage. A repair's answer goes through exactly these
+	// (H-057).
+	check := func(out provider.ProposalOutput) (review.Outcome, error) {
+		// The review never sees the sources (out has none): what a page says
+		// changes neither the validation nor the risk (H-046 (2)).
+		outcome, err := review.Review(review.Input{Mode: mode, Base: v.IR, Pool: pool, Pack: pack, Output: out})
+		if err != nil {
+			h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
+			return review.Outcome{}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
+		}
+		if outcome.Status != review.Ready {
+			return outcome, nil
+		}
+		// The dataset binding stage: every empirical distribution of the
+		// candidate is bound in the base version's manifest, and the
+		// snapshots verify (D-006, D-033), read from the copies made before
+		// the call.
+		resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
+		if err != nil {
+			if ctx.Err() != nil {
+				return review.Outcome{}, err
+			}
+			// No storage is read here, so this is the server's own fault; a
+			// retry would ask the provider again, so the attempt fails for
+			// good.
+			h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
+			return review.Outcome{}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
+		}
+		return outcome.Refuse(withoutIR(resolution.Issues)), nil
+	}
+	var outcome review.Outcome
 	if err != nil {
 		if ctx.Err() != nil {
 			return generation{}, err // the attempt is stopping: the worker records it, or nothing
 		}
 		var pe *provider.Error
-		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			// Not a proposal: invalid, with where the answer is wrong
-			// and nothing of what it says (AI_SPEC §4).
-			return generation{outcome: review.InvalidOutput(pe.Issues), meta: &meta, manifest: manifest}, nil
+		if !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput {
+			if research || provider.SlowModel(chosen) {
+				// A research attempt, or one of a slow model (H-049 review
+				// round 1, M1), is never run again (its job has one attempt,
+				// internal/proposals ResearchJobAttempts, SlowModelJobAttempts):
+				// its failure is final whatever the code says (H-046 review
+				// round 1, M1).
+				return generation{meta: &meta}, final(providerFailure(err))
+			}
+			return generation{meta: &meta}, providerFailure(err)
 		}
-		if research || provider.SlowModel(chosen) {
-			// A research attempt, or one of a slow model (H-049 review round
-			// 1, M1), is never run again (its job has one attempt,
-			// internal/proposals ResearchJobAttempts, SlowModelJobAttempts):
-			// its failure is final whatever the code says (H-046 review round
-			// 1, M1).
-			return generation{meta: &meta}, final(providerFailure(err))
+		// Not a proposal: invalid, with where the answer is wrong and
+		// nothing of what it says (AI_SPEC §4).
+		outcome = review.InvalidOutput(pe.Issues)
+	} else if outcome, err = check(res.Output); err != nil {
+		if ctx.Err() != nil {
+			return generation{}, err
 		}
-		return generation{meta: &meta}, providerFailure(err)
+		return generation{meta: &meta}, err
 	}
-	// The review never sees the sources (res.Output has none): what a page
-	// says changes neither the validation nor the risk (H-046 (2)).
-	outcome, err := review.Review(review.Input{Mode: mode, Base: v.IR, Pool: pool, Pack: pack, Output: res.Output})
-	if err != nil {
-		h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return generation{meta: &meta}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
-	}
-	if outcome.Status != review.Ready {
-		return generation{outcome: outcome, meta: &meta, manifest: manifest, sources: res.Sources}, nil
-	}
-	// The dataset binding stage: every empirical distribution of the
-	// candidate is bound in the base version's manifest, and the snapshots
-	// verify (D-006, D-033), read from the copies made before the call.
-	resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
+	gen := generation{outcome: outcome, meta: &meta, manifest: manifest, sources: res.Sources}
+	// H-057: an answer the server refused for what it says gets one repair,
+	// in this attempt; the first call's sources stay with the proposal (the
+	// repair has no web search).
+	gen.outcome, gen.repair, err = repair.Once(ctx, h.cfg.Provider, pc, res.Prior, outcome, check,
+		func(m provider.Metadata, err error) { h.logCall(ctx, m, err, 2) })
 	if err != nil {
 		if ctx.Err() != nil {
 			return generation{}, err
 		}
-		// No storage is read here, so this is the server's own fault; a
-		// retry would ask the provider again, so the attempt fails for good.
-		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return generation{meta: &meta}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
+		var ae *aicontext.Error
+		if errors.As(err, &ae) {
+			h.cfg.Log.ErrorContext(ctx, "building a proposal's repair failed", "organization_id", org, "proposal_id", pr.ID, "code", string(ae.Code))
+			return gen, failure(InputInvalid, "the server could not build the follow-up of the refused answer", false)
+		}
+		return gen, err
 	}
-	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: &meta, manifest: manifest, sources: res.Sources}, nil
+	return gen, nil
 }
 
 // withoutIR rewrites the binding stage's /ir/... paths as paths into the
@@ -536,11 +577,12 @@ func generatedWith(o review.Outcome, meta provider.Metadata, manifest []model.Da
 }
 
 // logCall is the AI provider call's operational metric (T-035, D-095):
-// the provider, model and credential labels, the role, latency, token
-// counts, the provider's request ID and the outcome code (OK, or AI_ and
-// the client's code); never the prompt, the answer or a key. The job's
-// correlation comes with ctx.
-func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
+// which call of the attempt it was (call_attempt: 1 for the first, 2 for
+// the one repair, H-057), the provider, model and credential labels, the
+// role, latency, token counts, the provider's request ID and the outcome
+// code (OK, or AI_ and the client's code); never the prompt, the answer or
+// a key. The job's correlation comes with ctx.
+func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error, call int) {
 	code := "OK"
 	switch c := provider.CodeOf(err); {
 	case err == nil:
@@ -549,7 +591,7 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 	default:
 		code = "AI_" + strings.ToUpper(string(c))
 	}
-	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
+	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "call_attempt", call, "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
 		"role", string(m.Role), "latency_ms", m.LatencyMillis, "input_tokens", m.Usage.InputTokens, "output_tokens", m.Usage.OutputTokens,
 		"provider_request_id", m.ProviderRequestID, "code", code, "cost_nano_usd", m.CostNanoUSD, "spend_reservation_id", m.SpendReservation)
 	var pe *provider.Error

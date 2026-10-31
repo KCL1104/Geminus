@@ -777,6 +777,8 @@ export const en = {
   "proposal.latest.same": "Version {version} is the model's latest.",
   "proposal.latest.newer": "Version {version} is now the model's latest.",
   "proposal.fromPhoto": "Asked for with a photo ({type}, {width} × {height} pixels).",
+  // H-057: Geminus refused the AI's first answer and asked once more; this is the second.
+  "proposal.revisedAfterCheck": "Revised once after Geminus's check.",
   "proposal.photo": "The photo",
   "proposal.photo.alt": "The photo or floor plan this proposal was asked for with.",
   "proposal.photo.boxesHint": "Each box is an object {model} found in the photo.",

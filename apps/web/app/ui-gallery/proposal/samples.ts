@@ -283,6 +283,8 @@ export function sampleFor(state: SampleState): Sample {
             valid: false,
             issues: [{ code: "ID_POOL_VIOLATION", path: "/nodes/25/id", message: "a new entity's ID is not one of this proposal's allocated IDs (D-046)", severity: "error" }],
           },
+          // H-057: the AI's second answer, refused again after its one repair.
+          generated_by: { provider: "meta", model: "muse-spark-1.3", revised_after_check: true },
         },
       };
     case "failed":

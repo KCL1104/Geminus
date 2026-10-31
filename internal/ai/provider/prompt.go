@@ -92,7 +92,12 @@ type Prompt struct {
 	// only to a Researcher that accepts the role. Sealed into InputHash
 	// (left out of the hash when false, so a prompt without research hashes
 	// as before).
-	Research   bool
+	Research bool
+	// Revision is a repair's second turn (H-057, revision.go): the model's
+	// prior answer and the server's follow-up after the first turn above.
+	// Sealed into InputHash (by the prior answer's digest; left out when
+	// nil, so a first call hashes as before).
+	Revision   *Revision
 	Disclosure Disclosure
 	// InputHash is "sha256:<hex>" of the JCS form of the organization,
 	// role, template version, locale, system text and rendered user
@@ -144,10 +149,8 @@ func Seal(p Prompt) (Prompt, error) {
 	}
 	// The rules may name the block kinds, but never hold a block: data
 	// interpolated into them would be read as rules.
-	for _, k := range []BlockKind{UntrustedData, ServerData} {
-		if strings.Contains(p.System, "<"+string(k)+" name=") || strings.Contains(p.System, "</"+string(k)+">") {
-			return fail("the system rules contain a block")
-		}
+	if holdsBlock(p.System) {
+		return fail("the system rules contain a block")
 	}
 	if len(p.Blocks) == 0 {
 		return fail("no blocks")
@@ -159,6 +162,11 @@ func Seal(p Prompt) (Prompt, error) {
 		return fail("research is for a proposal role's prompt without images")
 	}
 	out := p
+	rev, err := sealRevision(p.Revision, p)
+	if err != nil {
+		return Prompt{}, err
+	}
+	out.Revision = rev
 	out.Images = nil
 	for i, im := range p.Images {
 		if err := im.Check(); err != nil {
@@ -226,7 +234,8 @@ func (p Prompt) hash() (string, error) {
 		User            string        `json:"user"`
 		Images          []imageRef    `json:"images,omitzero"`
 		Research        bool          `json:"research,omitzero"`
-	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User(), images, p.Research})
+		Revision        *revisionRef  `json:"revision,omitzero"`
+	}{p.OrganizationID, p.Role, p.TemplateVersion, p.Locale, p.System, p.User(), images, p.Research, p.Revision.ref()})
 	if err != nil {
 		return "", err
 	}
@@ -239,11 +248,11 @@ func (p Prompt) Verify() error {
 		return fmt.Errorf("%w: not sealed", ErrInvalidPrompt)
 	}
 	again, err := Seal(Prompt{OrganizationID: p.OrganizationID, Role: p.Role, TemplateVersion: p.TemplateVersion, Locale: p.Locale,
-		System: p.System, Blocks: p.Blocks, Images: p.Images, Research: p.Research})
+		System: p.System, Blocks: p.Blocks, Images: p.Images, Research: p.Research, Revision: p.Revision})
 	if err != nil {
 		return err
 	}
-	if again.InputHash != p.InputHash || !blocksEqual(again.Blocks, p.Blocks) {
+	if again.InputHash != p.InputHash || !blocksEqual(again.Blocks, p.Blocks) || !revisionsEqual(again.Revision, p.Revision) {
 		return fmt.Errorf("%w: changed after it was sealed", ErrInvalidPrompt)
 	}
 	return nil

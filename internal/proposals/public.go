@@ -68,6 +68,10 @@ type GeneratedBy struct {
 	Segmenter *GeneratedSegmenter `json:"segmenter,omitzero"`
 	// WebSearch: the call ran with research on (H-046 (2)).
 	WebSearch *GeneratedWebSearch `json:"web_search,omitzero"`
+	// RevisedAfterCheck: the server refused the AI's first answer and the
+	// proposal holds its second, written after it saw the server's issues
+	// (H-057's one repair); left out (false) otherwise.
+	RevisedAfterCheck bool `json:"revised_after_check,omitzero"`
 }
 
 // GeneratedWebSearch is GeneratedBy's web_search: how many searches the
@@ -142,6 +146,11 @@ var (
 // maxSegments is D-131 (c)'s limit on a photo's objects.
 const maxSegments = 64
 
+// revisedOutcomes are the stored repair outcomes (internal/ai/repair) of a
+// proposal that holds the AI's second answer: the server reviewed it,
+// whatever it found. A failed repair call left the first answer's outcome.
+var revisedOutcomes = map[string]bool{"ready": true, "needs_input": true, "invalid": true}
+
 // maxQueries bounds the queries GeneratedBy shows (common.schema.json):
 // a count outside it leaves web_search out rather than shown.
 const maxQueries = 10000
@@ -171,11 +180,19 @@ func generatedBy(metadata []byte, rec *store.Image) *GeneratedBy {
 			Boxes    jsontext.Value `json:"boxes"`
 		} `json:"segmenter"`
 		WebSearch *provider.WebSearch `json:"web_search"`
+		// Repair is the generator's record of the one repair (H-057); only
+		// its outcome is read.
+		Repair *struct {
+			Outcome string `json:"outcome"`
+		} `json:"repair"`
 	}
 	if len(metadata) == 0 || json.Unmarshal(metadata, &m) != nil || !providerName.MatchString(m.Provider) {
 		return nil
 	}
 	out := &GeneratedBy{Provider: m.Provider}
+	if r := m.Repair; r != nil && revisedOutcomes[r.Outcome] {
+		out.RevisedAfterCheck = true
+	}
 	if modelName.MatchString(m.Model) {
 		out.Model = m.Model
 	}

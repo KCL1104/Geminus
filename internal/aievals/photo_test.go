@@ -42,6 +42,9 @@ type photoJudge struct {
 	images    bool
 	mu        sync.Mutex
 	prompts   []provider.Prompt
+	// first, when set, is the judge's first answer instead of the demo's
+	// (H-057: one the server refuses; its repair answers the demo).
+	first func(pool map[string][]string) []byte
 }
 
 func (j *photoJudge) Name() string        { return "meta" }
@@ -59,7 +62,7 @@ func (j *photoJudge) Quote(context.Context, provider.Request) (provider.Quote, e
 var answerText func(pool map[string][]string) []byte
 
 func (j *photoJudge) Complete(_ context.Context, req provider.Request) (provider.Response, error) {
-	j.calls.Add(1)
+	n := j.calls.Add(1)
 	j.mu.Lock()
 	j.prompts = append(j.prompts, req.Prompt)
 	j.mu.Unlock()
@@ -71,8 +74,66 @@ func (j *photoJudge) Complete(_ context.Context, req provider.Request) (provider
 			}
 		}
 	}
-	return provider.Response{Text: answerText(pool), Model: "muse-spark-1.3", Credential: "meta",
+	text := answerText(pool)
+	if n == 1 && j.first != nil {
+		text = j.first(pool)
+	}
+	// The text as the model wrote it too, as the Meta adapter keeps it (H-057).
+	return provider.Response{Text: text, Answer: text, Model: "muse-spark-1.3", Credential: "meta",
 		Usage: provider.Usage{InputTokens: 6702, OutputTokens: 1100}}, nil
+}
+
+// H-057: the smoke runs the worker's one repair too: the judge's first
+// answer refused (ROUTING_INVALID), its second the demo, ready; SAM asked
+// once per concept; the report's judge is the first call's, its repair the
+// second's, and the run's cost both calls'.
+func TestThePhotoSmokeRunsTheRepair(t *testing.T) {
+	j := &photoJudge{images: true, first: func(pool map[string][]string) []byte {
+		var a map[string]any
+		if err := json.Unmarshal(contracttest.PhotoAnswer(t, "electronics-line-demo", pool), &a); err != nil {
+			t.Fatal(err)
+		}
+		for _, c := range a["changes"].([]any) {
+			if v, ok := c.(map[string]any)["value"].(map[string]any); ok && v["id"] == pool["flow"][2] {
+				v["routing"].(map[string]any)["probability"] = 0.5
+			}
+		}
+		out, _ := json.Marshal(a)
+		return out
+	}}
+	r, run := photoSmoke(t, j, demoSAM(t), spend.NanoPerUSD)
+	muse, _ := spend.PriceOf("muse-spark-1.3")
+	judgeCost := muse.Cost(spend.Tokens{Input: 6702, Output: 1100})
+	samPrice, _ := spend.ImagePriceOf("sam-3.1")
+	if r.Status != "ready" || !r.Ok() || r.NewProcessSteps != 4 || j.calls.Load() != 2 || r.Segmenter.Calls != 8 {
+		t.Fatalf("%s, %d judge calls, %d segmenter calls", r.Status, j.calls.Load(), r.Segmenter.Calls)
+	}
+	p := r.Repair
+	// The photo template's own version is the first call's (r.Template; not
+	// pinned here: the photo prompt has versions of its own).
+	if p == nil || p.Outcome != "ready" || p.Issues == 0 || !strings.HasPrefix(r.Template, "photo-") || p.Template != r.Template+"+repair-0.1.0" ||
+		p.Counted != 6661 || p.ReservedInput != 7328 ||
+		p.BilledInput != 6702 || p.Output != 1100 || p.CostNanoUSD != judgeCost {
+		t.Errorf("repair %+v", p)
+	}
+	if g := r.Judge; g.Calls != 2 || g.Quotes != 2 || g.Reservations != 2 || g.CostNanoUSD != judgeCost || g.Counted != 6661 {
+		t.Errorf("judge %+v", g)
+	}
+	if c := r.Cost; c.NanoUSD != 8*samPrice+2*judgeCost || c.NanoUSD != run.Spent() {
+		t.Errorf("cost %+v", c)
+	}
+	data, err := r.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"floor plan shows", "Add the AOI", "SERVER_REVIEW", "ROUTING_INVALID", "untrusted_data"} {
+		if bytes.Contains(data, []byte(leak)) {
+			t.Errorf("the report holds %q", leak)
+		}
+	}
+	if second := j.prompts[1]; second.Revision == nil || second.User() != j.prompts[0].User() || len(second.Images) != 1 {
+		t.Errorf("the repair's request")
+	}
 }
 
 // photoSAM is the fake segmenter billed as SAM 3.1 bills: one image a

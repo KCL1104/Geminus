@@ -255,6 +255,12 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           })}
         </p>
       )}
+      {p.generated_by?.revised_after_check === true && (
+        // H-057: the server refused the AI's first answer; this is its second, reviewed the same way.
+        <p className={styles.meta} data-revised>
+          {t("proposal.revisedAfterCheck")}
+        </p>
+      )}
       {p.status === "generating" && <p>{t("proposal.generatingHint")}</p>}
       {approvable && (
         <p>{t(p.mode === "edit" ? "proposal.effect.edit" : "proposal.effect.scenario", { version: String(p.mode === "edit" ? baseVersion + 1 : baseVersion) })}</p>

@@ -12,7 +12,9 @@ import (
 // H-003 review M2: an answer the database could not store (U+0000 in its
 // text or its patch) is invalid at the review, before Finish, so the
 // attempt ends once instead of failing its write and asking the provider
-// again on every retry.
+// again on every retry. H-057: within that attempt the refused answer gets
+// its one repair (the fake repeats the answer): exactly two calls, the
+// second the repair, and the repair's answer is refused the same way.
 func TestUnstorableAnswers(t *testing.T) {
 	raise := `[{"op":"test","path":"/resources/1/id","value":"ci_runner"},{"op":"replace","path":"/resources/1/capacity","value":6}]`
 	for name, edit := range map[string]func(map[string]any){
@@ -42,8 +44,12 @@ func TestUnstorableAnswers(t *testing.T) {
 				t.Fatal(err)
 			}
 			row, _ := json.Marshal(g)
-			if strings.Contains(string(row), `\u0000`) || g.Summary != nil || len(f.Requests()) != 1 {
-				t.Errorf("the row %s, %d provider calls", row, len(f.Requests()))
+			reqs := f.Requests()
+			if strings.Contains(string(row), `\u0000`) || g.Summary != nil || len(reqs) != 2 || reqs[0].Prompt.Revision != nil || reqs[1].Prompt.Revision == nil {
+				t.Errorf("the row %s, %d provider calls", row, len(reqs))
+			}
+			if strings.ContainsRune(reqs[len(reqs)-1].Prompt.Revision.User(), 0) {
+				t.Error("the repair's follow-up quotes the answer")
 			}
 		})
 	}

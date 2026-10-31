@@ -391,7 +391,12 @@ type PhotoReport struct {
 		OverReservation bool    `json:"over_reservation"`
 		LatencyMillis   int64   `json:"latency_ms"`
 	} `json:"judge"`
-	Cost struct {
+	// Repair is the judge's one repair (H-057), when the server refused its
+	// first answer for what it says; absent when there was none. Judge's
+	// tokens, cost, count and reservation are the first call's; Judge.Calls,
+	// Quotes and Reservations, and Cost, count both calls.
+	Repair *PhotoRepair `json:"repair,omitzero"`
+	Cost   struct {
 		NanoUSD          int64  `json:"nano_usd"`
 		USD              string `json:"usd"`
 		CommittedNanoUSD int64  `json:"committed_nano_usd"`
@@ -403,6 +408,25 @@ type PhotoReport struct {
 	Warnings map[string]int `json:"observations"`
 	Complete bool           `json:"complete"`
 	NotRun   []string       `json:"not_run"`
+}
+
+// PhotoRepair is what the report says of the judge's one repair (H-057):
+// what came of it (ready, needs_input, invalid: the second answer's review;
+// failed: the second call failed, Code says how), how many issues the
+// follow-up listed, and the second call's template, count, reservation,
+// tokens, cost and latency; never a prompt or an answer.
+type PhotoRepair struct {
+	Outcome       string `json:"outcome"`
+	Code          string `json:"code,omitzero"`
+	Issues        int    `json:"issues"`
+	Template      string `json:"prompt_template_version,omitzero"`
+	Counted       int64  `json:"counted_input_tokens"`
+	ReservedInput int64  `json:"reserved_input_tokens"`
+	BilledInput   int64  `json:"billed_input_tokens"`
+	Output        int64  `json:"output_tokens"`
+	Thinking      *int64 `json:"thinking_tokens"` // null: the provider did not report it
+	CostNanoUSD   int64  `json:"cost_nano_usd"`
+	LatencyMillis int64  `json:"latency_ms"`
 }
 
 // Ok reports whether the smoke reached the server's outcome and no gate
@@ -581,6 +605,16 @@ func (r *PhotoRun) Run(ctx context.Context, cfg PhotoConfig, in *PhotoInputs) (*
 			rep.Served = append(rep.Served, v.Model)
 		}
 	}
+	if rec := res.Repair; rec != nil {
+		rep.Repair = &PhotoRepair{Outcome: rec.Outcome, Code: rec.Code, Issues: rec.Issues}
+		if c := rec.Call; c != nil {
+			rep.Repair.Template, rep.Repair.BilledInput, rep.Repair.Output = c.TemplateVersion, c.Usage.InputTokens, c.Usage.OutputTokens
+			rep.Repair.Thinking, rep.Repair.CostNanoUSD, rep.Repair.LatencyMillis = c.Usage.ThinkingTokens, c.CostNanoUSD, c.LatencyMillis
+			if c.SpendOverReservation {
+				rep.Judge.OverReservation = true
+			}
+		}
+	}
 	switch {
 	case err != nil:
 		rep.Status, rep.Gates[GatePipelineFailed] = "failed", 1
@@ -683,15 +717,22 @@ func (r *PhotoRun) finish(rep *PhotoReport) {
 
 	r.judge.mu.Lock()
 	rep.Judge.Quotes, rep.Judge.QuotesFailed, rep.Judge.Calls = len(r.judge.quotes), r.judge.failed, len(r.judge.usages)
+	// The first quote is the first call's; a second, the repair's (H-057).
 	if n := len(r.judge.quotes); n > 0 {
-		q := r.judge.quotes[n-1]
+		q := r.judge.quotes[0]
 		rep.Judge.Counted, rep.Judge.ReservedInput = q.Counted, q.MaxInputTokens
+		if n > 1 && rep.Repair != nil {
+			rep.Repair.Counted, rep.Repair.ReservedInput = r.judge.quotes[1].Counted, r.judge.quotes[1].MaxInputTokens
+		}
 	}
 	r.judge.mu.Unlock()
 	if rep.Judge.Counted > 0 && rep.Judge.BilledInput > 0 {
 		rep.Judge.BilledOverCount = float64(rep.Judge.BilledInput) / float64(rep.Judge.Counted)
 	}
 	if rep.Judge.ReservedInput > 0 && rep.Judge.BilledInput > rep.Judge.ReservedInput {
+		rep.Warnings[WarningCountExceeded]++
+	}
+	if p := rep.Repair; p != nil && p.ReservedInput > 0 && p.BilledInput > p.ReservedInput {
 		rep.Warnings[WarningCountExceeded]++
 	}
 
