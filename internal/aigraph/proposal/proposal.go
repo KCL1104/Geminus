@@ -21,7 +21,8 @@
 //	review_2       what came of it (repair.Settle: the review and the binding stage again)
 //
 // Each node runs only when the one before chose it, and the graph has no
-// cycle, so there is at most one repair by construction. The reviewed steps
+// cycle, so there is at most one repair by construction (slice E4's
+// repair_test.go reads the compiled shape). The reviewed steps
 // are the same functions as before, in the same order and with the same
 // inputs (the context builder, the metered client's checks behind the
 // ChatModel, the review, the binding stage, the repair): only the
@@ -357,7 +358,11 @@ func (c attempt) Value(key any) any {
 }
 
 // New compiles the graph.
-func New(cfg Config) (*Graph, error) {
+func New(cfg Config) (*Graph, error) { return compile(cfg) }
+
+// compile is New with more compile options after the graph's own (a test's
+// compile callback, which reads the graph's shape: E4).
+func compile(cfg Config, opts ...compose.GraphCompileOption) (*Graph, error) {
 	if cfg.Model == nil || cfg.Packs == nil {
 		return nil, errors.New("proposal: a model and packs are required")
 	}
@@ -432,7 +437,8 @@ func New(cfg Config) (*Graph, error) {
 			return nil, err
 		}
 	}
-	r, err := gr.Compile(context.Background(), compose.WithGraphName("proposal"), compose.WithNodeTriggerMode(compose.AllPredecessor))
+	opts = append([]compose.GraphCompileOption{compose.WithGraphName("proposal"), compose.WithNodeTriggerMode(compose.AllPredecessor)}, opts...)
+	r, err := gr.Compile(context.Background(), opts...)
 	if err != nil {
 		return nil, err
 	}
