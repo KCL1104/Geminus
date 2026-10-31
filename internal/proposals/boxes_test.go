@@ -6,6 +6,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	store "github.com/kcl1104/geminus/internal/storage/proposals"
 )
 
 // H-052: generated_by.segmenter.boxes, the objects SAM 3.1 found, drawn over
@@ -23,7 +26,9 @@ func TestGeneratedByShowsTheBoxes(t *testing.T) {
 			image, segments, boxes)
 	}
 	const image = `"image":{"digest":"sha256:bb","media_type":"image/png","width":1200,"height":520},`
-	got := FromMetadata(meta(image, "2", `,"boxes":[`+box1+`,`+box2+`]`))
+	// The proposal's own image record (twin.ai_proposal_images), whose size the boxes' frame must be.
+	frame := &store.Image{MediaType: "image/png", Width: 1200, Height: 520}
+	got := generatedBy(meta(image, "2", `,"boxes":[`+box1+`,`+box2+`]`), frame)
 	want := []SegmentBox{
 		{Concept: "smt line", X1: 40, Y1: 190, X2: 229, Y2: 309, Confidence: 0.93},
 		{Concept: "conveyor belt", X1: 230, Y1: 242, X2: 329, Y2: 257, Confidence: 0.81},
@@ -42,7 +47,7 @@ func TestGeneratedByShowsTheBoxes(t *testing.T) {
 
 	// The corners at the frame's last pixel are inside; a box of one pixel is a box.
 	edge := `{"concept":"arrow","x1":1199,"y1":519,"x2":1199,"y2":519,"confidence":0}`
-	if g := FromMetadata(meta(image, "1", `,"boxes":[`+edge+`]`)); g == nil || g.Segmenter == nil || len(g.Segmenter.Boxes) != 1 {
+	if g := generatedBy(meta(image, "1", `,"boxes":[`+edge+`]`), frame); g == nil || g.Segmenter == nil || len(g.Segmenter.Boxes) != 1 {
 		t.Errorf("the last pixel: %+v", g)
 	}
 
@@ -68,10 +73,65 @@ func TestGeneratedByShowsTheBoxes(t *testing.T) {
 		"boxes that are not a list":         {image, "1", `,"boxes":{"concept":"arrow"}`},
 	} {
 		t.Run(name, func(t *testing.T) {
-			g := FromMetadata(meta(c.image, c.segments, c.boxes))
+			g := generatedBy(meta(c.image, c.segments, c.boxes), frame)
 			if g == nil || g.Segmenter == nil || g.Segmenter.Boxes != nil || g.Segmenter.Provider != "meta" || g.Model != "muse-spark-1.3" {
 				t.Fatalf("got %+v", g)
 			}
 		})
+	}
+}
+
+// Review round 1, L6 and L7: the boxes are drawn on the proposal's own
+// photo, so they are shown only when the proposal has an image record of the
+// size the stored metadata names (getProposal); FromMetadata, which has no
+// record (an analysis), never shows them; and a list of proposals
+// (listProposals) leaves them out, keeping the provider, model and count.
+func TestTheBoxesBelongToTheProposalsOwnPhoto(t *testing.T) {
+	meta := []byte(`{"provider":"meta","model":"muse-spark-1.3","image":{"digest":"sha256:bb","media_type":"image/png","width":1200,"height":520},` +
+		`"segmenter":{"provider":"meta","model":"sam-3.1","segments":1,"boxes":[{"concept":"arrow","x1":0,"y1":0,"x2":10,"y2":10,"confidence":0.5}]}}`)
+	row := func(im *store.Image) store.Proposal {
+		return store.Proposal{ID: readPhoto, OrganizationID: readOrg, ModelID: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N", BaseVersionID: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+			Mode: "edit", Status: store.NeedsInput, CreatedBy: "usr_01M4YDQK0016KTK4JM6KAHZ6BR", CreatedAt: time.Date(2026, 10, 31, 9, 0, 0, 0, time.UTC),
+			ProviderMetadata: meta, Image: im}
+	}
+	boxes := func(p Proposal) int {
+		if p.GeneratedBy == nil || p.GeneratedBy.Segmenter == nil || p.GeneratedBy.Segmenter.Objects != 1 || p.GeneratedBy.Model != "muse-spark-1.3" {
+			t.Fatalf("generated_by %+v", p.GeneratedBy)
+		}
+		return len(p.GeneratedBy.Segmenter.Boxes)
+	}
+	own := &store.Image{ObjectKey: "k", SHA256: "sha256:bb", Size: 9, MediaType: "image/png", Width: 1200, Height: 520}
+	for name, c := range map[string]struct {
+		image *store.Image
+		want  int
+	}{
+		"its own photo":            {own, 1},
+		"no image record":          {nil, 0},
+		"a record of another size": {&store.Image{ObjectKey: "k", SHA256: "sha256:bb", Size: 9, MediaType: "image/png", Width: 600, Height: 260}, 0},
+		"a record turned":          {&store.Image{ObjectKey: "k", SHA256: "sha256:bb", Size: 9, MediaType: "image/png", Width: 520, Height: 1200}, 0},
+	} {
+		p, err := Public(row(c.image), "req_01M4YDQK00V6H8S0ST4F7510KR")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := boxes(p); got != c.want {
+			t.Errorf("%s: %d boxes, want %d", name, got, c.want)
+		}
+	}
+	if g := FromMetadata(meta); g == nil || g.Segmenter == nil || g.Segmenter.Boxes != nil || g.Segmenter.Objects != 1 {
+		t.Errorf("without a record: %+v", g)
+	}
+
+	p, err := Public(row(own), "req_01M4YDQK00V6H8S0ST4F7510KR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	item := listed(p)
+	if boxes(item) != 0 || boxes(p) != 1 || item.GeneratedBy.Segmenter.Provider != "meta" || item.GeneratedBy.Segmenter.Model != "sam-3.1" {
+		t.Errorf("listed %+v, shown %+v", item.GeneratedBy.Segmenter, p.GeneratedBy.Segmenter)
+	}
+	words := Proposal{ProposalID: readPhoto, GeneratedBy: &GeneratedBy{Provider: "meta"}}
+	if listed(words).GeneratedBy == nil || listed(Proposal{}).GeneratedBy != nil {
+		t.Error("a proposal without a segmenter is listed as it is")
 	}
 }

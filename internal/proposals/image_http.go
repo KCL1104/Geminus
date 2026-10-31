@@ -195,6 +195,10 @@ func refusedImage(err error) error {
 	case errors.Is(err, ErrNoImage):
 		// getProposalImage (H-052): a proposal asked for in words.
 		return httpapi.Errorf(httpapi.NotFound, "the proposal was not asked for with a photo")
+	case errors.Is(err, ErrImageStorage):
+		// getProposalImage: storage could not be read (review round 1, L2);
+		// the cause stays on the server.
+		return httpapi.Errorf(httpapi.ServiceUnavailable, "the photo could not be read from storage; retry later")
 	case errors.Is(err, ErrStorageUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "object storage is not configured for this deployment")
 	case errors.Is(err, ErrRetry):

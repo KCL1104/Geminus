@@ -748,6 +748,7 @@ export const zhHant: Catalog = {
   "proposal.photo.objects": "{model} 找到的物件",
   "proposal.photo.object": "{concept}，信心 {confidence}",
   "proposal.photo.unavailable": "無法顯示照片。",
+  "proposal.photo.loading": "正在載入照片…",
   "proposal.effect.edit": "批准後會建立模型的版本 {version}。",
   "proposal.effect.scenario": "批准後會存成以版本 {version} 為基礎、可模擬的情境；模型維持原樣。",
   "proposal.draftNote": "你的草稿不在這個提案中，審閱也不會改變草稿。",

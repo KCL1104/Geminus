@@ -922,7 +922,9 @@ paths:
       summary: List model proposals
       description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
         table. T-025: any member; the model''s proposals oldest first (created_at, then ID), each as getProposal shows
-        it; the cursor is bound to the organization, the model and this list.'
+        it, except that generated_by.segmenter never has boxes here (H-052: only getProposal carries a photo''s boxes;
+        the segmenter''s provider, model and objects stay); the cursor is bound to the organization, the model and
+        this list.'
       tags:
       - Proposals
       x-origin: PROPOSED
@@ -1552,9 +1554,11 @@ paths:
         then reads the stored object and serves it only when it is the one the record names (SHA-256, size, media type
         and size in pixels; source_image); no signed URL, and the client names only the proposal, never an object key.
         The bytes are the server''s re-encoding of the upload (pixels only, no metadata), as image/png or image/jpeg,
-        in every status of the proposal. 404 NOT_FOUND for a proposal that does not exist, is another organization''s
-        or was asked for in words; 500 INTERNAL_ERROR, with no byte of the image, when the stored object is missing or
-        does not match its record; 503 SERVICE_UNAVAILABLE when this deployment has no object storage.'
+        in every status of the proposal; no more than the record''s size is read. 404 NOT_FOUND for a proposal that
+        does not exist, is another organization''s or was asked for in words; 500 INTERNAL_ERROR, with no byte of the
+        image, when the stored object is missing or does not match its record; 503 SERVICE_UNAVAILABLE when this
+        deployment has no object storage, when object storage could not be read (retry later; the cause is not sent)
+        or when the request did not complete in time.'
       tags:
       - Proposals
       x-origin: PROPOSED

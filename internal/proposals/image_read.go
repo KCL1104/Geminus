@@ -30,6 +30,9 @@ var (
 	// record names, or its key is not the organization's: nothing is
 	// served (500, fail closed).
 	ErrImageCorrupt = errors.New("proposals: the stored photo does not match its record")
+	// ErrImageStorage: object storage could not be read while the request
+	// was live (503: retry later); the cause is joined to it, never sent.
+	ErrImageStorage = errors.New("proposals: the stored photo could not be read")
 )
 
 // Image returns the media type and bytes of the photo proposal id was asked
@@ -64,26 +67,35 @@ func (s *Service) Image(ctx context.Context, sc tenant.Scope, id string) (string
 	return rec.MediaType, data, nil
 }
 
-// readStoredImage reads im's object of organization org from objs and
-// returns its bytes when they are the record's.
+// readStoredImage reads im's object of organization org from objs, no more
+// than the record's size and one byte, and returns its bytes when they are
+// the record's. A request that ended while it read gets its context's error
+// as is (the client went away, or the deadline passed: not the storage's
+// fault); any other read failure is ErrImageStorage (review round 1, L1, L2).
 func readStoredImage(ctx context.Context, objs objects.Store, org string, im store.Image) ([]byte, error) {
 	if objs == nil {
 		return nil, ErrStorageUnavailable
 	}
-	if !objects.InArea(org, objects.Assets, im.ObjectKey) {
+	if !objects.InArea(org, objects.Assets, im.ObjectKey) || im.Size < 1 || im.Size > photo.MaxBytes {
 		return nil, ErrImageCorrupt
+	}
+	failed := func(err error) error {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return errors.Join(ErrImageStorage, err)
 	}
 	rc, err := objs.Get(ctx, im.ObjectKey)
-	if errors.Is(err, objects.ErrNotFound) {
+	if errors.Is(err, objects.ErrNotFound) && ctx.Err() == nil {
 		return nil, ErrImageCorrupt
 	}
 	if err != nil {
-		return nil, err
+		return nil, failed(err)
 	}
 	defer rc.Close()
-	data, err := io.ReadAll(io.LimitReader(rc, photo.MaxBytes+1))
+	data, err := io.ReadAll(io.LimitReader(rc, im.Size+1))
 	if err != nil {
-		return nil, err
+		return nil, failed(err)
 	}
 	if photo.Verify(data, photo.Record{MediaType: im.MediaType, Width: im.Width, Height: im.Height, Size: im.Size, SHA256: im.SHA256}) != nil {
 		return nil, ErrImageCorrupt

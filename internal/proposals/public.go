@@ -104,10 +104,13 @@ type SegmentBox struct {
 // the contract's checks again: a concept as the segmenter client takes one
 // (provider.CheckConcepts), corners in order inside the stored image's
 // frame (image.width and image.height, MinSide to MaxSide), a confidence
-// from 0 to 1. Otherwise nil, so that part of the boxes is never shown: a
-// proposal stored before the boxes were kept shows its object count only.
-func boxesOf(raw, image jsontext.Value, objects int) []SegmentBox {
-	if len(raw) == 0 || objects < 1 || objects > maxSegments {
+// from 0 to 1; and the frame is the size of rec, the proposal's own image
+// record (review round 1, L6: the boxes are drawn on that photo). Otherwise
+// nil, so that part of the boxes is never shown: a proposal stored before
+// the boxes were kept shows its object count only, and so does a row
+// without a record (an analysis).
+func boxesOf(raw, image jsontext.Value, objects int, rec *store.Image) []SegmentBox {
+	if len(raw) == 0 || objects < 1 || objects > maxSegments || rec == nil {
 		return nil
 	}
 	var frame struct {
@@ -115,7 +118,7 @@ func boxesOf(raw, image jsontext.Value, objects int) []SegmentBox {
 		Height int `json:"height"`
 	}
 	if json.Unmarshal(image, &frame) != nil || frame.Width < photo.MinSide || frame.Width > photo.MaxSide ||
-		frame.Height < photo.MinSide || frame.Height > photo.MaxSide {
+		frame.Height < photo.MinSide || frame.Height > photo.MaxSide || frame.Width != rec.Width || frame.Height != rec.Height {
 		return nil
 	}
 	var boxes []SegmentBox
@@ -146,8 +149,15 @@ const maxQueries = 10000
 // FromMetadata is the GeneratedBy of a row's provider metadata (a proposal's
 // or an analysis's), or nil when it names no provider the contract can show
 // (a generating row's {} included). A model or segmenter outside the
-// contract's patterns is left out rather than shown.
+// contract's patterns is left out rather than shown. It never shows boxes:
+// they are a proposal's, drawn on its own photo (generatedBy).
 func FromMetadata(metadata []byte) *GeneratedBy {
+	return generatedBy(metadata, nil)
+}
+
+// generatedBy is FromMetadata for a row whose image record is rec (nil for
+// none): a photo proposal's shows its boxes too (boxesOf).
+func generatedBy(metadata []byte, rec *store.Image) *GeneratedBy {
 	var m struct {
 		Provider string `json:"provider"`
 		Model    string `json:"model"`
@@ -170,7 +180,7 @@ func FromMetadata(metadata []byte) *GeneratedBy {
 		out.Model = m.Model
 	}
 	if s := m.Segmenter; s != nil && providerName.MatchString(s.Provider) && s.Segments >= 0 && s.Segments <= maxSegments {
-		out.Segmenter = &GeneratedSegmenter{Provider: s.Provider, Objects: s.Segments, Boxes: boxesOf(s.Boxes, m.Image, s.Segments)}
+		out.Segmenter = &GeneratedSegmenter{Provider: s.Provider, Objects: s.Segments, Boxes: boxesOf(s.Boxes, m.Image, s.Segments, rec)}
 		if modelName.MatchString(s.Model) {
 			out.Segmenter.Model = s.Model
 		}
@@ -242,7 +252,7 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 	// Which model answered, once there is an answer: not while generating,
 	// and not for a failure, whose resource holds only its error (AI_SPEC §4).
 	if p.Status != store.Generating && p.Status != store.Failed {
-		out.GeneratedBy = FromMetadata(p.ProviderMetadata)
+		out.GeneratedBy = generatedBy(p.ProviderMetadata, p.Image)
 	}
 	needsInput := func() {
 		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions
@@ -334,6 +344,19 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		return Proposal{}, fmt.Errorf("proposal %s: unknown status %q", p.ID, p.Status)
 	}
 	return out, nil
+}
+
+// listed is p as listProposals shows it (H-052 review round 1, L7): without
+// the photo's boxes, which only the proposal's own page draws (getProposal);
+// the segmenter's provider, model and object count stay.
+func listed(p Proposal) Proposal {
+	if g := p.GeneratedBy; g != nil && g.Segmenter != nil && g.Segmenter.Boxes != nil {
+		gb, s := *g, *g.Segmenter
+		s.Boxes = nil
+		gb.Segmenter = &s
+		p.GeneratedBy = &gb
+	}
+	return p
 }
 
 // ErrorEnvelope is common.schema.json#/$defs/Error.

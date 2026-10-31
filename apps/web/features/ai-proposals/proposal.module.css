@@ -224,6 +224,18 @@ ul.words {
   height: auto;
 }
 
+/* While the photo loads: one quiet line in the middle of its frame. */
+.photoLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
 .boxes {
   position: absolute;
   inset: 0;
@@ -253,9 +265,13 @@ ul.words {
   font-weight: var(--gm-font-weight-strong);
   line-height: var(--gm-line-height-label);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Above its box's top left corner, unless the box starts at the photo's top. */
+/* Above its box where the photo, as drawn, has room for it; else inside the
+   box's top edge (proposal-photo.tsx labelPlace). Its side and its widest are
+   set inline, so it never runs past the photo's edge. */
 .boxLabel[data-place="above"] {
   transform: translateY(-100%);
 }

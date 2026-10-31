@@ -13,8 +13,11 @@
 // photo, or whose corners are out of order, is neither drawn nor listed, and
 // a concept is text in a <bdi>. A proposal stored before the boxes were kept
 // (or one where nothing was found) shows the photo alone; a photo that
-// cannot be read says so in a quiet line, never as an error of the page.
-import { useEffect, useId, useState } from "react";
+// cannot be read, or has not come in PHOTO_TIMEOUT_MS, says so in a quiet
+// line, never as an error of the page; while it loads, the frame says so and
+// is busy. A label sits above its box where the photo, as drawn, has room for
+// it, else inside the box's top edge, and never runs past the photo's side.
+import { useEffect, useId, useRef, useState } from "react";
 import { useApi } from "../../lib/api/provider";
 import type { GeneratedBy, Proposal, SegmentBox } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
@@ -35,39 +38,94 @@ export function drawable(boxes: readonly SegmentBox[] | undefined, width: number
   );
 }
 
-/** Where a label goes: above its box, or inside it when the box starts at the photo's top. */
-const place = (b: SegmentBox, height: number) => (b.y1 / height < 0.08 ? "inside" : "above");
+/** How long the page waits for the photo before it says the photo could not be shown (review round 1, L5). */
+export const PHOTO_TIMEOUT_MS = 20_000;
+/** The room a label needs above its box, in rendered pixels: one 12 px line at 1.4, and a hair. */
+const LABEL_PX = 18;
+
+/**
+ * Where a box's label goes, the photo drawn at `scale` rendered pixels per
+ * photo pixel: above the box where the photo has room for it there, else
+ * inside the box's top edge, so the frame never clips it (review round 1, L4).
+ * An unknown scale (0) has no room.
+ */
+export function labelPlace(b: SegmentBox, scale: number): "above" | "inside" {
+  return b.y1 * scale >= LABEL_PX ? "above" : "inside";
+}
+
 /** A thin box (a conveyor, an arrow) carries its number only: its concept would cover the photo beside it. */
 const thin = (b: SegmentBox, width: number, height: number) => (b.x2 - b.x1 + 1) / width < 0.08 || (b.y2 - b.y1 + 1) / height < 0.08;
 const percent = (v: number, of: number) => `${(v / of) * 100}%`;
 
+/**
+ * A label's position in percent of the photo: from its box's left edge for a
+ * box in the photo's left half, else ending at its box's right edge; never
+ * wider than the photo leaves it on that side (a longer one ends in an
+ * ellipsis), so it never runs past the photo's edge.
+ */
+function labelStyle(b: SegmentBox, width: number, height: number) {
+  const top = percent(b.y1, height);
+  if (b.x1 < width / 2) {
+    const left = percent(b.x1, width);
+    return { align: "start", style: { left, top, maxWidth: `calc(100% - ${left})` } } as const;
+  }
+  const right = percent(width - 1 - b.x2, width);
+  return { align: "end", style: { right, top, maxWidth: `calc(100% - ${right})` } } as const;
+}
+
 /** The photo's section, or nothing for a proposal asked for in words. */
-export function ProposalPhoto({ proposalId, image, generatedBy }: { proposalId: string; image: SourceImage; generatedBy: GeneratedBy | undefined }) {
+export function ProposalPhoto({ proposalId, image, generatedBy, timeoutMs = PHOTO_TIMEOUT_MS }: { proposalId: string; image: SourceImage; generatedBy: GeneratedBy | undefined; timeoutMs?: number }) {
   const api = useApi();
   const { t, number } = useI18n();
   const rich = useRich();
   const headingId = useId();
   const model = useSegmenterName(generatedBy);
-  // The photo's object URL once it is read (null while it loads).
-  const [url, setUrl] = useState<string | null>(null);
-  const [unavailable, setUnavailable] = useState(false);
+  const frame = useRef<HTMLElement>(null);
+  // The photo as read for one proposal (key): its object URL (null while it
+  // loads), or that it could not be shown. A state of another proposal is
+  // not this one's: the page starts over from loading (review round 1, L3).
+  const key = `${proposalId} ${image.media_type}`;
+  const [photo, setPhoto] = useState<{ key: string; url: string | null; unavailable: boolean }>({ key, url: null, unavailable: false });
+  const { url, unavailable } = photo.key === key ? photo : { url: null, unavailable: false };
+  const [drawnWidth, setDrawnWidth] = useState(0);
 
   useEffect(() => {
     const ctl = new AbortController();
     let made: string | null = null;
+    // A photo that has not come in time is given up on, with the quiet note (L5).
+    const timer = setTimeout(() => {
+      ctl.abort();
+      setPhoto({ key, url: null, unavailable: true });
+    }, timeoutMs);
     void api.getProposalImage(proposalId, { signal: ctl.signal }).then((r) => {
+      // Gone (the page, the proposal) or given up on: no object URL is made.
       if (ctl.signal.aborted) return;
-      if (!r.ok || r.data.type !== image.media_type) return setUnavailable(true);
+      clearTimeout(timer);
+      if (!r.ok || r.data.type !== image.media_type) return setPhoto({ key, url: null, unavailable: true });
       made = URL.createObjectURL(r.data);
-      setUrl(made);
+      setPhoto({ key, url: made, unavailable: false });
     });
     return () => {
+      clearTimeout(timer);
       ctl.abort();
       if (made !== null) URL.revokeObjectURL(made);
     };
-  }, [api, proposalId, image.media_type]);
+  }, [api, key, proposalId, image.media_type, timeoutMs]);
+
+  // How wide the photo is drawn, for the labels' room (L4).
+  useEffect(() => {
+    const el = frame.current;
+    if (el === null || url === null) return;
+    const measure = () => setDrawnWidth(el.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [url]);
 
   const { width, height } = image;
+  const scale = drawnWidth / width;
   const boxes = drawable(generatedBy?.segmenter?.boxes, width, height);
   const named = model !== null && boxes.length > 0;
   return (
@@ -79,12 +137,13 @@ export function ProposalPhoto({ proposalId, image, generatedBy }: { proposalId: 
           {t("proposal.photo.unavailable")}
         </p>
       ) : (
-        <figure className={styles.photoFrame} style={{ aspectRatio: `${width} / ${height}`, maxWidth: width }}>
+        <figure ref={frame} className={styles.photoFrame} style={{ aspectRatio: `${width} / ${height}`, maxWidth: width }} aria-busy={url === null}>
+          {url === null && <span className={styles.photoLoading}>{t("proposal.photo.loading")}</span>}
           {url !== null && (
             <>
               {/* An object URL of the stored bytes: next/image cannot take one. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={t("proposal.photo.alt")} width={width} height={height} onError={() => setUnavailable(true)} />
+              <img src={url} alt={t("proposal.photo.alt")} width={width} height={height} onError={() => setPhoto({ key, url: null, unavailable: true })} />
               {boxes.length > 0 && (
                 <div className={styles.boxes} aria-hidden="true">
                   <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" focusable="false">
@@ -92,12 +151,15 @@ export function ProposalPhoto({ proposalId, image, generatedBy }: { proposalId: 
                       <rect key={i} x={b.x1} y={b.y1} width={b.x2 - b.x1 + 1} height={b.y2 - b.y1 + 1} />
                     ))}
                   </svg>
-                  {boxes.map((b, i) => (
-                    <span key={i} className={styles.boxLabel} data-box={i + 1} data-place={place(b, height)} style={{ left: percent(b.x1, width), top: percent(b.y1, height) }}>
-                      {i + 1}
-                      {!thin(b, width, height) && <bdi className={styles.boxConcept}> {visible(b.concept)}</bdi>}
-                    </span>
-                  ))}
+                  {boxes.map((b, i) => {
+                    const { align, style } = labelStyle(b, width, height);
+                    return (
+                      <span key={i} className={styles.boxLabel} data-box={i + 1} data-place={labelPlace(b, scale)} data-align={align} style={style}>
+                        {i + 1}
+                        {!thin(b, width, height) && <bdi className={styles.boxConcept}> {visible(b.concept)}</bdi>}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
             </>

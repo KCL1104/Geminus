@@ -89,6 +89,26 @@ func TestThePhotoAndItsBoxes(t *testing.T) {
 	if bytes.Contains(got.body, []byte("object_id")) {
 		t.Error("an object ID is shown")
 	}
+	// The list of the model's proposals names the segmenter and its count,
+	// never the boxes (review round 1, L7).
+	list := e.do("GET", "/v1/models/"+mdl+"/ai-proposals", viewer.Subject, e.a.ID, nil, "")
+	valid(t, list, "http.schema.json#/$defs/Proposals")
+	items := decode[struct {
+		Items []struct {
+			ProposalID  string `json:"proposal_id"`
+			GeneratedBy struct {
+				Segmenter struct {
+					Model   string    `json:"model"`
+					Objects int       `json:"objects"`
+					Boxes   []boxView `json:"boxes"`
+				} `json:"segmenter"`
+			} `json:"generated_by"`
+		} `json:"items"`
+	}](t, list).Items
+	if len(items) != 1 || items[0].ProposalID != id || items[0].GeneratedBy.Segmenter.Objects != 10 || items[0].GeneratedBy.Segmenter.Boxes != nil ||
+		bytes.Contains(list.body, []byte(`"boxes"`)) {
+		t.Errorf("listed %s", list.body)
+	}
 
 	// Nobody outside the organization reads it, whichever organization
 	// they name; no ID, no token, no photo.

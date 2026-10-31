@@ -133,7 +133,7 @@ export type GeneratedBy = {
     provider: string;
     model?: string;
     objects: number;
-    /** H-052: the objects themselves, for the proposal page to draw over the photo (getProposalImage): as many as objects, in the segmenter's order (the request's concepts, then by object). Absent when the segmenter found nothing, for a proposal stored before the boxes were kept, and whenever the stored boxes do not all pass the server's checks again (the count, each concept, each box inside the source image, each confidence): then only objects is shown, never part of the boxes. */
+    /** H-052: the objects themselves, for the proposal page to draw over the photo (getProposalImage): as many as objects, in the segmenter's order (the request's concepts, then by object). Only in getProposal (and the proposal a decision answers with), never in listProposals' items or an analysis. Absent when the segmenter found nothing, for a proposal stored before the boxes were kept, and whenever the stored boxes do not all pass the server's checks again (the count, each concept, each box inside the source image, each confidence, the frame the size of the proposal's own source_image): then only objects is shown, never part of the boxes. */
     boxes?: SegmentBox[];
   };
   /** H-046 (2): present only when the call ran with research on. queries is how many web searches the call made (0 when the model made none; asking to open a page or to find text in one is not counted), sources_dropped how many sources the answer named that the server did not keep: not asked for by this call, not an https URL the server accepts, carrying one of the request's identifiers in its query string, a repeat, or past the first 20. */

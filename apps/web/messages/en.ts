@@ -782,6 +782,7 @@ export const en = {
   "proposal.photo.objects": "Objects {model} found",
   "proposal.photo.object": "{concept}, confidence {confidence}",
   "proposal.photo.unavailable": "The photo could not be shown.",
+  "proposal.photo.loading": "Loading the photo…",
   "proposal.effect.edit": "Approving it creates version {version} of the model.",
   "proposal.effect.scenario": "Approving it saves a scenario on version {version} to simulate; the model stays as it is.",
   "proposal.draftNote": "Your draft is not part of this proposal, and reviewing it does not change the draft.",
