@@ -11,9 +11,10 @@ import (
 )
 
 // raisedAgain is a handler.Reraised: a panic raised again, with the value
-// and the stack it was first raised with. (E6's merge of E2 and E3: E2's
-// reraised, in outcome_internal_test.go, is the value-receiver one; one
-// handler.Reraised, E2's, with the stack as a string.)
+// and the stack it was first raised with. E2 and E3 each added the
+// interface; E6's merge kept one, E2's (the stack a string), so this
+// fixture of E3's has E2's signature and another name than E2's own
+// fixture, reraised (outcome_internal_test.go).
 type raisedAgain struct {
 	value any
 	stack string
