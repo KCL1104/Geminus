@@ -129,3 +129,8 @@ Commands of this round (same worktree and tools as §3; the base is this slice's
 | `GEMINUS_FULL_DIFFERENTIAL=1 go test -timeout 30m ./scripts/check-architecture/` | **ok** 1,143.9 s (other agents' builds and browser runs sharing the CPUs) |
 
 NOT RUN in this round: `make integration-test` (no Go, SQL or DB-backed code changed in this round; its §3 run stands); `make ai-eval` (no AI code or prompt changed); the other browser specs that open the landing (`a11y.spec.ts`, `keyboard.spec.ts`, `simplicity.spec.ts`, `strings.spec.ts`), in either build: the landing no longer reads the switch (nothing under `features/landing` or `app/page.tsx` does), so with it on the landing is the production build's, which passed them in §3; screenshot comparisons (as §4); any live call; `make backend-race` in full.
+
+
+## Coordinator's note (2026-10-31)
+
+P5 is resolved by W1 (a simulation lane of its own) and H-067 (`WORKER_REST_LANES=2` on the live worker, never more than the per-organization AI limit): a Muse Wonder proposal holds one of two AI lanes; simulations and the other lane keep running.
