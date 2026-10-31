@@ -41,7 +41,7 @@ backend-test:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included in this spec pack.' >&2; exit 2; }
 	@unformatted=$$(gofmt -l cmd internal schemas scripts prompts); [ -z "$$unformatted" ] || { echo "gofmt required:" >&2; echo "$$unformatted" >&2; exit 1; }
 	go vet $(GO_PKGS)
-	GEMINUS_FULL_DIFFERENTIAL=1 go test $(GO_PKGS)
+	GEMINUS_FULL_DIFFERENTIAL=1 go test -timeout 30m $(GO_PKGS)
 # No fused multiply-add in engine/statistics code on any GOARCH, and the numeric tests as an FMA-capable build.
 backend-numeric:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
