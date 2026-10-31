@@ -41,8 +41,9 @@ function Models({ projectId }: { projectId: string }) {
   );
 }
 
-// An editor or owner can start a new model from a template (H-045): the
-// header's action opens the form above the list in its place, and Cancel
+// An editor or owner can start a new model from a template (H-045) or from
+// a photo or floor plan (H-062, which opens the proposal the photo became):
+// the header's action opens the form above the list in its place, and Cancel
 // gives the action back with the focus on it. A viewer is not offered it.
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = use(params);
@@ -77,6 +78,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
           <NewModelForm
             projectId={projectId}
             onCreated={(id) => router.push(`/models/${id}`)}
+            onProposal={(id) => router.push(`/proposals/${id}`)}
             onCancel={() => {
               refocus.current = true;
               setCreating(false);

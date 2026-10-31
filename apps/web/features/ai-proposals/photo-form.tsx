@@ -43,8 +43,16 @@ export const PHOTO_TYPES = ["image/png", "image/jpeg"] as const;
  */
 export const PHOTO_DOMAINS: readonly Model["domain"][] = ["electronics_line"];
 
-/** What the form says for a refusal it knows, by the problem's detail or error code. */
-function advice(p: Problem): MessageKey | undefined {
+/** A refusal and what the form advises for it. */
+export type PhotoRefusal = { problem: Problem; guidance: MessageKey | undefined };
+
+/** The refusal of a file larger than the contract takes, before anything is sent (H-062: the new-model page checks the same); null when its size is fine. */
+export function tooLarge(file: Blob): PhotoRefusal | null {
+  return file.size > MAX_PHOTO_BYTES ? { problem: invalidRequestProblem("The image is larger than 5,242,880 bytes; nothing was sent."), guidance: "photo.problem.tooLarge" } : null;
+}
+
+/** What the form says for a refusal it knows, by the problem's detail or error code (H-062: the new-model page says the same). */
+export function advice(p: Problem): MessageKey | undefined {
   const code = p.details[0]?.code ?? p.code;
   switch (code) {
     case "AI_MODEL_NOT_APPROVED":
@@ -78,7 +86,7 @@ export function PhotoForm({ model, aiModel = DEFAULT_MODEL, blockedReason, reaso
   const { t, locale } = useI18n();
   const hintId = useId();
   // The refusal, and what the form advises for it.
-  const [problem, setProblem] = useState<{ problem: Problem; guidance: MessageKey | undefined } | null>(null);
+  const [problem, setProblem] = useState<PhotoRefusal | null>(null);
   const [sending, setSending] = useState(false);
   const busy = useRef(false);
   const sent = useRef<{ request: string; key: string } | null>(null);
@@ -88,8 +96,9 @@ export function PhotoForm({ model, aiModel = DEFAULT_MODEL, blockedReason, reaso
     const file = files?.[0];
     if (file === undefined || busy.current || blockedReason !== null) return;
     setProblem(null);
-    if (file.size > MAX_PHOTO_BYTES) {
-      setProblem({ problem: invalidRequestProblem("The image is larger than 5,242,880 bytes; nothing was sent."), guidance: "photo.problem.tooLarge" });
+    const big = tooLarge(file);
+    if (big !== null) {
+      setProblem(big);
       return;
     }
     // The same file again on the same version (a retry) takes the same key; another a new one.

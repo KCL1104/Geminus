@@ -5,6 +5,10 @@
 // name and one-line description are in the catalogs (template.<id>.*);
 // the domain's name is the pack's (domain.<id>.name). A test keeps this
 // list equal to the contract's, so a template the contract adds shows here.
+// H-062: a group's photo template is the bare line a model made from a
+// photo or floor plan starts from; the page offers it as "Start from a photo
+// or floor plan", with a photo to send once the model exists, never as a
+// template on its own.
 import type { CreateModel } from "../../lib/contracts";
 
 export type TemplateDomain = CreateModel["domain"];
@@ -12,15 +16,17 @@ export type TemplateDomain = CreateModel["domain"];
 export type TemplateOf<D extends TemplateDomain> = Extract<CreateModel, { domain: D }>["template"];
 export type Template = CreateModel["template"];
 
-type Group = { [D in TemplateDomain]: { domain: D; templates: readonly TemplateOf<D>[] } }[TemplateDomain];
+type Group = { [D in TemplateDomain]: { domain: D; templates: readonly TemplateOf<D>[]; photo?: TemplateOf<D> } }[TemplateDomain];
 
 export const TEMPLATE_GROUPS: readonly Group[] = [
-  { domain: "electronics_line", templates: ["electronics_assembly_test_line"] },
+  { domain: "electronics_line", templates: ["electronics_assembly_test_line"], photo: "photo_start" },
   { domain: "production_logistics", templates: ["shoe_factory", "food_plant", "carton_plant", "warehouse"] },
   { domain: "software_delivery", templates: ["default_delivery_pipeline"] },
 ];
 
-const domains = new Map<Template, TemplateDomain>(TEMPLATE_GROUPS.flatMap((g) => g.templates.map((t): [Template, TemplateDomain] => [t, g.domain])));
+const domains = new Map<Template, TemplateDomain>(
+  TEMPLATE_GROUPS.flatMap((g) => [...g.templates, ...(g.photo === undefined ? [] : [g.photo])].map((t): [Template, TemplateDomain] => [t, g.domain])),
+);
 
 /** The template the form starts on: the first one listed. */
 export const FIRST_TEMPLATE: Template = TEMPLATE_GROUPS[0]!.templates[0]!;
@@ -34,6 +40,9 @@ export function createRequest(template: Template, name: string, locale: CreateMo
 }
 
 export const isTemplate = (id: string): id is Template => domains.has(id as Template);
+
+/** Whether template is a group's photo template (H-062): the model needs a photo too. */
+export const isPhotoTemplate = (template: Template): boolean => TEMPLATE_GROUPS.some((g) => g.photo === template);
 
 export const templateName = (t: Template) => `template.${t}.name` as const;
 export const templateDescription = (t: Template) => `template.${t}.description` as const;

@@ -1,0 +1,8 @@
+=== RUN   TestProbePhotoStartWithoutBuffer
+    zz_probe_nobuffer_test.go:39: nodes 3 flows 2: valid true err <nil> issues []
+    zz_probe_nobuffer_test.go:40: pack issues []
+    zz_probe_nobuffer_test.go:42: flow release__smt release->smt
+    zz_probe_nobuffer_test.go:42: flow smt__shipped smt->shipped
+--- PASS: TestProbePhotoStartWithoutBuffer (0.13s)
+PASS
+ok  	github.com/kcl1104/geminus/internal/domainpack/electronicsline	0.190s

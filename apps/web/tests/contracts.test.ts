@@ -291,6 +291,8 @@ const createScenarioBody: CreateScenario = { name: "Eight CI runners", patch: ei
 const createElectronicsLine: CreateModel = { name: "My electronics line", domain: "electronics_line", template: "electronics_assembly_test_line" };
 const createElectronicsLineZh: CreateModel = { ...createElectronicsLine, name: "我的電子產線", locale: "zh-Hant" };
 const createDeliveryPipeline: CreateModel = { name: "My pipeline", domain: "software_delivery", template: "default_delivery_pipeline" };
+// H-062: the bare line a model made from a photo or floor plan starts from.
+const createPhotoStart: CreateModel = { name: "Line from a photo", domain: "electronics_line", template: "photo_start", locale: "en" };
 const baselineScenarioBody: CreateScenario = { name: "Baseline", patch: [] };
 const scenariosPage: Scenarios = { items: [aiScenario, manualScenario], next_cursor: null };
 // T-029 (D-088, D-089): compareSimulations answers codes, never prose, so
@@ -498,6 +500,7 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-create-model-electronics-line.json", createElectronicsLine],
     ["valid-create-model-electronics-line-zh-hant.json", createElectronicsLineZh],
     ["valid-create-model-default-locale.json", createDeliveryPipeline],
+    ["valid-create-model-electronics-line-photo-start.json", createPhotoStart],
     ["valid-scenarios-page.json", scenariosPage],
     ["valid-comparison-incomparable.json", incomparableComparison],
   ])("%s", (name, typed) => {
@@ -598,6 +601,8 @@ export const rejected = {
   templateOfAnotherDomain: { name: "x", domain: "electronics_line", template: "default_delivery_pipeline" } satisfies CreateModel,
   // @ts-expect-error a domain without a create-model template is not one (T-051)
   unknownDomain: { name: "x", domain: "warehouse", template: "electronics_assembly_test_line" } satisfies CreateModel,
+  // @ts-expect-error the photo start is the electronics line pack's, under no other domain (H-062)
+  photoStartOfAnotherDomain: { name: "x", domain: "production_logistics", template: "photo_start" } satisfies CreateModel,
   // @ts-expect-error a person's scenario has no source proposal; only an approval creates one (T-026, T-028)
   scenarioSource: { ...createScenarioBody, source_proposal_id: "aip_01M4YDQK00Q10EM95Z6H4XK0Y8" } satisfies CreateScenario,
   // @ts-expect-error a scenario patch is the P0 profile too: no move (D-014)

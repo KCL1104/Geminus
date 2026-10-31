@@ -135,16 +135,19 @@ describe("the templates the page offers", () => {
       const tpl = alt.properties.template;
       return (tpl.enum ?? [tpl.const!]).map((name) => `${alt.properties.domain.const}/${name}`);
     });
-    const offered = TEMPLATE_GROUPS.flatMap((g) => g.templates.map((t) => `${g.domain}/${t}`));
+    // H-062: a group's photo template is offered too, as the photo option.
+    const offered = TEMPLATE_GROUPS.flatMap((g) => [...g.templates, ...(g.photo === undefined ? [] : [g.photo])].map((t) => `${g.domain}/${t}`));
     expect([...offered].sort()).toEqual([...contract].sort());
     expect(offered).toContain("production_logistics/shoe_factory");
-    expect(offered).toHaveLength(6);
+    expect(offered).toContain("electronics_line/photo_start");
+    expect(offered).toHaveLength(7);
+    expect(TEMPLATE_GROUPS.filter((g) => g.photo !== undefined).map((g) => `${g.domain}/${g.photo}`)).toEqual(["electronics_line/photo_start"]);
   });
 
   it("have a name and a one-line description in both languages, each its own", () => {
     const seen = new Set<string>();
     for (const g of TEMPLATE_GROUPS) {
-      for (const t of g.templates) {
+      for (const t of [...g.templates, ...(g.photo === undefined ? [] : [g.photo])]) {
         for (const k of [templateName(t), templateDescription(t)]) {
           expect(en[k], k).toBeTruthy();
           expect(zhHant[k], k).toBeTruthy();
@@ -180,7 +183,8 @@ describe("a new model from a template on the project page (H-045)", () => {
     expect(text(f.querySelector("h2"))).toBe(t("newModel.title"));
     expect([...f.querySelectorAll("h3")].map(text)).toEqual(TEMPLATE_GROUPS.map((g) => t(`domain.${g.domain}.name`)));
     const rs = radios(f);
-    expect(rs.map(radioName)).toEqual(TEMPLATE_GROUPS.flatMap((g) => g.templates.map((x) => t(templateName(x)))));
+    // Each group's templates, then its photo option (H-062: the electronics line's).
+    expect(rs.map(radioName)).toEqual(TEMPLATE_GROUPS.flatMap((g) => [...g.templates, ...(g.photo === undefined ? [] : [g.photo])].map((x) => t(templateName(x)))));
     for (const r of rs) {
       const tpl = r.closest("[data-template]")!.getAttribute("data-template") as Parameters<typeof templateName>[0];
       expect(text(document.getElementById(r.getAttribute("aria-describedby") ?? "")), tpl).toBe(t(templateDescription(tpl)));
@@ -214,10 +218,13 @@ describe("a new model from a template on the project page (H-045)", () => {
     const f = await open(el);
     const field = nameField(f, en["newModel.name"]);
     await type(field, "   ");
+    button(f, en["newModel.create"])!.focus();
     await submit(f);
     expect(api.creates(), "no request without a name").toHaveLength(0);
     expect(text(f)).toContain(en["newModel.nameRequired"]);
     expect(field.getAttribute("aria-invalid")).toBe("true");
+    // H-062 review round 1: the focus goes to the field the refusal names, so its error is read.
+    expect(document.activeElement).toBe(field);
     await type(field, "  Plant B warehouse ");
     expect(text(f)).not.toContain(en["newModel.nameRequired"]);
     await choose(f, en[templateName("warehouse")]);
@@ -272,8 +279,14 @@ describe("a new model from a template on the project page (H-045)", () => {
     const rs = radios(f);
     await key(rs[0], "ArrowDown");
     await settle();
-    expect(rs[1]!.checked, "ArrowDown chooses the next template").toBe(true);
+    // H-062: the electronics line's photo option comes next, its own default name with it.
+    expect(rs[1]!.checked, "ArrowDown chooses the next option").toBe(true);
     expect(document.activeElement).toBe(rs[1]);
+    expect(nameField(f, en["newModel.name"]).value).toBe(en["newModel.photo.defaultName"]);
+    await key(rs[1], "ArrowDown");
+    await settle();
+    expect(rs[2]!.checked, "ArrowDown chooses the next template").toBe(true);
+    expect(document.activeElement).toBe(rs[2]);
     expect(nameField(f, en["newModel.name"]).value).toBe(en[templateName("shoe_factory")]);
     await press(button(f, en["newModel.cancel"]));
     await settle();

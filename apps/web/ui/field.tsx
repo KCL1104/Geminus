@@ -1,5 +1,5 @@
 "use client";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { FieldError, Input, Label, Text, TextArea, TextField as AriaTextField, type TextFieldProps as AriaTextFieldProps } from "react-aria-components";
 import { cx } from "./cx";
 import styles from "./field.module.css";
@@ -19,6 +19,8 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
    * names it in its aria-describedby, after the description.
    */
   notice?: { id: string; text: ReactNode };
+  /** The single-line input itself, for a form that moves the focus to it (a refused submit). */
+  inputRef?: Ref<HTMLInputElement>;
 };
 
 /**
@@ -26,12 +28,12 @@ export type TextFieldProps = Omit<AriaTextFieldProps, "className" | "validationB
  * field only shows it, and never runs the browser's own validation, whose
  * messages would come in the browser's language (validationBehavior "aria").
  */
-export function TextField({ label, description, errorMessage, multiline = false, rows = 3, notice, ...props }: TextFieldProps) {
+export function TextField({ label, description, errorMessage, multiline = false, rows = 3, notice, inputRef, ...props }: TextFieldProps) {
   const describedBy = [props["aria-describedby"], notice?.id].filter(Boolean).join(" ") || undefined;
   return (
     <AriaTextField {...props} aria-describedby={describedBy} validationBehavior="aria" className={cx(styles.field, multiline && styles.wide)}>
       <Label className={styles.label}>{label}</Label>
-      {multiline ? <TextArea className={cx(styles.input, styles.area)} rows={rows} /> : <Input className={styles.input} />}
+      {multiline ? <TextArea className={cx(styles.input, styles.area)} rows={rows} /> : <Input ref={inputRef} className={styles.input} />}
       {(description || notice) && (
         <p className={styles.description}>
           {description && <Text slot="description">{description}</Text>}

@@ -134,3 +134,43 @@
   flex-wrap: wrap;
   gap: var(--gm-space-md);
 }
+
+/* H-062: the photo a model made from a photo starts with, in the option's
+   own group right under the option once it is chosen (review round 1), a
+   little apart from the option rows: its label, the chooser and the file's
+   name on one row (wrapping on a phone), then the limits and the AI notice
+   in a 12 px line, as the model page's photo button has them. */
+.photo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gm-space-sm);
+  max-width: 720px;
+  margin: var(--gm-space-md) 0 0;
+}
+
+.photoRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-sm) var(--gm-space-md);
+}
+
+.file {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--gm-color-ink-2);
+}
+
+.hint {
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.error {
+  margin: 0;
+  color: var(--gm-color-error);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}

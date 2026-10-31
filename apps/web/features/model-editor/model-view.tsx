@@ -7,7 +7,8 @@
 // photos, from a photo of the line (T-056); the proposal opens on its own
 // page, so either request waits while the editor has edits the page would
 // lose. The model's scenarios, proposals and runs are the rail's other
-// sections (H-042).
+// sections (H-042). H-062: a model just made from a photo whose photo was
+// not sent says so above the request, whose photo button sends it again.
 import { useEffect, useReducer } from "react";
 import { RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
@@ -22,6 +23,7 @@ import { type DraftEvent, type DraftSession, loadedDraft, pendingOps, reduceDraf
 import { RailModel } from "../../app/_components/rail";
 import { AskForm } from "../ai-proposals/ask-form";
 import { PHOTO_DOMAINS } from "../ai-proposals/photo-form";
+import { PhotoNotSent, usePhotoNotSent } from "../models/photo-not-sent";
 import { ModelEditor } from "./model-editor";
 
 type Page = { model: Model; session: DraftSession } | null;
@@ -46,6 +48,8 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
   const { t } = useI18n();
   const [remote, retry] = useRemote((signal) => loadModelPage(api, modelId, signal), api, modelId);
   const [page, dispatch] = useReducer(pageReducer, null);
+  // H-062: a model just made from a photo whose photo was not sent.
+  const photoRefusal = usePhotoNotSent(modelId);
   useEffect(() => {
     if (remote.state === "loaded") dispatch({ type: "loaded", page: remote.data });
   }, [remote]);
@@ -76,13 +80,16 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
               ask={
                 onProposal &&
                 canEdit(role) && (
-                  <AskForm
-                    model={page.model}
-                    blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
-                    onCreated={onProposal}
-                    onReload={reloadPage}
-                    photo={PHOTO_DOMAINS.includes(page.model.domain)}
-                  />
+                  <>
+                    {photoRefusal !== null && PHOTO_DOMAINS.includes(page.model.domain) && <PhotoNotSent refusal={photoRefusal} />}
+                    <AskForm
+                      model={page.model}
+                      blockedReason={pendingOps(page.session).length > 0 ? t("ask.saveFirst") : null}
+                      onCreated={onProposal}
+                      onReload={reloadPage}
+                      photo={PHOTO_DOMAINS.includes(page.model.domain)}
+                    />
+                  </>
                 )
               }
             />

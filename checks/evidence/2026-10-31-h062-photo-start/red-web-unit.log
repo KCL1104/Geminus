@@ -1,0 +1,252 @@
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/.claude/worktrees/wf_ae206d5f-fa4-1/apps/web
+
+ ❯ tests/new-model.test.tsx (11 tests | 3 failed) 1424ms
+   ❯ a new model from a template on the project page (H-045) (9)
+     × lists every template under its domain's name, in en, and starts on the first with its name 134ms
+     × lists every template under its domain's name, in zh-Hant, and starts on the first with its name 90ms
+     × moves between the templates with the arrow keys, and Cancel gives the focus back to the action 94ms
+ ❯ tests/photo-start.test.tsx (13 tests | 12 failed) 1251ms
+   ❯ a new model from a photo or floor plan on the project page (H-062) (9)
+     × is offered beside the electronics line's template only, in en, and asks for a photo with the model page's limit and notice 194ms
+     × is offered beside the electronics line's template only, in zh-Hant, and asks for a photo with the model page's limit and notice 88ms
+     × creates the model, then sends the photo on its version 1 with a key of its own, and opens the proposal, in en 79ms
+     × creates the model, then sends the photo on its version 1 with a key of its own, and opens the proposal, in zh-Hant 64ms
+     × keeps a name the person typed, and sends nothing without a name or a photo, or with a photo larger than 5 MB 62ms
+     × a refused create sends no photo and keeps the form; its retry reuses the key, then the photo goes 57ms
+     × when the photo is not sent, opens the new model and leaves it the refusal with the photo form's advice 65ms
+     × holds Cancel and the chooser while the model is created and the photo sent 62ms
+   ❯ the model page of a model whose photo was not sent (H-062) (4)
+     × says so above its photo button, with the refusal, in en; the button sends the photo again 199ms
+     × says so above its photo button, with the refusal, in zh-Hant; the button sends the photo again 139ms
+     × shows it once: opened again, the page is the model as it is 138ms
+     × is not shown to a viewer, who gets no request 67ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 15 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/new-model.test.tsx > a new model from a template on the project page (H-045) > lists every template under its domain's name, in en, and starts on the first with its name
+AssertionError: expected [ Array(6) ] to deeply equal [ Array(7) ]
+
+- Expected
++ Received
+
+@@ -1,8 +1,7 @@
+  [
+    "Board assembly and test line",
+-   "Start from a photo or floor plan",
+    "Sneaker factory",
+    "Bread bakery",
+    "Corrugated box plant",
+    "Distribution center",
+    "Software delivery pipeline (example)",
+
+ ❯ tests/new-model.test.tsx:187:31
+    185|     const rs = radios(f);
+    186|     // Each group's templates, then its photo option (H-062: the elect…
+    187|     expect(rs.map(radioName)).toEqual(TEMPLATE_GROUPS.flatMap((g) => […
+       |                               ^
+    188|     for (const r of rs) {
+    189|       const tpl = r.closest("[data-template]")!.getAttribute("data-tem…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯
+
+ FAIL  tests/new-model.test.tsx > a new model from a template on the project page (H-045) > lists every template under its domain's name, in zh-Hant, and starts on the first with its name
+AssertionError: expected [ Array(6) ] to deeply equal [ '電路板組裝與測試產線', '從照片或平面圖開始', …(5) ]
+
+- Expected
++ Received
+
+@@ -1,8 +1,7 @@
+  [
+    "電路板組裝與測試產線",
+-   "從照片或平面圖開始",
+    "運動鞋工廠",
+    "吐司麵包廠",
+    "瓦楞紙箱廠",
+    "物流配送中心",
+    "軟體交付流程（範例）",
+
+ ❯ tests/new-model.test.tsx:187:31
+    185|     const rs = radios(f);
+    186|     // Each group's templates, then its photo option (H-062: the elect…
+    187|     expect(rs.map(radioName)).toEqual(TEMPLATE_GROUPS.flatMap((g) => […
+       |                               ^
+    188|     for (const r of rs) {
+    189|       const tpl = r.closest("[data-template]")!.getAttribute("data-tem…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯
+
+ FAIL  tests/new-model.test.tsx > a new model from a template on the project page (H-045) > moves between the templates with the arrow keys, and Cancel gives the focus back to the action
+AssertionError: expected 'Sneaker factory' to be 'Line from a photo' // Object.is equality
+
+Expected: "Line from a photo"
+Received: "Sneaker factory"
+
+ ❯ tests/new-model.test.tsx:282:53
+    280|     expect(rs[1]!.checked, "ArrowDown chooses the next option").toBe(t…
+    281|     expect(document.activeElement).toBe(rs[1]);
+    282|     expect(nameField(f, en["newModel.name"]).value).toBe(en["newModel.…
+       |                                                     ^
+    283|     await key(rs[1], "ArrowDown");
+    284|     await settle();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > is offered beside the electronics line's template only, in en, and asks for a photo with the model page's limit and notice
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > is offered beside the electronics line's template only, in zh-Hant, and asks for a photo with the model page's limit and notice
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ tests/photo-start.test.tsx:175:21
+    173|     expect(PHOTO_DOMAINS).toEqual(["electronics_line"]);
+    174|     const options = [...f.querySelectorAll("[data-template=photo_start…
+    175|     expect(options).toHaveLength(1);
+       |                     ^
+    176|     const group = options[0]!.closest("[role=group]")!;
+    177|     expect(text(group.querySelector("h3"))).toBe(t("domain.electronics…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > creates the model, then sends the photo on its version 1 with a key of its own, and opens the proposal, in en
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > creates the model, then sends the photo on its version 1 with a key of its own, and opens the proposal, in zh-Hant
+Error: nothing to press
+ ❯ Module.press tests/ui-harness.tsx:51:18
+     49|
+     50| export async function press(el: Element | null | undefined): Promise<v…
+     51|   if (!el) throw new Error("nothing to press");
+       |                  ^
+     52|   await act(async () => {
+     53|     el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, …
+ ❯ choosePhotoStart tests/photo-start.test.tsx:155:9
+ ❯ tests/photo-start.test.tsx:215:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > keeps a name the person typed, and sends nothing without a name or a photo, or with a photo larger than 5 MB
+Error: nothing to press
+ ❯ Module.press tests/ui-harness.tsx:51:18
+     49|
+     50| export async function press(el: Element | null | undefined): Promise<v…
+     51|   if (!el) throw new Error("nothing to press");
+       |                  ^
+     52|   await act(async () => {
+     53|     el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, …
+ ❯ choosePhotoStart tests/photo-start.test.tsx:155:9
+ ❯ tests/photo-start.test.tsx:233:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > a refused create sends no photo and keeps the form; its retry reuses the key, then the photo goes
+Error: nothing to press
+ ❯ Module.press tests/ui-harness.tsx:51:18
+     49|
+     50| export async function press(el: Element | null | undefined): Promise<v…
+     51|   if (!el) throw new Error("nothing to press");
+       |                  ^
+     52|   await act(async () => {
+     53|     el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, …
+ ❯ choosePhotoStart tests/photo-start.test.tsx:155:9
+ ❯ tests/photo-start.test.tsx:273:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > when the photo is not sent, opens the new model and leaves it the refusal with the photo form's advice
+Error: nothing to press
+ ❯ Module.press tests/ui-harness.tsx:51:18
+     49|
+     50| export async function press(el: Element | null | undefined): Promise<v…
+     51|   if (!el) throw new Error("nothing to press");
+       |                  ^
+     52|   await act(async () => {
+     53|     el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, …
+ ❯ choosePhotoStart tests/photo-start.test.tsx:155:9
+ ❯ tests/photo-start.test.tsx:291:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > holds Cancel and the chooser while the model is created and the photo sent
+Error: nothing to press
+ ❯ Module.press tests/ui-harness.tsx:51:18
+     49|
+     50| export async function press(el: Element | null | undefined): Promise<v…
+     51|   if (!el) throw new Error("nothing to press");
+       |                  ^
+     52|   await act(async () => {
+     53|     el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, …
+ ❯ choosePhotoStart tests/photo-start.test.tsx:155:9
+ ❯ tests/photo-start.test.tsx:315:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > the model page of a model whose photo was not sent (H-062) > says so above its photo button, with the refusal, in en; the button sends the photo again
+ FAIL  tests/photo-start.test.tsx > the model page of a model whose photo was not sent (H-062) > says so above its photo button, with the refusal, in zh-Hant; the button sends the photo again
+AssertionError: expected null not to be null
+ ❯ tests/photo-start.test.tsx:372:24
+    370|     const { el, api, created } = await modelPage({ locale });
+    371|     const notice = el.querySelector<HTMLElement>("[data-photo-not-sent…
+    372|     expect(notice).not.toBeNull();
+       |                        ^
+    373|     const warning = notice.querySelector('[data-tone="warning"]')!;
+    374|     expect(warning.getAttribute("role")).toBe("alert");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > the model page of a model whose photo was not sent (H-062) > shows it once: opened again, the page is the model as it is
+AssertionError: expected null not to be null
+ ❯ tests/photo-start.test.tsx:397:65
+    395|     notePhotoNotSent(SAMPLE_MODEL_ID, formatRefusal());
+    396|     const first = await modelPage();
+    397|     expect(first.el.querySelector("[data-photo-not-sent]")).not.toBeNu…
+       |                                                                 ^
+    398|     unmountAll();
+    399|     const second = await modelPage();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯
+
+ FAIL  tests/photo-start.test.tsx > the model page of a model whose photo was not sent (H-062) > is not shown to a viewer, who gets no request
+AssertionError: expected { …(2) } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "guidance": "photo.problem.format",
+  "problem": {
+    "code": "UNSUPPORTED_MEDIA_TYPE",
+    "details": [
+      {
+        "code": "IMAGE_FORMAT_REJECTED",
+        "path": "/file",
+        "reason": "not a PNG or JPEG",
+      },
+    ],
+    "kind": "invalid",
+    "message": "refused",
+    "requestId": "req_01M4YDQK00V6H8S0ST4F7510KR",
+    "retryAfterSeconds": null,
+    "status": 415,
+  },
+}
+
+ ❯ tests/photo-start.test.tsx:409:43
+    407|     expect(el.querySelector("[data-photo-not-sent]")).toBeNull();
+    408|     expect(el.querySelector("[data-photo]")).toBeNull();
+    409|     expect(photoNotSent(SAMPLE_MODEL_ID)).toBeNull();
+       |                                           ^
+    410|   });
+    411| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/15]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  15 failed | 9 passed (24)
+   Start at  18:16:31
+   Duration  2.81s (tests 51%, import 29%, environment 14%, transform 5%)
+
