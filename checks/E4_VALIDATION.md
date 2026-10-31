@@ -107,3 +107,58 @@ Toolchain: go1.27.3 linux/amd64 (`PATH=~/go/pkg/mod/golang.org/toolchain@v0.0.1-
 - E0's placement probes stand a synthetic graph in for one file of each role graph package: a second non-test file that imports the context builder brings back the import cycle of E3's finding 9 (finding 7). E2 and E5 should keep each graph in one file or extend the probe's overlay.
 - E5 (the photo graph) will call `repair.Plan` and `Settle` too, or keep `Once`; the photo path's repair is untouched here (`photo_repair_test.go` unchanged and passing).
 - The parity test compares against `repair.Once` over the same client, so a fault shared by both paths (in the client or in `internal/ai/repair`) is not visible to it; the provider's, the repair package's and the generator's own tests cover those, and the research and slow-model test checks the requests' bounds and reservations against fixed expectations (M4, M5).
+
+## 8. Review round 1
+
+Two findings, both Low, both about the same sentence; both fixed. None disputed. No code, test, golden, InputHash or fake eval report changed: the fix is to the documentation only.
+
+### Findings and fixes
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 (Low) | `docs/AI_SPEC.md` §4, E4's sentence: "research and Muse Wonder repaired under their first call's bounds (research without a second search)". For research that is wrong on retries. The first research call is one attempt (`provider.ResearchMaxRetries` = 0, set only when `p.Research`, `provider.go`), but its repair, a revision with `Research` cleared, gets the budget's retries (`MaxRetries` 2 by default). So it can make up to three attempts, and all three are reserved before it is sent (`meter.go`: the bound times `1+MaxRetries`). E4's own `TestTheRepairOfResearchAndASlowModel` pins exactly that (`reqs[1].MaxRetries == budget.MaxRetries`), and the H-057 bullet above the sentence says "with the budget's retries". | The sentence now reads: "research repaired without a second search, with the research call's output bound and timeouts and the budget's retries (by default up to three attempts, all reserved before it is sent, where the research call has one), and Muse Wonder under its own output bound and timeout, research included". This matches the bullet, ADR-031's "As built in E4" and §2's finding 4. It gives no token figure, because a research call on Muse Wonder has Muse Wonder's bound, not 32,000. |
+| 2 (Low) | The same sentence and the same defect, from a second reviewer: someone checking spend or timing would expect a single attempt, but it can be up to 3 × 300 s and three times the reservation. | Fixed by finding 1's fix. |
+
+The other places that describe the slice were checked against the test, and none of them says "first call's bounds": ADR-031's "As built in E4" ("research repaired without a second search and Muse Wonder under its own bounds"), this report's finding 4, the `checks/README.md` row and `docs/ARCHITECTURE.md` §2.
+
+### Changes
+
+| File | Change |
+|---|---|
+| `docs/AI_SPEC.md` §4 | E4's sentence, as above. |
+| `checks/README.md` | E4's row: review round 1. |
+| This report | This section. |
+
+### Tests
+
+No test was added or changed. The behaviour the corrected sentence describes was already pinned before the fix, by `TestTheRepairOfResearchAndASlowModel` (`internal/aigraph/proposal/repair_test.go`). Its three cases (research, Muse Wonder, Muse Wonder with research) check that the first call has `ResearchMaxRetries` and the repair the budget's `MaxRetries`. They check the output bound and attempt timeout of both calls. They check that the reservation is the attempt bound times `1+MaxRetries`. That test was run before the edit and passed (below). A test of the documentation's wording would add nothing that test does not already pin.
+
+### Commands and results (round 1)
+
+Same toolchain as §4 (`go1.27.3`, `PATH=~/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.linux-amd64/bin:$PATH`). No live AI call was made, no `.env` was read and no key was used.
+
+| Command | Exit | Result |
+|---|---|---|
+| Before the edit: `go test -count=1 -run TestTheRepairOfResearchAndASlowModel -v ./internal/aigraph/proposal/` | 0 | 3 of 3 cases PASS (research, Muse Wonder, Muse Wonder with research) |
+| `PATH=.venv/bin:$PATH make spec-check` (before and again after this section was written) | 0, 0 | Every stage PASS both times: contracts `PASS_LIMITED_SPEC_CHECKS`, planning, docs `PASS`, SQL `PASS_STATIC_INVENTORY_ONLY`, reference arithmetic, engine vectors, decisions `PASS_REGISTER_SHAPE_ONLY`, TS contracts fresh, hashes, DB tests fresh, deploy `PASS_STATIC_DEPLOY_CHECKS`. No machine-written file changed. |
+| `go test -race -count=1 ./internal/aigraph/proposal/` | 0 | `ok` (9.1 s) |
+| `make ai-eval` (`md5sum` of `checks/ai-evals/*.json` taken before, `md5sum -c` after) | 0, 0 | TestFakeProviderEval, TestReviewEval and TestAnalystEval PASS. `fake-*.json` were rewritten and are byte-identical: every file is `OK` and `git status` is clean for them. |
+| `make backend-test` | 0 | gofmt clean, `go vet` clean, `GEMINUS_FULL_DIFFERENTIAL=1 go test -timeout 30m`: 89 packages `ok`, 15 without test files, none failed. 88 of the 89 came from Go's test cache, because no Go input changed since §4's runs. `scripts/check-architecture` ran afresh in 515.0 s, within the 30-minute timeout. 8 min 39 s in all. |
+| `make architecture-check` | 0 | `PASS architecture: 104 packages, 40 rules, 16 build configurations` |
+| `make integration-test` on a fresh disposable `dt_test_e4r1` (a new PostgreSQL 16.15 cluster started for this round in the session scratchpad by `e4r1/pg-e4r1.sh`: trust auth, 127.0.0.1:55514 only, no Unix socket) | 0 | `make db-test`: migrations up, the SQL tests, down, up ("DB migration smoke up/down/up completed"). `make db-go-test` (`GEMINUS_REQUIRE_DB_TESTS=1`, `-race`, `-p 1`, `-count=1`): **38 packages ok, 0 failed, 0 skipped**, among them `internal/proposals/generator` (18.7 s), `internal/worker` (43.4 s) and `internal/api` (144.3 s). 11 min 21 s in all. |
+| `pg-e4r1.sh dropdb dt_test_e4r1`, `list`, `stop`, `status` | 0, 0, 0, 3 | Dropped; no `dt_test_*` left; stopped; "no server running". |
+
+### NOT RUN (round 1)
+
+- Any live AI call. `make ai-eval-live` and `make ai-smoke-live` were not run.
+- `govulncheck` (no binary installed). `make backend-race` in full: the graph package ran under `-race`, and every DB package ran under it in `make integration-test`.
+- `make frontend-test`, `make e2e-test`, `make build-containers`, `make staging-smoke`: no code changed.
+- An independent review of this round.
+
+### PROPOSED (round 1)
+
+- None new. §6 stands.
+
+### Risks (round 1)
+
+- The corrected sentence states a default (two retries, so three attempts), not a fixed number. A budget with more retries (`BudgetCaps` allows four) makes the research repair longer and its reservation larger. The test reads the budget it uses, so it follows the budget and the sentence does not.
