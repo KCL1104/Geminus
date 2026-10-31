@@ -37,6 +37,18 @@
   color: var(--gm-color-ink-2);
 }
 
+/* Rows folded away under a list (H-052: the proposals that did not work). */
+.folded {
+  max-width: var(--gm-content-width);
+  margin: 0 0 var(--gm-space-gutter);
+  color: var(--gm-color-ink-2);
+}
+
+.folded > summary {
+  cursor: pointer;
+  margin-bottom: var(--gm-space-md);
+}
+
 /* A row's name when it is not a link (a run without a scenario). */
 .name {
   font-weight: var(--gm-font-weight-strong);

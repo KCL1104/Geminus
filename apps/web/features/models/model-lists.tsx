@@ -60,36 +60,50 @@ const proposalTone: Readonly<Record<Proposal["status"], string>> = {
   conflicted: "warning",
 };
 
+// H-052: a proposal the server refused or the AI never finished is folded
+// away under the list, counted, so the first look is the ones to review.
+const unfinished = (p: Proposal) => p.status === "failed" || p.status === "invalid";
+
 export function ProposalsPage({ modelId }: { modelId: string }) {
   const api = useApi();
   const { t, dateTime } = useI18n();
   const [remote, retry] = useRemote((signal) => api.listProposals(modelId, { signal }), api, modelId);
+  const rows = (items: readonly Proposal[]) => (
+    <ul className={list.list}>
+      {items.map((p) => (
+        <li key={p.proposal_id}>
+          <Link href={`/proposals/${p.proposal_id}`}>{p.summary == null ? t("proposals.noSummary") : <bdi>{visible(p.summary, "prose")}</bdi>}</Link>
+          <span className={list.pill} data-tone={proposalTone[p.status]}>
+            {t(`proposals.state.${p.status}`)}
+          </span>
+          <span className={list.meta}>{t(`proposals.mode.${p.mode}`)}</span>
+          <span className={list.meta}>{dateTime(p.created_at)}</span>
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <WithModel modelId={modelId}>
       {(model) => (
         <Section model={model} title={t("proposals.title")}>
           <RemoteView remote={remote} what="proposals" onRetry={retry} headingLevel={2}>
-            {(page) =>
-              page.items.length === 0 ? (
-                <p className={list.empty}>{t("proposals.empty")}</p>
-              ) : (
+            {(page) => {
+              if (page.items.length === 0) return <p className={list.empty}>{t("proposals.empty")}</p>;
+              const shown = page.items.filter((p) => !unfinished(p));
+              const folded = page.items.filter(unfinished);
+              return (
                 <>
-                  <ul className={list.list}>
-                    {page.items.map((p) => (
-                      <li key={p.proposal_id}>
-                        <Link href={`/proposals/${p.proposal_id}`}>{p.summary == null ? t("proposals.noSummary") : <bdi>{visible(p.summary, "prose")}</bdi>}</Link>
-                        <span className={list.pill} data-tone={proposalTone[p.status]}>
-                          {t(`proposals.state.${p.status}`)}
-                        </span>
-                        <span className={list.meta}>{t(`proposals.mode.${p.mode}`)}</span>
-                        <span className={list.meta}>{dateTime(p.created_at)}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {shown.length > 0 && rows(shown)}
+                  {folded.length > 0 && (
+                    <details className={list.folded}>
+                      <summary>{t("proposals.unfinished", { count: folded.length })}</summary>
+                      {rows(folded)}
+                    </details>
+                  )}
                   <MorePages cursor={page.next_cursor} shown={page.items.length} what="proposals" />
                 </>
-              )
-            }
+              );
+            }}
           </RemoteView>
         </Section>
       )}
