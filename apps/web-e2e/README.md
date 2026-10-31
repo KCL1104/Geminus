@@ -7,7 +7,15 @@ install of `apps/web` (Next.js declares an optional peer dependency on
 ```sh
 npm ci --prefix apps/web && npm ci --prefix apps/web-e2e
 npm --prefix apps/web-e2e test            # builds and starts apps/web on :3100 with the gallery on
+GEMINUS_E2E_OFFER_WONDER=1 npm --prefix apps/web-e2e test   # the same, built with Muse Wonder 1.0 on offer
 ```
+
+H-051, H-065: whether the build offers Muse Wonder 1.0 is fixed when it is
+built (`NEXT_PUBLIC_GEMINUS_OFFER_WONDER`), so a run checks one build:
+production's (off) by default, or with `GEMINUS_E2E_OFFER_WONDER=1` one that
+offers it (project `chromium-wonder`; `tests/helpers.ts` `offersWonder`; no
+screenshot comparison there, the baselines being production's). `make
+e2e-test` and CI run both.
 
 - `tests/a11y.spec.ts`: axe-core (WCAG 2.0–2.2 A/AA, contrast and target size included) on every route and on the gallery's states, en and zh-Hant, 390 and 1280 px, in the light and the dark theme (the system's), and on every route with the reader's own choice over the opposite system theme; the signed-in views (`helpers.ts` `signedInViews`: the project list, a project, the model with the editor as editor and viewer, the choice of organization, the switcher, no access) in both themes, languages and widths; no page-level horizontal scroll at 390 px.
 - `tests/keyboard.spec.ts`: the shell, the language and theme changes, and the gallery's flows with the keyboard only; a visible focus at every stop.

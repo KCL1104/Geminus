@@ -21,7 +21,8 @@
 // sample's validation and risk are written in samples.ts. H-049: a request
 // that names a model (model in the body, or the photo's model part) is
 // answered as written by that model of Meta (generated_by.model), as the e2e
-// fake API does; nothing ran it.
+// fake API does; nothing ran it. H-065: the proposal names that model in
+// every state (requested_model), as the server does.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { applyPatch } from "../../../features/model-editor/patch";
@@ -209,8 +210,10 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const answer = { ...(req.mode === "scenario" ? readyScenario(id) : readyEdit(id)), ...(req.research === true ? researched : {}) };
         // H-049: the model the person chose wrote it, as the stand-in tells it.
         if (req.model !== undefined) answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: req.model };
-        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true };
-        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id }, polls: opts.generatingPolls ?? 2 });
+        // H-065: the proposal names the model its request named, in every state, as the server does.
+        const requested = req.model !== undefined ? { requested_model: req.model } : {};
+        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, ...requested };
+        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id, ...requested }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });
     }
@@ -239,10 +242,12 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const id = proposalId(proposals.size + 1);
         // The stand-in reads no pixels: the size in pixels is the sample photo's.
         const photo = { ...samplePhoto, media_type: png ? ("image/png" as const) : ("image/jpeg" as const), size_bytes: file.size, content_hash: digest };
-        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: base, mode: "edit", status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, source_image: photo };
+        // H-065: the proposal names the model its request named (one of the contract's), as the server does.
+        const requested: Pick<Proposal, "requested_model"> = chosen === "muse-spark-1.3" || chosen === "muse-wonder-1.0" ? { requested_model: chosen } : {};
+        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: base, mode: "edit", status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, source_image: photo, ...requested };
         const answer = readyFromPhoto(id, photo);
         if (typeof chosen === "string") answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: chosen };
-        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: base }, polls: opts.generatingPolls ?? 2 });
+        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: base, ...requested }, polls: opts.generatingPolls ?? 2 });
         photos.set(id, bytes);
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });

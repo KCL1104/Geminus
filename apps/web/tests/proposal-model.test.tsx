@@ -223,3 +223,93 @@ describe("the model choice", () => {
     expect(await violations()).toEqual([]);
   });
 });
+
+/** The proposal page of the stand-in's proposal id (pollMs: how often it reads a generating one again). */
+async function proposalPage(api: ProposalStandIn, id: string, locale: Locale = "en", pollMs = 400) {
+  const client = createApiClient({ session: () => ({ organizationId: api.organizationId }), fetch: api.fetch });
+  const page = await mount(
+    <AuthProvider value={{ session: { organizationId: api.organizationId }, role: "editor" }}>
+      <ApiProvider client={client}>
+        <ProposalRoute proposalId={id} pollMs={pollMs} />
+      </ApiProvider>
+    </AuthProvider>,
+    locale,
+  );
+  await waitFor(() => page.querySelector("[data-proposal-status]") !== null, "the proposal page");
+  return page;
+}
+const slowNote = (el: Element) => el.querySelector("[data-slow-model]");
+
+// H-065: Muse Wonder 1.0 is the choice for harder changes: it thinks longer
+// (the server gives it 128,000 output tokens and 900 s), so its line under
+// the choice says so, and while a proposal on it is generating the proposal
+// page says it can take several minutes. The page knows from the proposal's
+// requested_model (what the request named, as the server reads it from the
+// job), never from the URL or the browser. The note is about the proposal
+// itself, so it shows whether or not this build offers the choice; nothing
+// else changes for Muse Spark 1.3 or a proposal that named no model.
+describe("Muse Wonder for harder changes (H-065)", () => {
+  it("says what Muse Wonder is for, in both languages", () => {
+    const zh = createTranslator("zh-Hant");
+    expect(en("ask.modelHint.muse-wonder-1.0")).toBe("For harder changes. It thinks longer: several minutes, costs more.");
+    expect(zh("ask.modelHint.muse-wonder-1.0")).toBe("適合較難的修改。它想得比較久：要幾分鐘，也比較貴。");
+    expect(en("proposal.generatingHint.muse-wonder-1.0")).toBe("Muse Wonder can take several minutes.");
+    expect(zh("proposal.generatingHint.muse-wonder-1.0")).toBe("Muse Wonder 可能要幾分鐘。");
+    // Muse Spark's line and the page's own hint are as they were.
+    expect(en("ask.modelHint.muse-spark-1.3")).toBe("Faster, and costs less. The default.");
+    expect(en("proposal.generatingHint")).toBe("You can leave this page and come back to it.");
+  });
+
+  for (const [build, flag] of [["with Muse Wonder on offer", wonderOn], ["as the production build", wonderOff]] as const) {
+    it.each(["en", "zh-Hant"] as const)(`${build}, in %s: a generating Muse Wonder proposal says it can take several minutes, until it is ready`, async (locale) => {
+      flag();
+      const t = createTranslator(locale);
+      const api = createProposalStandIn({ sample: "generating", proposal: { requested_model: "muse-wonder-1.0" } });
+      const page = await proposalPage(api, api.proposalId!, locale);
+      expect(page.querySelector("[data-proposal-status]")!.getAttribute("data-proposal-status")).toBe("generating");
+      expect(text(slowNote(page))).toBe(t("proposal.generatingHint.muse-wonder-1.0"));
+      expect(text(page)).toContain(t("proposal.generatingHint"));
+      expect(await violations()).toEqual([]);
+      await waitFor(() => page.querySelector('[data-proposal-status="ready"]') !== null, "the ready proposal");
+      expect(slowNote(page)).toBeNull();
+      expect(text(page)).not.toContain(t("proposal.generatingHint.muse-wonder-1.0"));
+    });
+  }
+
+  it.each([["Muse Spark 1.3", { requested_model: "muse-spark-1.3" as const }], ["no model named", {}]] as const)("a generating proposal on %s has no such note", async (_, proposal) => {
+    wonderOn();
+    const api = createProposalStandIn({ sample: "generating", proposal });
+    const page = await proposalPage(api, api.proposalId!);
+    expect(page.querySelector("[data-proposal-status]")!.getAttribute("data-proposal-status")).toBe("generating");
+    expect(slowNote(page)).toBeNull();
+    expect(text(page)).not.toContain(en("proposal.generatingHint.muse-wonder-1.0"));
+    expect(text(page)).toContain(en("proposal.generatingHint"));
+  });
+
+  it("from the canvas's Ask AI on Muse Wonder, in words and with a photo: the proposal page says it can take several minutes; on Muse Spark it does not", async () => {
+    wonderOn();
+    const { el, api, created } = await modelPage({ generatingPolls: 3 });
+    await type(fieldOf(ask(el), en("ask.intent")), "Balance the line");
+    await press(button(ask(el), en("ask.send")));
+    await waitFor(() => created.length === 1, "the Muse Spark proposal");
+    await choose(ask(el), en("ask.model"), en("ai.model.muse-wonder-1.0"));
+    expect(text(ask(el).querySelector("[data-model-choice]"))).toContain("For harder changes. It thinks longer: several minutes, costs more.");
+    await press(button(ask(el), en("ask.send")));
+    await waitFor(() => created.length === 2, "the Muse Wonder proposal");
+    const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
+    const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])], "line.png", { type: "image/png", lastModified: 1_700_000_000_000 });
+    await act(async () => {
+      Object.defineProperty(chooser, "files", { configurable: true, value: [png] });
+      chooser.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    await waitFor(() => created.length === 3, "the Muse Wonder photo proposal");
+    unmountAll();
+    for (const [i, slow] of [[0, false], [1, true], [2, true]] as const) {
+      const page = await proposalPage(api, created[i]!);
+      expect(page.querySelector("[data-proposal-status]")!.getAttribute("data-proposal-status")).toBe("generating");
+      expect(slowNote(page) !== null, `proposal ${i + 1}`).toBe(slow);
+      unmountAll();
+    }
+  });
+});

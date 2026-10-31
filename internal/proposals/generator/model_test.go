@@ -61,7 +61,7 @@ func TestTheChosenModelIsAsked(t *testing.T) {
 
 // Review round 1, M1: a Muse Wonder attempt's failure is final whatever its
 // code (its job has a single attempt too, internal/proposals): a call that
-// timed out at 300 s is not run, and billed, again. The same failure on Muse
+// timed out at 900 s (H-065) is not run, and billed, again. The same failure on Muse
 // Spark 1.3, or on the deployment's model, stays retryable.
 func TestASlowModelsFailureIsFinal(t *testing.T) {
 	ctx := context.Background()

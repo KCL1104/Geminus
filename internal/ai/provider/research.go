@@ -76,7 +76,9 @@ const ResearchMaxOutputTokens int64 = 32000
 
 // ResearchTimeout is a timeout of the budget for a research call: scaled as
 // its output bound is, at most BudgetCaps.Timeout (the job timeout of
-// D-007), as ImageTimeout is for an image.
+// D-007), as ImageTimeout is for an image. A slow model's research call has
+// the slow model's bounds instead (SlowModelMaxOutputTokens,
+// SlowModelTimeout: H-065).
 func (b Budget) ResearchTimeout(d time.Duration) time.Duration {
 	return min(d*time.Duration(ResearchMaxOutputTokens)/time.Duration(b.MaxOutputTokens), BudgetCaps.Timeout)
 }

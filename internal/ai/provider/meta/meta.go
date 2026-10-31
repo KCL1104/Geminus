@@ -335,7 +335,8 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 		// input tokens for 5 steps), so one call can cost more than its
 		// reservation, and more than an organization's daily cap. Meta states
 		// no bound on how many steps the loop takes; the only hard limit is
-		// the attempt's timeout (provider.Budget.ResearchTimeout). A call that
+		// the attempt's timeout (provider.Budget.ResearchTimeout; on Muse
+		// Wonder, provider.SlowModelTimeout, H-065). A call that
 		// costs more is recorded at what it cost (docs/AI_SPEC.md §2).
 		if !b.AcceptsResearch(req.Prompt.Role) {
 			return provider.Quote{}, provider.NewError(provider.CodePolicyNotApproved, 0, "")

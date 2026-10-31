@@ -2554,6 +2554,23 @@
       "expected_error_paths": [
         ""
       ]
+    },
+    {
+      "id": "valid-proposal-generating-wonder",
+      "instance": "testdata/contracts/valid-proposal-generating-wonder.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-requested-model-unknown",
+      "instance": "testdata/contracts/invalid-proposal-requested-model-unknown.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/requested_model"
+      ]
     }
   ]
 }

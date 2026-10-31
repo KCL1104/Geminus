@@ -95,7 +95,9 @@ type proposalView struct {
 	PatchHash       *string        `json:"patch_hash"`
 	Changes         jsontext.Value `json:"changes"`
 	Questions       []string       `json:"questions"`
-	Error           *struct {
+	// RequestedModel is the model the request named (H-065), "" for none.
+	RequestedModel string `json:"requested_model"`
+	Error          *struct {
 		Error struct {
 			Code    string `json:"code"`
 			Details []struct {

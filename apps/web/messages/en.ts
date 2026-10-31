@@ -759,7 +759,7 @@ export const en = {
   // H-049: the person chooses the model of each proposal.
   "ask.model": "Model",
   "ask.modelHint.muse-spark-1.3": "Faster, and costs less. The default.",
-  "ask.modelHint.muse-wonder-1.0": "Meta's most capable model, in preview: slower, and costs more.",
+  "ask.modelHint.muse-wonder-1.0": "For harder changes. It thinks longer: several minutes, costs more.",
   "ask.model.unavailable": "This deployment does not offer the model you chose. Choose Muse Spark 1.3 and send again.",
   "photo.hint": "A photo or floor plan of the line: PNG or JPEG up to 5 MB, demo images only.",
   "photo.choose": "Propose from a photo…",
@@ -798,6 +798,7 @@ export const en = {
   "proposal.status.rejected": "Rejected {date}.",
   "proposal.status.conflicted": "Not applied: the model changed before it was approved.",
   "proposal.generatingHint": "You can leave this page and come back to it.",
+  "proposal.generatingHint.muse-wonder-1.0": "Muse Wonder can take several minutes.",
   "proposal.askAgain": "To try again, ask from the model again.",
   "proposal.summary": "The AI's summary",
   "proposal.questions": "The AI's questions",

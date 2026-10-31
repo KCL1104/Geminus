@@ -190,7 +190,10 @@ const version = {
 // at /model) is answered as written by that model of Meta (generated_by.model;
 // with research, its searches too); nothing ran it. H-051: a request without
 // one is answered as written by the deployment's model, Muse Spark 1.3, as
-// the live demo's are.
+// the live demo's are. H-065: the proposal names the model its request named
+// (requested_model), in every state, as the server does; one on Muse Wonder
+// stays generating for three reads (it thinks longer), so its page's note
+// can be seen.
 const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
 const jcs = (v) =>
   Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
@@ -268,7 +271,7 @@ function tenantGet(org, path) {
   if (path === `/v1/models/${model.id}/simulations`) return [{ items: [], next_cursor: null }, {}];
   const s = path.startsWith("/v1/ai-proposals/") ? live.proposals.get(path.slice("/v1/ai-proposals/".length)) : undefined;
   if (s) {
-    if (s.proposal.status === "generating" && s.reads++ >= 1) s.proposal = s.answer;
+    if (s.proposal.status === "generating" && s.reads++ >= s.generatingReads) s.proposal = s.answer;
     return [s.proposal, {}];
   }
   return null;
@@ -313,7 +316,10 @@ function tenantPost(org, role, path, key, payload) {
     if ("model" in payload && !["muse-spark-1.3", "muse-wonder-1.0"].includes(payload.model)) return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/model", reason: "model is muse-spark-1.3 or muse-wonder-1.0" }]);
     if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
     const id = serial("aip", "P", live.proposals.size + 1);
-    const server = { proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true };
+    const server = {
+      proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true,
+      ...(typeof payload.model === "string" ? { requested_model: payload.model } : {}),
+    };
     const words = answer[payload.output_locale === "zh-Hant" ? "zh-Hant" : "en"];
     const researched = payload.research === true ? { generated_by: answer.research.generated_by, sources: answer.research.sources } : {};
     // H-049: the chosen model, as the answer's writer; H-051: the deployment's, Muse Spark 1.3, when none is named.
@@ -325,7 +331,7 @@ function tenantPost(org, role, path, key, payload) {
       ...researched,
       ...chosen,
     };
-    live.proposals.set(id, { proposal: { ...server, status: "generating" }, answer: ready, reads: 0, request: payload });
+    live.proposals.set(id, { proposal: { ...server, status: "generating" }, answer: ready, reads: 0, generatingReads: payload.model === "muse-wonder-1.0" ? 3 : 1, request: payload });
     return kept({ status: 202, body: { proposal_id: id, status: "generating" } });
   }
   const id = s.proposal.proposal_id;

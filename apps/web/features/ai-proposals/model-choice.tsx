@@ -8,7 +8,9 @@
 // answers it. The proposal's generated_by names the model that answered.
 // H-051: off unless NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1 (offeredModels); with
 // one model offered there is nothing to choose, so the choice is not shown
-// and every request is on the default.
+// and every request is on the default. H-065: Muse Wonder is the choice for
+// harder changes, and its line says it thinks longer (several minutes) and
+// costs more; still off in production builds until live tests pass.
 import { useId } from "react";
 import type { ProposalModel } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";

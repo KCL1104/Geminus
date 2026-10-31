@@ -59,6 +59,10 @@ func TestAChosenModelIsSentAndAnswers(t *testing.T) {
 	if s.bodies[1]["model"] != model || res.Metadata.Model != model {
 		t.Errorf("no model named: sent %v, answered by %q", s.bodies[1]["model"], res.Metadata.Model)
 	}
+	// H-065: Muse Wonder's own max_tokens; Muse Spark's is the budget's, as before.
+	if s.bodies[0]["max_tokens"] != float64(128_000) || s.bodies[1]["max_tokens"] != float64(provider.DefaultBudget().MaxOutputTokens) {
+		t.Errorf("max_tokens: Muse Wonder %v, Muse Spark %v", s.bodies[0]["max_tokens"], s.bodies[1]["max_tokens"])
+	}
 }
 
 // An answer from another model than the one the person chose is refused,
@@ -119,7 +123,9 @@ func TestAModelTheApprovalDoesNotListIsNeverSent(t *testing.T) {
 }
 
 // The quote names the model asked for, so the reservation is at its price;
-// a request with images is counted for it too.
+// a request with images is counted for it too. H-065: a Muse Wonder photo is
+// sent with max_tokens 128,000 (provider.SlowModelMaxOutputTokens) and
+// reserved at it, every attempt.
 func TestTheQuoteAndTheCountAreOfTheChosenModel(t *testing.T) {
 	s := newServer(t, map[string][]reply{countPath: {counted("3000")}, messagesPath: {fromWonder(ok(answerJ))}})
 	b, _ := backend(t, s)
@@ -143,8 +149,11 @@ func TestTheQuoteAndTheCountAreOfTheChosenModel(t *testing.T) {
 	if s.bodies[0]["model"] != wonder || s.bodies[1]["model"] != wonder {
 		t.Errorf("the count asked for %v, the message for %v", s.bodies[0]["model"], s.bodies[1]["model"])
 	}
+	if _, ok := s.bodies[0]["max_tokens"]; ok || s.bodies[1]["max_tokens"] != float64(128_000) {
+		t.Errorf("the count's max_tokens %v, the message's %v; want none and 128000", s.bodies[0]["max_tokens"], s.bodies[1]["max_tokens"])
+	}
 	price, _ := spend.PriceOf(wonder)
-	per := price.AttemptBound(3300, provider.ImageMaxOutputTokens)
+	per := price.AttemptBound(3300, provider.SlowModelMaxOutputTokens)
 	if len(charges.charges) != 1 || charges.charges[0].Model != wonder || charges.charges[0].NanoUSD != per*int64(1+provider.DefaultBudget().MaxRetries) {
 		t.Errorf("reserved %+v, want %d at Muse Wonder's price", charges.charges, per*3)
 	}
