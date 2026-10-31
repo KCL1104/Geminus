@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
   // variable would change only the server's half). The image's build never
   // sets it (the deploy check allows no build arguments), so Muse Wonder is
   // hidden on the deployment; offering it again is a code change here.
+  // H-065: still off in production builds until Muse Wonder passes its live
+  // tests; the unit tests (vitest.config.ts) and the browser checks
+  // (GEMINUS_E2E_OFFER_WONDER, apps/web-e2e) run with it on and off.
   env: { NEXT_PUBLIC_GEMINUS_OFFER_WONDER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER ?? "" },
   ...(process.env.GEMINUS_NEXT_STANDALONE === "1" ? { output: "standalone" as const } : {}),
 };

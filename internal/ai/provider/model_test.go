@@ -12,9 +12,10 @@ import (
 // H-049: a person chooses the model of a proposal (Muse Spark 1.3, the
 // default, or Muse Wonder 1.0). At the provider boundary: a request that
 // names a model goes only to a backend that can ask it and may for the role,
-// is reserved at that model's price, is answered only by that model, and a
-// slow model's call has the time a research call has, never more than D-007's
-// job timeout.
+// is reserved at that model's price, and is answered only by that model.
+// H-065: a slow model's call (Muse Wonder 1.0) has its own bounds on every
+// proposal path, 128,000 output tokens and 900 s; Muse Spark 1.3 keeps its
+// own, within D-007's 300 s.
 
 const (
 	spark  = "muse-spark-1.3"
@@ -92,65 +93,108 @@ func TestAModelGoesOnlyToABackendThatMay(t *testing.T) {
 	}
 }
 
-// Muse Wonder 1.0 is slow (H-049: the coordinator's probe took 117 s, more
-// than the 90 s default attempt): a call that names it has a research call's
-// timeouts (ResearchTimeout: scaled as the research output bound is, at most
-// BudgetCaps.Timeout, the 300 s job timeout of D-007) for each attempt and
-// for the whole call, and keeps its own output bound and retries. A call on
-// Muse Spark 1.3 keeps the budget's own. No deployment budget gets Muse
-// Wonder past the cap.
-func TestASlowModelHasTheResearchTimeouts(t *testing.T) {
+// H-065: Muse Wonder 1.0 is slow (live on 2026-10-31 it used all 8,192
+// output tokens of a scenario in 61 s, and all 32,000 of a photo in 91 s,
+// both truncated). Every call that names it has its own bounds, whatever the
+// deployment's budget: max_tokens SlowModelMaxOutputTokens (128,000) and
+// SlowModelTimeout (900 s) for each attempt and for the whole call, in words
+// (an edit and a scenario), with research, with images and for its H-057
+// repair (plain, after research and of a photo). Its retries are the call's
+// own: the budget's, none with research. Muse Spark 1.3 keeps the bounds it
+// had on each of those paths, never past BudgetCaps (D-007's 300 s job
+// timeout).
+func TestASlowModelHasItsOwnBounds(t *testing.T) {
+	if SlowModelMaxOutputTokens != 128_000 || SlowModelTimeout != 900*time.Second {
+		t.Fatalf("Muse Wonder's bounds are %d tokens and %v, want H-065's 128,000 and 900 s", SlowModelMaxOutputTokens, SlowModelTimeout)
+	}
+	if SlowModelMaxOutputTokens <= BudgetCaps.MaxOutputTokens || SlowModelTimeout <= BudgetCaps.Timeout || BudgetCaps.Timeout != 300*time.Second {
+		t.Fatalf("the caps of Muse Spark (%d tokens, %v) are not below Muse Wonder's own", BudgetCaps.MaxOutputTokens, BudgetCaps.Timeout)
+	}
 	var got Request
 	var left time.Duration
-	b := chooser{backendFunc: func(ctx context.Context, req Request) (Response, error) {
+	b := everyPath{chooser{backendFunc: func(ctx context.Context, req Request) (Response, error) {
 		got = req
 		d, _ := ctx.Deadline()
 		left = time.Until(d)
-		return Response{Text: []byte(validProposal), Model: req.Model}, nil
-	}, models: []string{spark, wonder}}
+		return Response{Text: []byte(validNeedsInput), Answer: []byte(validNeedsInput), Model: req.Model}, nil
+	}, models: []string{spark, wonder}}}
 	budget := DefaultBudget()
-	if _, err := askModel(client(t, b), prompt(t, RoleModeler), wonder); err != nil {
-		t.Fatal(err)
+	researched := func(first Prompt) Prompt {
+		p := first
+		p.Revision = &Revision{Prior: PriorAnswer{text: []byte(validProposal)}, Rules: "Fix it.", Blocks: []Block{reviewBlock(t)}, Researched: true}
+		out, err := Seal(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
 	}
-	if got.AttemptTimeout != budget.ResearchTimeout(budget.AttemptTimeout) || got.AttemptTimeout != BudgetCaps.Timeout ||
-		got.MaxOutputTokens != budget.MaxOutputTokens || got.MaxRetries != budget.MaxRetries {
-		t.Errorf("Muse Wonder: %+v", got)
+	for _, c := range []struct {
+		path string
+		p    Prompt
+		// What Muse Spark 1.3 gets on this path: max_tokens, the attempt's
+		// timeout, the most the whole call has and the retries (Muse Wonder's
+		// retries are the same).
+		tokens         int64
+		attempt, whole time.Duration
+		retries        int
+	}{
+		{"an edit", prompt(t, RoleModeler), budget.MaxOutputTokens, budget.AttemptTimeout, budget.Timeout, budget.MaxRetries},
+		{"a scenario", prompt(t, RoleScenario), budget.MaxOutputTokens, budget.AttemptTimeout, budget.Timeout, budget.MaxRetries},
+		{"research", researchPrompt(t, RoleScenario), ResearchMaxOutputTokens, BudgetCaps.Timeout, BudgetCaps.Timeout, ResearchMaxRetries},
+		{"a photo", imagePrompt(t, testImage(t, 3, 2)), ImageMaxOutputTokens, BudgetCaps.Timeout, BudgetCaps.Timeout, budget.MaxRetries},
+		{"a repair", revised(t, prompt(t, RoleModeler), validProposal), budget.MaxOutputTokens, budget.AttemptTimeout, budget.Timeout, budget.MaxRetries},
+		{"a repair after research", researched(prompt(t, RoleScenario)), ResearchMaxOutputTokens, BudgetCaps.Timeout, BudgetCaps.Timeout, budget.MaxRetries},
+		{"a photo's repair", revised(t, imagePrompt(t, testImage(t, 3, 2)), validProposal), ImageMaxOutputTokens, BudgetCaps.Timeout, BudgetCaps.Timeout, budget.MaxRetries},
+	} {
+		if _, err := askModel(client(t, b), c.p, wonder); err != nil {
+			t.Fatalf("%s on Muse Wonder: %v", c.path, err)
+		}
+		if got.Model != wonder || got.MaxOutputTokens != SlowModelMaxOutputTokens || got.AttemptTimeout != SlowModelTimeout || got.MaxRetries != c.retries {
+			t.Errorf("%s on Muse Wonder: model %q, max_tokens %d, attempt %v, retries %d", c.path, got.Model, got.MaxOutputTokens, got.AttemptTimeout, got.MaxRetries)
+		}
+		if left <= BudgetCaps.Timeout || left > SlowModelTimeout {
+			t.Errorf("%s on Muse Wonder: the call has %v left, want more than %v and at most %v", c.path, left, BudgetCaps.Timeout, SlowModelTimeout)
+		}
+		if _, err := askModel(client(t, b), c.p, spark); err != nil {
+			t.Fatalf("%s on Muse Spark: %v", c.path, err)
+		}
+		if got.Model != spark || got.MaxOutputTokens != c.tokens || got.AttemptTimeout != c.attempt || got.MaxRetries != c.retries || left > c.whole || left > BudgetCaps.Timeout {
+			t.Errorf("%s on Muse Spark: max_tokens %d, attempt %v, retries %d, %v left; want %d, %v, %d, at most %v",
+				c.path, got.MaxOutputTokens, got.AttemptTimeout, got.MaxRetries, left, c.tokens, c.attempt, c.retries, c.whole)
+		}
 	}
-	if left <= budget.Timeout || left > BudgetCaps.Timeout {
-		t.Errorf("Muse Wonder's call has %v left, want more than %v and at most %v", left, budget.Timeout, BudgetCaps.Timeout)
+	// No deployment budget moves Muse Wonder's bounds: not one at the caps,
+	// not a small one.
+	for name, mutate := range map[string]func(*Budget){
+		"at the caps": func(b *Budget) {
+			b.Timeout, b.AttemptTimeout, b.MaxOutputTokens = BudgetCaps.Timeout, BudgetCaps.Timeout, BudgetCaps.MaxOutputTokens
+		},
+		"small": func(b *Budget) { b.Timeout, b.AttemptTimeout, b.MaxOutputTokens = 2*time.Second, time.Second, 1 },
+	} {
+		if _, err := askModel(client(t, b, mutate), prompt(t, RoleModeler), wonder); err != nil {
+			t.Fatal(err)
+		}
+		if got.MaxOutputTokens != SlowModelMaxOutputTokens || got.AttemptTimeout != SlowModelTimeout || left <= BudgetCaps.Timeout || left > SlowModelTimeout {
+			t.Errorf("a budget %s: Muse Wonder got max_tokens %d, attempt %v, %v left", name, got.MaxOutputTokens, got.AttemptTimeout, left)
+		}
 	}
-	if _, err := askModel(client(t, b), prompt(t, RoleModeler), spark); err != nil {
-		t.Fatal(err)
-	}
-	if got.AttemptTimeout != budget.AttemptTimeout || got.MaxOutputTokens != budget.MaxOutputTokens || left > budget.Timeout {
-		t.Errorf("Muse Spark: %+v, %v left", got, left)
-	}
-	// A research call on Muse Wonder: the research bounds, which already
-	// are the cap's; a deployment at the caps: still the cap.
-	if _, err := askModel(client(t, researchChooser{chooser: b}), researchPrompt(t, RoleScenario), wonder); err != nil {
-		t.Fatal(err)
-	}
-	if got.AttemptTimeout != BudgetCaps.Timeout || got.MaxOutputTokens != ResearchMaxOutputTokens || got.MaxRetries != ResearchMaxRetries ||
-		left > BudgetCaps.Timeout {
-		t.Errorf("Muse Wonder with research: %+v, %v left", got, left)
-	}
-	capped := client(t, b, func(b *Budget) {
-		b.Timeout, b.AttemptTimeout, b.MaxOutputTokens = BudgetCaps.Timeout, BudgetCaps.Timeout, 1
-	})
-	if _, err := askModel(capped, prompt(t, RoleModeler), wonder); err != nil {
-		t.Fatal(err)
-	}
-	if got.AttemptTimeout != BudgetCaps.Timeout || left > BudgetCaps.Timeout {
-		t.Errorf("at the caps: %+v, %v left", got, left)
+	// A deployment still cannot configure a call past D-007's 300 s.
+	over := DefaultBudget()
+	over.Timeout = SlowModelTimeout
+	if over.Validate() == nil {
+		t.Error("a deployment budget of 900 s validates")
 	}
 	if !SlowModel(wonder) || SlowModel(spark) || SlowModel("") {
 		t.Error("SlowModel")
 	}
 }
 
-type researchChooser struct{ chooser }
+// everyPath is a chooser that also researches and takes images, so one
+// backend serves every proposal path.
+type everyPath struct{ chooser }
 
-func (researchChooser) AcceptsResearch(role Role) bool { return role.Researches() }
+func (everyPath) AcceptsResearch(role Role) bool { return role.Researches() }
+func (everyPath) AcceptsImages() bool            { return true }
 
 // chooserBillable is a billable chooser: its quote names the model the
 // request asks for (its own, spark, when none), unless quoted is set.
@@ -179,11 +223,13 @@ func (b chooserBillable) AcceptsResearch(role Role) bool { return role.Researche
 
 // The reservation of a call that names a model is at that model's price:
 // Muse Wonder 1.0's for a Muse Wonder call (each attempt at its input bound
-// and max_tokens, every retry reserved), Muse Spark 1.3's otherwise; with
-// research, its search price too. A backend whose quote names another model
-// than the request asks for is refused before anything is reserved or sent;
-// an answer from another model than the one asked for is refused, its usage
-// settled all the same.
+// and its own max_tokens, SlowModelMaxOutputTokens: H-065's worst case,
+// every retry reserved), Muse Spark 1.3's otherwise, at the budget's
+// max_tokens as before; a repair is reserved the same way; with research,
+// its search price too. A backend whose quote names another model than the
+// request asks for is refused before anything is reserved or sent; an answer
+// from another model than the one asked for is refused, its usage settled
+// all the same.
 func TestAChosenModelIsReservedAtItsPrice(t *testing.T) {
 	answered := func(model string) backendFunc {
 		return func(_ context.Context, req Request) (Response, error) {
@@ -195,27 +241,36 @@ func TestAChosenModelIsReservedAtItsPrice(t *testing.T) {
 	wonderPrice, _ := spend.PriceOf(wonder)
 	sparkPrice, _ := spend.PriceOf(spark)
 	attempts := int64(1 + budget.MaxRetries)
+	repair := revised(t, prompt(t, RoleModeler), validProposal)
 	for _, c := range []struct {
+		what           string
+		p              Prompt
 		model, answers string
 		want           int64
 	}{
-		{wonder, wonder, wonderPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
-		{spark, spark, sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
-		{"", spark, sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
+		{"an edit", prompt(t, RoleModeler), wonder, wonder, wonderPrice.AttemptBound(maxIn, SlowModelMaxOutputTokens) * attempts},
+		{"a repair", repair, wonder, wonder, wonderPrice.AttemptBound(maxIn, SlowModelMaxOutputTokens) * attempts},
+		{"an edit", prompt(t, RoleModeler), spark, spark, sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
+		{"a repair", repair, spark, spark, sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
+		{"an edit", prompt(t, RoleModeler), "", spark, sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens) * attempts},
 	} {
 		m := &recordingMeter{}
 		b := chooserBillable{chooser: chooser{backendFunc: answered(c.answers), models: []string{spark, wonder}}, maxInput: maxIn}
-		res, err := askModel(metered(t, b, m), prompt(t, RoleModeler), c.model)
+		res, err := askModel(metered(t, b, m), c.p, c.model)
 		if err != nil {
-			t.Fatalf("%q: %v", c.model, err)
+			t.Fatalf("%s on %q: %v", c.what, c.model, err)
 		}
 		if len(m.charges) != 1 || m.charges[0].NanoUSD != c.want || m.charges[0].Model != c.answers {
-			t.Errorf("%q: reserved %+v, want %d at %s", c.model, m.charges, c.want, c.answers)
+			t.Errorf("%s on %q: reserved %+v, want %d at %s", c.what, c.model, m.charges, c.want, c.answers)
 		}
 		price, _ := spend.PriceOf(c.answers)
 		if len(m.settled) != 1 || m.settled[0].NanoUSD != price.Cost(spend.Tokens{Input: 2000, Output: 900}) || res.Metadata.Model != c.answers {
-			t.Errorf("%q: settled %+v, model %q", c.model, m.settled, res.Metadata.Model)
+			t.Errorf("%s on %q: settled %+v, model %q", c.what, c.model, m.settled, res.Metadata.Model)
 		}
+	}
+	// USD 0.08 of input and 2.56 of output an attempt, three attempts.
+	if w := wonderPrice.AttemptBound(maxIn, SlowModelMaxOutputTokens) * attempts; w != 7_920_000_000 {
+		t.Errorf("the Muse Wonder edit reservation is %d nano-USD", w)
 	}
 	if w, s := wonderPrice.AttemptBound(maxIn, budget.MaxOutputTokens), sparkPrice.AttemptBound(maxIn, budget.MaxOutputTokens); w <= s {
 		t.Errorf("Muse Wonder's bound %d is not above Muse Spark's %d", w, s)
@@ -229,12 +284,22 @@ func TestAChosenModelIsReservedAtItsPrice(t *testing.T) {
 		t.Fatal(err)
 	}
 	search, _ := spend.SearchPriceOf(wonder)
-	want := wonderPrice.AttemptBound(1_048_576, ResearchMaxOutputTokens) + 64*search
+	want := wonderPrice.AttemptBound(1_048_576, SlowModelMaxOutputTokens) + 64*search
 	if len(m.charges) != 1 || m.charges[0].NanoUSD != want || m.charges[0].Model != wonder {
 		t.Errorf("research on Muse Wonder: reserved %+v, want %d", m.charges, want)
 	}
-	if want != 4_994_304_000 { // USD 4.194304 + 0.64 + 0.16: just under D-110's USD 5 organization day
+	if want != 6_914_304_000 { // USD 4.194304 + 2.56 + 0.16: within H-065's USD 40 daily caps
 		t.Errorf("the Muse Wonder research reservation is %d nano-USD", want)
+	}
+	// Research on Muse Spark: as before (H-046 (2)).
+	m = &recordingMeter{}
+	b = chooserBillable{chooser: chooser{backendFunc: answered(spark), models: []string{spark, wonder}}, maxInput: 1_048_576}
+	if _, err := askModel(metered(t, b, m), researchPrompt(t, RoleModeler), spark); err != nil {
+		t.Fatal(err)
+	}
+	sparkSearch, _ := spend.SearchPriceOf(spark)
+	if want := sparkPrice.AttemptBound(1_048_576, ResearchMaxOutputTokens) + 64*sparkSearch; len(m.charges) != 1 || m.charges[0].NanoUSD != want {
+		t.Errorf("research on Muse Spark: reserved %+v, want %d", m.charges, want)
 	}
 
 	// A quote of another model than the one asked for: nothing reserved or

@@ -21,7 +21,7 @@ import { HOSTILE_TESTER, hostileNames, sampleFor, states } from "../../web/app/u
 import { visible } from "../../web/features/ai-proposals/shown";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
-import { APP, focusIsVisible, locales, open, PROVIDER, settled, signInAs, tenant, violations } from "./helpers";
+import { APP, focusIsVisible, locales, offersWonder, open, PROVIDER, settled, signInAs, tenant, violations } from "./helpers";
 
 const catalogs = { en, "zh-Hant": zhHant } as const;
 const fill = (m: string, params: Record<string, string>) => m.replace(/\{(\w+)\}/g, (_, k: string) => params[k] ?? `{${k}}`);
@@ -362,13 +362,13 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     expect(await violations(page), "the researched proposal at 390 px").toEqual([]);
   });
 
-  // H-049, H-051: this build is production's, with Muse Wonder 1.0 not on
-  // offer (NEXT_PUBLIC_GEMINUS_OFFER_WONDER empty, playwright.config.ts): the
-  // model page has no model choice, the request carries no model, and the
-  // proposal names the deployment's model (the fake API answers as Muse Spark
-  // 1.3 wrote it; no AI ran). Choosing Muse Wonder is the unit tests'
-  // (proposal-model.test.tsx), with the flag on.
-  test("en: offers no model choice, and the proposal it sends carries no model and names Muse Spark 1.3", async ({ page, request }) => {
+  // H-049, H-051: in production's build, with Muse Wonder 1.0 not on offer
+  // (NEXT_PUBLIC_GEMINUS_OFFER_WONDER empty, playwright.config.ts): the model
+  // page has no model choice, the request carries no model, and the proposal
+  // names the deployment's model (the fake API answers as Muse Spark 1.3
+  // wrote it; no AI ran). The build with Muse Wonder on offer has the test
+  // after this one instead (H-065).
+  if (!offersWonder) test("en: offers no model choice, and the proposal it sends carries no model and names Muse Spark 1.3", async ({ page, request }) => {
     await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
     const before = (await apiCalls(request)).length;
     const ask = page.locator("[data-ask]");
@@ -390,6 +390,48 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
     expect(posts.map((c) => [c.path, c.body])).toEqual([
       [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: "en" }],
+    ]);
+  });
+
+  // H-065: in the build with Muse Wonder 1.0 on offer (GEMINUS_E2E_OFFER_WONDER=1,
+  // playwright.config.ts): the canvas's Ask AI offers it for harder changes,
+  // with the line that says it thinks longer; the request carries model:
+  // muse-wonder-1.0; while the proposal is generating its page says Muse
+  // Wonder can take several minutes (the fake API names the requested model,
+  // as the server does, and keeps the proposal generating for three reads);
+  // once ready the note is gone and the proposal names Muse Wonder 1.0 as its
+  // writer. No AI ran.
+  if (offersWonder) test("en: offers Muse Wonder 1.0 for harder changes, and its proposal says it can take several minutes while it is generating", async ({ page, request }) => {
+    await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, "en");
+    const before = (await apiCalls(request)).length;
+    const ask = page.locator("[data-ask]");
+    await expect(ask.getByLabel(en["ask.intent"])).toBeVisible();
+    const choice = ask.locator("[data-model-choice]");
+    await expect(choice).toHaveCount(1);
+    await expect(choice).toContainText(en["ask.modelHint.muse-spark-1.3"]);
+    expect(await violations(page), "the model page").toEqual([]);
+    await choice.getByRole("button").click();
+    await page.getByRole("option", { name: en["ai.model.muse-wonder-1.0"] }).click();
+    await expect(choice).toContainText("For harder changes. It thinks longer: several minutes, costs more.");
+    expect(await violations(page), "the model page on Muse Wonder").toEqual([]);
+    await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
+    await keyTo(page, ask.getByRole("button", { name: en["ask.send"] }));
+    await page.keyboard.press("Enter");
+    await page.waitForURL(new RegExp(`^${APP}/proposals/aip_[0-9A-Z]{26}$`));
+    await expect(page.locator("[data-proposal-status]")).toHaveAttribute("data-proposal-status", "generating");
+    await expect(page.locator("[data-slow-model]")).toHaveText(en["proposal.generatingHint.muse-wonder-1.0"]);
+    await expect(page.getByText(en["proposal.generatingHint"], { exact: true })).toBeVisible();
+    expect(await violations(page), "the generating proposal").toEqual([]);
+    await expect(page.locator("[data-proposal-status]")).toHaveAttribute("data-proposal-status", "ready", { timeout: 15_000 });
+    await settled(page, "en");
+    await expect(page.locator("[data-slow-model]")).toHaveCount(0);
+    await expect(page.locator("header dl > div").filter({ hasText: en["ai.writtenBy"] })).toHaveText(`${en["ai.writtenBy"]}${fill(en["ai.byProvider"], { model: en["ai.model.muse-wonder-1.0"], provider: en["ai.provider.meta"] })}`);
+    expect(await violations(page), "the proposal").toEqual([]);
+
+    // What reached the API: the chosen model, nothing else new.
+    const posts = (await apiCalls(request)).slice(before).filter((c) => c.method === "POST");
+    expect(posts.map((c) => [c.path, c.body])).toEqual([
+      [`/v1/models/${tenant.MODEL}/ai-proposals`, { base_version_id: fixture.base_version_id, mode: "edit", intent: "Add a third reviewer", output_locale: "en", model: "muse-wonder-1.0" }],
     ]);
   });
 

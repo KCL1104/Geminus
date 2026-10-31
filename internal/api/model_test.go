@@ -33,7 +33,10 @@ func detailOf(t *testing.T, r resp) (string, string) {
 // AI_MODEL_NOT_APPROVED at /model) and nothing is stored; an unknown one is
 // 422 at /model. Taken, the job carries the choice, the audit names it, the
 // worker asks it (the fake answers as itself), and the same key with another
-// model is another request. A request that names none is as before.
+// model is another request. A request that names none is as before. H-065:
+// the proposal names the model its request named (requested_model, read
+// from its job's payload), while generating and after, in getProposal and in
+// listProposals; one asked for without a model has none.
 func TestProposalModelChoice(t *testing.T) {
 	e := setupProposals(t)
 	editor := e.a.Members[tenant.Editor]
@@ -45,8 +48,15 @@ func TestProposalModelChoice(t *testing.T) {
 	if n := e.count(`SELECT count(*) FROM twin.ai_proposals WHERE organization_id=$1`, e.a.ID); n != 0 {
 		t.Errorf("%d proposals stored", n)
 	}
-	if r := e.propose(editor.Subject, e.a.ID, m.ID, "prop-model-off-02", proposalBody(m.LatestVersion.ID, "edit", "Raise a runner.")); r.status != 202 {
-		t.Errorf("without a model: %d %s", r.status, r.body)
+	r = e.propose(editor.Subject, e.a.ID, m.ID, "prop-model-off-02", proposalBody(m.LatestVersion.ID, "edit", "Raise a runner."))
+	if r.status != 202 {
+		t.Fatalf("without a model: %d %s", r.status, r.body)
+	}
+	plain := decode[struct {
+		ProposalID string `json:"proposal_id"`
+	}](t, r).ProposalID
+	if p := e.proposal(t, editor.Subject, e.a.ID, plain); p.Status != "generating" || p.RequestedModel != "" {
+		t.Errorf("without a model: %s, requested_model %q", p.Status, p.RequestedModel)
 	}
 
 	e = setupProposals(t, api.WithProposalModels([]string{"muse-spark-1.3", "muse-wonder-1.0"}, nil))
@@ -76,8 +86,25 @@ func TestProposalModelChoice(t *testing.T) {
 		AND metadata->>'requested_model' = 'muse-wonder-1.0' AND NOT metadata ? 'intent'`, e.a.ID, id); n != 1 {
 		t.Errorf("%d proposal.create events name the model", n)
 	}
-	if p := e.generated(t, editor.Subject, e.a.ID, id); p.Status != "needs_input" {
-		t.Errorf("status %s", p.Status)
+	if p := e.proposal(t, editor.Subject, e.a.ID, id); p.Status != "generating" || p.RequestedModel != "muse-wonder-1.0" {
+		t.Errorf("while generating: %s, requested_model %q", p.Status, p.RequestedModel)
+	}
+	if p := e.generated(t, editor.Subject, e.a.ID, id); p.Status != "needs_input" || p.RequestedModel != "muse-wonder-1.0" {
+		t.Errorf("status %s, requested_model %q", p.Status, p.RequestedModel)
+	}
+	list := e.do("GET", "/v1/models/"+m.ID+"/ai-proposals", editor.Subject, e.a.ID, nil, "")
+	if list.status != 200 {
+		t.Fatalf("list: %d %s", list.status, list.body)
+	}
+	valid(t, list, "http.schema.json#/$defs/Proposals")
+	items := map[string]string{}
+	for _, it := range decode[struct {
+		Items []proposalView `json:"items"`
+	}](t, list).Items {
+		items[it.ProposalID] = it.RequestedModel
+	}
+	if items[id] != "muse-wonder-1.0" {
+		t.Errorf("listed: %v", items)
 	}
 	if reqs := e.fake.Requests(); len(reqs) == 0 || reqs[len(reqs)-1].Model != "muse-wonder-1.0" {
 		t.Errorf("the worker asked %+v", reqs)
@@ -117,5 +144,17 @@ func TestPhotoModelChoice(t *testing.T) {
 	}
 	if n := e.count(`SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND payload->>'model' = 'muse-spark-1.3'`, e.a.ID); n != 1 {
 		t.Errorf("%d jobs carry the model", n)
+	}
+	// H-065: the photo proposal names the model its request named.
+	id := decode[struct {
+		ProposalID string `json:"proposal_id"`
+	}](t, r).ProposalID
+	got := e.do("GET", "/v1/ai-proposals/"+id, editor.Subject, e.a.ID, nil, "")
+	if got.status != 200 {
+		t.Fatalf("get: %d %s", got.status, got.body)
+	}
+	valid(t, got, "proposal.schema.json")
+	if p := decode[photoView](t, got); p.RequestedModel != "muse-spark-1.3" || p.SourceImage == nil {
+		t.Errorf("the photo proposal: requested_model %q, source_image %v", p.RequestedModel, p.SourceImage)
 	}
 }

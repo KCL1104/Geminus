@@ -68,10 +68,15 @@ frontend-build:
 # Browser checks (TEST-033): axe, keyboard-only flows, library strings and,
 # with E2E_SCREENSHOTS=1 in CI's pinned container, screenshots. Builds and
 # starts apps/web itself; needs `npm ci` in apps/web and apps/web-e2e.
+# H-065: twice, the production build and one with Muse Wonder 1.0 on offer
+# (GEMINUS_E2E_OFFER_WONDER=1, without the screenshots: their baselines are
+# production's).
 e2e-test:
 	@test -f $(WEB_E2E)/package.json || { echo 'NOT IMPLEMENTED: browser checks are not included.' >&2; exit 2; }
-	npm --prefix $(WEB_E2E) test
+	GEMINUS_E2E_OFFER_WONDER= npm --prefix $(WEB_E2E) test
+	GEMINUS_E2E_OFFER_WONDER=1 npm --prefix $(WEB_E2E) test
 	@test "$$E2E_SCREENSHOTS" = 1 || echo 'e2e-test: screenshots NOT RUN (only with E2E_SCREENSHOTS=1, in CI'"'"'s pinned Playwright container).' >&2
+	@echo 'e2e-test: screenshots of the build with Muse Wonder on offer NOT RUN (no baselines; H-065).' >&2
 	@echo 'e2e-test: UI checks covered; the product closed loop with the fake provider is NOT RUN until T-040.' >&2
 db-test:
 	bash scripts/run_db_tests.sh

@@ -396,11 +396,6 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		meta.InputHash, req.Tools, req.Steps = tt.hash, tt.tools, tt.steps
 	}
 	timeout := c.budget.Timeout
-	if SlowModel(chosen) {
-		// A slow model (H-049): a research call's timeouts, at most D-007's
-		// job timeout; the output bound and retries are the call's own.
-		req.AttemptTimeout, timeout = c.budget.ResearchTimeout(req.AttemptTimeout), c.budget.ResearchTimeout(timeout)
-	}
 	if len(p.Images) > 0 {
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
 	}
@@ -410,6 +405,12 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// search, so no search loop a retry would bill again, and it keeps
 		// the budget's retries.
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ResearchMaxOutputTokens, c.budget.ResearchTimeout(req.AttemptTimeout), c.budget.ResearchTimeout(timeout)
+	}
+	if SlowModel(chosen) {
+		// A slow model (H-065): its own output bound and timeouts on every
+		// path, a photo, research and a repair included; the retries are the
+		// call's own.
+		req.MaxOutputTokens, req.AttemptTimeout, timeout = SlowModelMaxOutputTokens, SlowModelTimeout, SlowModelTimeout
 	}
 	if p.Research {
 		req.MaxRetries = ResearchMaxRetries

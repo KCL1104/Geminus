@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"regexp"
+	"slices"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/model"
@@ -55,6 +56,9 @@ type Proposal struct {
 	// Sources are the pages a research call opened and the answer relied
 	// on (H-046 (2)), in the states that keep what the provider wrote.
 	Sources []provider.WebSource `json:"sources,omitzero"`
+	// RequestedModel is the model the request named (H-065), in every
+	// state; empty when it named none.
+	RequestedModel string `json:"requested_model,omitzero"`
 }
 
 // GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
@@ -265,6 +269,11 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		Mode: p.Mode, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
 	if im := p.Image; im != nil {
 		out.SourceImage = &SourceImage{MediaType: im.MediaType, Width: im.Width, Height: im.Height, SizeBytes: im.Size, ContentHash: im.SHA256}
+	}
+	// The model the request named (H-065), when it is one of the contract's:
+	// anything else the job's payload holds is left out rather than shown.
+	if slices.Contains(ProposalModels, p.RequestedModel) {
+		out.RequestedModel = p.RequestedModel
 	}
 	// Which model answered, once there is an answer: not while generating,
 	// and not for a failure, whose resource holds only its error (AI_SPEC §4).

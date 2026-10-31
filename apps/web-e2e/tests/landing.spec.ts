@@ -6,10 +6,14 @@
 // (the other theme's never fetched, also after the reader switches); and
 // no account, address or secret is on the page. axe, the 390 px overflow,
 // the keyboard order and the controls rule run on "/" with every route
-// (a11y.spec.ts, keyboard.spec.ts, simplicity.spec.ts).
+// (a11y.spec.ts, keyboard.spec.ts, simplicity.spec.ts). H-065: Muse
+// Wonder 1.0 is not on the landing in either build (its copy is not
+// approved), also where the build offers it for proposals.
 import type { Page } from "@playwright/test";
+import { en } from "../../web/messages/en";
+import { zhHant } from "../../web/messages/zh-Hant";
 import { expect, test } from "./fixtures";
-import { APP, loadPictures, locales, open, schemes, signInAs, tenant } from "./helpers";
+import { APP, loadPictures, locales, offersWonder, open, schemes, signInAs, tenant } from "./helpers";
 
 /** The pictures the page requested, by file name. */
 function watchPictures(page: Page): string[] {
@@ -100,5 +104,19 @@ test("names no account, address, password or key, in either language", async ({ 
     expect(text).not.toMatch(/@|password|passcode|密碼|\bsecret\b|api[_ -]?key|token/i);
     const alts = await page.locator("img").evaluateAll((is) => is.map((i) => i.getAttribute("alt") ?? "").join(" "));
     expect(alts).not.toMatch(/@|password|密碼|token/i);
+  }
+});
+
+// H-065 (review round 1 of its slice): the landing's Muse Wonder line is not approved, so the page
+// names Muse Wonder nowhere, in the production build and in the one that offers it for proposals.
+test(`names no Muse Wonder 1.0, in either language (${offersWonder ? "the build that offers it" : "the production build"})`, async ({ page }) => {
+  for (const [locale, c] of [["en", en], ["zh-Hant", zhHant]] as const) {
+    await open(page, "/", locale);
+    const meta = page.locator("main section").filter({ has: page.locator("#landing-meta") });
+    await expect(meta.locator("dt")).toHaveCount(3);
+    const text = await page.locator("body").innerText();
+    expect(text).toContain(c["ai.model.muse-spark-1.3"]);
+    expect(text).not.toContain("Muse Wonder");
+    expect(text).not.toContain(c["landing.meta.wonder"]);
   }
 });

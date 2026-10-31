@@ -27,7 +27,9 @@
 // them, each an https link to a new tab with no referrer or opener, its
 // title text, and the Written-by line says how many searches the call made.
 // A proposal asked for with a photo shows the photo and the boxes the
-// segmenter found in it (H-052, proposal-photo.tsx).
+// segmenter found in it (H-052, proposal-photo.tsx). While a proposal whose
+// request named Muse Wonder 1.0 is generating (requested_model, the
+// server's), a note says it can take several minutes (H-065).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ProblemView, validationKey } from "../../app/_components/problem-view";
@@ -260,6 +262,10 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
         <p className={styles.meta} data-revised>
           {t("proposal.revisedAfterCheck")}
         </p>
+      )}
+      {p.status === "generating" && p.requested_model === "muse-wonder-1.0" && (
+        // H-065: Muse Wonder thinks longer (128,000 output tokens, up to 900 s); the server says the request named it.
+        <p data-slow-model>{t("proposal.generatingHint.muse-wonder-1.0")}</p>
       )}
       {p.status === "generating" && <p>{t("proposal.generatingHint")}</p>}
       {approvable && (

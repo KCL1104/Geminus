@@ -8,6 +8,16 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3100;
 const provider = "http://127.0.0.1:3101";
 
+// H-051, H-065: whether the build offers Muse Wonder 1.0 is fixed when it is
+// built (NEXT_PUBLIC_GEMINUS_OFFER_WONDER, next.config.ts), so one run checks
+// one build: production's (the switch off) unless GEMINUS_E2E_OFFER_WONDER=1,
+// which builds it with the switch on (tests/helpers.ts offersWonder says which
+// to the tests). make e2e-test and CI run both. The screenshot baselines are
+// the production build's, so the run with Muse Wonder on offer does not
+// compare them (the baselines that will change when the switch is turned on
+// are listed in checks/H-065_WONDER_CHOICE_VALIDATION.md).
+const offerWonder = process.env.GEMINUS_E2E_OFFER_WONDER === "1";
+
 // Test values only: a fixed sealing key and the fake provider's client.
 const session = {
   BFF_APP_ORIGIN: `http://127.0.0.1:${port}`,
@@ -51,7 +61,7 @@ export default defineConfig({
     // in contextOptions, T-045 review 1 L1.) simplicity.spec.ts emulates
     // reduced motion itself to check the rule.
   },
-  projects: [{ name: "chromium" }],
+  projects: [offerWonder ? { name: "chromium-wonder", testIgnore: ["**/screenshots.spec.ts"] } : { name: "chromium" }],
   webServer: [
     {
       command: "node fake/servers.mjs",
@@ -67,8 +77,9 @@ export default defineConfig({
       timeout: 300_000,
       reuseExistingServer: false,
       // H-051: built as production is, without Muse Wonder 1.0 on offer,
-      // whatever the shell running the tests has set.
-      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: "", ...session },
+      // whatever the shell running the tests has set; H-065: with it, only
+      // when GEMINUS_E2E_OFFER_WONDER=1.
+      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: offerWonder ? "1" : "", ...session },
       stdout: "ignore",
       stderr: "pipe",
     },

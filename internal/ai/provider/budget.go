@@ -52,6 +52,8 @@ func DefaultBudget() Budget {
 // and 01M5XJCVYRB05MV25ZJ5R6Q8V7). The reservation follows it (meter.go).
 // A request with images uses it whatever the deployment's MaxOutputTokens
 // (AI_MAX_OUTPUT_TOKENS) says: the spend caps (D-110) still bound what it costs.
+// A slow model's request with images has the slow model's bound instead
+// (SlowModelMaxOutputTokens, H-065).
 // ponytail: one constant, not a deployment setting; add one if a deployment
 // ever needs a lower bound for images than for text.
 const ImageMaxOutputTokens int64 = 32000
@@ -66,7 +68,10 @@ func (b Budget) ImageTimeout(d time.Duration) time.Duration {
 	return min(d*time.Duration(ImageMaxOutputTokens)/time.Duration(b.MaxOutputTokens), BudgetCaps.Timeout)
 }
 
-// BudgetCaps are the largest values a deployment may configure.
+// BudgetCaps are the largest values a deployment may configure. A slow
+// model's calls (Muse Wonder 1.0) have their own, larger bounds instead,
+// which no deployment configures (SlowModelMaxOutputTokens, SlowModelTimeout:
+// H-065); Muse Spark 1.3's stay within these, D-007's 300 s included.
 var BudgetCaps = Budget{
 	MaxPromptBytes:               512 << 10,
 	MaxOutputTokens:              32000,

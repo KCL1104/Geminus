@@ -81,6 +81,9 @@ type Proposal struct {
 	// RequestID is the request that created the proposal (its job's
 	// payload).
 	RequestID string
+	// RequestedModel is the model that request named (its job's payload,
+	// H-049; H-065 shows it), "" when it named none.
+	RequestedModel string
 	// Image is the photo the proposal was asked for with (T-056, 0017);
 	// nil for a proposal asked for in words.
 	Image *Image
@@ -158,7 +161,7 @@ const columns = `p.id, p.model_id, p.base_version_id, p.source_import_id, p.mode
 	p.selected_entity_ids, p.id_pool, p.summary, p.assumptions, p.expected_effects, p.questions, p.patch, p.patch_hash,
 	p.candidate_dataset_bindings, p.server_risk_level, p.provider_risk_claim, p.risk_level, p.confidence, p.validation,
 	p.provider_metadata, p.error, p.new_version_id, p.scenario_id, p.decided_by, p.decided_at, p.decision_comment,
-	p.created_by, p.created_at, coalesce(j.payload->>'request_id', ''),
+	p.created_by, p.created_at, coalesce(j.payload->>'request_id', ''), coalesce(j.payload->>'model', ''),
 	i.object_key, i.content_hash, i.size_bytes, i.media_type, i.width, i.height`
 
 // from joins each proposal with its job (one at most, 0001), whose payload
@@ -179,7 +182,7 @@ func scan(row pgx.Row, org string) (Proposal, error) {
 		&selected, &p.IDPool, &p.Summary, &assumptions, &effects, &questions, &p.Patch, &p.PatchHash,
 		&bindings, &p.ServerRisk, &p.ProviderRisk, &p.Risk, &p.Confidence, &p.Validation,
 		&p.ProviderMetadata, &p.Failure, &p.NewVersionID, &p.ScenarioID, &p.DecidedBy, &p.DecidedAt, &p.DecisionComment,
-		&p.CreatedBy, &p.CreatedAt, &p.RequestID,
+		&p.CreatedBy, &p.CreatedAt, &p.RequestID, &p.RequestedModel,
 		&imageKey, &imageHash, &imageSize, &imageType, &imageWidth, &imageHeight)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Proposal{}, ErrNotFound

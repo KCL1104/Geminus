@@ -319,9 +319,11 @@ const ResearchJobAttempts = 1
 
 // SlowModelJobAttempts is the attempts of a job whose chosen model is a slow
 // one (provider.SlowModel: Muse Wonder 1.0, H-049; review round 1, M1): one,
-// as for research. Its call may run to the 300 s deadline and is then
-// settled as an attempt that may have been billed, at its bound, so a
-// failed one is never run again on its own: the person asks again.
+// as for research. Its call may run to its 900 s deadline
+// (provider.SlowModelTimeout, H-065), and its repair for as long again, and
+// is then settled as an attempt that may have been billed, at its bound
+// (128,000 output tokens), so a failed one is never run again on its own:
+// the person asks again.
 const SlowModelJobAttempts = 1
 
 // proposalJob is the model_proposal job of proposal id: its frozen input

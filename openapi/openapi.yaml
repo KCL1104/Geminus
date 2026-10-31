@@ -1209,7 +1209,9 @@ paths:
         is getProposalImage. H-057: when the server refused the AI''s first answer for what it said, the worker asked
         the AI once more in the same job, with the server''s issues (code, path and the server''s fixed sentence),
         and reviewed the second answer as the first; the proposal''s state is that review''s, and generated_by.revised_after_check
-        is true. A second request that failed leaves the first answer''s outcome, without the flag.'
+        is true. A second request that failed leaves the first answer''s outcome, without the flag. H-065: requested_model
+        is the model the request named (H-049), in every state, absent when it named none; a call on muse-wonder-1.0
+        may take up to 900 s, and its repair as long again.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1247,6 +1249,19 @@ paths:
                     created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
                     created_at: '2026-10-20T08:30:00Z'
                     requires_confirmation: true
+                generating_wonder:
+                  summary: Queued on the model the person chose (H-065); Muse Wonder can take several minutes
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZ8
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    status: generating
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-31T08:30:00Z'
+                    requires_confirmation: true
+                    requested_model: muse-wonder-1.0
                 ready:
                   summary: Reviewed by the server; the provider claimed low risk and the server agrees
                   value:

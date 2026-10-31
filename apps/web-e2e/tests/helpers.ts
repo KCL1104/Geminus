@@ -3,6 +3,13 @@ import { expect, type Page } from "@playwright/test";
 
 export type Locale = "en" | "zh-Hant";
 
+/**
+ * H-051, H-065: whether this run's build offers Muse Wonder 1.0
+ * (GEMINUS_E2E_OFFER_WONDER=1 builds it with NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1,
+ * playwright.config.ts); production's build does not.
+ */
+export const offersWonder = process.env.GEMINUS_E2E_OFFER_WONDER === "1";
+
 /** The results view's review page (T-032, gallery only), one address per state. */
 export const resultsPreviews = ["/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed"];
 /** The AI proposal review's review page (T-031, gallery only): the samples whose look differs (the others are in proposal.spec.ts). */
