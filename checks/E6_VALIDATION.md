@@ -210,3 +210,18 @@ Same toolchain and rules as §5 (go1.27.3 linux/amd64; Python from the symlinked
 - The fix restores the old behaviour for an attempt that stops: a step that does not look at its context runs to its end after the stop. In the analysis graph those steps are in-memory (decode, compare, the context build, the check), as they were before E2; the paid call is still refused by the client once the attempt has stopped, and its cancellation during the call is unchanged (golden `cancelled-during-the-call`).
 - The seal still reads names, not types (§3, finding 7): a future Eino version that adds a checkpoint entry point under a new name passes it until the list is updated. An Eino upgrade is a pinned, reviewed change (ADR-031); its review should rerun the scan of the exported checkpoint API recorded above.
 - `WithCheckPointID` and `CheckpointID` are refused anywhere, tests included, so a type of our own with a field of that name would be refused too (none exists; it would fail loudly).
+
+## Live after the deploy (coordinator, 2026-10-31 21:09 UTC)
+
+Deployed with bf86418 (the merged Eino refactor with H-065, H-068, H-069 and WORKER_REST_LANES). The worker printed sonic's one accepted stderr line once (H-064) and ran the lanes railway-worker-1:sim, :rest and :rest2. As the judge, one call per AI role:
+
+| Role | Model | Outcome | Time | Changes |
+|---|---|---|---|---|
+| scenario | Muse Spark 1.3 | ready | 32 s | replace /resources/4/capacity |
+| edit | Muse Spark 1.3 | ready | 22 s | replace /nodes/22/capacity |
+| scenario, research mode | Muse Spark 1.3 | ready | 37 s | replace /nodes/5/service_time/distribution |
+| scenario | Muse Wonder 1.0 | ready | 64 s | replace /resources/3/capacity |
+| photo (SAM 3.1, then the vision model) | Muse Spark 1.3 | ready | 91 s | four stations, one ICT step of two testers, the flows |
+| analysis of "Fourth FCT tester" against its baseline | Muse Spark 1.3 | completed | 32 s | — |
+
+No repair was needed in this run, so H-057's branch was not exercised live here; it was exercised live before the refactor (H-069's tests).
