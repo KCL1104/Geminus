@@ -61,6 +61,9 @@ test.describe("a new model from a template, signed in, on the fake API", () => {
       expect(await focusIsVisible(page), "the chosen template's focus is visible").toBe(true);
       expect(await violations(page), "the open form").toEqual([]);
 
+      // H-062: the electronics line's photo option comes before the next group's templates.
+      await page.keyboard.press("ArrowDown");
+      await expect(form.getByRole("radio", { name: t["template.photo_start.name"] })).toBeFocused();
       await page.keyboard.press("ArrowDown");
       const shoes = form.getByRole("radio", { name: t["template.shoe_factory.name"] });
       await expect(shoes).toBeFocused();
@@ -103,7 +106,8 @@ test.describe("a new model from a template, signed in, on the fake API", () => {
       await signInAs(page, tenant.editor, project, locale);
       await page.getByRole("button", { name: t["newModel.open"] }).click();
       const form = page.locator("[data-new-model]");
-      await expect(form.getByRole("radio")).toHaveCount(6);
+      // Six templates and the photo option (H-062).
+      await expect(form.getByRole("radio")).toHaveCount(7);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(0);
       for (const box of await form.locator("label").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right))) expect(box).toBeLessThanOrEqual(390);

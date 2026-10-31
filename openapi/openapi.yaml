@@ -227,6 +227,14 @@ paths:
                   domain: electronics_line
                   template: electronics_assembly_test_line
                   locale: zh-Hant
+              electronics_line_photo_start:
+                summary: The bare electronics line (H-062) a model made from a photo or floor plan starts from; the
+                  page then sends the photo with createImageProposal on its version 1
+                value:
+                  name: Line from a photo
+                  domain: electronics_line
+                  template: photo_start
+                  locale: en
               production_logistics:
                 summary: A synthetic template of the production and logistics pack (H-045), here the shoe factory, default names in English
                 value:

@@ -389,7 +389,7 @@ func TestTemplateLocales(t *testing.T) {
 	if got, err := provider.Template(electronicsline.DefaultTemplate, newModel, "x", domainpack.TraditionalChinese); err != nil || names(got)["board_b"] != "B 系列板" {
 		t.Errorf("Pack.Template: %v %v", got, err)
 	}
-	if !slices.Equal(provider.Templates(), electronicsline.Templates()) || !slices.Equal(electronicsline.Templates(), []string{electronicsline.DefaultTemplate}) {
+	if !slices.Equal(provider.Templates(), electronicsline.Templates()) || !slices.Equal(electronicsline.Templates(), []string{electronicsline.DefaultTemplate, electronicsline.PhotoStartTemplate}) {
 		t.Errorf("Pack.Templates %v", provider.Templates())
 	}
 }

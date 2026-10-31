@@ -1,0 +1,27 @@
+npm --prefix apps/web run lint
+
+> @geminus/web@0.0.0 lint
+> eslint --max-warnings=0 .
+
+npm --prefix apps/web run typecheck
+
+> @geminus/web@0.0.0 typecheck
+> tsc --noEmit
+
+npm --prefix apps/web run test:unit
+
+> @geminus/web@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/.claude/worktrees/wf_ae206d5f-fa4-1/apps/web
+
+
+ Test Files  60 passed (60)
+      Tests  1248 passed (1248)
+   Start at  18:44:24
+   Duration  34.84s (tests 67%, import 21%, environment 8%, transform 4%)
+
+    Isolate  60 workers spawned · ~699ms startup each (spawn + environment, per file)
+             at least ~2.10s faster with isolate: false — reuses workers across files instead of one per file
+

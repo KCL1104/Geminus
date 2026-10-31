@@ -43,12 +43,14 @@ function issue(sub, nonce, family) {
   return out;
 }
 
-const body = (req) =>
+/** The request's body as bytes (a photo's multipart form is not text). */
+const bytes = (req) =>
   new Promise((resolve) => {
-    let data = "";
-    req.on("data", (c) => (data += c));
-    req.on("end", () => resolve(data));
+    const chunks = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
   });
+const body = async (req) => (await bytes(req)).toString("utf8");
 
 function json(res, status, value, headers = {}) {
   res.writeHead(status, { "content-type": "application/json", "cache-control": "no-store", ...headers });
@@ -220,7 +222,7 @@ function applied(ir, ops) {
 // proposals. A created model has its draft and version 1 and empty lists.
 const pack = (dir, name) => JSON.parse(readFileSync(new URL(`../../../internal/domainpack/${dir}/templates/${name}.json`, import.meta.url), "utf8"));
 const templateDirs = {
-  electronics_line: ["electronicsline", ["electronics_assembly_test_line"]],
+  electronics_line: ["electronicsline", ["electronics_assembly_test_line", "photo_start"]],
   production_logistics: ["productionlogistics", ["shoe_factory", "food_plant", "carton_plant", "warehouse"]],
   software_delivery: ["softwaredelivery", ["default_delivery_pipeline"]],
 };
@@ -235,8 +237,8 @@ function templateIR(domain, template, locale) {
   }
   return ir;
 }
-/** Line Works' model as it starts: version 1 and its draft, no proposals, no keys, no models created. */
-const fresh = () => ({ versions: [version], draft: structuredClone(fixture), proposals: new Map(), keys: new Map(), scenarios: 0, created: new Map() });
+/** Line Works' model as it starts: version 1 and its draft, no proposals, no keys, no models created, no photos. */
+const fresh = () => ({ versions: [version], draft: structuredClone(fixture), proposals: new Map(), keys: new Map(), scenarios: 0, created: new Map(), photos: new Map() });
 let live = fresh();
 const latest = () => live.versions[live.versions.length - 1];
 const modelNow = () => ({
@@ -255,8 +257,11 @@ function tenantGet(org, path) {
     if (path === `/v1/models/${c.model.id}/draft`) return [c.draft, { etag: `"draft-revision-${c.draft.revision}"` }];
     if (path === `/v1/model-versions/${c.version.id}`) return [c.version, {}];
     if (path === `/v1/models/${c.model.id}/versions`) return [{ items: [c.version], next_cursor: null }, {}];
-    if ([`/v1/model-versions/${c.version.id}/scenarios`, `/v1/models/${c.model.id}/ai-proposals`, `/v1/models/${c.model.id}/simulations`].includes(path)) return [{ items: [], next_cursor: null }, {}];
+    if (path === `/v1/models/${c.model.id}/ai-proposals`) return [{ items: [...live.photos.values()].filter((p) => p.proposal.model_id === c.model.id).map((p) => p.proposal), next_cursor: null }, {}];
+    if ([`/v1/model-versions/${c.version.id}/scenarios`, `/v1/models/${c.model.id}/simulations`].includes(path)) return [{ items: [], next_cursor: null }, {}];
   }
+  const photo = path.startsWith("/v1/ai-proposals/") ? live.photos.get(path.slice("/v1/ai-proposals/".length)) : undefined;
+  if (photo) return [photo.proposal, {}];
   if (path === `/v1/models/${model.id}`) return [modelNow(), {}];
   if (path === `/v1/models/${model.id}/draft`) return [live.draft, { etag: `"draft-revision-${live.draft.revision}"` }];
   const v = live.versions.find((x) => path === `/v1/model-versions/${x.id}`);
@@ -356,6 +361,71 @@ function tenantPost(org, role, path, key, payload) {
   return kept({ status: 201, body: { proposal_id: id, status: "approved", mode: "edit", new_version_id: v.id, version: n, patch_hash: s.proposal.patch_hash, draft_out_of_date: false } });
 }
 
+// createImageProposal (T-056) on a model created here, as the new-model
+// page's "Start from a photo or floor plan" sends it (H-062), as openapi has
+// it, after the checks a client can meet: an editor or owner (403), a key
+// (400); the parts base_version_id, optionally output_locale and model, and
+// file last (422); the created model's latest version (409); a PNG or JPEG
+// by its first bytes (415 IMAGE_FORMAT_REJECTED), at most 5 MiB (413), and
+// 32 to 4096 pixels wide and high as the PNG's header or the JPEG's frame
+// says (422 IMAGE_INVALID or IMAGE_PIXELS_EXCEEDED). Answered 202 generating;
+// the proposal stays generating, because nothing here segments, proposes or
+// reviews anything (no AI is called); getProposalImage gives the file as it
+// came (the server stores its re-encoding). A key used again with the same
+// fields and file gets the first answer, with another request 409. The
+// fixture's model is not one of these (404).
+const IMAGE_PATH = /^\/v1\/models\/([^/]+)\/ai-proposals\/image$/;
+const MAX_IMAGE = 5_242_880;
+/** The image's media type and size in pixels, by its first bytes and header; null for neither a PNG nor a JPEG; {} when its size cannot be read. */
+function imageInfo(b) {
+  if (b.length >= 24 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return b.subarray(12, 16).toString("latin1") === "IHDR" ? { type: "image/png", width: b.readUInt32BE(16), height: b.readUInt32BE(20) } : {};
+  }
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
+  for (let i = 2; i + 9 < b.length && b[i] === 0xff; i += 2 + b.readUInt16BE(i + 2)) {
+    const m = b[i + 1];
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) return { type: "image/jpeg", height: b.readUInt16BE(i + 5), width: b.readUInt16BE(i + 7) };
+  }
+  return {};
+}
+/** What a photo request carried, for GET /__state: its parts in order, the fields, and the file's size. */
+const photoCall = (form) => ({
+  parts: [...form.keys()],
+  base_version_id: form.get("base_version_id"), output_locale: form.get("output_locale"), model: form.get("model"),
+  file: form.get("file") instanceof Blob ? { size: form.get("file").size } : null,
+});
+async function photoPost(org, role, path, key, form) {
+  const c = org === LINE ? live.created.get(path.match(IMAGE_PATH)[1]) : undefined;
+  if (!c) return refusal(404, "NOT_FOUND", "not found");
+  if (role !== "editor" && role !== "owner") return refusal(403, "FORBIDDEN", "this role cannot ask for a proposal");
+  if (!key) return refusal(400, "IDEMPOTENCY_KEY_REQUIRED", "the Idempotency-Key header is required");
+  const names = form === null ? [] : [...form.keys()];
+  const fieldsOk = names.at(-1) === "file" && names[0] === "base_version_id" && new Set(names).size === names.length &&
+    names.slice(1, -1).every((n) => ["output_locale", "model"].includes(n)) && typeof form.get("base_version_id") === "string" && form.get("file") instanceof Blob;
+  if (!fieldsOk) return refusal(422, "REQUEST_VALIDATION_FAILED", "the request body does not match the schema", [{ path: "/file", reason: "the parts are base_version_id, optionally output_locale and model, then file" }]);
+  const file = Buffer.from(await form.get("file").arrayBuffer());
+  const hash = `sha256:${createHash("sha256").update(file).digest("hex")}`;
+  const fields = Object.fromEntries(names.filter((n) => n !== "file").map((n) => [n, form.get(n)]));
+  const fingerprint = `${path} ${jcs(fields)} ${hash} ${file.length}`;
+  const seen = live.keys.get(key);
+  if (seen) return seen.fingerprint === fingerprint ? seen.answer : refusal(409, "IDEMPOTENCY_KEY_CONFLICT", "this Idempotency-Key was used for a different request");
+  const kept = (a) => (live.keys.set(key, { fingerprint, answer: a }), a);
+  if (fields.base_version_id !== c.model.latest_version.id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
+  if (file.length > MAX_IMAGE) return refusal(413, "PAYLOAD_TOO_LARGE", "the image is larger than 5,242,880 bytes");
+  const info = imageInfo(file);
+  if (info === null) return refusal(415, "UNSUPPORTED_MEDIA_TYPE", "the file is not a PNG or JPEG", [{ path: "/file", reason: "not a PNG or JPEG", code: "IMAGE_FORMAT_REJECTED" }]);
+  if (info.type === undefined) return refusal(422, "REQUEST_VALIDATION_FAILED", "the file is not an image that decodes", [{ path: "/file", reason: "does not decode", code: "IMAGE_INVALID" }]);
+  if ([info.width, info.height].some((n) => n < 32 || n > 4096)) return refusal(422, "REQUEST_VALIDATION_FAILED", "the image is not 32 to 4096 pixels wide and high", [{ path: "/file", reason: "pixels", code: "IMAGE_PIXELS_EXCEEDED" }]);
+  const id = serial("aip", "Q", live.photos.size + 1);
+  const proposal = {
+    proposal_id: id, organization_id: LINE, model_id: c.model.id, base_version_id: fields.base_version_id, mode: "edit", status: "generating",
+    created_by: USER, created_at: ASKED, requires_confirmation: true,
+    source_image: { media_type: info.type, width: info.width, height: info.height, size_bytes: file.length, content_hash: hash },
+  };
+  live.photos.set(id, { proposal, image: file, type: info.type });
+  return kept({ status: 202, body: { proposal_id: id, status: "generating" } });
+}
+
 // The API stand-in: tokens from the provider only; an unknown subject is 403
 // (as the Go API answers an identity provisioning does not know, D-008).
 createServer(async (req, res) => {
@@ -364,7 +434,8 @@ createServer(async (req, res) => {
   const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   const known = access.get(token);
   const org = req.headers["x-organization-id"] ?? null;
-  const raw = await body(req);
+  const rawBytes = await bytes(req);
+  const raw = rawBytes.toString("utf8");
   const key = req.headers["idempotency-key"] ?? null;
   let payload;
   try {
@@ -372,7 +443,16 @@ createServer(async (req, res) => {
   } catch {
     payload = null;
   }
-  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org, hasAuth: auth !== "", ...(req.method === "POST" ? { key, body: payload ?? null } : {}) });
+  // A photo is a multipart form (H-062), read as the browser sent it; anything else that does not parse is null.
+  let form = null;
+  if (req.method === "POST" && IMAGE_PATH.test(url.pathname)) {
+    try {
+      form = await new Response(rawBytes, { headers: { "content-type": req.headers["content-type"] ?? "" } }).formData();
+    } catch {
+      form = null;
+    }
+  }
+  state.apiCalls.push({ method: req.method, path: url.pathname, query: url.search, cookie: req.headers.cookie ?? null, org, hasAuth: auth !== "", ...(req.method === "POST" ? { key, body: form ? photoCall(form) : (payload ?? null) } : {}) });
   const rid = "req_01M4YDQK00V6H8S0ST4F7510KR";
   const fail = (status, code, message) => json(res, status, { error: { code, message, request_id: rid } }, { "x-request-id": rid });
   if (!known || known.exp <= Math.floor(Date.now() / 1000)) return fail(401, "UNAUTHENTICATED", "invalid token");
@@ -391,6 +471,17 @@ createServer(async (req, res) => {
     return;
   }
   const membership = typeof org === "string" ? memberships.find((m) => m.organization_id === org) : undefined;
+  // H-062: a photo proposal's photo (getProposalImage), and a photo sent (createImageProposal).
+  const image = req.method === "GET" && membership && org === LINE ? url.pathname.match(/^\/v1\/ai-proposals\/([^/]+)\/image$/) : null;
+  const stored = image ? live.photos.get(image[1]) : undefined;
+  if (stored) {
+    res.writeHead(200, { "content-type": stored.type, "cache-control": "no-store", "x-request-id": rid });
+    return res.end(stored.image);
+  }
+  if (req.method === "POST" && membership && IMAGE_PATH.test(url.pathname)) {
+    const sent = await photoPost(org, membership.role, url.pathname, key, form);
+    return json(res, sent.status, sent.body, { "x-request-id": rid });
+  }
   const found = req.method === "GET" && membership ? tenantGet(org, url.pathname) : null;
   if (found !== null) return json(res, 200, found[0], { "x-request-id": rid, ...found[1] });
   const answered = req.method === "POST" && membership ? tenantPost(org, membership.role, url.pathname, key, payload) : null;

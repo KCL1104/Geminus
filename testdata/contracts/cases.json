@@ -821,6 +821,23 @@
       "layer": "schema"
     },
     {
+      "id": "valid-create-model-electronics-line-photo-start",
+      "instance": "testdata/contracts/valid-create-model-electronics-line-photo-start.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-create-model-photo-start-under-another-domain",
+      "instance": "testdata/contracts/invalid-create-model-photo-start-under-another-domain.json",
+      "schema": "schemas/http.schema.json#/$defs/CreateModel",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/template"
+      ]
+    },
+    {
       "id": "invalid-create-model-template-of-another-domain",
       "instance": "testdata/contracts/invalid-create-model-template-of-another-domain.json",
       "schema": "schemas/http.schema.json#/$defs/CreateModel",

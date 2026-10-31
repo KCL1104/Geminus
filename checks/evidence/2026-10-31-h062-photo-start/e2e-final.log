@@ -1,0 +1,36 @@
+
+Running 29 tests using 1 worker
+
+  ✓   1 [chromium] › tests/new-model.spec.ts:49:5 › a new model from a template, signed in, on the fake API › en: creates the shoe factory with the keyboard only and opens its canvas (3.6s)
+  ✓   2 [chromium] › tests/new-model.spec.ts:49:5 › a new model from a template, signed in, on the fake API › zh-Hant: creates the shoe factory with the keyboard only and opens its canvas (3.6s)
+  ✓   3 [chromium] › tests/new-model.spec.ts:121:3 › a new model from a template, signed in, on the fake API › Cancel closes the form and gives the focus back to the action; the list stays (1.1s)
+  ✓   4 [chromium] › tests/new-model.spec.ts:140:5 › a new model from a template, signed in, on the fake API › en: at 390 px the open form fits the width, nothing scrolls sideways (1.8s)
+  ✓   5 [chromium] › tests/new-model.spec.ts:140:5 › a new model from a template, signed in, on the fake API › zh-Hant: at 390 px the open form fits the width, nothing scrolls sideways (2.1s)
+  ✓   6 [chromium] › tests/new-model.spec.ts:161:3 › a new model from a template, signed in, on the fake API › a viewer is not offered a new model (986ms)
+  ✓   7 [chromium] › tests/photo-start.spec.ts:42:5 › a new model from a photo or floor plan, signed in, on the fake API › en: creates the model, sends the floor plan on its version 1 and opens the proposal with the photo (3.2s)
+  ✓   8 [chromium] › tests/photo-start.spec.ts:42:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: creates the model, sends the floor plan on its version 1 and opens the proposal with the photo (3.5s)
+  ✓   9 [chromium] › tests/photo-start.spec.ts:120:5 › a new model from a photo or floor plan, signed in, on the fake API › en: a photo the API refuses leaves the model, whose page says so and sends the photo again (2.6s)
+  ✓  10 [chromium] › tests/photo-start.spec.ts:120:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: a photo the API refuses leaves the model, whose page says so and sends the photo again (2.9s)
+  ✓  11 [chromium] › tests/photo-start.spec.ts:174:5 › a new model from a photo or floor plan, signed in, on the fake API › en: at 390 px the photo option fits the width, nothing scrolls sideways (1.9s)
+  ✓  12 [chromium] › tests/photo-start.spec.ts:174:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: at 390 px the photo option fits the width, nothing scrolls sideways (2.2s)
+  ✓  13 [chromium] › tests/photo-start.spec.ts:196:3 › a new model from a photo or floor plan, signed in, on the fake API › a viewer is not offered a new model from a photo (953ms)
+  ✓  14 [chromium] › tests/proposal.spec.ts:53:1 › approves an edit with the keyboard only: confirm in place, then the outcome, focused and announced (2.7s)
+  ✓  15 [chromium] › tests/proposal.spec.ts:88:1 › approves a scenario as its own action, and offers the scenario to run (1.2s)
+  ✓  16 [chromium] › tests/proposal.spec.ts:107:3 › en: rejects with a reason typed in place, and shows it with the outcome (2.1s)
+  ✓  17 [chromium] › tests/proposal.spec.ts:107:3 › zh-Hant: rejects with a reason typed in place, and shows it with the outcome (2.5s)
+  ✓  18 [chromium] › tests/proposal.spec.ts:128:1 › keeps the page when the model changed just before the approval, and says what changed (2.0s)
+  ✓  19 [chromium] › tests/proposal.spec.ts:158:1 › follows a proposal being written until it is ready (3.5s)
+  ✓  20 [chromium] › tests/proposal.spec.ts:169:1 › asks from the model page and lands on the proposal it created (6.5s)
+  ✓  21 [chromium] › tests/proposal.spec.ts:184:1 › shows hostile words from the AI as text: no markup, no link, no decision (2.0s)
+  ✓  22 [chromium] › tests/proposal.spec.ts:219:3 › at 390px › the exact JSON Patch opens from the keyboard and wraps inside the page (1.9s)
+en proposal pages: strings not from the catalog or data: []
+  ✓  23 [chromium] › tests/proposal.spec.ts:267:3 › en: every string on the proposal pages is the catalog's or data (15.0s)
+zh-Hant proposal pages: strings not from the catalog or data: []
+  ✓  24 [chromium] › tests/proposal.spec.ts:267:3 › zh-Hant: every string on the proposal pages is the catalog's or data (19.1s)
+  ✓  25 [chromium] › tests/proposal.spec.ts:343:5 › signed in, through the BFF, on the fake API's proposals › en: asks on the model page, reviews the proposal, approves the edit with the keyboard and sees version 2 (7.6s)
+  ✓  26 [chromium] › tests/proposal.spec.ts:343:5 › signed in, through the BFF, on the fake API's proposals › zh-Hant: asks on the model page, reviews the proposal, approves the edit with the keyboard and sees version 2 (7.8s)
+  ✓  27 [chromium] › tests/proposal.spec.ts:450:3 › signed in, through the BFF, on the fake API's proposals › en: asks with web research on, and the proposal lists the pages the AI read and its searches (5.6s)
+  ✓  28 [chromium] › tests/proposal.spec.ts:529:3 › signed in, through the BFF, on the fake API's proposals › en: offers no model choice, and the proposal it sends carries no model and names Muse Spark 1.3 (4.8s)
+  ✓  29 [chromium] › tests/proposal.spec.ts:568:3 › signed in, through the BFF, on the fake API's proposals › en: rejects with a reason through the BFF, and the model stays on version 1 (4.1s)
+
+  29 passed (2.3m)

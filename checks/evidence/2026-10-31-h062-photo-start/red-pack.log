@@ -1,0 +1,12 @@
+# github.com/kcl1104/geminus/internal/domainpack/electronicsline_test [github.com/kcl1104/geminus/internal/domainpack/electronicsline.test]
+internal/domainpack/electronicsline/photo_start_test.go:35:54: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:61:68: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:65:21: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:66:83: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:130:69: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:159:41: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:188:56: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/photo_start_test.go:191:53: undefined: electronicsline.PhotoStartTemplate
+internal/domainpack/electronicsline/template_test.go:392:174: undefined: electronicsline.PhotoStartTemplate
+FAIL	github.com/kcl1104/geminus/internal/domainpack/electronicsline [build failed]
+FAIL

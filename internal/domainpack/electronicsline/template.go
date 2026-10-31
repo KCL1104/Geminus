@@ -17,12 +17,21 @@ import (
 	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
-// DefaultTemplate is the create-model template (http.schema.json CreateModel.template).
-const DefaultTemplate = "electronics_assembly_test_line"
+// The create-model templates (http.schema.json CreateModel.template).
+const (
+	// DefaultTemplate is the full line of §4.
+	DefaultTemplate = "electronics_assembly_test_line"
+	// PhotoStartTemplate is the bare line a new model starts from when it
+	// is made from a photo or floor plan (§4.6, H-062): a source, a buffer,
+	// one SMT step and the sink, the IR of testdata/photos/bare-line.json
+	// that the live photo runs passed on (H-054). The page then sends the
+	// photo as the model's first photo proposal; nothing here reads it.
+	PhotoStartTemplate = "photo_start"
+)
 
-// The template is ELECTRONICS_LINE §4.1 with §4.2's parameters and §4.4's
-// two product families and SMT changeovers, all synthetic (H-018). Its
-// default names are English; <template>.<locale>.names.json gives them in
+// The full template is ELECTRONICS_LINE §4.1 with §4.2's parameters and
+// §4.4's two product families and SMT changeovers, the photo start §4.6's
+// bare line, all synthetic (H-018). Their default names are English; <template>.<locale>.names.json gives them in
 // another locale by ID, for every entity type, resource and node
 // (REQ-022). IDs and everything else are the same in every locale.
 //
@@ -78,8 +87,9 @@ func userMetadata(templateName string, raw jsontext.Value) (jsontext.Value, erro
 	}, json.Deterministic(true))
 }
 
-// Templates lists the template names this pack offers.
-func Templates() []string { return []string{DefaultTemplate} }
+// Templates lists the template names this pack offers: the full line
+// first, then the photo start.
+func Templates() []string { return []string{DefaultTemplate, PhotoStartTemplate} }
 
 // Templates and Template make the pack a domainpack.TemplateProvider.
 func (Pack) Templates() []string { return Templates() }

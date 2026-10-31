@@ -1,0 +1,14 @@
+{
+  "entity_types": {
+    "board": "電路板"
+  },
+  "resources": {
+    "smt_line": "SMT 線"
+  },
+  "nodes": {
+    "release": "投入：電路板",
+    "q_smt": "SMT 前緩衝",
+    "smt": "SMT 線",
+    "shipped": "出貨"
+  }
+}
