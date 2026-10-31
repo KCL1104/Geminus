@@ -10,6 +10,7 @@ package generator
 // outcome.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/v2"
 	"errors"
@@ -31,6 +32,7 @@ import (
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	models "github.com/kcl1104/geminus/internal/storage/models"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
@@ -177,7 +179,7 @@ func TestThePhotoDemo(t *testing.T) {
 	if o.Status != review.Ready || o.ServerRisk == "" || o.PatchHash == "" || len(o.Assumptions) != 5 {
 		t.Fatalf("%+v %v", o.Status, o.Validation)
 	}
-	if g.meta == nil || g.meta.TemplateVersion != "photo-0.2.0" || g.photo == nil || g.photo.segmenter == nil || g.photo.segments != 10 ||
+	if g.meta == nil || g.meta.TemplateVersion != "photo-0.3.0" || g.photo == nil || g.photo.segmenter == nil || g.photo.segments != 10 ||
 		g.photo.segmenter.Concepts != 8 || g.photo.segmenter.ImageDigest != digest || g.photo.image.SHA256 != digest {
 		t.Errorf("metadata %+v %+v", g.meta, g.photo)
 	}
@@ -266,7 +268,7 @@ func TestThePhotoDemoFromShapes(t *testing.T) {
 	}
 	visReqs := r.vision.Requests()
 	if len(visReqs) != 1 || len(visReqs[0].Prompt.Images) != 1 || visReqs[0].Prompt.Images[0].Digest != digest ||
-		visReqs[0].Prompt.TemplateVersion != "photo-0.2.0" {
+		visReqs[0].Prompt.TemplateVersion != "photo-0.3.0" {
 		t.Fatalf("vision %d", len(visReqs))
 	}
 	user := visReqs[0].Prompt.User()
@@ -462,6 +464,55 @@ func TestPhotoAnswersTheServerRefuses(t *testing.T) {
 				t.Errorf("%s: an issue the server did not clean: %+v", name, is)
 			}
 		}
+	}
+}
+
+// H-054: the live photo proposal of 2026-10-31 on the Bare line model was
+// stored invalid with exactly one issue, AI_OUTPUT_INVALID at /changes with
+// the sentence of an answer that is not a proposal, and the worker's line
+// of its call said AI_INVALID_OUTPUT. A proposal with an empty patch is
+// that answer to the issue: the provider's format allows it (the Meta
+// adapter's TestAProposalWithNoChangeIsRefusedAtChanges), the checked
+// client refuses it at /changes, and the cleaning keeps only the code, the
+// path and the first sentence of the code. photo-0.3.0 asks for
+// needs_input when the photo shows nothing the base does not have.
+func TestAnEmptyPhotoProposalIsRefusedAtChanges(t *testing.T) {
+	var buf bytes.Buffer
+	r := newPhotoRig(t, "electronics-line-demo", func(c *Config) { c.Log = observability.NewLogger(&buf, "worker") })
+	var a map[string]any
+	if err := json.Unmarshal(contracttest.PhotoAnswer(t, "electronics-line-demo", poolIDs(t, r.st)), &a); err != nil {
+		t.Fatal(err)
+	}
+	a["changes"] = []any{}
+	answer, _ := json.Marshal(a)
+	r.script(-1)
+	r.vision.Script(provider.RoleModeler, r.demo.Segments.StoredDigest, answer)
+	g, err := r.run(t, context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []model.ValidationIssue{model.NewIssue(review.OutputInvalid, "/changes", "the provider's answer is not an acceptable proposal", model.SeverityError)}
+	if o := g.outcome; o.Status != review.Invalid || o.Changes != nil || o.Summary != "" || !slices.Equal(o.Validation.Issues, want) {
+		t.Fatalf("%s %+v", o.Status, o.Validation)
+	}
+	if gen, err := generated(g.outcome, *g.meta, g.manifest); err != nil || gen.Status != store.Invalid {
+		t.Errorf("not storable: %v", err)
+	}
+	var codes []string
+	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+		var m map[string]any
+		if err := json.Unmarshal(line, &m); err != nil {
+			t.Fatalf("%q: %v", line, err)
+		}
+		if m["msg"] == "ai provider call ended" {
+			codes = append(codes, m["code"].(string))
+		}
+	}
+	if !slices.Equal(codes, []string{"AI_INVALID_OUTPUT"}) {
+		t.Errorf("the calls' lines: %v", codes)
+	}
+	if strings.Contains(buf.String(), "Add the AOI") {
+		t.Error("the log carries the answer's text")
 	}
 }
 

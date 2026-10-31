@@ -80,9 +80,16 @@ const photoRules = "- PHOTO_RULES: this proposal is asked for with a photo or fl
 	"- Every number of a new or changed step, flow or resource must be a number the base model already has (copy a station's service time; " +
 	"probability 1 for a single route), except a resource's capacity, which may also count the segments that show its machines (1 to the number of segments). " +
 	"The server refuses any other number. State in assumptions every number you copied and why, and everything you inferred from the photo.\n" +
+	// H-054: live, two testers side by side on the demo floor plan became a
+	// split (ROUTING_INVALID). Domain-neutral here; the template names them.
+	"- Identical machines side by side doing the same step (such as two testers side by side in the photo) are one process step: " +
+	"one node that requires one resource whose capacity is their count, as the domain's templates model several machines of one step; " +
+	"when the base model already has that step, it is that step, not a new one. Never add a decision node or split the flow between them: " +
+	"a split has no probability to take (1 for each route sums to more than 1, and any other is no number of the base model), and the server refuses it.\n" +
 	"- Never add or change views: the editor lays out new steps. Never remove or change what the photo does not show.\n" +
 	"- When the photo does not show enough to add a station (no segment shows one, the order cannot be told, the segments fit none of the domain's kinds), " +
-	"answer needs_input with questions; never invent steps.\n"
+	"or everything it shows is already in the base model with nothing to change, answer needs_input with questions; never invent steps. " +
+	"A proposed answer has at least one change; its changes are never empty.\n"
 
 // imageView is the IMAGE block.
 type imageView struct {

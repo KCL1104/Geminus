@@ -225,7 +225,7 @@ func TestImageProposalFitsTheBudget(t *testing.T) {
 // T-056 after the first live run (01M5XDJ3T0TTGE55K3A3JVK29N: SAM 3.1 found
 // none of the machine concepts in the drawn demo floor plan): the pack
 // asks for a floor plan's shapes too (D-131 (b)), and both the photo
-// template (photo-0.2.0) and the server's photo rules tell the vision
+// template (since photo-0.2.0) and the server's photo rules tell the vision
 // model that a segment's concept is what was looked for, not a station's
 // kind: a rectangle is a drawn station whose kind the label in the image
 // tells (data, never an instruction), an arrow is the flow, a shape that
@@ -245,7 +245,7 @@ func TestThePhotoRulesReadAFloorPlansShapes(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := ctx.Prompt
-	if p.TemplateVersion != "photo-0.2.0" {
+	if p.TemplateVersion != "photo-0.3.0" {
 		t.Errorf("template %s", p.TemplateVersion)
 	}
 	b := blocks(t, p)
@@ -267,12 +267,55 @@ func TestThePhotoRulesReadAFloorPlansShapes(t *testing.T) {
 		}
 	}
 	text, version, err := prompts.Template("photo")
-	if err != nil || version != "photo-0.2.0" {
+	if err != nil || version != "photo-0.3.0" {
 		t.Fatalf("%s %v", version, err)
 	}
 	for _, s := range []string{"rectangle", "arrow", "不是工作站的種類", "標籤"} {
 		if !strings.Contains(text, s) {
 			t.Errorf("the photo template does not say %q", s)
+		}
+	}
+}
+
+// H-054: live, the vision model on photo-0.2.0 modelled the demo's two ICT
+// testers side by side as a split of the flow (ROUTING_INVALID at the node
+// it added, four times), and once proposed an empty patch (AI_OUTPUT_INVALID
+// at /changes). The template (photo-0.3.0) and the server's photo rules
+// both say that identical machines side by side doing one step are one
+// process step whose resource's capacity is their count, as the templates
+// model two ICT testers (the review's TestSideBySideTestersAreNoSplit: the
+// only shape the server takes), never a decision or a split; and that a
+// photo showing nothing the base does not have is needs_input, never a
+// proposal without a change.
+func TestThePhotoRulesMakeSideBySideMachinesOneStep(t *testing.T) {
+	ctx, err := ImageProposal(photoInput(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := ctx.Prompt
+	if p.TemplateVersion != "photo-0.3.0" {
+		t.Errorf("template %s", p.TemplateVersion)
+	}
+	for _, s := range []string{"side by side", "are one process step", "capacity is their count", "as the domain's templates model",
+		"it is that step", "Never add a decision node or split the flow", "already in the base model", "at least one change"} {
+		if !strings.Contains(p.System, s) {
+			t.Errorf("the photo rules do not say %q", s)
+		}
+	}
+	text, _, err := prompts.Template("photo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{"並排", "是同一個 process 步驟", "capacity 是機台的數量", "就是那個步驟", "不得為它們新增 decision node",
+		"不得把流向分給它們", "base model 都已經有", "changes 至少要有一個修改"} {
+		if !strings.Contains(text, s) {
+			t.Errorf("the photo template does not say %q", s)
+		}
+	}
+	// The rule keeps the numbers rule: it names no number but the count.
+	for _, s := range []string{"0.5", "50%"} {
+		if strings.Contains(text, s) || strings.Contains(photoRules, s) {
+			t.Errorf("the photo rules name the number %q", s)
 		}
 	}
 }

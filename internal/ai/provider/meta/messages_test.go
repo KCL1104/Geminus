@@ -366,6 +366,36 @@ func TestEncodedValues(t *testing.T) {
 	}
 }
 
+// H-054: a live photo proposal (Muse Spark 1.3, 2026-10-31, the worker's
+// line code AI_INVALID_OUTPUT) was stored invalid with one issue,
+// AI_OUTPUT_INVALID at /changes. The format the request sends drops the
+// canonical minItems of a proposal's changes (the structured-output subset
+// takes no minItems), so a proposal with an empty patch is an answer the
+// API's format allows; the client's full-schema check refuses it with one
+// issue at /changes, the only place a complete answer of the model can
+// fail at that path (a patch operation's own failures are at
+// /changes/<i>/..., which the review's cleaning keeps).
+func TestAProposalWithNoChangeIsRefusedAtChanges(t *testing.T) {
+	proj, err := structured.Project("proposal-output.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(proj.Dropped, "proposal-output.schema.json#/oneOf/0/properties/changes/allOf/1/minItems") {
+		t.Fatalf("the projection keeps the changes' minItems: dropped %v", proj.Dropped)
+	}
+	empty := `{"status":"proposed","summary":"The floor plan shows the stations the model has.","assumptions":["Every station is in the model."],` +
+		`"risk_level":"low","confidence":0.6,"changes":[],"expected_effects":["Nothing changes."],"requires_confirmation":true}`
+	s := newServer(t, map[string][]reply{messagesPath: {ok(empty)}})
+	c, _ := client(t, s)
+	_, err = ask(t, c)
+	var pe *provider.Error
+	if !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput || pe.Retryable() || len(pe.Issues) != 1 ||
+		pe.Issues[0].Path != "/changes" || pe.Issues[0].Code != provider.OutputInvalid {
+		t.Fatalf("an empty patch: %v %+v", err, pe)
+	}
+	leaks(t, "an empty patch", fmt.Sprintf("%v %+v", err, pe.Issues), "floor plan", "Every station")
+}
+
 // Error statuses (https://dev.meta.ai/docs/error-handling and the Messages
 // page's envelope): 400, 404, 413 and other 4xx are rejected (not retried,
 // not billed); 401 and 403 disable the key until a restart and 402 rests

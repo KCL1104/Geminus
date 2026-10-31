@@ -1,12 +1,19 @@
 package review
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
+	"github.com/kcl1104/geminus/internal/ai/idpool"
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
 // T-056: a proposal asked for with a photo may add only the steps the photo
@@ -274,5 +281,148 @@ func TestSegmentation(t *testing.T) {
 		if is.Path != "" || Clean(is) != is {
 			t.Errorf("%+v", is)
 		}
+	}
+}
+
+// H-054: the demo floor plan draws its two ICT testers side by side. Live,
+// Muse Spark 1.3 on photo-0.2.0 four times out of six modelled them as a
+// split of the flow, refused with ROUTING_INVALID at the node it added
+// (/nodes/45) and, on the electronics template (41 nodes), "no source
+// reaches this step" at /nodes/41 to /nodes/45. The photo rules leave a
+// split no number it may take: a route's probability is 1 (the two routes
+// then sum to 2: ROUTING_INVALID), and any other is no value of the base
+// (the photo rule's sentence). The one shape the server takes is the
+// templates': one process step whose single resource has the testers'
+// count as its capacity, which photo-0.3.0 asks for in words.
+func TestSideBySideTestersAreNoSplit(t *testing.T) {
+	pack := electronicsline.Pack{}
+	type found struct{ path, code string }
+	issuesOf := func(o Outcome) []found {
+		var out []found
+		for _, is := range o.Validation.Issues {
+			out = append(out, found{is.Path, is.Code})
+		}
+		return out
+	}
+	errorsOf := func(o Outcome) []found {
+		var out []found
+		for _, is := range o.Validation.Issues {
+			if isError(is) {
+				out = append(out, found{is.Path, is.Code})
+			}
+		}
+		return out
+	}
+	idsOf := func(p idpool.Pool) *strings.Replacer {
+		var pairs []string
+		for _, k := range []struct {
+			kind   idpool.Kind
+			prefix string
+		}{{idpool.Node, "N"}, {idpool.Flow, "F"}, {idpool.Resource, "R"}} {
+			for i, id := range p.IDs(k.kind) {
+				pairs = append(pairs, fmt.Sprintf("$%s%d$", k.prefix, i), id)
+			}
+		}
+		return strings.NewReplacer(pairs...)
+	}
+
+	// The live pattern on the template: "ICT 2" copied from the template's
+	// ICT (its buffer, step, result and failure, every number the
+	// template's), then a split before ICT 1 and ICT 2 with probability 1 a
+	// route, and the flow into ICT left as it was.
+	doc, _ := electronicsBase(t)
+	p := pool(t, doc)
+	live := ops(t, idsOf(p).Replace(`[
+		{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"queue","name":"Conveyor before ICT 2"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"process","name":"ICT 2",
+			"service_time":{"distribution":{"type":"triangular","min":1.4,"mode":1.7,"max":2.3}},
+			"requires":[{"resource_id":"ict_tester","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N2$","type":"decision","name":"ICT 2 result"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N3$","type":"failure","reason":"ICT 2 failed","name":"ICT 2 fail"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N4$","type":"decision","name":"Split to ICT 1 and ICT 2"}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N1$","to":"$N2$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F2$","from":"$N2$","to":"q_fct","routing":{"type":"probability","probability":0.95}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F3$","from":"$N2$","to":"$N3$","routing":{"type":"probability","probability":0.05}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F4$","from":"$N3$","to":"q_ict_debug","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F5$","from":"$N4$","to":"q_ict","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F6$","from":"$N4$","to":"$N0$","routing":{"type":"probability","probability":1}}}]`))
+	o := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: pack, Output: proposed(live, "low")})
+	unreachable := validate.UnreachableNode
+	want := []found{{"/nodes/41", unreachable}, {"/nodes/42", unreachable}, {"/nodes/43", unreachable}, {"/nodes/44", unreachable},
+		{"/nodes/45", validate.RoutingInvalid}, {"/nodes/45", unreachable}}
+	if o.Status != Invalid || !slices.Equal(issuesOf(o), want) || !slices.Equal(errorsOf(o), []found{{"/nodes/45", validate.RoutingInvalid}}) {
+		t.Fatalf("the live pattern: %s %v", o.Status, issuesOf(o))
+	}
+	wantClean(t, o)
+
+	// On the bare line, the split joined to the line: ROUTING_INVALID at
+	// the split alone with probability 1 a route; with half and half the
+	// model is valid, and the photo rule refuses both routes' number.
+	bare, err := hashing.Canonical(contracttest.BareLine(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	barePool := pool(t, bare)
+	bareIDs := idsOf(barePool)
+	split := func(probability string) model.Patch {
+		return ops(t, bareIDs.Replace(strings.ReplaceAll(`[
+			{"op":"add","path":"/resources/-","value":{"id":"$R0$","type":"machine","role":"ict_tester","name":"ICT tester 1","capacity":1,"queue_discipline":"fifo"}},
+			{"op":"add","path":"/resources/-","value":{"id":"$R1$","type":"machine","role":"ict_tester","name":"ICT tester 2","capacity":1,"queue_discipline":"fifo"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"decision","name":"Split to ICT 1 and ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"queue","name":"Conveyor before ICT 1"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N2$","type":"process","name":"ICT 1",
+				"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+				"requires":[{"resource_id":"$R0$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N3$","type":"queue","name":"Conveyor before ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N4$","type":"process","name":"ICT 2",
+				"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+				"requires":[{"resource_id":"$R1$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+			{"op":"test","path":"/flows/2/id","value":"smt__shipped"},
+			{"op":"replace","path":"/flows/2/to","value":"$N0$"},
+			{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":P}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N0$","to":"$N3$","routing":{"type":"probability","probability":P}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F2$","from":"$N1$","to":"$N2$","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F3$","from":"$N3$","to":"$N4$","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F4$","from":"$N2$","to":"shipped","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F5$","from":"$N4$","to":"shipped","routing":{"type":"probability","probability":1}}}]`,
+			`"probability":P`, `"probability":`+probability)))
+	}
+	ones := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(split("1"), "low")})
+	if ones.Status != Invalid || !slices.Equal(errorsOf(ones), []found{{"/nodes/4", validate.RoutingInvalid}}) {
+		t.Fatalf("a split with probability 1 a route: %s %v", ones.Status, issuesOf(ones))
+	}
+	wantClean(t, ones)
+	halves := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(split("0.5"), "low")})
+	if halves.Status != Ready {
+		t.Fatalf("a split half and half is a valid model: %s %v", halves.Status, issuesOf(halves))
+	}
+	refused := Photo(bareLine(t), halves.Candidate, 10)
+	if !slices.Equal(at(refused), []string{"/flows/3/routing/probability", "/flows/4/routing/probability"}) {
+		t.Fatalf("the photo rule on a split half and half: %v", refused)
+	}
+	for _, is := range refused {
+		if is.Code != OutputInvalid || is.Message != sentPhotoNumber || Clean(is) != is {
+			t.Errorf("%+v", is)
+		}
+	}
+
+	// The templates' shape: one ICT step, one resource of capacity 2.
+	one := ops(t, bareIDs.Replace(`[
+		{"op":"add","path":"/resources/-","value":{"id":"$R0$","type":"machine","role":"ict_tester","name":"ICT testers","capacity":2,"queue_discipline":"fifo"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"queue","name":"Conveyor before ICT"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"process","name":"ICT",
+			"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+			"requires":[{"resource_id":"$R0$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+		{"op":"test","path":"/flows/2/id","value":"smt__shipped"},
+		{"op":"replace","path":"/flows/2/to","value":"$N0$"},
+		{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N1$","to":"shipped","routing":{"type":"probability","probability":1}}}]`))
+	ready := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(one, "low")})
+	if ready.Status != Ready {
+		t.Fatalf("one ICT step with two testers: %s %v", ready.Status, issuesOf(ready))
+	}
+	if issues := Photo(bareLine(t), ready.Candidate, 10); len(issues) != 0 {
+		t.Errorf("the photo rule on one ICT step with two testers: %v", issues)
 	}
 }
