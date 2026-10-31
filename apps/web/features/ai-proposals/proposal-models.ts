@@ -1,8 +1,9 @@
 // The models a person may choose for a proposal (H-049), and which of them
 // this build offers (H-051: Muse Wonder 1.0 is off unless
-// NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1). Not a "use client" module: the
-// landing, a server component, reads offeredModels() too, and a function of
-// a client module cannot be called on the server.
+// NEXT_PUBLIC_GEMINUS_OFFER_WONDER=1). Not a "use client" module, so a
+// server component may read offeredModels() too (a function of a client
+// module cannot be called on the server); since H-065 the landing does not:
+// it names Muse Wonder 1.0 in no build.
 import type { ProposalModel } from "../../lib/contracts";
 
 /** The models a person may choose, the default first (common.schema.json ProposalModel). */
