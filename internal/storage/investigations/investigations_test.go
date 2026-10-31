@@ -774,3 +774,71 @@ func TestTheAIsEditAndAStop(t *testing.T) {
 		t.Errorf("after the AI's edit: %+v", got)
 	}
 }
+
+// H-061 A6: the worker's reads for the generator's and the analyzer's fail
+// fast (LabelOf: a labelled row and whether its investigation still runs)
+// and the planner turns the spend ledger holds, organization-filtered.
+func TestLabelOfAndPlannerTurns(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	inv, err := e.start(t, e.request(e.editor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	labelled, person := ids.New("aip"), ids.New("aip")
+	if err := e.acting(inv, func(ctx context.Context, tx tenant.Tx) error {
+		_, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: labelled, OrganizationID: e.a.ID, ModelID: e.model, BaseVersionID: e.base,
+			Mode: "scenario", Intent: "Add a second tester at ICT", OutputLocale: "en", IDPool: e.idPool, CreatedBy: e.editor})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.api.Run(ctx, tenant.Scope{OrganizationID: e.a.ID, UserID: e.editor}, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+		_, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: person, OrganizationID: e.a.ID, ModelID: e.model, BaseVersionID: e.base,
+			Mode: "scenario", Intent: "Add a second tester at ICT", OutputLocale: "en", IDPool: e.idPool, CreatedBy: e.editor})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	read := func(org string, k investigations.Labelled, id string) (bool, bool, error) {
+		var l, r bool
+		err := e.asWorker(t, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+			var err error
+			l, r, err = investigations.LabelOf(ctx, tx, org, k, id)
+			return err
+		})
+		return l, r, err
+	}
+	if l, r, err := read(e.a.ID, investigations.LabelledProposal, labelled); err != nil || !l || !r {
+		t.Errorf("the AI's proposal while it runs: %v %v %v", l, r, err)
+	}
+	if l, r, err := read(e.a.ID, investigations.LabelledProposal, person); err != nil || l || r {
+		t.Errorf("a person's proposal: %v %v %v", l, r, err)
+	}
+	if _, _, err := read(e.b.ID, investigations.LabelledProposal, labelled); !errors.Is(err, investigations.ErrNotFound) {
+		t.Errorf("another organization's filter: %v", err)
+	}
+	if _, _, err := read(e.a.ID, investigations.LabelledAnalysis, ids.New("ana")); !errors.Is(err, investigations.ErrNotFound) {
+		t.Errorf("no such analysis: %v", err)
+	}
+	if _, _, err := read(e.a.ID, "simulation", labelled); err == nil {
+		t.Error("a kind no investigation labels for a job's AI call was read")
+	}
+	if err := e.api.Run(ctx, tenant.Scope{OrganizationID: e.a.ID, UserID: e.editor}, tenant.ReadWrite, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+		return investigations.Stop(ctx, tx, e.a.ID, inv.ID, e.editor)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if l, r, err := read(e.a.ID, investigations.LabelledProposal, labelled); err != nil || !l || r {
+		t.Errorf("the AI's proposal once stopped: %v %v %v", l, r, err)
+	}
+	if err := e.asWorker(t, e.a.ID, func(ctx context.Context, tx pgx.Tx) error {
+		n, err := investigations.PlannerTurns(ctx, tx, e.a.ID, inv.ID)
+		if err == nil && n != 0 {
+			t.Errorf("planner turns %d, want 0", n)
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+}

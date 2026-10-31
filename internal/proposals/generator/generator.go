@@ -47,6 +47,7 @@ import (
 	"github.com/kcl1104/geminus/internal/observability/telemetry"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	"github.com/kcl1104/geminus/internal/storage/datasets"
+	"github.com/kcl1104/geminus/internal/storage/investigations"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	models "github.com/kcl1104/geminus/internal/storage/models"
 	"github.com/kcl1104/geminus/internal/storage/objects"
@@ -217,7 +218,15 @@ type started struct {
 	proposal store.Proposal
 	version  models.Version
 	keys     map[string]string
+	// investigation: an AI investigation asked for the proposal (its row
+	// carries the label, H-061): its context gains investigation-rules-1.
+	investigation bool
 }
+
+// JobCancelled is the code of a proposal whose investigation has ended
+// before its paid call (H-061 §12): the job ends, as its cancellation would
+// (0012's follow trigger copies the failure), with no provider call.
+const JobCancelled = "JOB_CANCELLED"
 
 // Handle runs one attempt of a model_proposal job.
 func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
@@ -339,6 +348,15 @@ func (h *Handler) start(ctx context.Context, tx tenant.Tx, org, id string) (star
 	if pr.Status != store.Generating {
 		return started{}, failure(InputInvalid, "the proposal is "+string(pr.Status)+", not generating", false)
 	}
+	// H-061 §12: a proposal an investigation asked for fails fast, before
+	// the paid call, once that investigation no longer runs.
+	labelled, running, err := investigations.LabelOf(ctx, tx, org, investigations.LabelledProposal, id)
+	if err != nil {
+		return started{}, err
+	}
+	if labelled && !running {
+		return started{}, failure(JobCancelled, "the proposal's investigation has ended; no provider call was made", false)
+	}
 	v, err := models.GetVersion(ctx, tx, org, pr.BaseVersionID)
 	if errors.Is(err, models.ErrNotFound) {
 		return started{}, failure(InputInvalid, "the proposal's base version is not visible to its organization", false)
@@ -350,7 +368,7 @@ func (h *Handler) start(ctx context.Context, tx tenant.Tx, org, id string) (star
 	if err != nil {
 		return started{}, err
 	}
-	return started{proposal: pr, version: v, keys: keys}, nil
+	return started{proposal: pr, version: v, keys: keys, investigation: labelled}, nil
 }
 
 // generation is what an attempt produced between its two transactions.
@@ -413,6 +431,7 @@ func (h *Handler) generateAsked(ctx context.Context, org string, st started, att
 		OutputLocale:      pr.OutputLocale,
 		Budget:            h.cfg.Budget,
 		Research:          research,
+		Investigation:     st.investigation,
 	})
 	if err != nil {
 		if aicontext.CodeOf(err) == aicontext.TooLarge {

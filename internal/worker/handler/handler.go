@@ -63,6 +63,18 @@ type Run interface {
 	Finish(ctx context.Context, end jobs.Status, fn func(ctx context.Context, tx tenant.Tx) error) error
 }
 
+// Ender is a Run that ends its job in the middle of the transaction
+// (H-061 A6): FinishThen runs fn under the lease, ends the job as end (as
+// Finish does), then runs after, all in one transaction; an error of
+// either rolls the whole back, and FinishThen reports it as Finish reports
+// fn's. An investigation's end needs it: migration 0019 records the
+// planner's finish call only while its job runs (fn), and lets the worker
+// end the investigation only in the transaction that ends its job, once the
+// job is no longer running (after). internal/worker's Run is an Ender.
+type Ender interface {
+	FinishThen(ctx context.Context, end jobs.Status, fn, after func(ctx context.Context, tx tenant.Tx) error) error
+}
+
 var (
 	// ErrInvalidEnd: Finish was asked to end a job other than as completed
 	// or cancelled; nothing was written.

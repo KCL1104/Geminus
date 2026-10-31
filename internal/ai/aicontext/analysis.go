@@ -37,6 +37,10 @@ type AnalysisInput struct {
 	Question      string
 	OutputLocale  string
 	Budget        provider.Budget
+	// Investigation: an AI investigation asked for the analysis (its row
+	// carries the investigation's label, H-061 §9): the system text gains
+	// the investigation-rules-1 line; without it nothing changes.
+	Investigation bool
 }
 
 // MetricRef is a metric an analysis may cite as evidence (D-026): a run by
@@ -242,6 +246,9 @@ func Analysis(in AnalysisInput) (AnalysisPrompt, error) {
 	system := text + serverRules(provider.RoleAnalyst, "", loc) +
 		"- Evidence cites only ALLOWED_METRIC_REFERENCES, by run role (baseline or scenario). A metric that is unavailable, null or not listed is not a known value.\n" +
 		domainRules(in.Domain)
+	if in.Investigation {
+		system += investigationRules(investigationAnalystRule)
+	}
 
 	z := newSanitizer(maxStringRunes)
 	z.exempt(modelIDs(in.Version.IR))

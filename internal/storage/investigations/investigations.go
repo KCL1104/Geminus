@@ -573,3 +573,45 @@ func Observe(ctx context.Context, tx pgx.Tx, org, id string, seq int, observatio
 	}
 	return nil
 }
+
+// PlannerTurns is how many planner turns the investigation's spend ledger
+// holds (its investigator reservations, open or settled): the worker's count
+// of the 20 (H-061 §12) across attempts.
+func PlannerTurns(ctx context.Context, tx pgx.Tx, org, id string) (int, error) {
+	var n int
+	err := tx.QueryRow(ctx, `SELECT count(*) FROM twin.ai_spend_reservations r
+		WHERE r.organization_id=$1 AND r.investigation_id=$2 AND r.role='investigator'`, org, id).Scan(&n)
+	return n, err
+}
+
+// Labelled is a kind of row an investigation labels whose AI call a job
+// makes: an AI proposal or an analysis.
+type Labelled string
+
+const (
+	LabelledProposal Labelled = "ai_proposal"
+	LabelledAnalysis Labelled = "ai_analysis"
+)
+
+// LabelOf reports whether the row id of kind k carries an investigation's
+// label, and whether that investigation still runs before its deadline (the
+// generator and the analyzer fail fast, before the paid call, once it does
+// not: H-061 §12). ErrNotFound when there is no such row.
+func LabelOf(ctx context.Context, tx pgx.Tx, org string, k Labelled, id string) (labelled, running bool, err error) {
+	var table string
+	switch k {
+	case LabelledProposal:
+		table = "twin.ai_proposals"
+	case LabelledAnalysis:
+		table = "twin.ai_analyses"
+	default:
+		return false, false, fmt.Errorf("investigations: %q is not a labelled kind", k)
+	}
+	err = tx.QueryRow(ctx, `SELECT r.investigation_id IS NOT NULL, coalesce(i.status = 'running' AND now() < i.deadline_at, false)
+		FROM `+table+` r LEFT JOIN twin.investigations i ON i.organization_id = r.organization_id AND i.id = r.investigation_id
+		WHERE r.organization_id=$1 AND r.id=$2`, org, id).Scan(&labelled, &running)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, ErrNotFound
+	}
+	return labelled, running, err
+}

@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,38 @@ type Worker struct {
 	// simulations (WORKER_REST_LANES): 1 (the default) to MaxRestLanes;
 	// 0 in single mode, which has no rest lane.
 	RestLanes int
+	// AgentLanes is how many loops split runs for AI investigations only
+	// (WORKER_AGENT_LANES, H-061 §5.1): 0 (the default) to MaxAgentLanes;
+	// run only while Investigations is on.
+	AgentLanes int
+	// Investigations is GEMINUS_INVESTIGATIONS=1 (H-061; off by default and
+	// off on live until every slice is reviewed and the closed-loop live
+	// checks pass): the investigation job's handler on the agent lanes.
+	// It needs split lanes and at least one agent lane.
+	Investigations bool
+	// Transcript is INVESTIGATOR_TRANSCRIPT: "digest" (the default) or
+	// "replay" (only once H-061 A1's probe P1 passes).
+	Transcript string
+	// PlannerModels are the planner models this worker runs
+	// (INVESTIGATION_PLANNER_MODELS, comma-separated; muse-spark-1.3 by
+	// default): Muse Wonder 1.0 only once the coordinator lists it after
+	// its recorded evaluation (H-061 §14).
+	PlannerModels []string
 }
+
+// MaxAgentLanes is the most agent lanes WORKER_AGENT_LANES may ask for.
+const MaxAgentLanes = 4
+
+// AgentLaneSuffix is the agent lanes' suffix of WORKER_ID, numbered:
+// :agent1, :agent2, ... (AgentLaneSuffixOf).
+const AgentLaneSuffix = ":agent"
+
+// AgentLaneSuffixOf is the suffix of agent lane i (1 to MaxAgentLanes).
+func AgentLaneSuffixOf(i int) string { return AgentLaneSuffix + strconv.Itoa(i) }
+
+// PlannerModels are the models an investigation may name as its planner
+// (common.schema.json PlannerModel).
+var PlannerModels = []string{"muse-spark-1.3", "muse-wonder-1.0"}
 
 // Lanes is WORKER_LANES (H-056 design §9, W1): one job loop for every job
 // type, or, in the same process on the same organizations, a loop for
@@ -100,6 +132,7 @@ func LoadWorker(getenv func(string) string) (Worker, error) {
 	if w.Lanes == LanesSplit {
 		w.RestLanes = rest
 	}
+	invErrs := loadInvestigations(getenv, &w)
 	switch {
 	case w.ID == "":
 		errs = append(errs, &Error{"WORKER_ID", CodeRequired, "a name for this worker's leases is required"})
@@ -109,6 +142,9 @@ func LoadWorker(getenv func(string) string) (Worker, error) {
 	case w.Lanes == LanesSplit && len(w.ID)+len(RestLaneSuffixOf(w.RestLanes)) > maxActor:
 		errs = append(errs, &Error{"WORKER_ID", CodeInvalid,
 			"at most 123 characters with WORKER_LANES=split, 122 with WORKER_REST_LANES of 2 or more: the lanes are named <WORKER_ID>:sim, <WORKER_ID>:rest, <WORKER_ID>:rest2, ... in leases and audit events (D-092)"})
+	case w.Lanes == LanesSplit && w.AgentLanes > 0 && len(w.ID)+len(AgentLaneSuffixOf(w.AgentLanes)) > maxActor:
+		errs = append(errs, &Error{"WORKER_ID", CodeInvalid,
+			"at most 121 characters with WORKER_AGENT_LANES: the agent lanes are named <WORKER_ID>:agent1, <WORKER_ID>:agent2, ... in leases and audit events (D-092)"})
 	}
 	switch raw := getenv("WORKER_ORGANIZATION_IDS"); {
 	case strings.TrimSpace(raw) == "":
@@ -124,8 +160,64 @@ func LoadWorker(getenv func(string) string) (Worker, error) {
 	if restErr != nil {
 		errs = append(errs, restErr)
 	}
+	errs = append(errs, invErrs...)
 	if len(errs) > 0 {
 		return Worker{}, errors.Join(errs...)
 	}
 	return w, nil
+}
+
+// loadInvestigations reads H-061's worker settings into w (whose lanes are
+// read): WORKER_AGENT_LANES, GEMINUS_INVESTIGATIONS, INVESTIGATOR_TRANSCRIPT
+// and INVESTIGATION_PLANNER_MODELS, each exactly (never a guess at what was
+// meant), and returns their problems.
+func loadInvestigations(getenv func(string) string, w *Worker) []error {
+	var errs []error
+	if raw := getenv("WORKER_AGENT_LANES"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || strconv.Itoa(n) != raw || n < 0 || n > MaxAgentLanes {
+			errs = append(errs, &Error{"WORKER_AGENT_LANES", CodeInvalid, "0 (the default) to 4: the loops that run AI investigations only (H-061)"})
+		} else {
+			w.AgentLanes = n
+		}
+	}
+	switch raw := getenv("GEMINUS_INVESTIGATIONS"); raw {
+	case "", "0":
+	case "1":
+		w.Investigations = true
+		if w.Lanes != LanesSplit || w.AgentLanes < 1 {
+			errs = append(errs, &Error{"GEMINUS_INVESTIGATIONS", CodeInvalid,
+				"needs WORKER_LANES=split and WORKER_AGENT_LANES of 1 to 4: in one loop an investigation would wait for jobs only that loop could run (H-061 §5.1)"})
+		}
+	default:
+		errs = append(errs, &Error{"GEMINUS_INVESTIGATIONS", CodeInvalid, `"1" turns AI investigations on; unset or "0" leaves them off`})
+	}
+	switch raw := getenv("INVESTIGATOR_TRANSCRIPT"); raw {
+	case "", "digest":
+		w.Transcript = "digest"
+	case "replay":
+		w.Transcript = "replay"
+	default:
+		errs = append(errs, &Error{"INVESTIGATOR_TRANSCRIPT", CodeInvalid, `"digest" (the default) or "replay"`})
+	}
+	w.PlannerModels = []string{"muse-spark-1.3"}
+	if raw := getenv("INVESTIGATION_PLANNER_MODELS"); raw != "" {
+		var list []string
+		ok := true
+		for m := range strings.SplitSeq(raw, ",") {
+			m = strings.TrimSpace(m)
+			if !slices.Contains(PlannerModels, m) || slices.Contains(list, m) {
+				ok = false
+				break
+			}
+			list = append(list, m)
+		}
+		if !ok || len(list) == 0 {
+			errs = append(errs, &Error{"INVESTIGATION_PLANNER_MODELS", CodeInvalid,
+				"a comma-separated list of muse-spark-1.3 and muse-wonder-1.0, each once (H-061 §14)"})
+		} else {
+			w.PlannerModels = list
+		}
+	}
+	return errs
 }

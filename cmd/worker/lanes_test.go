@@ -60,15 +60,86 @@ func TestTheLanesSplitTheBuildsHandlers(t *testing.T) {
 	if !sameHandlers(union, hs) {
 		t.Errorf("the lanes hold %v, the build %v", types(union), types(hs))
 	}
-	// A type added later (an investigation's, say) goes to the rest lane;
-	// only simulations have a lane of their own.
+	// A type added later goes to the rest lane; simulations have a lane of
+	// their own, and (H-061 §5.1, replacing W1's "an investigation's, say")
+	// investigations lanes of their own (TestTheAgentLanesRunOnlyInvestigations).
 	more := maps.Clone(hs)
 	more[jobs.ImportMapping] = hs[jobs.ImportProfile]
-	more["investigation"] = hs[jobs.Analysis]
 	split, err = plan(config.Worker{ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1}, more)
 	if err != nil || !slices.Equal(types(split[0].handlers), []jobs.Type{jobs.Simulation}) ||
-		!slices.Contains(types(split[1].handlers), "investigation") || !slices.Contains(types(split[1].handlers), jobs.ImportMapping) {
+		!slices.Contains(types(split[1].handlers), jobs.ImportMapping) {
 		t.Errorf("a later type: %+v %v", split, err)
+	}
+}
+
+// H-061 §5.1 (slice A6, W1 widened): the investigation handler runs only on
+// WORKER_AGENT_LANES agent lanes, <id>:agent1 ..., each claiming
+// investigations only, never on the sim or a rest lane; a build with it
+// needs split lanes and an agent lane (in one sequential loop the agent
+// would wait for jobs only that loop could run); agent lanes without it
+// (investigations off) are not run.
+func TestTheAgentLanesRunOnlyInvestigations(t *testing.T) {
+	hs, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentH := handler.Func(func(context.Context, handler.Run) error { return nil })
+	with := maps.Clone(hs)
+	with[jobs.Investigation] = agentH
+	lanes, err := plan(config.Worker{ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1, AgentLanes: 2, Investigations: true}, with)
+	if err != nil || len(lanes) != 4 {
+		t.Fatalf("lanes %+v %v", lanes, err)
+	}
+	var ids []string
+	for _, l := range lanes {
+		ids = append(ids, l.id)
+	}
+	if want := []string{"worker-0:sim", "worker-0:rest", "worker-0:agent1", "worker-0:agent2"}; !slices.Equal(ids, want) {
+		t.Fatalf("lanes %v, want %v", ids, want)
+	}
+	for _, l := range lanes[:2] {
+		if _, ok := l.handlers[jobs.Investigation]; ok {
+			t.Errorf("%s claims investigations", l.id)
+		}
+	}
+	for _, l := range lanes[2:] {
+		if !slices.Equal(types(l.handlers), []jobs.Type{jobs.Investigation}) {
+			t.Errorf("%s claims %v", l.id, types(l.handlers))
+		}
+	}
+	for name, w := range map[string]config.Worker{
+		"single lanes":       {ID: "worker-0", Lanes: config.LanesSingle, Investigations: true, AgentLanes: 2},
+		"no agent lane":      {ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1, Investigations: true},
+		"investigations off": {ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1, AgentLanes: 2},
+	} {
+		if lanes, err := plan(w, with); err == nil || !strings.Contains(err.Error(), "GEMINUS_INVESTIGATIONS") {
+			t.Errorf("%s: %+v %v", name, lanes, err)
+		}
+	}
+	// Agent lanes set while investigations are off: none is run.
+	lanes, err = plan(config.Worker{ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1, AgentLanes: 2}, hs)
+	if err != nil || len(lanes) != 2 {
+		t.Fatalf("off: %+v %v", lanes, err)
+	}
+}
+
+// With investigations on, the build has the investigation handler (its
+// own planner client), and only then.
+func TestTheBuildHasTheInvestigationHandlerOnlyWhenOn(t *testing.T) {
+	off, err := handlers(deps{worker: config.Worker{ID: "worker-0"}, log: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := off[jobs.Investigation]; ok {
+		t.Fatal("the investigation handler is built while investigations are off")
+	}
+	on, err := handlers(deps{worker: config.Worker{ID: "worker-0", Lanes: config.LanesSplit, RestLanes: 1, AgentLanes: 2, Investigations: true,
+		Transcript: "digest", PlannerModels: []string{"muse-spark-1.3"}}, log: slog.New(slog.DiscardHandler)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := on[jobs.Investigation]; !ok {
+		t.Fatal("no investigation handler with investigations on")
 	}
 }
 
@@ -233,6 +304,11 @@ func TestRunRefusesALaneSettingItCannotUse(t *testing.T) {
 			handlers, "AI_MAX_CONCURRENT_PER_ORGANIZATION"},
 		"four rest lanes over a limit of 3": {with("WORKER_LANES", "split", "WORKER_REST_LANES", "4", "AI_MAX_CONCURRENT_PER_ORGANIZATION", "3"),
 			handlers, "WORKER_REST_LANES (invalid): at most 3"},
+		// H-061 §5.1: investigations need split lanes and an agent lane.
+		"investigations with single lanes": {with("GEMINUS_INVESTIGATIONS", "1", "WORKER_AGENT_LANES", "2"), handlers, "GEMINUS_INVESTIGATIONS"},
+		"investigations without an agent lane": {with("GEMINUS_INVESTIGATIONS", "1", "WORKER_LANES", "split"), handlers,
+			"GEMINUS_INVESTIGATIONS"},
+		"five agent lanes": {with("WORKER_LANES", "split", "WORKER_AGENT_LANES", "5"), handlers, "WORKER_AGENT_LANES"},
 	} {
 		var stderr bytes.Buffer
 		if code := run(context.Background(), c.getenv, &stderr, c.build); code != exitConfig || !strings.Contains(stderr.String(), c.names) ||
@@ -253,6 +329,9 @@ func TestRestLanesWithinTheAILimitStart(t *testing.T) {
 		"four, a limit of 16":    with("WORKER_LANES", "split", "WORKER_REST_LANES", "4", "AI_MAX_CONCURRENT_PER_ORGANIZATION", "16"),
 		"one, a limit of 1":      with("WORKER_LANES", "split", "AI_MAX_CONCURRENT_PER_ORGANIZATION", "1"),
 		"single, a limit of 1":   with("AI_MAX_CONCURRENT_PER_ORGANIZATION", "1"),
+		// H-061: two agent lanes with investigations on (the fake planner).
+		"split with two agent lanes": with("WORKER_LANES", "split", "WORKER_AGENT_LANES", "2", "GEMINUS_INVESTIGATIONS", "1"),
+		"agent lanes while off":      with("WORKER_LANES", "split", "WORKER_AGENT_LANES", "2"),
 	} {
 		var stderr bytes.Buffer
 		if code := run(ctx, getenv, &stderr, handlers); code != 0 {

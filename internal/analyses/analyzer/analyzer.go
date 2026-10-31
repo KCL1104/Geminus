@@ -42,6 +42,7 @@ import (
 	"github.com/kcl1104/geminus/internal/simulation"
 	store "github.com/kcl1104/geminus/internal/storage/analyses"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
+	"github.com/kcl1104/geminus/internal/storage/investigations"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	models "github.com/kcl1104/geminus/internal/storage/models"
 	"github.com/kcl1104/geminus/internal/storage/runs"
@@ -131,7 +132,14 @@ type started struct {
 	scenario, baseline *runs.Run
 	results            map[string][]byte // run ID → stored Result JSON
 	version            models.Version
+	// investigation: an AI investigation asked for the analysis (H-061):
+	// its context gains investigation-rules-1.
+	investigation bool
 }
+
+// JobCancelled is the code of an analysis whose investigation has ended
+// before its paid call (H-061 §12): the job ends with no provider call.
+const JobCancelled = "JOB_CANCELLED"
 
 // Handle runs one attempt of an analysis job.
 func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
@@ -213,7 +221,16 @@ func (h *Handler) start(ctx context.Context, tx tenant.Tx, org, id string) (star
 	if a.Status != store.Generating {
 		return started{}, failure(InputInvalid, "the analysis is "+string(a.Status)+", not generating", false)
 	}
-	st := started{analysis: a, results: map[string][]byte{}}
+	// H-061 §12: an analysis an investigation asked for fails fast, before
+	// the paid call, once that investigation no longer runs.
+	labelled, running, err := investigations.LabelOf(ctx, tx, org, investigations.LabelledAnalysis, id)
+	if err != nil {
+		return started{}, err
+	}
+	if labelled && !running {
+		return started{}, failure(JobCancelled, "the analysis's investigation has ended; no provider call was made", false)
+	}
+	st := started{analysis: a, results: map[string][]byte{}, investigation: labelled}
 	read := func(id string) (*runs.Run, error) {
 		r, err := runs.Get(ctx, tx, org, id)
 		if errors.Is(err, runs.ErrNotFound) {
@@ -326,6 +343,7 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 		Config:        st.scenario.Config,
 		OutputLocale:  st.analysis.OutputLocale,
 		Budget:        h.cfg.Budget,
+		Investigation: st.investigation,
 	}
 	if st.analysis.Question != nil {
 		in.Question = *st.analysis.Question

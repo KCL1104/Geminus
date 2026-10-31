@@ -21,7 +21,10 @@
 // (internal/storage/aispend). The photo path's clients (T-055: the judge
 // and the SAM 3.1 segmenter, of AI_VISION_PROVIDER) are built and checked
 // at start, for T-056's handler. Analyses (T-030) run on the same checked
-// client as proposals.
+// client as proposals. With GEMINUS_INVESTIGATIONS=1 (H-061, slice A6; off
+// by default), AI investigations (internal/investigator) run on the
+// WORKER_AGENT_LANES agent lanes only, their planner turns on a client of
+// their own over the same backend and spend ledger.
 package main
 
 import (
@@ -38,6 +41,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	aiinv "github.com/kcl1104/geminus/internal/ai/investigator"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/anthropic"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
@@ -48,6 +52,7 @@ import (
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/import/profiler"
 	"github.com/kcl1104/geminus/internal/import/validator"
+	"github.com/kcl1104/geminus/internal/investigator"
 	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/observability/telemetry/export"
 	"github.com/kcl1104/geminus/internal/packs"
@@ -164,8 +169,68 @@ func handlers(d deps) (map[jobs.Type]handler.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ImportValidate: validate,
-		jobs.ModelProposal: proposals, jobs.Analysis: analyses}, nil
+	hs := map[jobs.Type]handler.Handler{jobs.Simulation: sim, jobs.ImportProfile: profile, jobs.ImportValidate: validate,
+		jobs.ModelProposal: proposals, jobs.Analysis: analyses}
+	if d.worker.Investigations {
+		// H-061 §5.1 (slice A6): the investigation handler, on the agent
+		// lanes only (plan), with its own planner client.
+		planner, pbudget, err := plannerClient(d.ai, d.spend, d.worker)
+		if err != nil {
+			return nil, err
+		}
+		h, err := investigator.New(investigator.Config{Planner: planner, Budget: pbudget, Packs: served, Actor: d.worker.ID, Log: d.log,
+			Transcript: aiinv.TranscriptMode(d.worker.Transcript), PlannerModels: d.worker.PlannerModels})
+		if err != nil {
+			return nil, err
+		}
+		hs[jobs.Investigation] = h
+	}
+	return hs, nil
+}
+
+// plannerPromptBytes is the investigator client's prompt budget: the brief
+// (at most 64 KiB) and a 14-step digest (at most 112 KiB) need more than the
+// default 128 KiB (H-061 A5 §2 (7)).
+const plannerPromptBytes = 256 << 10
+
+// plannerClient is the investigator's own provider.Client (H-061 §5.1): the
+// configured mode's backend, the same spend ledger as the other clients
+// (planner turns are reserved on their investigation), and its own
+// per-organization slot equal to the agent lanes, so a planner turn never
+// takes a slot a proposal or an analysis in a rest lane needs. Each turn is
+// one attempt per reservation (Client.PlanTurn).
+func plannerClient(ai config.AI, spendRun aispend.Runner, w config.Worker) (*provider.Client, provider.Budget, error) {
+	budget := aiBudget(ai.Budget)
+	budget.MaxPromptBytes = max(budget.MaxPromptBytes, plannerPromptBytes)
+	budget.MaxConcurrentPerOrganization = w.AgentLanes
+	var backend provider.Backend
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		backend = fake.New()
+	case ai.LiveEnabled():
+		live, err := liveBackend(ai.Provider, ai.Approval, ai.Model, ai.Credentials)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		meter, err := ledger(spendRun, w.ID, ai.Limits)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		client, err := provider.NewMetered(live, budget, meter)
+		if err != nil {
+			return nil, provider.Budget{}, err
+		}
+		return client, budget, nil
+	case ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta:
+		backend = provider.Disabled{Code: provider.CodePolicyNotApproved}
+	default:
+		backend = provider.Disabled{Code: provider.CodeNotConfigured}
+	}
+	client, err := provider.New(backend, budget)
+	if err != nil {
+		return nil, provider.Budget{}, err
+	}
+	return client, budget, nil
 }
 
 // aiClient is the checked provider client of the configured mode (T-024,

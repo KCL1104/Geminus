@@ -270,6 +270,14 @@ var catalogue = map[string]spec{
 		"code": {shape: code}, "retryable": {shape: flag}, "issues": {shape: count}})},
 	"simulation.complete":  {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}, "result_digest": {shape: hash}, "events": {shape: count}}},
 	"simulation.cancelled": {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}}},
+	// H-061 §5.8 (slice A6): an AI investigation's end, written by the
+	// worker once per end, in the transaction that ends its job (or, once
+	// the API ended it, with that end's reason): the reason, the steps the
+	// ledger holds and the planner turns, never a note, an idea or the AI's
+	// text.
+	"investigation.end": {Worker, []string{"investigation"}, map[string]field{"reason": oneOf("finished_by_ai", "draft_written",
+		"limit_reached", "time_limit", "spend_cap", "invalid_answer", "ai_failed", "role_lost", "stopped_by_person"),
+		"steps": {shape: count}, "planner_turns": {shape: count}, "attempt": {shape: count}}},
 	// The job loop and its reaper (D-091 (b)): an attempt that ended
 	// without a result, in the transaction that records it, on the job's
 	// resource. uncorrelated: the job's payload named no request, so the
