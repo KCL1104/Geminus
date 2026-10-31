@@ -1,13 +1,16 @@
 // Package analyzer is the analysis job handler (T-030; AI_SPEC §9,
 // ADR-024): the adapter between the worker loop and internal/ai. For one
 // claimed job it reads the generating analysis, its runs, their results and
-// the analyzed run's model version under the lease; computes the
+// the analyzed run's model version under the lease; runs the analyst's
+// Eino graph (internal/aigraph/analysis, H-059), which computes the
 // comparison with internal/results/compare (the one delta computation the
-// API also serves, D-090); builds the sanitized analyst context
-// (internal/ai/aicontext); asks the provider through the checked client;
-// has the server check the answer against what it supplied
-// (internal/ai/analyst); and writes the analysis with the job's completion,
-// under the lease (handler.Run.Finish).
+// API also serves, D-090; injected here as comparisons.Input and
+// compare.Compare), builds the sanitized analyst context
+// (internal/ai/aicontext), asks the provider through the checked client
+// (einomodel.Metered over it) and has the server check the answer against
+// what it supplied (internal/ai/analyst); maps what the graph returns to the
+// job's failure and its log lines; and writes the analysis with the job's
+// completion, under the lease (handler.Run.Finish).
 //
 // An answer that is not grounded (a metric the results do not hold, a
 // delta that is not the comparison's, a number nobody supplied) fails the
@@ -32,12 +35,11 @@ import (
 	"strings"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
-	"github.com/kcl1104/geminus/internal/ai/analyst"
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/aigraph/analysis"
 	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/domainpack"
-	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/results/compare"
 	"github.com/kcl1104/geminus/internal/simulation"
 	store "github.com/kcl1104/geminus/internal/storage/analyses"
@@ -68,7 +70,10 @@ type Config struct {
 }
 
 // Handler runs analysis jobs (handler.Handler).
-type Handler struct{ cfg Config }
+type Handler struct {
+	cfg   Config
+	graph *analysis.Graph // compiled once, shared by every attempt
+}
 
 var _ handler.Handler = (*Handler)(nil)
 
@@ -78,7 +83,7 @@ var (
 	reqIDs      = regexp.MustCompile(`^req_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 )
 
-// New checks cfg.
+// New checks cfg and compiles the analyst graph over its client, once.
 func New(cfg Config) (*Handler, error) {
 	switch {
 	case cfg.Provider == nil || cfg.Packs == nil || cfg.Log == nil:
@@ -92,7 +97,13 @@ func New(cfg Config) (*Handler, error) {
 	if err := cfg.Budget.Validate(); err != nil {
 		return nil, fmt.Errorf("analyzer: %w", err)
 	}
-	return &Handler{cfg: cfg}, nil
+	h := &Handler{cfg: cfg}
+	g, err := analysis.New(analysis.Config{Provider: cfg.Provider, Budget: cfg.Budget, Packs: cfg.Packs, Called: h.logCall})
+	if err != nil {
+		return nil, fmt.Errorf("analyzer: %w", err)
+	}
+	h.graph = g
+	return h, nil
 }
 
 // Failure codes of an analysis job (jobs.Failure.Code; the analysis keeps
@@ -287,96 +298,74 @@ func providerFailure(err error) error {
 	return failure("AI_"+strings.ToUpper(string(pe.Code)), message, pe.Retryable())
 }
 
-// result decodes a stored Result strictly.
-func result(data []byte) (*simulation.Result, error) {
-	var r simulation.Result
-	if err := model.Decode(data, &r); err != nil {
-		return nil, failure(InputInvalid, "a stored result does not decode", false)
-	}
-	return &r, nil
-}
-
-// analyze builds the context, asks the provider and checks the answer,
-// outside any transaction. It returns the analysis to store and the call's
-// metadata, or the failure and, after a call, its metadata and the number
-// of issues an ungrounded answer had.
+// analyze runs the analyst graph (internal/aigraph/analysis) on what the
+// attempt read, outside any transaction: it decodes the inputs, compares
+// the runs, builds the context, asks the provider (the graph tells logCall
+// of the call as it returns) and checks the answer. It returns the analysis
+// to store and the call's metadata, or the failure and, after a call, its
+// metadata and the number of issues an ungrounded answer had.
 func (h *Handler) analyze(ctx context.Context, org string, st started, attr provider.Attribution) (provider.AnalysisOutput, *provider.Metadata, int, error) {
-	var ir model.ModelIR
-	if err := model.Decode(st.version.IR, &ir); err != nil {
-		return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the analyzed run's version does not decode", false)
-	}
-	pack, err := h.cfg.Packs.Lookup(ir.Domain)
-	if err != nil {
-		return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the model's domain is not served by this worker", false)
-	}
-	scen, err := result(st.results[st.scenario.ID])
-	if err != nil {
-		return provider.AnalysisOutput{}, nil, 0, err
-	}
-	var patch model.Patch
-	if err := json.Unmarshal(st.scenario.ScenarioPatch, &patch); err != nil {
-		return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the analyzed run's patch does not decode", false)
-	}
-	in := aicontext.AnalysisInput{
-		Scope:         aicontext.Scope{OrganizationID: org, ModelID: st.scenario.ModelID},
-		Version:       aicontext.Version{OrganizationID: org, ModelID: st.version.ModelID, VersionID: st.version.ID, IR: &ir},
-		Domain:        pack.PromptContext(),
-		Scenario:      aicontext.RunResult{OrganizationID: org, ModelID: st.scenario.ModelID, RunID: st.scenario.ID, Result: scen},
-		ScenarioPatch: patch,
-		Config:        st.scenario.Config,
-		OutputLocale:  st.analysis.OutputLocale,
-		Budget:        h.cfg.Budget,
+	in := analysis.Input{
+		OrganizationID: org,
+		Version:        analysis.Version{ID: st.version.ID, ModelID: st.version.ModelID, IR: st.version.IR},
+		Scenario:       analysis.Run{ID: st.scenario.ID, ModelID: st.scenario.ModelID, Result: st.results[st.scenario.ID]},
+		ScenarioPatch:  st.scenario.ScenarioPatch,
+		Config:         st.scenario.Config,
+		OutputLocale:   st.analysis.OutputLocale,
+		Attribution:    attr, // what the spend ledger charges the call to (T-053)
 	}
 	if st.analysis.Question != nil {
 		in.Question = *st.analysis.Question
 	}
-	var base *simulation.Result
-	var comparison *compare.Comparison
 	if st.baseline != nil {
-		if base, err = result(st.results[st.baseline.ID]); err != nil {
-			return provider.AnalysisOutput{}, nil, 0, err
+		in.Baseline = &analysis.Run{ID: st.baseline.ID, ModelID: st.baseline.ModelID, Result: st.results[st.baseline.ID]}
+		in.Compare = func(base, scen *simulation.Result) (compare.Comparison, error) {
+			return compare.Compare(comparisons.Input(*st.baseline, base), comparisons.Input(*st.scenario, scen))
 		}
-		c, err := compare.Compare(comparisons.Input(*st.baseline, base), comparisons.Input(*st.scenario, scen))
-		if err != nil {
-			h.cfg.Log.ErrorContext(ctx, "comparing an analysis's runs failed", "organization_id", org, "analysis_id", st.analysis.ID, "error", err.Error())
-			return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the analysis's runs cannot be compared", false)
-		}
-		if !c.Comparable {
-			// The API refuses such a pair; a job that has one stops before the paid call.
-			return provider.AnalysisOutput{}, nil, 0, failure(NotComparable, "the server does not compare the analysis's runs ("+strings.Join(c.IncomparableReasons, ", ")+")", false)
-		}
-		comparison = &c
-		if in.Comparison, err = c.JSON(); err != nil {
-			return provider.AnalysisOutput{}, nil, 0, err
-		}
-		in.Baseline = &aicontext.RunResult{OrganizationID: org, ModelID: st.baseline.ModelID, RunID: st.baseline.ID, Result: base}
 	}
-	ap, err := aicontext.Analysis(in)
-	if err != nil {
-		if aicontext.CodeOf(err) == aicontext.TooLarge {
-			return provider.AnalysisOutput{}, nil, 0, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
-		}
-		h.cfg.Log.WarnContext(ctx, "building an analysis context failed", "organization_id", org, "analysis_id", st.analysis.ID, "code", string(aicontext.CodeOf(err)))
-		return provider.AnalysisOutput{}, nil, 0, failure(InputInvalid, "the analysis's stored request cannot be built into a context", false)
+	out, err := h.graph.Run(ctx, in)
+	if err == nil {
+		return out.Analysis, &out.Metadata, 0, nil
 	}
-	ap.Context.Attribution = attr // what the spend ledger charges the call to (T-053)
-	res, err := h.cfg.Provider.AnalyzeSimulation(ctx, ap.Context)
-	meta := res.Metadata
-	h.logCall(ctx, meta, err)
-	if err != nil {
+	none := provider.AnalysisOutput{}
+	var e *analysis.Error
+	if !errors.As(err, &e) {
+		return none, nil, 0, err // ctx ended between two nodes: the attempt is stopping, the worker records it, or nothing
+	}
+	switch e.Kind {
+	case analysis.VersionUndecodable:
+		return none, nil, 0, failure(InputInvalid, "the analyzed run's version does not decode", false)
+	case analysis.DomainNotServed:
+		return none, nil, 0, failure(InputInvalid, "the model's domain is not served by this worker", false)
+	case analysis.ResultUndecodable:
+		return none, nil, 0, failure(InputInvalid, "a stored result does not decode", false)
+	case analysis.PatchUndecodable:
+		return none, nil, 0, failure(InputInvalid, "the analyzed run's patch does not decode", false)
+	case analysis.CompareFailed:
+		h.cfg.Log.ErrorContext(ctx, "comparing an analysis's runs failed", "organization_id", org, "analysis_id", st.analysis.ID, "error", e.Err.Error())
+		return none, nil, 0, failure(InputInvalid, "the analysis's runs cannot be compared", false)
+	case analysis.NotComparable:
+		// The API refuses such a pair; a job that has one stops before the paid call.
+		return none, nil, 0, failure(NotComparable, "the server does not compare the analysis's runs ("+strings.Join(e.Reasons, ", ")+")", false)
+	case analysis.ComparisonUnencodable:
+		return none, nil, 0, e.Err
+	case analysis.ContextRefused:
+		if aicontext.CodeOf(e.Err) == aicontext.TooLarge {
+			return none, nil, 0, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
+		}
+		h.cfg.Log.WarnContext(ctx, "building an analysis context failed", "organization_id", org, "analysis_id", st.analysis.ID, "code", string(aicontext.CodeOf(e.Err)))
+		return none, nil, 0, failure(InputInvalid, "the analysis's stored request cannot be built into a context", false)
+	case analysis.CallFailed:
 		if ctx.Err() != nil {
-			return provider.AnalysisOutput{}, nil, 0, err // the attempt is stopping: the worker records it, or nothing
+			return none, nil, 0, e.Err // the attempt is stopping: the worker records it, or nothing
 		}
-		return provider.AnalysisOutput{}, &meta, 0, providerFailure(err)
-	}
-	out, issues := analyst.Check(analyst.Input{Output: res.Output, Allowed: ap.Allowed, Supplied: ap.Supplied, Names: ap.Names,
-		Scenario: scen, Baseline: base, Comparison: comparison})
-	if len(issues) > 0 {
+		return none, e.Metadata, 0, providerFailure(e.Err)
+	case analysis.Ungrounded:
 		// The first issue's code and path are the server's own words.
-		return provider.AnalysisOutput{}, &meta, len(issues), failure(Ungrounded,
-			fmt.Sprintf("the AI answer is not grounded in the results (%s at %s)", issues[0].Code, issues[0].Path), false)
+		return none, e.Metadata, len(e.Issues), failure(Ungrounded,
+			fmt.Sprintf("the AI answer is not grounded in the results (%s at %s)", e.Issues[0].Code, e.Issues[0].Path), false)
 	}
-	return out, &meta, 0, nil
+	return none, nil, 0, err // a kind this handler does not know: the worker records INTERNAL
 }
 
 // logCall is the provider call's operational log line: labels, latency,
