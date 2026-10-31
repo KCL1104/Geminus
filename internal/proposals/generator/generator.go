@@ -16,6 +16,12 @@
 // database refuses to store fails for good. Provider calls and long work
 // run outside every transaction.
 //
+// A proposal asked for in words runs on the proposal role graph
+// (internal/aigraph/proposal, H-059): Eino orchestrates the steps above,
+// reaching the model only through the metered ChatModel over the checked
+// client (internal/aigraph/einomodel), with this handler's I/O as its hooks;
+// a photo proposal runs internal/ai/photopipeline (photo.go).
+//
 // The AI only suggests (AGENTS.md §2): the provider gets a sealed context
 // and returns untrusted JSON; nothing it says is written but through the
 // review, which binds no identity, validation or approval field from it.
@@ -35,11 +41,12 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
-	"github.com/kcl1104/geminus/internal/ai/idpool"
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/repair"
 	"github.com/kcl1104/geminus/internal/ai/review"
 	"github.com/kcl1104/geminus/internal/ai/spend"
+	"github.com/kcl1104/geminus/internal/aigraph/einomodel"
+	proposalgraph "github.com/kcl1104/geminus/internal/aigraph/proposal"
 	"github.com/kcl1104/geminus/internal/audit"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
@@ -87,8 +94,12 @@ type Config struct {
 	Log   *slog.Logger
 }
 
-// Handler runs model_proposal jobs (handler.Handler).
-type Handler struct{ cfg Config }
+// Handler runs model_proposal jobs (handler.Handler). graph is the
+// proposal role graph over cfg.Provider (H-059), compiled once by New.
+type Handler struct {
+	cfg   Config
+	graph *proposalgraph.Graph
+}
 
 var _ handler.Handler = (*Handler)(nil)
 
@@ -112,7 +123,18 @@ func New(cfg Config) (*Handler, error) {
 	if err := cfg.Budget.Validate(); err != nil {
 		return nil, fmt.Errorf("generator: %w", err)
 	}
-	return &Handler{cfg: cfg}, nil
+	// H-059: a proposal asked for in words runs on the proposal role graph,
+	// whose one way to a model is the metered Eino ChatModel over the
+	// checked client.
+	m, err := einomodel.New(cfg.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+	g, err := proposalgraph.New(proposalgraph.Config{Model: m, Packs: cfg.Packs, Budget: cfg.Budget})
+	if err != nil {
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+	return &Handler{cfg: cfg, graph: g}, nil
 }
 
 // Failure codes of a model_proposal job (jobs.Failure.Code; the proposal
@@ -387,129 +409,139 @@ func (h *Handler) generate(ctx context.Context, org string, st started, attr pro
 // generateAsked is generate as the person asked: with web research first
 // when research is set (H-046 (2)), of the model they chose ("" for the
 // deployment's, H-049).
+//
+// The steps are the proposal role graph's (internal/aigraph/proposal,
+// H-059): the stored request is decoded and built into the sealed context,
+// the snapshots are read and the base verified before the paid call, the
+// call goes through the metered Eino ChatModel over h.cfg.Provider, the
+// server reviews the answer and binds a ready candidate, and an answer the
+// server refused for what it says gets its one repair (H-057), whose answer
+// goes through exactly those checks. This handler gives the graph its own
+// I/O as hooks (the snapshots, the base's verification, the binding stage
+// over the copies, each call's log line) and maps what ended the attempt to
+// the job's failure (ended).
 func (h *Handler) generateAsked(ctx context.Context, org string, st started, attr provider.Attribution, research bool, chosen string) (generation, error) {
 	pr, v := st.proposal, st.version
-	var ir model.ModelIR
-	if err := model.Decode(v.IR, &ir); err != nil {
-		return generation{}, failure(InputInvalid, "the base version does not decode", false)
-	}
-	pack, err := h.cfg.Packs.Lookup(ir.Domain)
-	if err != nil {
-		return generation{}, failure(InputInvalid, "the model's domain is not served by this worker", false)
-	}
-	var pool idpool.Pool
-	if err := json.Unmarshal(pr.IDPool, &pool); err != nil {
-		return generation{}, failure(InputInvalid, "the stored ID pool does not decode", false)
-	}
-	mode := provider.Mode(pr.Mode)
-	pc, err := aicontext.Proposal(aicontext.ProposalInput{
+	var snaps copies
+	res, err := h.graph.Run(ctx, proposalgraph.Request{
 		Scope:             aicontext.Scope{OrganizationID: org, ModelID: pr.ModelID},
-		Mode:              mode,
-		Base:              aicontext.Version{OrganizationID: org, ModelID: v.ModelID, VersionID: v.ID, IR: &ir},
-		Domain:            pack.PromptContext(),
+		Mode:              provider.Mode(pr.Mode),
+		Base:              proposalgraph.Base{OrganizationID: org, ModelID: v.ModelID, VersionID: v.ID, IR: v.IR},
 		Intent:            pr.Intent,
 		SelectedEntityIDs: pr.SelectedEntityIDs,
-		Pool:              aicontext.Pool{OrganizationID: org, ProposalID: pr.ID, IDs: pool},
+		ProposalID:        pr.ID,
+		Pool:              pr.IDPool,
 		OutputLocale:      pr.OutputLocale,
-		Budget:            h.cfg.Budget,
 		Research:          research,
-	})
-	if err != nil {
-		if aicontext.CodeOf(err) == aicontext.TooLarge {
-			return generation{}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
-		}
-		h.cfg.Log.WarnContext(ctx, "building a proposal context failed", "organization_id", org, "proposal_id", pr.ID, "code", string(aicontext.CodeOf(err)))
-		return generation{}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
-	}
-	snaps, err := h.preload(ctx, org, st)
-	if err != nil {
-		return generation{}, err
-	}
-	manifest, err := h.verify(ctx, org, pr.ID, snaps, &ir, v.DatasetBindings)
-	if err != nil {
-		return generation{}, err
-	}
-
-	pc.Attribution = attr // what the spend ledger charges the call to (T-053)
-	pc.Model = chosen     // H-049: exactly this model, or the call is refused
-	res, err := h.cfg.Provider.GenerateModelProposal(ctx, pc)
-	meta := res.Metadata
-	h.logCall(ctx, meta, err, 1)
-	// check is the server's checks of a schema-valid answer: the review, then
-	// the dataset binding stage. A repair's answer goes through exactly these
-	// (H-057).
-	check := func(out provider.ProposalOutput) (review.Outcome, error) {
-		// The review never sees the sources (out has none): what a page says
-		// changes neither the validation nor the risk (H-046 (2)).
-		outcome, err := review.Review(review.Input{Mode: mode, Base: v.IR, Pool: pool, Pack: pack, Output: out})
-		if err != nil {
-			h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-			return review.Outcome{}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
-		}
-		if outcome.Status != review.Ready {
-			return outcome, nil
-		}
-		// The dataset binding stage: every empirical distribution of the
+		Model:             chosen, // H-049: exactly this model, or the call is refused
+		Attribution:       attr,   // what the spend ledger charges each call to (T-053)
+		Repair:            true,
+	}, proposalgraph.Hooks{
+		Preload: func(ctx context.Context) error {
+			var err error
+			snaps, err = h.preload(ctx, org, st)
+			return err
+		},
+		Verify: func(ctx context.Context, base *model.ModelIR) ([]model.DatasetBinding, error) {
+			return h.verify(ctx, org, pr.ID, snaps, base, v.DatasetBindings)
+		},
+		// The dataset binding stage: every empirical distribution of a ready
 		// candidate is bound in the base version's manifest, and the
 		// snapshots verify (D-006, D-033), read from the copies made before
 		// the call.
-		resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
-		if err != nil {
-			if ctx.Err() != nil {
-				return review.Outcome{}, err
+		Bind: func(ctx context.Context, candidate *model.ModelIR) ([]model.ValidationIssue, error) {
+			resolution, err := datasets.Resolve(ctx, snaps, org, candidate, v.DatasetBindings)
+			if err != nil {
+				return nil, err
 			}
-			// No storage is read here, so this is the server's own fault; a
-			// retry would ask the provider again, so the attempt fails for
-			// good.
-			h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-			return review.Outcome{}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
-		}
-		return outcome.Refuse(withoutIR(resolution.Issues)), nil
-	}
-	var outcome review.Outcome
+			return withoutIR(resolution.Issues), nil
+		},
+		Answered: func(call int, m provider.Metadata, err error) { h.logCall(ctx, m, err, call) },
+	})
+	// The first call's sources stay with the proposal (the repair has no web
+	// search).
+	gen := generation{outcome: res.Outcome, meta: res.Call, manifest: res.Manifest, sources: res.Sources, repair: res.Repair}
 	if err != nil {
-		if ctx.Err() != nil {
-			return generation{}, err // the attempt is stopping: the worker records it, or nothing
-		}
-		var pe *provider.Error
-		if !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput {
-			if research || provider.SlowModel(chosen) {
-				// A research attempt, or one of a slow model (H-049 review
-				// round 1, M1), is never run again (its job has one attempt,
-				// internal/proposals ResearchJobAttempts, SlowModelJobAttempts):
-				// its failure is final whatever the code says (H-046 review
-				// round 1, M1).
-				return generation{meta: &meta}, final(providerFailure(err))
-			}
-			return generation{meta: &meta}, providerFailure(err)
-		}
-		// Not a proposal: invalid, with where the answer is wrong and
-		// nothing of what it says (AI_SPEC §4).
-		outcome = review.InvalidOutput(pe.Issues)
-	} else if outcome, err = check(res.Output); err != nil {
-		if ctx.Err() != nil {
-			return generation{}, err
-		}
-		return generation{meta: &meta}, err
-	}
-	gen := generation{outcome: outcome, meta: &meta, manifest: manifest, sources: res.Sources}
-	// H-057: an answer the server refused for what it says gets one repair,
-	// in this attempt; the first call's sources stay with the proposal (the
-	// repair has no web search).
-	gen.outcome, gen.repair, err = repair.Once(ctx, h.cfg.Provider, pc, res.Prior, outcome, check,
-		func(m provider.Metadata, err error) { h.logCall(ctx, m, err, 2) })
-	if err != nil {
-		if ctx.Err() != nil {
-			return generation{}, err
-		}
-		var ae *aicontext.Error
-		if errors.As(err, &ae) {
-			h.cfg.Log.ErrorContext(ctx, "building a proposal's repair failed", "organization_id", org, "proposal_id", pr.ID, "code", string(ae.Code))
-			return gen, failure(InputInvalid, "the server could not build the follow-up of the refused answer", false)
-		}
-		return gen, err
+		return h.ended(ctx, org, pr.ID, res, gen, err)
 	}
 	return gen, nil
+}
+
+// inputMessages are the failures' messages of what the server stored that
+// cannot be read (proposalgraph.InputError).
+var inputMessages = map[proposalgraph.Input]string{
+	proposalgraph.InputBase:   "the base version does not decode",
+	proposalgraph.InputDomain: "the model's domain is not served by this worker",
+	proposalgraph.InputPool:   "the stored ID pool does not decode",
+}
+
+// ended is the job's failure of what ended an attempt on the proposal
+// graph, err, and what the attempt keeps of it for its audit (Handle's
+// failed): nothing before the call, the call's metadata after a first call
+// that failed or a first answer the server could not check, and everything
+// (gen: the first outcome, the call, the manifest, the sources and the
+// repair's record) once the repair was asked for. A stopping attempt keeps
+// nothing and returns its error as it is (the worker records it, or
+// nothing), but for a review that could not run, which is the server's own
+// failure whatever the context.
+func (h *Handler) ended(ctx context.Context, org, id string, res proposalgraph.Result, gen generation, err error) (generation, error) {
+	called := generation{meta: res.Call}
+	var (
+		ie *proposalgraph.InputError
+		ce *proposalgraph.ContextError
+		re *proposalgraph.ReviewError
+		pe *proposalgraph.CallError
+		be *proposalgraph.BindError
+	)
+	switch {
+	case errors.As(err, &ie):
+		return generation{}, failure(InputInvalid, inputMessages[ie.Input], false)
+	case errors.As(err, &ce) && !ce.Repair && ce.Code == aicontext.TooLarge:
+		return generation{}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
+	case errors.As(err, &ce) && !ce.Repair:
+		h.cfg.Log.WarnContext(ctx, "building a proposal context failed", "organization_id", org, "proposal_id", id, "code", string(ce.Code))
+		return generation{}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
+	case errors.As(err, &re):
+		h.cfg.Log.ErrorContext(ctx, "reviewing a proposal failed", "organization_id", org, "proposal_id", id, "error", re.Err.Error())
+		f := failure(InputInvalid, "the server could not review the answer against the stored base", false)
+		switch {
+		case ctx.Err() != nil:
+			return generation{}, f
+		case re.Repair:
+			return gen, f
+		}
+		return called, f
+	}
+	if ctx.Err() != nil {
+		return generation{}, proposalgraph.Cause(err) // the attempt is stopping: the worker records it, or nothing
+	}
+	switch {
+	case errors.As(err, &pe) && pe.Final:
+		// A research attempt, or one of a slow model (H-049 review round 1,
+		// M1), is never run again (its job has one attempt, internal/proposals
+		// ResearchJobAttempts, SlowModelJobAttempts): its failure is final
+		// whatever the code says (H-046 review round 1, M1).
+		return called, final(providerFailure(pe.Err))
+	case errors.As(err, &pe):
+		return called, providerFailure(pe.Err)
+	case errors.As(err, &be):
+		// No storage is read here, so this is the server's own fault; a retry
+		// would ask the provider again, so the attempt fails for good.
+		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", id, "error", be.Err.Error())
+		f := failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
+		if be.Repair {
+			return gen, f
+		}
+		return called, f
+	case errors.As(err, &ce):
+		h.cfg.Log.ErrorContext(ctx, "building a proposal's repair failed", "organization_id", org, "proposal_id", id, "code", string(ce.Code))
+		return gen, failure(InputInvalid, "the server could not build the follow-up of the refused answer", false)
+	case res.Repair != nil:
+		return gen, err
+	}
+	// The snapshots' or the base's own failure (preload, verify): already the
+	// job's, before any call.
+	return generation{}, err
 }
 
 // withoutIR rewrites the binding stage's /ir/... paths as paths into the
