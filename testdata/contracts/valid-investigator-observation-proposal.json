@@ -1,0 +1,16 @@
+{
+  "proposal_id": "aip_01M4YDQK00B8S5WQXJ3TQ7ZK30",
+  "index": 1,
+  "status": "ready",
+  "summary": "Add a second ICT tester.",
+  "change_count": 2,
+  "server_risk_level": "low",
+  "questions": [],
+  "issue_codes": [],
+  "budget": {
+    "what_ifs_left": 2,
+    "runs_left": 4,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}

@@ -160,3 +160,21 @@ export type WebSource = {
   url: string;
   title?: string;
 };
+
+/** D-001 server-issued ID: "inv_" + canonical (uppercase) ULID. H-061 (PROPOSED): an AI investigation. */
+export type InvestigationID = string;
+
+/** H-060, H-061 §14 (PROPOSED): the model that picks an investigation's tool calls, by its exact model ID: muse-spark-1.3 (Muse Spark 1.3, the default) or muse-wonder-1.0 (Muse Wonder 1.0, offered only after its planner evaluation passes and the deployment lists it in INVESTIGATION_PLANNER_MODELS). The proposal model (ProposalModel) is chosen separately. */
+export type PlannerModel = "muse-spark-1.3" | "muse-wonder-1.0";
+
+/** H-061 §10 (PROPOSED): why an investigation ended. A finished investigation ended with finished_by_ai (the AI called finish), draft_written (its edit is in the draft) or limit_reached (its steps or what-ifs ran out); a stopped one with time_limit (20 minutes after it was created), spend_cap (its USD 2.50 or an H-050/H-018 cap), invalid_answer (two invalid turns, or three refused steps, in a row), ai_failed (the planner could not be reached, five attempts, or the approval no longer lists it), role_lost (the requester no longer holds owner or editor) or stopped_by_person (the requester or an owner stopped it). What a single tool call met (a person deciding the proposal first, the base or the draft moving, a run failing, a pair that is not comparable, an explanation refused) is a step's result the AI reacts to, never an end. */
+export type InvestigationReason = "finished_by_ai" | "draft_written" | "limit_reached" | "time_limit" | "spend_cap" | "invalid_answer" | "ai_failed" | "role_lost" | "stopped_by_person";
+
+/** H-056, H-061 (PROPOSED): the label of a row an AI investigation made for the person who started it (a scenario it saved, a run it started). Present only on such rows, so a person's rows are byte for byte as before. A label for people, set by the database from the investigation, never by the AI. */
+export type MadeByAI = {
+  investigation_id: InvestigationID;
+  /** The person who started the investigation; the row was written in their name, labelled as the AI's. */
+  requested_by: UserID;
+  /** The planner that chose to make it (its provider and model). */
+  generated_by: GeneratedBy;
+};

@@ -3,7 +3,8 @@
 
 The schemas stay the source of truth: these types mirror value shapes only.
 Ranges, patterns, formats and if/then rules are not expressible in TypeScript
-and remain the job of the schema and semantic validators.
+and remain the job of the schema and semantic validators. A schema that is
+only if/then/else is a choice of two values and becomes their union.
 
   python3 scripts/gen_ts_contracts.py          # write
   python3 scripts/gen_ts_contracts.py --check  # fail if the committed files are stale
@@ -28,7 +29,7 @@ SHAPE = {'type', 'properties', 'required', 'additionalProperties', 'items', 'enu
 IGNORED = {'$schema', '$id', '$comment', '$defs', 'title', 'description', 'minimum', 'maximum',
            'exclusiveMinimum', 'exclusiveMaximum', 'minLength', 'maxLength', 'pattern', 'format',
            'minItems', 'maxItems', 'uniqueItems', 'maxProperties', 'minProperties', 'propertyNames',
-           'dependentRequired', 'if', 'then', 'not', 'x-http-status'}
+           'dependentRequired', 'if', 'then', 'else', 'not', 'x-http-status'}
 ROOT_NAMES = {'ai-mapping': 'AiMapping', 'analysis-output': 'AnalysisOutput',
               'canonical-event': 'CanonicalEvent', 'dataset-snapshot': 'DatasetSnapshot',
               'import': 'Import', 'import-mapping': 'ImportMapping', 'json-patch': 'JsonPatch', 'model-ir': 'ModelIR',
@@ -74,6 +75,11 @@ class Gen:
             if not parts:
                 raise ValueError(f'{self.stem}: allOf without a value shape')
             return ' & '.join(self.wrap(p) for p in parts)
+        # A value picked by "if" between two shapes (H-061's request: entry B
+        # when it has from_analysis_id, otherwise entry A) is either of them;
+        # if/then on a shaped value only narrows it and stays ignored.
+        if 'then' in s and 'else' in s and not set(s) & SHAPE:
+            return ' | '.join(self.wrap(self.ts(s[k], indent)) for k in ('then', 'else'))
         ty = s.get('type')
         if isinstance(ty, list):
             raise ValueError(f'{self.stem}: type arrays are not used; use anyOf')
