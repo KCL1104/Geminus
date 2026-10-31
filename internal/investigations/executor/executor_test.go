@@ -255,26 +255,80 @@ func answer(t *testing.T, summary, changes string) []byte {
 // service), returning its ID.
 func (e *env) start(t *testing.T, sc tenant.Scope, m models.Model, req investigations.CreateRequest) string {
 	t.Helper()
+	id, err := e.try(t, sc, m, req)
+	if err != nil {
+		t.Fatalf("createInvestigation: %v", err)
+	}
+	return id
+}
+
+// try asks for an investigation as start does, returning the service's
+// refusal instead of failing the test.
+func (e *env) try(t *testing.T, sc tenant.Scope, m models.Model, req investigations.CreateRequest) (string, error) {
+	t.Helper()
 	body, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
 	}
 	status, out, err := e.svc.Create(context.Background(), sc, ids.New("req"), "key-"+ids.New("k"), m.ID, body, req)
-	if err != nil || status != 202 {
-		t.Fatalf("createInvestigation: %d %v", status, err)
+	if err != nil {
+		return "", err
+	}
+	if status != 202 {
+		t.Fatalf("createInvestigation: %d", status)
 	}
 	var a investigations.Accepted
 	if err := json.Unmarshal(out, &a); err != nil {
 		t.Fatal(err)
 	}
-	return a.InvestigationID
+	return a.InvestigationID, nil
+}
+
+func scenarioRequest(m models.Model) investigations.CreateRequest {
+	cfg := runConfig
+	return investigations.CreateRequest{BaseVersionID: m.LatestVersion.ID, Mode: "scenario", Intent: "Find a faster pipeline", OutputLocale: "en",
+		RunConfig: &cfg, BaselineName: "Baseline for the AI"}
 }
 
 func (e *env) scenario(t *testing.T, m models.Model) string {
 	t.Helper()
-	cfg := runConfig
-	return e.start(t, e.scopeOf(tenant.Editor), m, investigations.CreateRequest{BaseVersionID: m.LatestVersion.ID, Mode: "scenario",
-		Intent: "Find a faster pipeline", OutputLocale: "en", RunConfig: &cfg, BaselineName: "Baseline for the AI"})
+	return e.start(t, e.scopeOf(tenant.Editor), m, scenarioRequest(m))
+}
+
+// age moves investigation inv's clock minutes into the past (its creation
+// and its deadline together): the schema owner, with its trigger set aside
+// for that one statement.
+func (e *env) age(t *testing.T, inv string, minutes int) {
+	t.Helper()
+	if err := postgres.OpenPool(e.admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		for _, q := range []string{`ALTER TABLE twin.investigations DISABLE TRIGGER protect_investigation`,
+			`UPDATE twin.investigations SET created_at=created_at - make_interval(mins => $1), deadline_at=deadline_at - make_interval(mins => $1)
+			  WHERE id=$2`,
+			`ALTER TABLE twin.investigations ENABLE TRIGGER protect_investigation`} {
+			var err error
+			if strings.Contains(q, "$1") {
+				_, err = tx.Exec(ctx, q, minutes, inv)
+			} else {
+				_, err = tx.Exec(ctx, q)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// statusOf reads investigation inv's status and reason as the schema owner.
+func (e *env) statusOf(t *testing.T, inv string) string {
+	t.Helper()
+	var s string
+	e.owner(t, e.org.ID, func(ctx context.Context, tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT status || ' ' || coalesce(reason,'-') FROM twin.investigations WHERE id=$1`, inv).Scan(&s)
+	})
+	return s
 }
 
 // lease claims investigation inv's job as the agent lane would (once).
@@ -626,6 +680,15 @@ func TestTheScenarioLoop(t *testing.T) {
 		stopped.Stop.By != e.user(tenant.Editor) || stopped.ClosingLine == nil || stopped.Activity.State != investigations.Ended {
 		t.Errorf("stopped: %+v", stopped)
 	}
+	// Its explanation's job was still queued (this job loop explains
+	// nothing): the stop leaves it queued and the analysis generating, as
+	// stopInvestigation's contract says (the API may not change an
+	// analysis, 0018); the worker's analyzer is to fail it with
+	// JOB_CANCELLED before its paid call (slice A6).
+	if n := e.count(t, `SELECT count(*) FROM twin.ai_analyses a JOIN twin.jobs j ON j.organization_id=a.organization_id AND j.ai_analysis_id=a.id
+		WHERE a.id=$1 AND a.status='generating' AND j.status='queued'`, *c4.Effect.AnalysisID); n != 1 {
+		t.Errorf("the queued explanation after the stop: %d", n)
+	}
 	if _, _, err := e.svc.Stop(ctx, e.scopeOf(tenant.Editor), ids.New("req"), "key-"+ids.New("k"), inv, []byte(`{}`)); !errors.Is(err, investigations.ErrEnded) {
 		t.Errorf("a second stop: %v", err)
 	}
@@ -939,23 +1002,113 @@ func TestTheDeadline(t *testing.T) {
 	inv := e.scenario(t, m)
 	e.record(t, org, inv, investigator.Scenario, 1, investigator.ProposeWhatIfArguments{Idea: "Too late"})
 	// Twenty minutes pass: the schema owner moves the clock of this one
-	// investigation (its trigger set aside for that one statement).
-	if err := postgres.OpenPool(e.admin).Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-		for _, q := range []string{`ALTER TABLE twin.investigations DISABLE TRIGGER protect_investigation`,
-			`UPDATE twin.investigations SET created_at=created_at - interval '21 minutes', deadline_at=deadline_at - interval '21 minutes' WHERE id='` + inv + `'`,
-			`ALTER TABLE twin.investigations ENABLE TRIGGER protect_investigation`} {
-			if _, err := tx.Exec(ctx, q); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
-		t.Fatal(err)
-	}
+	// investigation.
+	e.age(t, inv, 21)
 	e.ex.Pass(ctx)
 	e.refusedAs(t, org, inv, 1, store.Refused, investigator.LimitReached, "")
 	if n := e.count(t, `SELECT count(*) FROM twin.ai_proposals WHERE investigation_id=$1`, inv); n != 0 {
 		t.Errorf("%d proposals after the deadline", n)
+	}
+}
+
+// The stale self-cleanup (H-061 §13 "Ends", slice A7): a running
+// investigation whose clock ran out with no worker to end it is ended with
+// time_limit by its requester's next createInvestigation, in their own
+// transaction, and the new one starts (202). Within the 2 minutes after the
+// deadline, or while a worker runs its job, it is still running and the
+// start is 409 (ErrRunning).
+func TestTheStaleSelfCleanup(t *testing.T) {
+	e := setup(t)
+	m := e.model(t)
+	org := e.org.ID
+	// A worker runs the job (claimed, as the agent lane does): 23 minutes
+	// on, the deadline 3 minutes past, the start is still refused.
+	owner := e.scopeOf(tenant.Owner)
+	held := e.start(t, owner, m, scenarioRequest(m))
+	e.lease(t, org, held)
+	e.age(t, held, 23)
+	if _, err := e.try(t, owner, m, scenarioRequest(m)); !errors.Is(err, investigations.ErrRunning) {
+		t.Errorf("a start while a worker runs the stale one: %v", err)
+	}
+	if s := e.statusOf(t, held); s != "running -" {
+		t.Errorf("the investigation a worker runs: %s", s)
+	}
+
+	// Its job queued (no worker): 21 minutes on, within the 2 minutes'
+	// grace, still running and the start refused.
+	editor := e.scopeOf(tenant.Editor)
+	stale := e.scenario(t, m)
+	e.age(t, stale, 21)
+	if _, err := e.try(t, editor, m, scenarioRequest(m)); !errors.Is(err, investigations.ErrRunning) {
+		t.Errorf("a start within the grace: %v", err)
+	}
+	if s := e.statusOf(t, stale); s != "running -" {
+		t.Errorf("within the grace: %s", s)
+	}
+	// 23 minutes on: ended at its time limit, and the new one runs.
+	e.age(t, stale, 2)
+	next, err := e.try(t, editor, m, scenarioRequest(m))
+	if err != nil {
+		t.Fatalf("a start past the grace: %v", err)
+	}
+	old := e.investigation(t, e.scopeOf(tenant.Viewer), stale)
+	if old.Status != "stopped" || old.Reason == nil || *old.Reason != "time_limit" || old.Stop != nil || old.FinishedAt == nil ||
+		old.Activity.State != investigations.Ended {
+		t.Errorf("the stale investigation: %s %v %+v", old.Status, old.Reason, old.Stop)
+	}
+	if v := e.investigation(t, editor, next); v.Status != "running" || v.ID == stale {
+		t.Errorf("the new investigation: %s", v.Status)
+	}
+	if n := e.count(t, `SELECT count(*) FROM twin.investigations WHERE organization_id=$1 AND created_by=$2 AND status='running'`,
+		org, e.user(tenant.Editor)); n != 1 {
+		t.Errorf("%d running investigations of the requester", n)
+	}
+}
+
+// A stop asks the investigation's runs to cancel (H-061 §13 step 3):
+// stopped right after run_what_if, before the job loop simulates them, both
+// labelled runs carry the request, and the job loop then ends them
+// cancelled, with no result.
+func TestTheStopCancelsItsRuns(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	m := e.model(t)
+	org := e.org.ID
+	inv := e.scenario(t, m)
+	idea := "Add a CI runner " + ids.New("k")
+	e.fake.Script(provider.Mode("scenario").Role(), idea, answer(t, "Raise the CI runner capacity.", raiseCI))
+	e.record(t, org, inv, investigator.Scenario, 1, investigator.ProposeWhatIfArguments{Idea: idea})
+	e.ex.Pass(ctx)
+	p := e.generated(t, *e.done(t, org, inv, 1).Effect.ProposalID)
+	e.observe(t, org, inv, 1)
+	e.record(t, org, inv, investigator.Scenario, 2, investigator.SaveScenarioArguments{ProposalID: p.ProposalID})
+	e.ex.Pass(ctx)
+	scn := e.done(t, org, inv, 2).Effect.ScenarioID
+	e.observe(t, org, inv, 2)
+	e.record(t, org, inv, investigator.Scenario, 3, investigator.RunWhatIfArguments{ScenarioID: *scn})
+	e.ex.Pass(ctx)
+	c3 := e.done(t, org, inv, 3)
+	const pair = `SELECT count(*) FROM twin.simulation_runs WHERE investigation_id=$1 AND id IN ($2,$3) AND `
+	if n := e.count(t, pair+`status='queued' AND NOT cancellation_requested`, inv, *c3.Effect.BaselineRunID, *c3.Effect.RunID); n != 2 {
+		t.Fatalf("%d of the two runs queued before the stop", n)
+	}
+	if status, _, err := e.svc.Stop(ctx, e.scopeOf(tenant.Editor), ids.New("req"), "key-"+ids.New("k"), inv, []byte(`{}`)); err != nil || status != 200 {
+		t.Fatalf("stop: %d %v", status, err)
+	}
+	if n := e.count(t, pair+`status='queued' AND cancellation_requested`, inv, *c3.Effect.BaselineRunID, *c3.Effect.RunID); n != 2 {
+		t.Errorf("%d of the two runs asked to cancel by the stop", n)
+	}
+	deadline := time.Now().Add(time.Minute)
+	for e.count(t, pair+`status IN ('queued','running')`, inv, *c3.Effect.BaselineRunID, *c3.Effect.RunID) > 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("the stopped investigation's runs did not end")
+		}
+		e.loop.Pass(ctx)
+		time.Sleep(10 * time.Millisecond)
+	}
+	if n := e.count(t, pair+`status='cancelled' AND NOT EXISTS (SELECT 1 FROM twin.simulation_results s WHERE s.run_id=simulation_runs.id)`,
+		inv, *c3.Effect.BaselineRunID, *c3.Effect.RunID); n != 2 {
+		t.Errorf("%d of the two runs ended cancelled, with no result", n)
 	}
 }
 

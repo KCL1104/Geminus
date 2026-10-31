@@ -4852,10 +4852,13 @@ paths:
         is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. The
         requester, or an owner of the organization (another editor is 403). In one transaction: the investigation''s queued
         job is cancelled, the investigation becomes stopped with stopped_by_person (stop.by is the caller), its queued and
-        running runs are asked to cancel, its queued proposal and analysis jobs are cancelled, and the investigation.stop
-        audit event and the idempotency response are written; then 200 with the investigation. After it commits the database
-        refuses every further AI write and ledger row of the investigation; what the AI already made stays, labelled. An investigation
-        that already ended is 409 LIFECYCLE_CONFLICT.'
+        running runs are asked to cancel, its queued proposal jobs are cancelled (those proposals fail with JOB_CANCELLED),
+        and the investigation.stop audit event and the idempotency response are written; then 200 with the investigation.
+        Its queued explanation jobs are not cancelled by the stop (PROPOSED, H-061 slice A7: the API may not change an analysis,
+        migration 0018): each stays queued, and its analysis generating, until the worker fails it with JOB_CANCELLED before
+        its paid call because the investigation is no longer running (slice A6; GEMINUS_INVESTIGATIONS is not turned on before
+        that). After it commits the database refuses every further AI write and ledger row of the investigation; what the
+        AI already made stays, labelled. An investigation that already ended is 409 LIFECYCLE_CONFLICT.'
       tags:
       - Investigations
       x-origin: PROPOSED

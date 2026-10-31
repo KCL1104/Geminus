@@ -90,7 +90,7 @@ Run in the worktree with Go 1.27.3 (`~/go/pkg/mod/golang.org/toolchain@v0.0.1-go
 
 ## 5. Deviations from the design, and why
 
-1. **The stop cancels queued proposal jobs only, not queued explanation jobs.** §13 step 4 cancels both. Cancelling a queued analysis job fires `follow_analysis_job` (0018), which reads the analysis FOR UPDATE and fails it; the API role holds SELECT and INSERT on `ai_analyses` but no UPDATE (0002), so the stop failed with `permission denied for table ai_analyses` (the first DB run, §3). H-061 §11 changes no existing grant, and 0001-0018 are not edited. So the stop leaves an explanation job queued; once it runs, the analyzer is to fail it with `JOB_CANCELLED` before the paid call because its investigation is not running (A6's change to the analyzer). Closing the gap needs a new migration granting the API `UPDATE(status, error, analysis, provider_metadata)` on `ai_analyses` (an existing grant changed: the owner's call) or a definer function; neither is done here.
+1. **The stop cancels queued proposal jobs only, not queued explanation jobs.** §13 step 4 cancels both. Cancelling a queued analysis job fires `follow_analysis_job` (0018), which reads the analysis FOR UPDATE and fails it; the API role holds SELECT and INSERT on `ai_analyses` but no UPDATE (0002), so the stop failed with `permission denied for table ai_analyses` (the first DB run, §3). H-061 §11 changes no existing grant, and 0001-0018 are not edited. So the stop leaves an explanation job queued; once it runs, the analyzer is to fail it with `JOB_CANCELLED` before the paid call because its investigation is not running (A6's change to the analyzer). Closing the gap needs a new migration granting the API `UPDATE(status, error, analysis, provider_metadata)` on `ai_analyses` (an existing grant changed: the owner's call) or a definer function; neither is done here. (Review round 1: a grant alone is not enough, because 0018's `protect_analysis_lifecycle` also refuses the change. The contract now says what the stop leaves, and the switch waits for A6's fail-fast; see R1.1.)
 2. **Each cap is counted before its effect**, and the database's cap is the backstop. In the first DB run the 4th what-if failed `INTERNAL` instead of `LIMIT_REACHED` (§3): inside the transaction the database's error is still pgx's own (`postgres.Tx` classifies it only when the transaction ends), so the cap check did not see the constraint's name. Now the executor counts what the investigation made (`MadeBy`) against its caps first (what-ifs, runs, explanations) and refuses `LIMIT_REACHED`, and the database's cap refusal is classified where it is checked (`store.AtCap`), so the backstop gives the same refusal (the mutant that drops the count survives for that reason, §7).
 3. **A call after the deadline is refused `LIMIT_REACHED` at `""`.** The design's codes have none for the 20 minutes, and A3's resolve allows refused or failed after the deadline so the executor can close the call rather than retry until the investigation ends (A3 §9). The wall time is one of H-060's caps, so the cap's code.
 4. **Refusal codes the design leaves open, chosen here**: run_what_if refused by the server's checks of the run (`runs.RequestError`, `runs.InvalidError`) is `RECHECK_FAILED` at `/scenario_id`; explain_results of a pair the analysis service refuses (not comparable) is `INVALID_ARGUMENTS` at `/run_id`; an idea the proposal service refuses (white space only) `INVALID_ARGUMENTS` at `/idea`; a suggestion of an analysis that is neither this investigation's nor the one it started from, or not completed, `NOT_IN_INVESTIGATION` at `/from_suggestion/analysis_id`, an index it does not have at `/from_suggestion/index`; a base that moved `BASE_MOVED` at `""` for the propose tools (the base is no argument); AI off at the time of the call failed `SERVICE_UNAVAILABLE`; dataset storage not configured failed `DATASET_STORAGE_FAILED`; arguments that do not hash to the recorded hash failed `INTERNAL` (a ledger row that is not what the worker decoded is never carried out).
@@ -119,5 +119,78 @@ H-061 as a whole stays PROPOSED in this report as the brief states it (the decis
 - **Merge contention**: `internal/audit/audit.go` (A6 adds `investigation.end`), `internal/storage/investigations/investigations.go` and `internal/ai/investigator` (A5, A6: the observation should use `ComparisonOf`), `cmd/api/main.go`, `deploy/railway/variables.json` (A6, A9), `internal/observability/redact.go`, `Makefile`, `docs/API_DATABASE.md`, `checks/README.md`.
 
 ## 8. Screenshot baselines that will change
+
+None: no web file changed.
+
+## Review round 1
+
+**Date: 2026-11-01 | Four findings, all Medium. Findings 3 and 4 (missing tests) are fixed with new DB-backed tests. Finding 2 (the contract) is fixed: the contract now says what the stop does. Finding 1 is handled with the reviewer's option (b), not fixed in code: the switch stays off until A6's analyzer fail-fast lands with its DB test. Option (a) is left to the owner: a probe shows a column grant alone cannot work (below), so (a) means changing an existing object | Requirements: as above, plus TEST-021 (a stop asks its runs to cancel) | Still behind `GEMINUS_INVESTIGATIONS`, off by default; nothing changes on live**
+
+### R1.1 Findings and what was done
+
+| # | Finding | What was done | Where |
+|---|---|---|---|
+| 1 | Medium: the stop cancels queued proposal jobs but leaves queued explanation (analysis) jobs. Nothing in this branch stops their paid call (the analyzer never reads the investigation, `check_investigation_spend` does not check the status, `follow_analysis_job` cannot run under `twin_api`) | **Option (b), PROPOSED.** `GEMINUS_INVESTIGATIONS` is not turned on until A6's analyzer fails a stopped investigation's queued explanation with `JOB_CANCELLED` before its paid call. A6's DB test for it: stop with a queued explanation, then assert no `ai_spend_reservations` row for it and `JOB_CANCELLED` on the analysis. The gate is written in the runbook's `GEMINUS_INVESTIGATIONS` row (where the coordinator turns it on), in the contract (finding 2), in API_DATABASE §11, and as an **Open** item for the owner in the design's §13 (as A4's review round recorded its open item in §6.4). `TestTheScenarioLoop` now asserts that the stop leaves its queued explanation's job queued and the analysis generating, as the contract says. A mutant that makes the stop also cancel explanation jobs fails it (`permission denied for table ai_analyses`, R1.2). **Option (a) is not done, and its grant-only form does not work.** On the disposable database, in a rolled-back transaction as `twin_api`, cancelling a stopped investigation's queued analysis job fails with `permission denied for table ai_analyses` (0002's grants). After `GRANT UPDATE (status, error, analysis, provider_metadata) ON twin.ai_analyses TO twin_api` it fails again, this time in 0018's `protect_analysis_lifecycle`: `the API changes nothing of an analysis; its job does`. So (a) needs either a SECURITY DEFINER function, or a grant plus a redefined `protect_analysis_lifecycle`. Each changes an existing object. H-063 accepted the grants exception only for the two new tables, so this is the owner's call. The design's §13 note names both ways | `internal/investigations/executor/executor_test.go`, `docs/runbooks/deploy.md`, `docs/API_DATABASE.md`, `docs/design/H-061_BACKGROUND_INVESTIGATOR.md` §13, `internal/storage/investigations/investigations.go` (the comment now names the trigger too) |
+| 2 | Medium: stopInvestigation's contract says the stop cancels "queued proposal and analysis jobs"; the code cancels proposal jobs only | **Contract first.** The description now says the stop cancels the queued proposal jobs (those proposals fail with `JOB_CANCELLED`). It says queued explanation jobs are not cancelled (PROPOSED, slice A7: the API may not change an analysis, 0018). Each stays queued, with its analysis generating, until the worker fails it with `JOB_CANCELLED` before its paid call because the investigation is no longer running (slice A6). It also says `GEMINUS_INVESTIGATIONS` is not turned on before then. A8's stop dialog copy should follow this text. No schema, example or generated type changed (the TS contracts are generated from the schemas; `--check` is fresh) | `openapi/openapi.yaml` (stopInvestigation) |
+| 3 | Medium: no test of createInvestigation's stale self-cleanup | **`TestTheStaleSelfCleanup`** (DB-backed). The owner's investigation has its job claimed, as the agent lane does, and its clock is moved back 23 minutes: the start is still `ErrRunning` (409) and the investigation stays running. The editor's investigation has its job queued. At 21 minutes (within the 2 minutes' grace) the start is still 409 and the investigation running. At 23 minutes the start is 202: the old investigation is `stopped` with `time_limit` (no stop record, `finished_at` set, activity ended), the new one is running, and the requester has exactly one running. The clock move is now one helper (`age`, the schema owner with the trigger set aside, as `TestTheDeadline` did inline; that test now uses it, with its assertions unchanged) | `internal/investigations/executor/executor_test.go` |
+| 4 | Medium: no test of the stop asking its runs to cancel | **`TestTheStopCancelsItsRuns`** (DB-backed): propose, save, `run_what_if`; both labelled runs are queued and not asked to cancel; the requester stops it (200) before the job loop simulates them; both runs carry `cancellation_requested` and stay queued; the job loop then ends both `cancelled`, with no `simulation_results` row. A run already simulating when the stop commits takes the same `RequestCancellation` (its SQL covers queued and running); the engine honouring it mid-run is `TestCancelRunning`'s (internal/api, TEST-021) | `internal/investigations/executor/executor_test.go` |
+
+Disputed: only the part of finding 1's option (a) that says "or grants twin_api UPDATE(...)". A grant alone is not enough, as shown above. Nothing else is disputed.
+
+### R1.2 Tests first (red), then green
+
+The code under test already existed, so the red runs are mutants. A scratch script (not committed) applied each mutant to one file, ran the named test against `dt_test_a7r1dev`, and restored the file. `git status` afterwards shows only the intended changes.
+
+| Mutant | Test | Result |
+|---|---|---|
+| M1, the reviewer's: createInvestigation skips `store.EndStale` (`ended` always false; the first form did not build because `running` was unused, so it was rewritten to keep `running` used) | `TestTheStaleSelfCleanup` | **killed**: `a start past the grace: investigations: the caller already has a running investigation` |
+| M2, the reviewer's: the stop's `RequestCancellation` loop removed | `TestTheStopCancelsItsRuns` | **killed**: `0 of the two runs asked to cancel by the stop`, `0 of the two runs ended cancelled, with no result` |
+| M3: `EndStale` without the 2 minutes' grace | `TestTheStaleSelfCleanup` | **killed**: `a start within the grace: postgres: immutable record (SQLSTATE 55000) …` (the database's own rule refuses it; the start must be 409, not 500) |
+| M4: `EndStale` ignores a running job | `TestTheStaleSelfCleanup` | **killed**: `a start while a worker runs the stale one: … (SQLSTATE 55000) …` |
+| M5: the stop also cancels the investigation's queued explanation jobs | `TestTheScenarioLoop` | **killed**: `stop: 0 postgres: permission denied (SQLSTATE 42501): permission denied for table ai_analyses` |
+
+All five were killed. On the real code, both new tests and the two changed ones pass under `-race`, and the two new tests pass 10 times in a row under `-race`.
+
+### R1.3 Commands and results
+
+Run in the worktree with Go 1.27.3 and the main checkout's `.venv` and `node_modules` symlinked (not committed). Node was not needed: no web file changed. The database is a new PostgreSQL 16.15 cluster started for this round by `initdb` in the session scratchpad (`a7r1pg/`; trust auth, 127.0.0.1:55611 only, no Unix socket). It used fresh `dt_test_*` databases and was stopped afterwards. No live call was made, and no `.env` value or key was read.
+
+| Command | Result |
+|---|---|
+| `DT_ALLOW_DB_TESTS=yes DATABASE_URL=…/dt_test_a7r1dev make db-test` (the development database) | **exit 0**: "DB migration smoke up/down/up completed" |
+| `GEMINUS_REQUIRE_DB_TESTS=1 go test -count=1 -p 1 ./internal/investigations/...` before any change | **ok** both packages (the baseline) |
+| `psql -f a7r1-grant-probe.sql` (scratch; two rolled-back transactions as `twin_api` on `dt_test_a7r1dev`) | as it stands: `ERROR: permission denied for table ai_analyses` (in `follow_analysis_job`); with the column grant: `ERROR: the API changes nothing of an analysis; its job does` (in `protect_analysis_lifecycle`); both rolled back |
+| `go test -race -v -run 'TestTheStaleSelfCleanup\|TestTheStopCancelsItsRuns\|TestTheScenarioLoop\|TestTheDeadline' ./internal/investigations/executor/` | **ok**, the four PASS |
+| mutation script (R1.2) | **5 of 5 killed**; sources restored |
+| `go test -race -count=1 -p 1 -v ./internal/investigations/... ./internal/storage/investigations/` | **ok**, the three packages, every test PASS (29 top-level tests) |
+| `go test -race -count=10 -run 'TestTheStaleSelfCleanup\|TestTheStopCancelsItsRuns' ./internal/investigations/executor/` | **ok** (9.6 s) |
+| `.venv/bin/python scripts/gen_ts_contracts.py --check` | **PASS_TS_CONTRACTS_FRESH** (17 files, 165 types) |
+| `PATH=.venv/bin:$PATH make spec-check` (after the contract and the docs) | **exit 0**: contracts `PASS_LIMITED_SPEC_CHECKS` (48 operations), planning, docs PASS (179 Markdown files, 345 links), SQL inventory, reference arithmetic and engine vectors, decisions (shape only), TS contracts fresh, independent hashes, DB tests fresh (18 files), static deploy checks |
+| `DT_ALLOW_DB_TESTS=yes DATABASE_URL=… GEMINUS_TEST_DATABASE_URL=… make integration-test` on a fresh disposable `dt_test_h061_a7r1` (20:24 to 20:35 UTC) | **exit 0**: `make db-test` (0001-0019 up, the SQL suites, 0019's down refused on its fixture, the downs, up again, the suites again; "DB migration smoke up/down/up completed"); `make db-go-test` (`GEMINUS_REQUIRE_DB_TESTS=1`, `-race`, `-p 1`) **43 packages ok, 0 failed, 11 without tests**, among them `internal/storage/investigations` (2.2 s), `internal/investigations` (1.3 s), `internal/investigations/executor` (18.3 s), `internal/api` (161.5 s), `cmd/api` (5.3 s) |
+| `make backend-test` (no database: the DB-backed tests skip there and run in `make integration-test`) | **exit 0**: gofmt clean, `go vet` clean, **96 packages ok, 13 without tests** (78 of them Go's cached results for unchanged code and inputs), `scripts/check-architecture` **ok** (480.5 s, inside the target's 30-minute timeout, not cached) |
+| `PATH=.venv/bin:$PATH make spec-check` (final, after this section) | **exit 0**: the same; docs PASS (179 Markdown files, 345 links) |
+| `pg_ctl stop -m fast` (the scratch cluster) | **server stopped** |
+
+### R1.4 NOT RUN
+
+- **A6's DB test of the gate** (a stop with a queued explanation leaves no `ai_spend_reservations` row for it, and its analysis fails with `JOB_CANCELLED`). It needs A6's analyzer change, which is not in this branch. It belongs to A6, and the switch waits for it.
+- **A stop while one of its runs is mid-simulation**, in this package: the new test stops while both runs are queued (see finding 4 for what covers the running case).
+- **`make frontend-test` and the browser specs**: no web file changed, and no schema changed.
+- **`make backend-race` as one command**: `-race` ran on every DB-backed package in `make integration-test`, and on the executor's tests above.
+- **Any live call.**
+
+### R1.5 PROPOSED
+
+- Not turning `GEMINUS_INVESTIGATIONS` on before A6's analyzer fail-fast and its DB test (option (b)).
+- stopInvestigation's new sentence about queued explanation jobs.
+- The open item in the design's §13 and the two ways to close it. Both change an existing object, so they are the owner's call: a SECURITY DEFINER function for the API that cancels only a stopped investigation's queued analysis jobs; or a column UPDATE grant on `ai_analyses` plus a redefined `protect_analysis_lifecycle`.
+
+### R1.6 Risks
+
+- **Until A6 lands, a stop does not stop a queued explanation.** Off, nothing happens. If the switch were turned on before A6, the worker would make the analyst call for a stopped investigation's queued explanations: at most 4, on Muse Spark 1.3, inside the investigation's USD 2.50 ceiling. The runbook row is the gate. It is a written gate, not one enforced in code: the API cannot see which worker build is deployed.
+- **The stale self-cleanup leaves the old investigation's queued job queued.** This is unchanged by this round, and the design does not ask the cleanup to cancel it. When a worker later claims it, the investigation has already ended. A6's handler must then end the job without a turn. The database allows the job to complete or be cancelled only once its investigation has ended, which is already true here.
+- **Merge contention** grows by `docs/design/H-061_BACKGROUND_INVESTIGATOR.md` §13 (a new paragraph only), `docs/runbooks/deploy.md` (the `GEMINUS_INVESTIGATIONS` row, which A9 also edits) and `docs/TEST_PLAN.md` (A7's paragraph).
+
+### R1.7 Screenshot baselines that will change
 
 None: no web file changed.

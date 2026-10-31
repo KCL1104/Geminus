@@ -644,9 +644,11 @@ func CancelQueuedJob(ctx context.Context, tx pgx.Tx, org, id string) (bool, erro
 // proposals, in ID order: the stop cancels them, and the proposals then
 // fail with JOB_CANCELLED (follow_proposal_job). Its explanations' queued
 // jobs are not among them: the API holds no UPDATE on ai_analyses, which
-// follow_analysis_job needs to fail one (0002, 0018; no existing grant
-// changes in H-061), so they stay queued and their handler ends them,
-// before the paid call, once their investigation is not running (A6).
+// follow_analysis_job needs to fail one (0002), and even with one 0018's
+// protect_analysis_lifecycle refuses any change the API makes to an
+// analysis (no existing grant or trigger changes in H-061). So they stay
+// queued and their handler ends them, before the paid call, once their
+// investigation is not running (A6; stopInvestigation's contract).
 func QueuedProposalJobs(ctx context.Context, tx pgx.Tx, org, id string) ([]string, error) {
 	rows, err := tx.Query(ctx, `SELECT j.id FROM twin.jobs j JOIN twin.ai_proposals p ON p.organization_id=j.organization_id AND p.id=j.ai_proposal_id
 		WHERE j.organization_id=$1 AND p.investigation_id=$2 AND j.status='queued' ORDER BY j.id`, org, id)
