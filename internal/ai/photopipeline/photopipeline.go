@@ -29,6 +29,12 @@
 //     again), its own answer and the server's issues; the same checks of
 //     step 4 decide the outcome.
 //
+// Steps 2 to 5 run on the photo role graph (H-059, slice E5:
+// internal/aigraph/photo, an Eino graph), which orders them and makes both
+// vision calls through the metered Eino ChatModel over the vision client
+// (internal/aigraph/einomodel): the client's calls unchanged. The steps are
+// this package's (proposal, below); the graph decides nothing of its own.
+//
 // It does no I/O of its own and keeps nothing: the callers read the image,
 // write the outcome and record what was spent.
 package photopipeline
@@ -42,6 +48,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/repair"
 	"github.com/kcl1104/geminus/internal/ai/review"
+	"github.com/kcl1104/geminus/internal/aigraph/photo"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 )
@@ -179,115 +186,220 @@ func noBoxes(outputLocale string) review.Outcome {
 }
 
 // Propose runs the segmenter, the server's checks of its answer, the
-// vision model, the server's review and the one repair (steps 2 to 5). A
-// provider failure of either client is its *provider.Error (a cancellation
-// is the client's cancelled error: the caller tells it by its own context),
-// a context that cannot be built a *ContextError, a review that cannot run
-// a *ReviewError, a later stage that fails a *BindError; the Result says
-// which calls were made either way. An answer the server refuses is an
-// outcome (invalid), not an error; so is a repair call that fails (the
-// first outcome stays, Result.Repair says so).
+// vision model, the server's review and the one repair (steps 2 to 5), on
+// the photo graph. A provider failure of either client is its
+// *provider.Error (a cancellation is the client's cancelled error: the
+// caller tells it by its own context), a context that cannot be built a
+// *ContextError, a review that cannot run a *ReviewError, a later stage that
+// fails a *BindError; the Result says which calls were made either way. An
+// answer the server refuses is an outcome (invalid), not an error; so is a
+// repair call that fails (the first outcome stays, Result.Repair says so).
+// The graph's own fault, which no provider causes, is photo.ErrGraph.
 func Propose(ctx context.Context, c Clients, req Request, obs Observer) (Result, error) {
-	var r Result
-	if c.Segmenter == nil || c.Vision == nil {
-		return r, provider.NewError(provider.CodeNotConfigured, 0, "")
+	p := &proposal{c: c, req: req, obs: obs}
+	if err := photo.Run(ctx, c.Vision, p); err != nil {
+		return p.r, err
 	}
-	if !TakesModel(c.Vision, req.Model) {
-		// A vision model the client may not ask (H-049): refused before the
-		// segmenter spends anything.
-		return r, provider.NewError(provider.CodeModelNotApproved, 0, "")
+	return p.r, p.err
+}
+
+// proposal is one photo proposal's steps (photo.Steps), in the graph's
+// order, and what they decided: the result and the error Propose returns.
+type proposal struct {
+	c   Clients
+	req Request
+	obs Observer
+	r   Result
+	err error
+	// seg is the segmenter's checked answer; pctx the vision model's first
+	// call; prior the answer it handed back; output its schema-valid answer;
+	// outcome the server's outcome before the repair.
+	seg     provider.Segmentation
+	pctx    provider.ProposalContext
+	prior   provider.PriorAnswer
+	output  provider.ProposalOutput
+	outcome review.Outcome
+	// rc and rec are the repair's call and record (repair.Plan's).
+	rc  provider.ProposalContext
+	rec *repair.Record
+}
+
+var _ photo.Steps = (*proposal)(nil)
+
+// Gate: both clients, and a vision model the client may ask (H-049),
+// before the segmenter spends anything.
+func (p *proposal) Gate(context.Context) bool {
+	if p.c.Segmenter == nil || p.c.Vision == nil {
+		p.err = provider.NewError(provider.CodeNotConfigured, 0, "")
+		return false
 	}
-	seg, err := c.Segmenter.Segment(ctx, provider.SegmentRequest{OrganizationID: req.OrganizationID, Role: provider.ModeEdit.Role(),
+	if !TakesModel(p.c.Vision, p.req.Model) {
+		p.err = provider.NewError(provider.CodeModelNotApproved, 0, "")
+		return false
+	}
+	return true
+}
+
+// Segment: the segmenter's call. A segmentation the client refused is
+// invalid; any other failure is the call's error.
+func (p *proposal) Segment(ctx context.Context) bool {
+	req := p.req
+	seg, err := p.c.Segmenter.Segment(ctx, provider.SegmentRequest{OrganizationID: req.OrganizationID, Role: provider.ModeEdit.Role(),
 		Attribution: req.Attribution, Image: req.Image, Concepts: req.Concepts})
-	r.Segmenter, r.Segments = &seg.Metadata, len(seg.Segments)
-	if obs.Segmented != nil {
-		obs.Segmented(seg.Metadata, len(seg.Segments), err)
+	p.seg = seg
+	p.r.Segmenter, p.r.Segments = &p.seg.Metadata, len(seg.Segments)
+	if p.obs.Segmented != nil {
+		p.obs.Segmented(seg.Metadata, len(seg.Segments), err)
 	}
 	if err != nil {
 		var pe *provider.Error
 		if ctx.Err() == nil && errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			r.Outcome = review.InvalidOutput(review.Segmentation(pe.Issues))
-			return r, nil
+			p.r.Outcome = review.InvalidOutput(review.Segmentation(pe.Issues))
+			return false
 		}
-		return r, err
+		p.err = err
+		return false
 	}
-	r.Segmentation = &seg
-	switch {
-	case len(seg.Segments) == 0:
-		r.Outcome = noBoxes(req.OutputLocale)
-		return r, nil
-	case len(seg.Segments) > review.MaxPhotoSegments:
-		r.Outcome = review.InvalidOutput(review.TooManySegments())
-		return r, nil
-	case seg.Width != req.Image.Width || seg.Height != req.Image.Height:
-		r.Outcome = review.InvalidOutput(review.FrameMismatch())
-		return r, nil
-	}
+	p.r.Segmentation = &p.seg
+	return true
+}
 
+// Segments: no segment is the server's needs_input; too many, or another
+// frame than the image's, invalid.
+func (p *proposal) Segments(context.Context) bool {
+	switch {
+	case len(p.seg.Segments) == 0:
+		p.r.Outcome = noBoxes(p.req.OutputLocale)
+		return false
+	case len(p.seg.Segments) > review.MaxPhotoSegments:
+		p.r.Outcome = review.InvalidOutput(review.TooManySegments())
+		return false
+	case p.seg.Width != p.req.Image.Width || p.seg.Height != p.req.Image.Height:
+		p.r.Outcome = review.InvalidOutput(review.FrameMismatch())
+		return false
+	}
+	return true
+}
+
+// Context: the vision model's call (aicontext.ImageProposal), with the
+// attribution and the chosen model.
+func (p *proposal) Context(context.Context) (*provider.ProposalContext, bool) {
+	req := p.req
 	pctx, err := aicontext.ImageProposal(aicontext.ImageProposalInput{
 		Scope:        aicontext.Scope{OrganizationID: req.OrganizationID, ModelID: req.Base.ModelID},
 		Base:         req.Base,
 		Domain:       req.Pack.PromptContext(),
 		Pool:         req.Pool,
-		Photo:        aicontext.Photo{OrganizationID: req.OrganizationID, Image: req.Image, Concepts: req.Concepts, Segments: seg.Segments},
+		Photo:        aicontext.Photo{OrganizationID: req.OrganizationID, Image: req.Image, Concepts: req.Concepts, Segments: p.seg.Segments},
 		OutputLocale: req.OutputLocale,
 		Budget:       req.Budget,
 	})
 	if err != nil {
-		return r, &ContextError{Code: aicontext.CodeOf(err), Err: err}
+		p.err = &ContextError{Code: aicontext.CodeOf(err), Err: err}
+		return nil, false
 	}
 	pctx.Attribution, pctx.Model = req.Attribution, req.Model
-	res, err := c.Vision.GenerateModelProposal(ctx, pctx)
+	p.pctx = pctx
+	return &p.pctx, true
+}
+
+// Answered: the vision model's first call ended. An answer the client
+// refused for what it says is invalid (to the repair); any other failure
+// is the call's error; a schema-valid answer goes to the server's checks.
+func (p *proposal) Answered(ctx context.Context, res provider.ProposalResult, err error) photo.After {
 	meta := res.Metadata
-	r.Vision = &meta
-	if obs.Answered != nil {
-		obs.Answered(1, meta, err)
+	p.r.Vision = &meta
+	if p.obs.Answered != nil {
+		p.obs.Answered(1, meta, err)
 	}
-	// check is the server's checks of a schema-valid answer: the review, the
-	// photo rules, the caller's later stage. The repair's answer goes through
-	// exactly these.
-	check := func(out provider.ProposalOutput) (review.Outcome, error) {
-		outcome, err := review.Review(review.Input{Mode: provider.ModeEdit, Base: req.BaseIR, Pool: req.Pool.IDs, Pack: req.Pack, Output: out})
-		if err != nil {
-			return review.Outcome{}, &ReviewError{Err: err}
-		}
-		if outcome.Status == review.Ready {
-			outcome = outcome.Refuse(review.Photo(req.Base.IR, outcome.Candidate, len(seg.Segments)))
-		}
-		if outcome.Status == review.Ready && req.Bind != nil {
-			issues, err := req.Bind(outcome.Candidate)
-			if err != nil {
-				return review.Outcome{}, &BindError{Err: err}
-			}
-			outcome = outcome.Refuse(issues)
-		}
-		return outcome, nil
-	}
-	var outcome review.Outcome
+	p.prior = res.Prior
 	if err != nil {
 		var pe *provider.Error
 		if ctx.Err() != nil || !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput {
-			return r, err
+			p.err = err
+			return photo.ToEnd
 		}
-		outcome = review.InvalidOutput(pe.Issues)
-	} else if outcome, err = check(res.Output); err != nil {
-		return r, err
+		p.outcome = review.InvalidOutput(pe.Issues)
+		return photo.ToRepair
 	}
-	// H-057: one repair of an answer refused for what it says, on the same
-	// image and segments; the segmenter is not asked again.
-	answered := func(m provider.Metadata, err error) {
-		if obs.Answered != nil {
-			obs.Answered(2, m, err)
-		}
-	}
-	outcome, r.Repair, err = repair.Once(ctx, c.Vision, pctx, res.Prior, outcome, check, answered)
+	p.output = res.Output
+	return photo.ToReview
+}
+
+// Review: the server's checks of the first answer.
+func (p *proposal) Review(context.Context) bool {
+	outcome, err := p.check(p.output)
 	if err != nil {
-		var ae *aicontext.Error
-		if errors.As(err, &ae) {
-			return r, &ContextError{Code: ae.Code, Err: err}
-		}
-		return r, err
+		p.err = err
+		return false
 	}
-	r.Outcome = outcome
-	return r, nil
+	p.outcome = outcome
+	return true
+}
+
+// Repair: H-057's one repair of an answer refused for what it says, on the
+// same image and segments (the segmenter is not asked again); none when
+// there is nothing to repair (the outcome stays).
+func (p *proposal) Repair(ctx context.Context) (*provider.ProposalContext, bool) {
+	rc, rec, err := repair.Plan(ctx, p.pctx, p.prior, p.outcome)
+	if rec == nil {
+		if err != nil {
+			p.fail(err)
+			return nil, false
+		}
+		p.r.Outcome = p.outcome
+		return nil, false
+	}
+	p.rc, p.rec = rc, rec
+	return &p.rc, true
+}
+
+// Repaired: the repair's call ended; repair.Settle decides the outcome
+// through the same checks.
+func (p *proposal) Repaired(ctx context.Context, res provider.ProposalResult, err error) {
+	answered := func(m provider.Metadata, err error) {
+		if p.obs.Answered != nil {
+			p.obs.Answered(2, m, err)
+		}
+	}
+	outcome, rec, err := repair.Settle(ctx, p.rec, p.outcome, res, err, p.check, answered)
+	p.r.Repair = rec
+	if err != nil {
+		p.fail(err)
+		return
+	}
+	p.r.Outcome = outcome
+}
+
+// fail is the repair's error: a follow-up that could not be built is a
+// *ContextError.
+func (p *proposal) fail(err error) {
+	var ae *aicontext.Error
+	if errors.As(err, &ae) {
+		p.err = &ContextError{Code: ae.Code, Err: err}
+		return
+	}
+	p.err = err
+}
+
+// check is the server's checks of a schema-valid answer: the review, the
+// photo rules, the caller's later stage. The repair's answer goes through
+// exactly these.
+func (p *proposal) check(out provider.ProposalOutput) (review.Outcome, error) {
+	req := p.req
+	outcome, err := review.Review(review.Input{Mode: provider.ModeEdit, Base: req.BaseIR, Pool: req.Pool.IDs, Pack: req.Pack, Output: out})
+	if err != nil {
+		return review.Outcome{}, &ReviewError{Err: err}
+	}
+	if outcome.Status == review.Ready {
+		outcome = outcome.Refuse(review.Photo(req.Base.IR, outcome.Candidate, len(p.seg.Segments)))
+	}
+	if outcome.Status == review.Ready && req.Bind != nil {
+		issues, err := req.Bind(outcome.Candidate)
+		if err != nil {
+			return review.Outcome{}, &BindError{Err: err}
+		}
+		outcome = outcome.Refuse(issues)
+	}
+	return outcome, nil
 }

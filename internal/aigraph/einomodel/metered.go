@@ -93,9 +93,15 @@ type Result struct {
 // CallError is a failed call: the client's error (a *provider.Error for
 // every failure the client or the adapter classifies) and the call's
 // metadata (zero when the adapter refused the call before the client).
+// Prior is a failed proposal's answer as the client handed it back with the
+// error (provider.ProposalResult.Prior: only for an answer refused for what
+// it says, invalid_output), for its one repair (H-057; slices E3 and E5);
+// absent for every other failure and kind of call. It prints as withheld,
+// and the adapter's callbacks never get it; never log or store it.
 type CallError struct {
 	Metadata provider.Metadata
 	Err      error
+	Prior    provider.PriorAnswer
 }
 
 func (e *CallError) Error() string { return e.Err.Error() }
@@ -166,7 +172,12 @@ func (m *Metered) Generate(ctx context.Context, input []*schema.Message, opts ..
 	ctx = callbacks.OnStart(ctx, &model.CallbackInput{})
 	out, md, err := m.generate(ctx, input, opts...)
 	if err != nil {
-		callbacks.OnError(ctx, err)
+		// The callbacks get no content: not the answer handed back.
+		seen := err
+		if ce, ok := err.(*CallError); ok && ce.Prior.Present() {
+			seen = &CallError{Metadata: ce.Metadata, Err: ce.Err}
+		}
+		callbacks.OnError(ctx, seen)
 		return nil, err
 	}
 	callbacks.OnEnd(ctx, &model.CallbackOutput{Config: &model.Config{Model: md.Model}, TokenUsage: callbackUsage(md),
@@ -222,7 +233,7 @@ func (m *Metered) generate(ctx context.Context, input []*schema.Message, opts ..
 	case call.Proposal != nil:
 		res, err := m.p.GenerateModelProposal(ctx, *call.Proposal)
 		if err != nil {
-			return nil, res.Metadata, &CallError{Metadata: res.Metadata, Err: err}
+			return nil, res.Metadata, &CallError{Metadata: res.Metadata, Err: err, Prior: res.Prior}
 		}
 		return answer(string(res.Raw), nil, res.Metadata, &Result{Proposal: &res}), res.Metadata, nil
 	case call.Analysis != nil:

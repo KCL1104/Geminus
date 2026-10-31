@@ -1,0 +1,688 @@
+{
+  "cancelled-during-the-call": {
+    "result": "error",
+    "error": "ai provider: cancelled",
+    "canceled": true,
+    "issues": 0,
+    "requests": [],
+    "logs": [
+      {
+        "code": "AI_CANCELLED",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "explained-alone": {
+    "result": "analysis",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "en",
+      "input_hash": "sha256:0d8f14c53d8cd16450ec5c036e68ede19ecb1ba30c7f96913e4d3405fe528349",
+      "output_hash": "sha256:389a92ed7e48fd788572f52d5afcb5dbf53faccec016233920d7e3675d6744e3",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {}
+      }
+    },
+    "issues": 0,
+    "analysis": {
+      "baseline": null,
+      "scenario": {
+        "summary": "The deterministic fake provider makes no claims about the results."
+      },
+      "delta": [],
+      "bottleneck": [],
+      "assumptions": [],
+      "uncertainty": [
+        "This analysis comes from the fake provider."
+      ],
+      "suggested_next_experiments": []
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "en",
+        "input_hash": "sha256:0d8f14c53d8cd16450ec5c036e68ede19ecb1ba30c7f96913e4d3405fe528349",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "783ad00ea0cefccd0055931f28e5e4b341d5d6267c3211cba922b28e9868a1f7",
+        "user_sha256": "1df04d8bd25043ef0f51855b4e3f6595feb5d9f568c463286c457c403e676192",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "explained-beside-a-baseline": {
+    "result": "analysis",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:a7960c241ab54d1b1e6d8f2eba59b8950bb52d802a4288f24a3c49edeb672f07",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "analysis": {
+      "baseline": {
+        "summary": "已提供 baseline 結果。"
+      },
+      "scenario": {
+        "summary": "測試用的確定性回答器不對結果做任何判斷。"
+      },
+      "delta": [],
+      "bottleneck": [],
+      "assumptions": [],
+      "uncertainty": [
+        "這份分析來自測試用的確定性回答器。"
+      ],
+      "suggested_next_experiments": []
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "explained-metered": {
+    "result": "analysis",
+    "metadata": {
+      "provider": "fake",
+      "model": "muse-spark-1.3",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:a7960c241ab54d1b1e6d8f2eba59b8950bb52d802a4288f24a3c49edeb672f07",
+      "usage": {
+        "input_tokens": 700,
+        "output_tokens": 90,
+        "cache_read_input_tokens": 10
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      },
+      "cost_nano_usd": 1259000,
+      "spend_reservation_id": "set"
+    },
+    "issues": 0,
+    "analysis": {
+      "baseline": {
+        "summary": "已提供 baseline 結果。"
+      },
+      "scenario": {
+        "summary": "測試用的確定性回答器不對結果做任何判斷。"
+      },
+      "delta": [],
+      "bottleneck": [],
+      "assumptions": [],
+      "uncertainty": [
+        "這份分析來自測試用的確定性回答器。"
+      ],
+      "suggested_next_experiments": []
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "charges": [
+      {
+        "organization_id": "org_01M4YDQK00TA00000000000000",
+        "role": "analyst",
+        "model": "muse-spark-1.3",
+        "target": "ai_analysis:ana_01M4YDQK00FGZZWH0PP15XPNFC:req_01M4YDQK00FGZZWH0PP15XPNFD",
+        "nano_usd": 179448000
+      }
+    ],
+    "settled": [
+      {
+        "nano_usd": 1259000,
+        "outcome": "usage"
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 1259000,
+        "credential_label": "",
+        "input_tokens": 700,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "muse-spark-1.3",
+        "msg": "ai provider call ended",
+        "output_tokens": 90,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": "memory-1"
+      }
+    ]
+  },
+  "the-answer-is-not-an-analysis": {
+    "result": "failure",
+    "code": "AI_INVALID_OUTPUT",
+    "message": "the AI answer is not an analysis the schema accepts",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "AI_INVALID_OUTPUT",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "the-answer-is-ungrounded": {
+    "result": "failure",
+    "code": "ANALYSIS_UNGROUNDED",
+    "message": "the AI answer is not grounded in the results (ANALYSIS_NUMBER_UNVERIFIED at /scenario/summary)",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 1,
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "the-baseline-result-does-not-decode": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "a stored result does not decode",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-context-cannot-be-built": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "the analysis's stored request cannot be built into a context",
+    "issues": 0,
+    "requests": [],
+    "logs": [
+      {
+        "analysis_id": "ana_01M4YDQK00FGZZWH0PP15XPNFC",
+        "code": "invalid_locale",
+        "level": "WARN",
+        "msg": "building an analysis context failed",
+        "organization_id": "org_01M4YDQK00TA00000000000000"
+      }
+    ]
+  },
+  "the-context-is-too-large": {
+    "result": "failure",
+    "code": "AI_CONTEXT_TOO_LARGE",
+    "message": "the results are too large for the AI context budget",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-domain-is-not-served": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "the model's domain is not served by this worker",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-patch-does-not-decode": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "the analyzed run's patch does not decode",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-provider-fails-with-another-error": {
+    "result": "failure",
+    "code": "AI_UNAVAILABLE",
+    "message": "the AI provider was unavailable",
+    "retryable": true,
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "AI_UNAVAILABLE",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "the-provider-is-unavailable": {
+    "result": "failure",
+    "code": "AI_UNAVAILABLE",
+    "message": "the AI provider was unavailable",
+    "retryable": true,
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "AI_UNAVAILABLE",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "the-provider-refuses": {
+    "result": "failure",
+    "code": "AI_REFUSED",
+    "message": "the AI model declined to answer",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 8192
+      }
+    ],
+    "logs": [
+      {
+        "code": "AI_REFUSED",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "the-runs-are-not-comparable": {
+    "result": "failure",
+    "code": "ANALYSIS_NOT_COMPARABLE",
+    "message": "the server does not compare the analysis's runs (MODEL_VERSION_MISMATCH)",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-runs-cannot-be-compared": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "the analysis's runs cannot be compared",
+    "issues": 0,
+    "requests": [],
+    "logs": [
+      {
+        "analysis_id": "ana_01M4YDQK00FGZZWH0PP15XPNFC",
+        "error": "compare: a run's result does not match its frozen input: run sim_01M4YDQK00FGZZWH0PP15XPNFA: the result is of run \"sim_01M4YDQK00FGZZWH0PP15XPNFB\", \"completed\", engine \"des-go-0.1.0-PROPOSED-fixture\"",
+        "level": "ERROR",
+        "msg": "comparing an analysis's runs failed",
+        "organization_id": "org_01M4YDQK00TA00000000000000"
+      }
+    ]
+  },
+  "the-scenario-result-does-not-decode": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "a stored result does not decode",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  },
+  "the-version-does-not-decode": {
+    "result": "failure",
+    "code": "ANALYSIS_INPUT_INVALID",
+    "message": "the analyzed run's version does not decode",
+    "issues": 0,
+    "requests": [],
+    "logs": []
+  }
+}
