@@ -185,6 +185,58 @@ CREATE FUNCTION pg_temp.acting(inv text, usr text) RETURNS void LANGUAGE sql AS 
   SELECT set_config('app.investigation_id', inv, true), set_config('app.user_id', usr, true)
 $$;
 GRANT EXECUTE ON FUNCTION pg_temp.acting(text, text) TO PUBLIC;
+-- Time passes for inv: its 20 minutes are moved into the past, so that now()
+-- is after its deadline while it still runs. One transaction cannot wait,
+-- so the schema owner sets protect_investigation aside for this one UPDATE
+-- (nothing else ever moves a deadline); the caller's role and scope are
+-- kept, and the caller's subtransaction (must_fail_at_commit) rolls it back.
+CREATE FUNCTION pg_temp.age(inv text) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE r text := current_user; acting text := coalesce(current_setting('app.investigation_id', true), '');
+BEGIN
+  PERFORM set_config('app.investigation_id', '', true);
+  SET LOCAL ROLE twin_owner;
+  ALTER TABLE twin.investigations DISABLE TRIGGER protect_investigation;
+  UPDATE twin.investigations SET created_at = created_at - interval '20 minutes', deadline_at = deadline_at - interval '20 minutes'
+    WHERE organization_id = '{{ORG_A}}' AND id = inv AND status = 'running' AND deadline_at > now();
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'pg_temp.age: % is not running before its deadline', inv;
+  END IF;
+  ALTER TABLE twin.investigations ENABLE TRIGGER protect_investigation;
+  EXECUTE format('SET LOCAL ROLE %I', r);
+  PERFORM set_config('app.investigation_id', acting, true);
+END $$;
+GRANT EXECUTE ON FUNCTION pg_temp.age(text) TO PUBLIC;
+-- The statements that end inv (how: 'stop', its requester's stop, or
+-- 'deadline', its time running out) and then act for it again, for its
+-- requester.
+CREATE FUNCTION pg_temp.ended(how text, inv text, requester text) RETURNS text[] LANGUAGE sql AS $$
+  SELECT CASE how
+    WHEN 'stop' THEN ARRAY[format('SELECT pg_temp.acting(%L, %L)', '', requester),
+      pg_temp.upd_inv(inv, format('status=%L, reason=%L, stop_requested_by=%L', 'stopped', 'stopped_by_person', requester)),
+      format('SELECT pg_temp.acting(%L, %L)', inv, requester)]
+    WHEN 'deadline' THEN ARRAY[format('SELECT pg_temp.age(%L)', inv)] END
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.ended(text, text, text) TO PUBLIC;
+-- INV_A1's save_scenario of what-if 1 (SCN_A11, as the effect writes it);
+-- the AI's edit in model A's draft (revision 2, INV_A2's AIP_A45, for USR_A2).
+CREATE FUNCTION pg_temp.save_a41() RETURNS text LANGUAGE sql AS $$
+  SELECT $q$INSERT INTO twin.scenarios(id,organization_id,model_id,base_version_id,name,patch,patch_hash,source_proposal_id,created_by)
+    SELECT '{{SCN_A11}}', organization_id, model_id, base_version_id, summary, patch, patch_hash, id, created_by
+    FROM twin.ai_proposals WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A41}}'$q$
+$$;
+CREATE FUNCTION pg_temp.write_a45(updater text DEFAULT '{{USR_A2}}', extra text DEFAULT '') RETURNS text LANGUAGE sql AS $$
+  SELECT format('UPDATE twin.model_drafts SET ai_proposal_id=%L, revision=2, updated_by=%L, updated_at=now()%s '
+      'WHERE organization_id=%L AND model_id=%L', '{{AIP_A45}}', updater, extra, '{{ORG_A}}', '{{MDL_A}}')
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.save_a41(), pg_temp.write_a45(text, text) TO PUBLIC;
+-- USR_A's start of INV_A9 reusing a person's baseline (3 runs), with its
+-- job: complete, so that only the rule a case breaks can refuse it.
+CREATE FUNCTION pg_temp.reuse(overrides jsonb) RETURNS text[] LANGUAGE sql AS $$
+  SELECT ARRAY[pg_temp.inv('{{INV_A9}}', '{{USR_A}}', 'scenario', jsonb_build_object('baseline_name', NULL,
+      'caps', '{"what_ifs":3,"runs":3,"explanations":4,"steps":14,"minutes":20}'::jsonb) || overrides),
+    pg_temp.ijob('{{JOB_A99}}', '{{INV_A9}}')]
+$$;
+GRANT EXECUTE ON FUNCTION pg_temp.reuse(jsonb) TO PUBLIC;
 
 -- Tenant A: an owner (A), two editors (A2, A3) and a viewer (A4); a model
 -- with one version and a draft at it. Tenant B: an owner and a model.
@@ -294,9 +346,9 @@ SELECT pg_temp.must_fail(pg_temp.inv('{{INV_A9}}', '{{USR_A}}', 'scenario', o), 
   jsonb_build_object('planner_model', 'muse-x'),
   jsonb_build_object('intent', ''),
   jsonb_build_object('intent', NULL),
-  jsonb_build_object('baseline_name', NULL),
-  -- a reused baseline must be a run of the base with no patch and these settings
-  jsonb_build_object('baseline_run_id', '{{SIM_X}}', 'baseline_name', NULL)
+  jsonb_build_object('baseline_name', NULL)
+  -- a reused baseline: below ("Reusing a person's baseline"), once a
+  -- person's runs exist
 ]) AS o;
 SELECT pg_temp.must_fail(pg_temp.inv('{{INV_A9}}', '{{USR_A}}', 'edit', o), '23514') FROM unnest(ARRAY[
   jsonb_build_object('run_config', pg_temp.run_config(), 'run_config_hash', '{{H1}}'),
@@ -348,6 +400,8 @@ SELECT pg_temp.must_fail(pg_temp.upd_inv('{{INV_A1}}', s), '55000') FROM unnest(
 SELECT pg_temp.inv('{{INV_A5}}', '{{USR_A4}}', 'scenario',
   jsonb_build_object('created_at', now() - interval '25 minutes', 'deadline_at', now() - interval '5 minutes')) \gexec
 SELECT pg_temp.ijob('{{JOB_A85}}', '{{INV_A5}}') \gexec
+SET CONSTRAINTS ALL IMMEDIATE; -- it has its job (and pg_temp.age may set a trigger aside)
+SET CONSTRAINTS ALL DEFERRED;
 
 -- ===================================================================
 -- The ledger. The worker appends a call under the current lease of the
@@ -397,6 +451,9 @@ SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A49}}', '{{USR_A2}}', 'scenario'), 
 SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A49}}', '{{USR_A}}', 'scenario', ',investigation_id', ',NULL'), '42501'); -- unlabelled
 SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A49}}', '{{USR_A}}', 'scenario', ',investigation_id', $v$,'{{INV_A3}}'$v$), '42501'); -- forged
 SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A49}}', '{{USR_A}}', 'edit'), '23514');                -- another mode
+-- after its end (its requester's stop, or its deadline) it proposes nothing
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended(h, '{{INV_A1}}', '{{USR_A}}')
+  || ARRAY[pg_temp.prop('{{AIP_A41}}', '{{USR_A}}', 'scenario')], '55000') FROM unnest(ARRAY['stop', 'deadline']) AS h;
 SELECT pg_temp.prop('{{AIP_A41}}', '{{USR_A}}', 'scenario', ',investigation_index', ',3') \gexec
 SELECT pg_temp.check(investigation_id = '{{INV_A1}}' AND investigation_index = 1, 'the proposal is labelled and is what-if 1, whatever was asked')
   FROM twin.ai_proposals WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A41}}';
@@ -554,9 +611,14 @@ SELECT pg_temp.must_fail_at_commit(ARRAY[
      VALUES ('{{SCN_A14}}','{{ORG_A}}','{{MDL_A}}','{{MV_A1}}','Another patch','[]','{{H2}}','{{AIP_A41}}','{{USR_A}}')$q$,
   pg_temp.upd_prop('{{AIP_A41}}', $q$status='applied', scenario_id='{{SCN_A14}}'$q$)
 ], '23514');
-INSERT INTO twin.scenarios(id,organization_id,model_id,base_version_id,name,patch,patch_hash,source_proposal_id,created_by)
-  SELECT '{{SCN_A11}}', organization_id, model_id, base_version_id, summary, patch, patch_hash, id, created_by
-  FROM twin.ai_proposals WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A41}}';
+-- after its end (its requester's stop, or its deadline) it saves no
+-- scenario, and applies no proposal whose scenario it saved while it ran
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended(h, '{{INV_A1}}', '{{USR_A}}') || ARRAY[pg_temp.save_a41()], '55000')
+  FROM unnest(ARRAY['stop', 'deadline']) AS h;
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.save_a41()] || pg_temp.ended(h, '{{INV_A1}}', '{{USR_A}}')
+  || ARRAY[pg_temp.upd_prop('{{AIP_A41}}', $q$status='applied', scenario_id='{{SCN_A11}}'$q$)], '55000')
+  FROM unnest(ARRAY['stop', 'deadline']) AS h;
+SELECT pg_temp.save_a41() \gexec
 SELECT pg_temp.check(investigation_id = '{{INV_A1}}', 'the scenario is labelled') FROM twin.scenarios WHERE organization_id='{{ORG_A}}' AND id='{{SCN_A11}}';
 -- never approved, rejected or conflicted in the scope; applied only for its
 -- requester; not without the scope
@@ -620,6 +682,9 @@ SELECT pg_temp.must_fail(s, '23514') FROM unnest(ARRAY[
 ]) AS s;
 SELECT pg_temp.must_fail(pg_temp.run('{{SIM_A19}}', '{{USR_A2}}', NULL, '[]'), '42501');                       -- for another person
 SELECT pg_temp.must_fail(pg_temp.run('{{SIM_A19}}', '{{USR_A}}', NULL, '[]', 5, NULL, NULL, '{{H1}}', ',investigation_id', ',NULL'), '42501');
+-- after its end (its requester's stop, or its deadline) it runs nothing
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended(h, '{{INV_A1}}', '{{USR_A}}') || ARRAY[pg_temp.run('{{SIM_A13}}', '{{USR_A}}', NULL, '[]')],
+  '55000') FROM unnest(ARRAY['stop', 'deadline']) AS h;
 SELECT pg_temp.run('{{SIM_A13}}', '{{USR_A}}', NULL, '[]') \gexec
 SELECT pg_temp.run('{{SIM_A14}}', '{{USR_A}}', '{{SCN_A11}}', '[{"op":"test","path":"/name","value":"Model A v1"}]') \gexec
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,simulation_run_id) VALUES
@@ -655,6 +720,9 @@ SELECT pg_temp.must_fail(pg_temp.ana('{{ANA_A17}}', '{{USR_A}}', r, b), '23514')
   ('{{SIM_A13}}', '{{SIM_A14}}'),   -- the baseline explained against the what-if
   ('{{SIM_A14}}', '{{SIM_A11}}'),   -- against a person's baseline
   ('{{SIM_A12}}', '{{SIM_A13}}')) AS t(r, b); -- a person's run
+-- after its end (its requester's stop, or its deadline) it explains nothing
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended(h, '{{INV_A1}}', '{{USR_A}}')
+  || ARRAY[pg_temp.ana('{{ANA_A11}}', '{{USR_A}}', '{{SIM_A14}}', '{{SIM_A13}}')], '55000') FROM unnest(ARRAY['stop', 'deadline']) AS h;
 SELECT pg_temp.ana(a, '{{USR_A}}', '{{SIM_A14}}', '{{SIM_A13}}') FROM unnest(ARRAY['{{ANA_A11}}','{{ANA_A12}}','{{ANA_A13}}','{{ANA_A14}}']) AS a \gexec
 SELECT pg_temp.must_fail(pg_temp.ana('{{ANA_A15}}', '{{USR_A}}', '{{SIM_A14}}', '{{SIM_A13}}'), '23514'); -- a 5th explanation
 SELECT pg_temp.check(array_agg(investigation_index ORDER BY investigation_index) = ARRAY[1, 2, 3, 4], 'explanations 1 to 4')
@@ -680,13 +748,18 @@ SELECT pg_temp.must_fail(pg_temp.call('{{INV_A3}}', 15, 'invalid_call', '{{JOB_A
 
 -- ===================================================================
 -- Edit mode (INV_A2, USR_A2): one proposal, no runs, its edit written into
--- a clean draft and named there; a person publishes it.
+-- a clean draft and named there, through the ledger (call 1
+-- propose_model_edit, call 2 write_to_draft); a person publishes it.
+SET LOCAL ROLE twin_worker;
+SELECT pg_temp.claim('{{JOB_A82}}') \gexec
+SELECT pg_temp.call('{{INV_A2}}', 1, 'propose_model_edit', '{{JOB_A82}}', 1) \gexec
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.acting('{{INV_A2}}', '{{USR_A2}}');
 SELECT pg_temp.prop('{{AIP_A45}}', '{{USR_A2}}', 'edit') \gexec
 INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES ('{{JOB_A90}}','{{ORG_A}}','model_proposal','queued','{}','{{AIP_A45}}');
 SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A46}}', '{{USR_A2}}', 'edit'), '23514');                   -- one proposal
 SELECT pg_temp.must_fail(pg_temp.run('{{SIM_A19}}', '{{USR_A2}}', NULL, '[]', 5, NULL, NULL, '{{H1}}'), '23514'); -- no runs
+SELECT pg_temp.upd_call('{{INV_A2}}', 1, $q$status='done', proposal_id='{{AIP_A45}}'$q$) \gexec
 SELECT pg_temp.acting('', '');
 SET LOCAL ROLE twin_worker;
 SELECT pg_temp.claim('{{JOB_A90}}') \gexec
@@ -694,6 +767,8 @@ UPDATE twin.ai_proposals SET status='ready', summary='A second tester at ICT.', 
     patch_hash='{{H1}}', validation='{"valid":true,"issues":[]}', confidence=0.9, server_risk_level='low', provider_risk_claim='low', risk_level='low'
   WHERE organization_id='{{ORG_A}}' AND id='{{AIP_A45}}';
 UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A90}}';
+SELECT pg_temp.upd_call('{{INV_A2}}', 1, $q$observation='{"proposal_id":"{{AIP_A45}}","status":"ready"}', observation_hash='{{H3}}'$q$) \gexec
+SELECT pg_temp.call('{{INV_A2}}', 2, 'write_to_draft', '{{JOB_A82}}', 1, '{"arguments":{"proposal_id":"{{AIP_A45}}"}}') \gexec
 SET CONSTRAINTS ALL IMMEDIATE;
 SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_api;
@@ -701,24 +776,52 @@ SET LOCAL ROLE twin_api;
 SELECT pg_temp.acting('', '{{USR_A2}}');
 SELECT pg_temp.must_fail($q$UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A45}}', revision=2 WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$, '42501');
 SELECT pg_temp.acting('{{INV_A2}}', '{{USR_A2}}');
--- in the scope: only its own edit, for its requester; the revision is the
--- one the proposal records at commit
+-- in the scope: only its own edit, for its requester, into its model's
+-- draft at its base; the revision is the one the proposal records at commit
 SELECT pg_temp.must_fail(s, '42501') FROM unnest(ARRAY[
   $q$UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A41}}', revision=2, updated_by='{{USR_A2}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,
-  $q$UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A45}}', revision=2, updated_by='{{USR_A}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$
+  pg_temp.write_a45('{{USR_A}}')
 ]) AS s;
+SELECT pg_temp.must_fail_at_commit(ARRAY[format('SELECT pg_temp.acting(%L, %L)', '{{INV_A2}}', '{{USR_A}}'), pg_temp.write_a45('{{USR_A}}')],
+  '42501'); -- acting for another person than its requester
 SELECT pg_temp.must_fail_at_commit(ARRAY[
-  $q$UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A45}}', revision=2, updated_by='{{USR_A2}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$
-], '23514'); -- not applied with this revision
-SELECT pg_temp.must_fail_at_commit(ARRAY[
-  $q$UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A45}}', revision=2, updated_by='{{USR_A2}}' WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}'$q$,
-  pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=3$q$)
-], '23514');
-UPDATE twin.model_drafts SET ai_proposal_id='{{AIP_A45}}', revision=2, updated_by='{{USR_A2}}', updated_at=now()
-  WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}';
+  format('SELECT pg_temp.acting(%L, %L)', '', '{{USR_A}}'),
+  $q$INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,created_by)
+     VALUES ('{{MV_A2}}','{{ORG_A}}','{{MDL_A}}',2,'0.1','{{MV_A1}}','{{IR_A2}}','{{IR_A2_HASH}}','{{USR_A}}')$q$,
+  $q$UPDATE twin.models SET latest_version_id='{{MV_A2}}', updated_at=now() WHERE organization_id='{{ORG_A}}' AND id='{{MDL_A}}'$q$,
+  format('SELECT pg_temp.acting(%L, %L)', '{{INV_A2}}', '{{USR_A2}}'),
+  pg_temp.write_a45('{{USR_A2}}', $q$, base_version_id='{{MV_A2}}'$q$),
+  pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=2$q$)
+], '23514'); -- a draft at another base than the investigation's
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.write_a45()], '23514'); -- not applied with this revision
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.write_a45(), pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=3$q$)],
+  '23514');
+-- After its end (its requester's stop, or its deadline) the AI's edit lands
+-- nowhere: not in the draft, not as applied, and its call is not carried
+-- out (H-061 §8, §12, §13); after a stop not even refused.
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended(h, '{{INV_A2}}', '{{USR_A2}}') || ARRAY[pg_temp.write_a45()], '55000')
+  FROM unnest(ARRAY['stop', 'deadline']) AS h;
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.write_a45()] || pg_temp.ended(h, '{{INV_A2}}', '{{USR_A2}}')
+  || ARRAY[pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=2$q$)], '55000')
+  FROM unnest(ARRAY['stop', 'deadline']) AS h;
+SELECT pg_temp.must_fail_at_commit(ARRAY[pg_temp.write_a45(), pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=2$q$)]
+  || pg_temp.ended(h, '{{INV_A2}}', '{{USR_A2}}') || ARRAY[pg_temp.upd_call('{{INV_A2}}', 2, $q$status='done', draft_revision=2$q$)], '55000')
+  FROM unnest(ARRAY['stop', 'deadline']) AS h;
+SELECT pg_temp.must_fail_at_commit(pg_temp.ended('stop', '{{INV_A2}}', '{{USR_A2}}')
+  || ARRAY[pg_temp.upd_call('{{INV_A2}}', 2, $q$status='refused', error='{"code":"DRAFT_CHANGED","path":""}'$q$)], '55000');
+-- While it runs: the draft write, applied, its audit, the call carried out.
+SELECT pg_temp.write_a45() \gexec
 SELECT pg_temp.upd_prop('{{AIP_A45}}', $q$status='applied', applied_draft_revision=2$q$) \gexec
+SELECT pg_temp.audit('{{AUD_A14}}', '{{USR_A2}}', 'proposal.apply', 'ai_proposal', '{{AIP_A45}}',
+  '{"investigation_id":"{{INV_A2}}","by_ai":true,"draft_revision":2}') \gexec
+SELECT pg_temp.upd_call('{{INV_A2}}', 2, $q$status='done', draft_revision=2$q$) \gexec
 SET CONSTRAINTS ALL IMMEDIATE; -- the draft holds the applied revision
 SET CONSTRAINTS ALL DEFERRED;
+SELECT pg_temp.check(d.ai_proposal_id = '{{AIP_A45}}' AND d.revision = 2 AND p.status = 'applied' AND p.applied_draft_revision = 2
+    AND c.status = 'done' AND c.draft_revision = 2, 'the AI''s edit is in the draft at revision 2, applied, its call done')
+  FROM twin.model_drafts d JOIN twin.ai_proposals p ON p.organization_id = d.organization_id AND p.id = d.ai_proposal_id
+  JOIN twin.investigation_tool_calls c ON c.organization_id = p.organization_id AND c.investigation_id = p.investigation_id AND c.seq = 2
+  WHERE d.organization_id='{{ORG_A}}' AND d.model_id='{{MDL_A}}';
 -- The person's next write carries it forward; a publish names it.
 SELECT pg_temp.acting('', '{{USR_A}}');
 UPDATE twin.model_drafts SET revision=3, updated_by='{{USR_A}}', updated_at=now() WHERE organization_id='{{ORG_A}}' AND model_id='{{MDL_A}}';
@@ -762,9 +865,11 @@ SET LOCAL ROLE twin_owner;
 SELECT pg_temp.must_fail(pg_temp.upd_inv('{{INV_A2}}', $q$status='finished', reason='limit_reached', stop_requested_by=NULL$q$), '55000');
 -- After a stop, the worker records no call and the database refuses every
 -- labelled write in its scope.
+-- (The worker shows the AI what call 2 did; it may still, under its job's
+-- lease. Its next call is refused by the stop alone.)
 SET LOCAL ROLE twin_worker;
-SELECT pg_temp.claim('{{JOB_A82}}') \gexec
-SELECT pg_temp.must_fail(pg_temp.call('{{INV_A2}}', 1, 'propose_model_edit', '{{JOB_A82}}', 1), '55000');
+SELECT pg_temp.upd_call('{{INV_A2}}', 2, $q$observation='{"draft_revision":2}', observation_hash='{{H3}}'$q$) \gexec
+SELECT pg_temp.must_fail(pg_temp.call('{{INV_A2}}', 3, 'propose_model_edit', '{{JOB_A82}}', 1), '55000');
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.acting('{{INV_A2}}', '{{USR_A2}}');
 SELECT pg_temp.must_fail(pg_temp.prop('{{AIP_A46}}', '{{USR_A2}}', 'edit'), '55000');
@@ -839,25 +944,62 @@ SET LOCAL ROLE twin_owner;
 SELECT pg_temp.must_fail(pg_temp.upd_inv('{{INV_A1}}', $q$status='stopped', reason='ai_failed', ai_outcome=NULL$q$), '55000');
 
 -- ===================================================================
--- From an analysis (entry B): the reused baseline is a run of the base
--- with no patch and the settings; the analysis is completed against it.
+-- Reusing a person's baseline (from a request, or entry B from an
+-- analysis): the baseline is a run of the base with no scenario, no patch
+-- and the investigation's run settings, and entry B's analysis is
+-- completed against it. Each refusal is otherwise complete (its job too,
+-- with the checks at commit), so the one rule it names refuses it alone.
+-- A person's runs: SIM_A11 and SIM_A15, baselines of the base with the
+-- settings; SIM_A16 with other settings; SIM_A17 a patch without a
+-- scenario; SIM_A18 a scenario without a patch; SIM_A12 a scenario and its
+-- patch (above). Their analyses, completed: ANA_A16 against SIM_A11,
+-- ANA_A18 against SIM_A12, ANA_A19 against SIM_A16.
 SET LOCAL ROLE twin_api;
 SELECT pg_temp.acting('', '{{USR_A}}');
-SELECT pg_temp.ana('{{ANA_A16}}', '{{USR_A}}', '{{SIM_A12}}', '{{SIM_A11}}') \gexec
-INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_analysis_id) VALUES ('{{JOB_A93}}','{{ORG_A}}','analysis','queued','{}','{{ANA_A16}}');
+SELECT pg_temp.run('{{SIM_A15}}', '{{USR_A}}', NULL, '[]') \gexec
+SELECT pg_temp.run('{{SIM_A16}}', '{{USR_A}}', NULL, '[]', 5, NULL, NULL, '{{H2}}') \gexec
+SELECT pg_temp.run('{{SIM_A17}}', '{{USR_A}}', NULL, '[{"op":"test","path":"/name","value":"Model A v1"}]') \gexec
+SELECT pg_temp.run('{{SIM_A18}}', '{{USR_A}}', '{{SCN_A13}}', '[]') \gexec
+SELECT pg_temp.ana(a, '{{USR_A}}', r, b) FROM (VALUES ('{{ANA_A16}}', '{{SIM_A12}}', '{{SIM_A11}}'),
+  ('{{ANA_A18}}', '{{SIM_A11}}', '{{SIM_A12}}'), ('{{ANA_A19}}', '{{SIM_A12}}', '{{SIM_A16}}')) AS t(a, r, b) \gexec
+INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_analysis_id) VALUES
+  ('{{JOB_A93}}','{{ORG_A}}','analysis','queued','{}','{{ANA_A16}}'), ('{{JOB_A95}}','{{ORG_A}}','analysis','queued','{}','{{ANA_A18}}'),
+  ('{{JOB_A96}}','{{ORG_A}}','analysis','queued','{}','{{ANA_A19}}');
 SELECT pg_temp.must_fail(pg_temp.inv('{{INV_A8}}', '{{USR_A}}', 'scenario', jsonb_build_object('source', 'analysis', 'source_analysis_id', '{{ANA_A16}}',
   'intent', NULL, 'baseline_run_id', '{{SIM_A11}}', 'baseline_name', NULL,
   'caps', '{"what_ifs":3,"runs":3,"explanations":4,"steps":14,"minutes":20}'::jsonb)), '23514'); -- not completed yet
 SET LOCAL ROLE twin_worker;
-SELECT pg_temp.claim('{{JOB_A93}}') \gexec
-UPDATE twin.ai_analyses SET status='completed', analysis='{"scenario":{"summary":"s"}}' WHERE organization_id='{{ORG_A}}' AND id='{{ANA_A16}}';
-UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id='{{ORG_A}}' AND id='{{JOB_A93}}';
+SELECT pg_temp.claim(j) FROM unnest(ARRAY['{{JOB_A93}}','{{JOB_A95}}','{{JOB_A96}}']) AS j \gexec
+UPDATE twin.ai_analyses SET status='completed', analysis='{"scenario":{"summary":"s"}}'
+  WHERE organization_id='{{ORG_A}}' AND id IN ('{{ANA_A16}}','{{ANA_A18}}','{{ANA_A19}}');
+UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL
+  WHERE organization_id='{{ORG_A}}' AND id IN ('{{JOB_A93}}','{{JOB_A95}}','{{JOB_A96}}');
+SET CONSTRAINTS ALL IMMEDIATE; -- the analyses completed with their jobs
+SET CONSTRAINTS ALL DEFERRED;
 SET LOCAL ROLE twin_api;
+-- From a request: not the base's unpatched run with the settings.
+SELECT pg_temp.must_fail_at_commit(pg_temp.reuse(jsonb_build_object('baseline_run_id', r)), '23514') FROM unnest(ARRAY[
+  '{{SIM_A12}}',  -- a person's what-if: a scenario and its patch
+  '{{SIM_A17}}',  -- a patch without a scenario
+  '{{SIM_A18}}',  -- a scenario without a patch
+  '{{SIM_A16}}'   -- other run settings
+]) AS r;
+SELECT pg_temp.must_fail_at_commit(ARRAY[ -- a run of another version: version 2 is published and is the base, SIM_A11 is version 1's
+  $q$INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,parent_version_id,ir,hash,created_by)
+     VALUES ('{{MV_A2}}','{{ORG_A}}','{{MDL_A}}',2,'0.1','{{MV_A1}}','{{IR_A2}}','{{IR_A2_HASH}}','{{USR_A}}')$q$,
+  $q$UPDATE twin.models SET latest_version_id='{{MV_A2}}', updated_at=now() WHERE organization_id='{{ORG_A}}' AND id='{{MDL_A}}'$q$]
+  || pg_temp.reuse(jsonb_build_object('base_version_id', '{{MV_A2}}', 'baseline_run_id', '{{SIM_A11}}')), '23514');
+SELECT pg_temp.must_commit(pg_temp.reuse(jsonb_build_object('baseline_run_id', b)), format('a request reuses the person''s baseline %s', b))
+  FROM unnest(ARRAY['{{SIM_A11}}', '{{SIM_A15}}']) AS b;
+-- Entry B: its completed analysis is against the baseline it reuses.
+SELECT pg_temp.must_fail_at_commit(pg_temp.reuse(jsonb_build_object('source', 'analysis', 'source_analysis_id', a, 'intent', NULL,
+    'baseline_run_id', r)), '23514') FROM (VALUES
+  ('{{ANA_A18}}', '{{SIM_A12}}'),  -- completed against a person's what-if, which is no baseline
+  ('{{ANA_A19}}', '{{SIM_A16}}'),  -- completed against a run with other settings
+  ('{{ANA_A16}}', '{{SIM_A15}}')   -- a baseline, but not the one its analysis is against
+) AS t(a, r);
 SELECT pg_temp.must_fail(pg_temp.inv('{{INV_A8}}', '{{USR_A}}', 'scenario', jsonb_build_object('source', 'analysis', 'source_analysis_id', '{{ANA_A16}}',
   'intent', NULL, 'baseline_run_id', '{{SIM_A11}}', 'baseline_name', NULL)), '23514'); -- 4 runs with a reused baseline
-SELECT pg_temp.must_fail(pg_temp.inv('{{INV_A8}}', '{{USR_A}}', 'scenario', jsonb_build_object('source', 'analysis', 'source_analysis_id', '{{ANA_A16}}',
-  'intent', NULL, 'baseline_run_id', '{{SIM_A12}}', 'baseline_name', NULL,
-  'caps', '{"what_ifs":3,"runs":3,"explanations":4,"steps":14,"minutes":20}'::jsonb)), '23514'); -- a baseline with a patch
 SELECT pg_temp.inv('{{INV_A8}}', '{{USR_A}}', 'scenario', jsonb_build_object('source', 'analysis', 'source_analysis_id', '{{ANA_A16}}',
   'intent', NULL, 'baseline_run_id', '{{SIM_A11}}', 'baseline_name', NULL,
   'caps', '{"what_ifs":3,"runs":3,"explanations":4,"steps":14,"minutes":20}'::jsonb)) \gexec

@@ -576,3 +576,201 @@ func TestCapsFor(t *testing.T) {
 		t.Errorf("reasons %v, the contract's %v", got, want)
 	}
 }
+
+// edit is an edit-mode investigation of model A for user: no run settings.
+func (e *env) edit(user string) investigations.Investigation {
+	inv := e.request(user)
+	inv.Mode, inv.Objective, inv.RunConfig, inv.RunConfigHash, inv.BaselineName = investigations.Edit, nil, nil, nil, nil
+	inv.Caps = investigations.CapsFor(investigations.Edit, false)
+	return inv
+}
+
+// readyEdit stores inv's edit proposal in its acting-for scope and has it
+// generated ready as its job does (as the schema owner: the job running,
+// the proposal ready and the job completed, in one transaction); it
+// returns the proposal's ID.
+func (e *env) readyEdit(t *testing.T, inv investigations.Investigation) string {
+	t.Helper()
+	id, job := ids.New("aip"), ids.New("job")
+	if err := e.acting(inv, func(ctx context.Context, tx tenant.Tx) error {
+		_, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: id, OrganizationID: e.a.ID, ModelID: e.model, BaseVersionID: e.base,
+			Mode: "edit", Intent: "Add a second tester at ICT", OutputLocale: "en", IDPool: e.idPool, CreatedBy: inv.CreatedBy})
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := postgres.OpenPool(e.admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		for _, q := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES ($1,$2,'model_proposal','queued','{}',$3)`,
+				[]any{job, e.a.ID, id}},
+			{`UPDATE twin.jobs SET status='running', attempt=1, lease_token=lease_token+1, locked_at=now(), locked_by='w',
+				lease_expires_at=now()+interval '30 seconds' WHERE organization_id=$1 AND id=$2`, []any{e.a.ID, job}},
+			{`UPDATE twin.ai_proposals SET status='ready', summary='A second tester at ICT.', patch='[{"op":"test","path":"/name","value":"M"}]',
+				patch_hash='sha256:1111111111111111111111111111111111111111111111111111111111111111', validation='{"valid":true,"issues":[]}',
+				confidence=0.9, server_risk_level='low', provider_risk_claim='low', risk_level='low' WHERE organization_id=$1 AND id=$2`, []any{e.a.ID, id}},
+			{`UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id=$1 AND id=$2`,
+				[]any{e.a.ID, job}},
+		} {
+			if _, err := tx.Exec(ctx, q.sql, q.args...); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// waitsOnLock returns once backend pid waits on a lock; the test fails if
+// done delivers first (the statement did not wait).
+func (e *env) waitsOnLock(t *testing.T, pid int, done <-chan error, what string) {
+	t.Helper()
+	for end := time.Now().Add(30 * time.Second); time.Now().Before(end); time.Sleep(5 * time.Millisecond) {
+		select {
+		case err := <-done:
+			t.Fatalf("%s did not wait for the investigation's lock: %v", what, err)
+		default:
+		}
+		var w *string
+		if err := e.admin.QueryRow(context.Background(), `SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1`, pid).Scan(&w); err != nil {
+			t.Fatal(err)
+		}
+		if w != nil && *w == "Lock" {
+			return
+		}
+	}
+	t.Fatalf("%s never waited for the investigation's lock", what)
+}
+
+// The AI's edit and a person's stop meet on the investigation's row
+// (H-061 §6.3, §8, §13: write_to_draft's draft -> investigation FOR SHARE
+// in the database, whatever the executor does): a stop that is already
+// writing is waited for, and then the AI's draft write is refused; an AI
+// draft write that is already under way is waited for by the stop, and
+// lands, applied, before the stop ends the investigation.
+func TestTheAIsEditAndAStop(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+	if _, err := e.admin.Exec(ctx, `INSERT INTO twin.model_drafts(organization_id,model_id,base_version_id,revision,ir,hash,updated_by)
+		SELECT organization_id, model_id, id, 1, ir, hash, $3 FROM twin.model_versions WHERE organization_id=$1 AND id=$2`,
+		e.a.ID, e.base, e.owner); err != nil {
+		t.Fatal(err)
+	}
+	draft := func() (ai *string, revision int) {
+		t.Helper()
+		if err := e.admin.QueryRow(ctx, `SELECT ai_proposal_id, revision FROM twin.model_drafts WHERE organization_id=$1 AND model_id=$2`,
+			e.a.ID, e.model).Scan(&ai, &revision); err != nil {
+			t.Fatal(err)
+		}
+		return ai, revision
+	}
+	const writeSQL = `UPDATE twin.model_drafts SET ai_proposal_id=$3, revision=2, updated_by=$4, updated_at=now()
+		WHERE organization_id=$1 AND model_id=$2 AND revision=1`
+	// stop runs the requester's stop of inv in a transaction it holds open
+	// until release: it sends its backend's pid, stops, closes wrote, waits.
+	stop := func(inv investigations.Investigation, pid chan<- int, wrote chan<- struct{}, release <-chan struct{}, done chan<- error) {
+		done <- e.api.Run(ctx, tenant.Scope{OrganizationID: e.a.ID, UserID: inv.CreatedBy}, tenant.ReadWrite,
+			func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+				var p int
+				if err := tx.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&p); err != nil {
+					return err
+				}
+				pid <- p
+				if err := investigations.Stop(ctx, tx, e.a.ID, inv.ID, inv.CreatedBy); err != nil {
+					return err
+				}
+				close(wrote)
+				<-release
+				return nil
+			})
+	}
+
+	// 1. The stop writes first: the AI's draft write waits for it, then is refused.
+	inv, err := e.start(t, e.edit(e.editor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal := e.readyEdit(t, inv)
+	stopPID, wrote, release, stopDone := make(chan int, 1), make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	releaseStop := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(releaseStop)
+	go stop(inv, stopPID, wrote, release, stopDone)
+	<-stopPID
+	select {
+	case <-wrote:
+	case err := <-stopDone:
+		t.Fatalf("the stop: %v", err)
+	}
+	writePID, writeDone := make(chan int, 1), make(chan error, 1)
+	go func() {
+		writeDone <- e.acting(inv, func(ctx context.Context, tx tenant.Tx) error {
+			var p int
+			if err := tx.QueryRow(ctx, `SELECT pg_backend_pid()`).Scan(&p); err != nil {
+				return err
+			}
+			writePID <- p
+			_, err := tx.Exec(ctx, writeSQL, e.a.ID, e.model, proposal, inv.CreatedBy)
+			return err
+		})
+	}()
+	e.waitsOnLock(t, <-writePID, writeDone, "the AI's draft write")
+	releaseStop()
+	if err := <-stopDone; err != nil {
+		t.Fatalf("the stop: %v", err)
+	}
+	if err := <-writeDone; !errors.Is(err, postgres.ErrImmutable) {
+		t.Errorf("the AI's draft write after the stop: %v", err)
+	}
+	if ai, revision := draft(); ai != nil || revision != 1 {
+		t.Errorf("after the stop the draft names %v at revision %d", ai, revision)
+	}
+
+	// 2. The AI's draft write is first: the stop waits for it, and the
+	// edit lands, applied, before the stop ends the investigation.
+	second, err := e.start(t, e.edit(e.editor))
+	if err != nil {
+		t.Fatal(err)
+	}
+	proposal = e.readyEdit(t, second)
+	written, apply, writeDone := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	applyNow := sync.OnceFunc(func() { close(apply) })
+	t.Cleanup(applyNow)
+	go func() {
+		writeDone <- e.acting(second, func(ctx context.Context, tx tenant.Tx) error {
+			if _, err := tx.Exec(ctx, writeSQL, e.a.ID, e.model, proposal, second.CreatedBy); err != nil {
+				return err
+			}
+			close(written)
+			<-apply
+			_, err := tx.Exec(ctx, `UPDATE twin.ai_proposals SET status='applied', applied_draft_revision=2 WHERE organization_id=$1 AND id=$2`,
+				e.a.ID, proposal)
+			return err
+		})
+	}()
+	select {
+	case <-written:
+	case err := <-writeDone:
+		t.Fatalf("the AI's draft write while it runs: %v", err)
+	}
+	stopPID, wrote, release, stopDone = make(chan int, 1), make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	close(release)
+	go stop(second, stopPID, wrote, release, stopDone)
+	e.waitsOnLock(t, <-stopPID, stopDone, "the stop")
+	applyNow()
+	if err := <-writeDone; err != nil {
+		t.Fatalf("the AI's edit before the stop: %v", err)
+	}
+	if err := <-stopDone; err != nil {
+		t.Fatalf("the stop after the AI's edit: %v", err)
+	}
+	if ai, revision := draft(); ai == nil || *ai != proposal || revision != 2 {
+		t.Errorf("the draft names %v at revision %d, want %s at 2", ai, revision, proposal)
+	}
+	if got := e.read(t, e.a.ID, e.editor, second.ID); got.Status != investigations.Stopped || *got.Reason != investigations.StoppedByPerson {
+		t.Errorf("after the AI's edit: %+v", got)
+	}
+}

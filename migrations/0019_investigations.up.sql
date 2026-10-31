@@ -28,11 +28,13 @@
 --   * Labels: ai_proposals, scenarios, simulation_runs and ai_analyses get
 --     investigation_id, defaulting to the transaction's app.investigation_id;
 --     a row is labelled exactly when it is written in that scope, for its
---     requester, while the investigation runs (the acting-for guard), and
---     the index or slot that caps it is assigned here. Labelled runs keep
---     D-007's limits, at most 10 replications, 28 days and a sampled trace.
---     A proposal the AI acts on becomes `applied` (never `approved`); a
---     person may still approve or reject it while it is ready.
+--     requester, while the investigation runs and before its deadline (the
+--     acting-for guard), and the index or slot that caps it is assigned
+--     here. Labelled runs keep D-007's limits, at most 10 replications, 28
+--     days and a sampled trace. A proposal the AI acts on becomes `applied`
+--     (never `approved`), and the AI's edit is written into a draft, only
+--     while the investigation runs and before its deadline too; a person
+--     may still approve or reject a ready proposal.
 --   * Deny triggers: while app.investigation_id is set, the database refuses
 --     publishing, deciding, and every write outside the investigation's
 --     tool effects, whatever the API role's grants allow.
@@ -676,7 +678,8 @@ CREATE TRIGGER guard_investigation_job BEFORE INSERT ON twin.jobs
 --     (invalid_call, refused at once) and finish (done, the last row).
 --   UPDATE (the API): pending -> done, refused or failed, once, in the
 --     investigation's acting-for transaction for its requester, while it
---     runs; what it made is the investigation's own.
+--     runs (done only before its deadline); what it made is the
+--     investigation's own.
 --   UPDATE (the worker): what the AI was shown, once, on a carried-out
 --     call, while the investigation's job holds an unexpired lease.
 -- Everything else of a call never changes. The schema owner is held to
@@ -761,10 +764,15 @@ BEGIN
         RAISE EXCEPTION 'a call is carried out only in its investigation''s acting-for scope, for its requester' USING ERRCODE = '42501';
       END IF;
     END IF;
-    SELECT i.status, i.baseline_run_id INTO inv FROM twin.investigations i
+    SELECT i.status, i.deadline_at, i.baseline_run_id INTO inv FROM twin.investigations i
       WHERE i.organization_id = NEW.organization_id AND i.id = NEW.investigation_id FOR SHARE;
     IF inv.status <> 'running' THEN
       RAISE EXCEPTION 'a call is carried out only while its investigation runs' USING ERRCODE = '55000';
+    END IF;
+    -- its effect needs the time left (every labelled write does); after the
+    -- deadline the call may still be recorded refused or failed
+    IF NEW.status = 'done' AND now() >= inv.deadline_at THEN
+      RAISE EXCEPTION 'a call is carried out only before its investigation''s deadline' USING ERRCODE = '55000';
     END IF;
     IF (NEW.proposal_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM twin.ai_proposals p
           WHERE p.organization_id = NEW.organization_id AND p.id = NEW.proposal_id AND p.investigation_id = NEW.investigation_id))
@@ -1025,12 +1033,14 @@ CREATE TRIGGER protect_investigation_label BEFORE UPDATE ON twin.ai_analyses
 -- ---------------------------------------------------------------------
 -- 0001's protect_proposal, plus one transition: ready -> applied, the AI's
 -- action on its own ready proposal, only in its investigation's acting-for
--- transaction for its requester, with its effect already written (the
--- scenario it saved, or the draft revision it wrote). applied is final, so
--- it is never approved or rejected; a person may still decide a ready one.
+-- transaction for its requester, while the investigation runs and before
+-- its deadline, with its effect already written (the scenario it saved, or
+-- the draft revision it wrote). applied is final, so it is never approved
+-- or rejected; a person may still decide a ready one.
 -- The investigation label is part of a proposal's identity.
 CREATE OR REPLACE FUNCTION twin.protect_proposal_content() RETURNS trigger LANGUAGE plpgsql
   SET search_path = pg_catalog, pg_temp AS $$
+DECLARE inv record;
 BEGIN
   IF ROW(NEW.organization_id,NEW.model_id,NEW.base_version_id,NEW.mode,NEW.source_import_id,NEW.intent,NEW.investigation_id,NEW.investigation_index)
      IS DISTINCT FROM ROW(OLD.organization_id,OLD.model_id,OLD.base_version_id,OLD.mode,OLD.source_import_id,OLD.intent,OLD.investigation_id,OLD.investigation_index) THEN
@@ -1062,6 +1072,17 @@ BEGIN
        OR NEW.investigation_id::text IS DISTINCT FROM nullif(current_setting('app.investigation_id',true),'')
        OR NEW.created_by::text IS DISTINCT FROM nullif(current_setting('app.user_id',true),'') THEN
       RAISE EXCEPTION 'only its own investigation applies an AI proposal, for the person who started it' USING ERRCODE='42501';
+    END IF;
+    -- while it runs, before its deadline (FOR SHARE: a stop that commits
+    -- first refuses it; the executor holds it already, from its scenario or
+    -- draft write, so its lock order is kept: draft -> investigation ->
+    -- proposal, H-061 §6.3). The proposal's creator is the investigation's
+    -- requester (bound by the label guard, never changed, 0012), and its
+    -- mode the investigation's.
+    SELECT i.status, i.deadline_at INTO inv FROM twin.investigations i
+      WHERE i.organization_id=NEW.organization_id AND i.id=NEW.investigation_id FOR SHARE;
+    IF NOT FOUND OR inv.status<>'running' OR now()>=inv.deadline_at THEN
+      RAISE EXCEPTION 'an investigation applies its proposal only while it runs, before its deadline' USING ERRCODE='55000';
     END IF;
     IF NOT coalesce((NEW.mode='scenario' AND EXISTS (SELECT 1 FROM twin.scenarios s
             WHERE s.organization_id=NEW.organization_id AND s.id=NEW.scenario_id AND s.source_proposal_id=NEW.id
@@ -1150,11 +1171,16 @@ CREATE TRIGGER guard_investigation_proposal BEFORE UPDATE ON twin.ai_proposals
   FOR EACH ROW EXECUTE FUNCTION twin.guard_investigation_proposal();
 
 -- The AI's edit in a draft: only its own investigation names it (while the
--- scope is set, a draft changes only by gaining its edit proposal); a
--- person's write keeps it or clears it, never sets one.
+-- scope is set, a draft changes only by gaining its edit proposal), while
+-- the investigation runs and before its deadline, for its requester, in
+-- its model's draft at its base; a person's write keeps it or clears it,
+-- never sets one.
 CREATE FUNCTION twin.guard_draft_ai_edit() RETURNS trigger LANGUAGE plpgsql
   SET search_path = pg_catalog, pg_temp AS $$
-DECLARE acting text := nullif(current_setting('app.investigation_id', true), '');
+DECLARE
+  acting text := nullif(current_setting('app.investigation_id', true), '');
+  usr text := nullif(current_setting('app.user_id', true), '');
+  inv record;
 BEGIN
   IF acting IS NULL THEN
     IF NOT pg_catalog.pg_has_role(current_user, 'twin_owner', 'USAGE') AND NEW.ai_proposal_id IS NOT NULL
@@ -1163,11 +1189,26 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;
-  IF TG_OP <> 'UPDATE' OR NEW.ai_proposal_id IS NULL OR NEW.ai_proposal_id IS NOT DISTINCT FROM OLD.ai_proposal_id
-     OR NEW.updated_by::text IS DISTINCT FROM nullif(current_setting('app.user_id', true), '')
+  IF TG_OP <> 'UPDATE' OR NEW.ai_proposal_id IS NULL OR NEW.ai_proposal_id IS NOT DISTINCT FROM OLD.ai_proposal_id THEN
+    RAISE EXCEPTION 'an AI investigation changes a draft only by writing its own edit, for its requester' USING ERRCODE = '42501';
+  END IF;
+  -- read FOR SHARE (the executor's draft -> investigation step, H-061
+  -- §6.3): a stop that commits first is waited for and then refuses it
+  SELECT i.status, i.deadline_at, i.base_version_id, i.created_by INTO inv FROM twin.investigations i
+    WHERE i.organization_id = NEW.organization_id AND i.id = acting FOR SHARE;
+  IF NOT FOUND OR inv.status <> 'running' OR now() >= inv.deadline_at THEN
+    RAISE EXCEPTION 'an investigation writes only while it runs, before its deadline' USING ERRCODE = '55000';
+  END IF;
+  -- its own edit proposal: so the investigation is in edit mode, and the
+  -- draft its model's (a proposal's mode and model are its investigation's,
+  -- bound by its label guard and never changed)
+  IF NEW.updated_by::text IS DISTINCT FROM usr OR usr IS DISTINCT FROM inv.created_by::text
      OR NOT EXISTS (SELECT 1 FROM twin.ai_proposals p WHERE p.organization_id = NEW.organization_id AND p.model_id = NEW.model_id
                     AND p.id = NEW.ai_proposal_id AND p.mode = 'edit' AND p.investigation_id::text = acting) THEN
     RAISE EXCEPTION 'an AI investigation changes a draft only by writing its own edit, for its requester' USING ERRCODE = '42501';
+  END IF;
+  IF NEW.base_version_id::text <> inv.base_version_id::text THEN
+    RAISE EXCEPTION 'an investigation writes its edit only into a draft at its base' USING ERRCODE = '23514';
   END IF;
   RETURN NEW;
 END $$;

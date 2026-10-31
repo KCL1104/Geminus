@@ -103,7 +103,7 @@ IDS.update({f"JOB_A{n}": ("job", "A", n) for n in range(81, 100)})
 IDS.update({f"AIP_A{n}": ("aip", "A", n) for n in range(41, 50)})
 IDS.update({f"SCN_A{n}": ("scn", "A", n) for n in range(11, 15)})
 IDS.update({f"SIM_A{n}": ("sim", "A", n) for n in range(11, 20)})
-IDS.update({f"ANA_A{n}": ("ana", "A", n) for n in range(11, 18)})
+IDS.update({f"ANA_A{n}": ("ana", "A", n) for n in range(11, 20)})
 IDS.update({f"AUD_A{n}": ("aud", "A", n) for n in range(11, 20)})
 IDS.update({f"ASR_A{n}": ("asr", "A", n) for n in range(11, 14)})
 IDS.update({"USR_A3": ("usr", "A", 3), "USR_A4": ("usr", "A", 4), "INV_B1": ("inv", "B", 1), "JOB_B1": ("job", "B", 1),
