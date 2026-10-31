@@ -7,7 +7,7 @@ export type ShotData = { width: number; height: number; themes: { light: string[
 export const shots = {
   "canvas": {
     "width": 1208,
-    "height": 572,
+    "height": 702,
     "themes": {
       "light": [
         "canvas-light-1208.webp",

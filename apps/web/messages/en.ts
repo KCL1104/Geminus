@@ -24,6 +24,7 @@ export const en = {
   "proposals.empty": "No AI proposals yet. Ask the AI on the canvas.",
   "proposals.mode.edit": "Change",
   "proposals.mode.scenario": "Scenario",
+  "proposals.unfinished": { one: "1 proposal that did not work", other: "{count} proposals that did not work" },
   "proposals.noSummary": "No summary yet",
   "proposals.state.generating": "Writing",
   "proposals.state.needs_input": "Needs input",

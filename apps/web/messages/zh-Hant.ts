@@ -23,6 +23,7 @@ export const zhHant: Catalog = {
   "proposals.empty": "還沒有 AI 提案。可以在畫布頁請 AI 提出。",
   "proposals.mode.edit": "修改",
   "proposals.mode.scenario": "情境",
+  "proposals.unfinished": { other: "{count} 個沒成功的提案" },
   "proposals.noSummary": "還沒有摘要",
   "proposals.state.generating": "撰寫中",
   "proposals.state.needs_input": "需要資訊",
