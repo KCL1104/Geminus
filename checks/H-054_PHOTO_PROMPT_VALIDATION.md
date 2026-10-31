@@ -152,3 +152,14 @@ Prompt size: the template is 5,132 bytes (4,738 in the first photo-0.3.0, 4,044 
 ## 10. Verification of round 1 (coordinator)
 
 The verifier found two Lows, both wording: the docs said the bare line takes no shape but one ICT step (it takes two ICT steps in series too), and the live checks did not count a series of steps or a duplicated step as a non-pass. Fixed in the docs, this report and the `photo_test.go` comment: on the bare line no *split* passes; the one-step shape is asked by the prompt, not enforced by the server. A ready proposal is a live pass only with exactly one ICT step whose resource has capacity 2 and no step the base already has. No code or test assertion changed.
+
+## 11. Live results after the deploy (coordinator, 2026-10-31)
+
+Deployed with f3e3cc2 (photo-0.3.0). Two photo proposals as the judge, on the demo floor plan (`testdata/photos/electronics-line-demo.png`), on a fresh model whose latest version is the bare line ("Empty line for a photo (synthetic)", `mdl_01M68FR7NHJCM173FSX0ZDZP37`, version 2 published from `testdata/photos/bare-line.json`; the old "Bare line (synthetic)" model is no longer bare).
+
+| Proposal | Status | Shape | SAM 3.1 | Muse Spark 1.3 |
+|---|---|---|---|---|
+| `aip_01M68N4VFT45G40D8NK871FNWD` | ready | AOI, ICT (ICT tester × 2), FCT, Pack; no decision node; `remove /flows/2` (the bare line's SMT → sink) | 10 boxes, 20.1 s, USD 0.020 | 29.0 s, 8,601 output tokens, USD 0.047 |
+| `aip_01M68N734BWHQYYRERFG98BF87` | ready | AOI, ICT (ICT tester × 2), FCT, Pack and ship; no decision node; `remove /flows/2` | 10 boxes, 15.3 s, USD 0.020 | 38.3 s, 10,881 output tokens, USD 0.056 |
+
+Both pass the §6 criteria: ready, exactly one ICT step whose resource has capacity 2, no split, no step the base already has, no existing capacity changed. Before this prompt: 1 pass in 6 photo proposals that reached the model. Two runs are a small sample; the template-base check (§6.4) was not run. The photo card (H-052) showed the photo with SAM's 10 boxes on both.
