@@ -69,7 +69,7 @@ describe("server shell", () => {
     expect(rail(out)).toContain('aria-label="專案"');
     expect(rail(out)).toContain('aria-label="設定"');
     expect(out).toMatch(/<a href="#main"[^>]*>跳到主要內容<\/a>/);
-    expect(out).toContain("先在工廠的數位分身上試一個改變，再動真正的產線。");
+    expect(out).toContain("動產線之前，先在工廠的數位分身上試試看。");
     expect(out).toContain(">登入試用</a>");
     expect(out).not.toContain(en["landing.title"].replace(/'/g, "&#x27;"));
     expect(out).not.toContain(en["landing.signIn"]);
