@@ -103,3 +103,72 @@ Toolchain go1.27.3 (`GOTOOLCHAIN=local`), Python from `.venv` (symlinked from th
 - **The planner turn count across attempts relies on the spend ledger** (metered live), so with the fake it is per attempt only; the database's ceiling and turn trigger stay the backstop.
 - **Observation shapes are the worker's.** The candidate figures A7 serves must equal these observations' (H-061 §10: a test asserts it, A7's).
 - **Merge contention**: `internal/worker/worker.go` and `handler.go` (any loop change), `cmd/worker/*.go` and `internal/config/worker.go` (A7's config, W-slices), `internal/proposals/generator/generator.go` and `internal/analyses/analyzer/analyzer.go` (E2, E3), `internal/ai/aicontext` (E-slices), `internal/audit/audit.go` (A4, A7), `deploy/railway/variables.json` and `scripts/check_deploy.py` (A7, A9), `docs/runbooks/deploy.md`, `Makefile`.
+
+## Review round 1
+
+**Date: 2026-11-01 | Status: agent fixes of the round-1 review findings, no second review yet; no live call; investigations stay behind `GEMINUS_INVESTIGATIONS` (off by default) | Decisions: H-061 §6.4 (write_to_draft: done {draft_revision}), §7 (two invalid turns or three refused steps in a row end invalid_answer), §12 (20 planner turns), §5.7 (resume from the stored ledger) | Requirements: REQ-019 (server-side caps and the stored scope), REQ-021 (AI leakage = 0: a resumed attempt ends where the ledger says)**
+
+Only `internal/investigator` changed. Not changed: migrations (0019 is A3's and untouched), schemas, OpenAPI, prompts, goldens, the registry, the agent, the worker loop, `cmd/worker`, every fake eval report (byte for byte).
+
+### R1.1 Findings and what was done
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| 1 | High | A done `write_to_draft` could never be observed on the database: `dbLedger.Children` required a `proposal_id` in its effect, and `settled` a proposal, while migration 0019's `investigation_tool_calls_effect` takes a done write_to_draft only as `draft_revision` with no `proposal_id` (H-061 §6.4, the edit-written fixture); the only test resolved it in memory with a shape the database refuses. | **Fixed.** `childrenOf` (`observe.go`) is now the one read of what a done call made, over a `rows` reader: the database's (`txRows`, every read scoped to the job's organization, under RLS) and the in-memory ledger's. A done write_to_draft needs its draft revision only; its proposal (for the operation count) is the one its stored arguments name, decoded with the registry (`reg.Decode`, edit mode) and read in the organization. `settled` for write_to_draft needs only the revision. A tool that makes nothing is an error rather than a wait until the deadline. The in-memory ledger now refuses any result `investigation_tool_calls_effect` or `_error_iff_refused` refuses (`resolvable`: the poll fails, the call stays pending) and reads children through `childrenOf` over the rows the executor made, so it can no longer hand over children the row does not name. |
+| 2 | Medium | The H-061 §7 in-a-row counters started at 0 on a resume, and the resume settle never counted the call it settled, so the end depended on whether a worker restarted between steps. | **Fixed.** After the resume settle (and the draft_written check), `loop` seeds `invalidRow` and `refusedRow` from the stored ledger (`inARow`: the refused or failed rows at its end, invalid_call among them; the invalid_call rows at its end) and ends `invalid_answer` before the first ADK run when the rule already holds. An invalid turn with no tool_use leaves no row, so an earlier attempt's is not counted (H-061 §7 does not record it). The precedence is the in-attempt one: a step that completes the row ends invalid_answer before the step cap is looked at. |
+| 3 | Medium | No test covered the app-side 20-planner-turn cap (both checks) or the resume's turn seed from the spend ledger. | **Fixed (tests only; the code was right).** `TestThePlannerTurnCap`: Load with 20 turns (no request, limit_reached, 20), with 19 (one call, then limit_reached, 20), and two scripts that cross 20 within one attempt through calls and failed turns asked again (the 20th failing; the 20th a call within its run), each asserting limit_reached, 20 turns asked, 7 answered, 7 steps and `end.PlannerTurns` 20. |
+
+**One existing test's fixture changed, its assertion kept (not weakened).** `TestTheStepCap` built a ledger of 14 `invalid_call` rows; H-061 §7 ends such a ledger at its second row, and now that a resume counts the ledger's rows it ended `invalid_answer` (`end &{Reason:invalid_answer ... Steps:14}`). The test is about the step cap, so its ledger is now 13 steps alternating a refused run and a saved scenario, then a 14th invalid turn (only finish is offered at the last step): no row the rule ends. It still asserts limit_reached with no planner request, and now `Steps` 14 too.
+
+### R1.2 Tests added or changed (tests first)
+
+| Test | What it holds | Red before the fix |
+|---|---|---|
+| `TestEditModeEndsWithTheDraftOnTheDatabase` (DB) | An edit investigation through the worker loop on the real logins: propose_model_edit (a labelled edit proposal, waited for until ready), write_to_draft resolved done `{draft_revision: 4}` by the stand-in executor (the resolution that also names the proposal is refused by the database, tried in a savepoint), observed with `draft_revision` 4 and `operation_count` 1, the end `draft_written` with no turn after it (2 requests), the job completed, exactly one `investigation.end` {draft_written, 2 steps, 2 turns} | yes: `job failed, investigation stopped` (the five attempts failed on `a done call names no proposal`) |
+| `TestADraftWritesProposalIsReadInItsOrganization` (DB) | Tenant isolation of the new read: a draft write whose arguments name another organization's proposal reads nothing under the worker scope (the read's organization filter and RLS); its own organization's is read | written with the fix (the read is new) |
+| `TestEditModeEndsWithTheDraft` (unit, changed) | The resolution is the database's shape (revision only, no children); the operation count (2) comes from the proposal the arguments name; ends draft_written with 2 steps and 2 turns | build failed: `undefined: childrenOf` |
+| `TestTheTestLedgerRefusesWhatTheDatabaseRefuses` (unit) | `resolvable` mirrors 0019's effect and error checks over 19 shapes; a poll that would store a refused shape fails with `errRefused` and the call stays pending | build failed (as above) |
+| `TestChildrenOfReadsWhatTheRowNames` (unit) | A done draft write's children (revision from the effect, operation count from its proposal, settled by the revision alone, observed); 9 negative rows: no revision, arguments that do not decode, a proposal not there, a propose call with no proposal or one not there, a run call without its pair, a save without its scenario, an explanation without its analysis, a tool that makes nothing | build failed (as above) |
+| `TestAResumeCountsTheLedgersRow` (unit, 7 cases) | Two stored refused/failed steps then a third refused: invalid_answer after 1 request; the third is the pending call the resume settles: invalid_answer with no request and no insert; a stored invalid_call then an unrecorded invalid turn: invalid_answer after 1 request; two stored invalid_call rows: invalid_answer with no request; controls: two refused then a done step goes on to the finish; refused steps before a done one do not count; an invalid_call before a refused step does not count toward invalid turns | yes, 4 of the first 4 cases: `finished_by_ai ... 4 calls, 1 inserts, 2 turns`, `finished_by_ai ... 0 inserts, 1 turns`, `invalid_answer ... 2 turns`, `invalid_answer ... 2 turns` (the controls passed; the 7th case was added after the fix, against its mutant) |
+| `TestThePlannerTurnCap` (unit, 4 cases) | finding 3 above | not red (the code was right); killed by the mutants below |
+
+### R1.3 Commands and results
+
+Toolchain go1.27.3, Python from `.venv` (symlinked from the main checkout, not committed). No live AI call; no `.env` value or key read. The database: a PostgreSQL 16 cluster started for this round by `initdb` in the session scratchpad (trust auth, TCP 127.0.0.1 only on a free port, `unix_socket_directories=''`, `fsync=off`), database `dt_test_h061_a6r1`; dropped and stopped afterwards.
+
+| Command | Exit | Result |
+|---|---|---|
+| `make db-test` (`DT_ALLOW_DB_TESTS=yes`, `DATABASE_URL` the disposable database) | 0 | 0001-0019 up, the SQL suites, the downs, up again; `DB migration smoke up/down/up completed` |
+| Red: `GEMINUS_REQUIRE_DB_TESTS=1 go test -race -p 1 -run TestEditModeEndsWithTheDraftOnTheDatabase ./internal/investigator/` (before the fix) | 1 | `job failed, investigation {... Mode:edit ... Status:stopped ...}` |
+| Red: `go test ./internal/investigator/` (tests written, fix not yet) | 1 | build failed: `undefined: childrenOf` (3 places) |
+| Red: the same after the finding-1 fix, before the finding-2 fix | 1 | `TestAResumeCountsTheLedgersRow`: 4 subtests FAIL (R1.2) |
+| The same after the finding-2 fix | 1 | `TestTheStepCap`: `end &{Reason:invalid_answer ... Steps:14 PlannerTurns:0}` (its fixture, R1.1); fixture changed: `ok` |
+| `go test -race -count=3 ./internal/investigator/` (no database: the 6 DB tests skip) | 0 | `ok` (27.9 s) |
+| `GEMINUS_REQUIRE_DB_TESTS=1 go test -race -count=1 -p 1 -v ./internal/investigator/` on `dt_test_h061_a6r1` | 0 | `ok` (11.2 s): 23 top-level tests PASS, none skipped, the 6 DB tests among them |
+| After one more change (the draft write's decoded arguments read with a checked type assertion, so a wrong type is an error, never a panic): `go test -race -count=1 ./internal/investigator/`; the cluster restarted, `dt_test_h061_a6r1` created again, `make db-test`, then the DB run above again | 0 | `ok` (10.2 s); `DB migration smoke up/down/up completed`; `ok` (11.1 s), 23 PASS, none skipped |
+| Mutation probes with `go test -overlay` (no repo edit; each mutant's tests run): no ledger seed of the rows; the seeded rule not checked before the first run; every non-done row counted, not the trailing ones; invalid turns counted past a refused step; the in-run 20-turn check removed; both 20-turn checks removed; the spend ledger's turns not seeded; a done draft write needing a proposal in its effect (the finding); the draft write's operation count not read; a draft write settled only with a proposal and a revision; the test ledger taking any effect | 1 each | 11 of 11 killed. One more probe, the loop-top 20-turn check alone removed, survives as an equivalent mutant: the next run's first `Next` ends the same turn count `limit_reached` with no request, so the loop-top check only saves building an ADK run |
+| `gofmt -l internal cmd prompts scripts` | 0 | clean |
+| `go vet ./internal/investigator/ ./internal/worker/... ./cmd/worker/`; `go build ./...` | 0 | clean |
+| `make architecture-check` | 0 | `PASS architecture: 108 packages, 41 rules, 16 build configurations` |
+| `make ai-eval`, then `sha256sum -c` and `git status` over `checks/ai-evals/fake-*.json` | 0 | TestFakeProviderEval, TestReviewEval, TestAnalystEval, TestInvestigatorEval PASS; the four fake reports OK and unchanged from HEAD (no new suite) |
+| `PATH=.venv/bin:$PATH make spec-check` | 0 | contracts `PASS_LIMITED_SPEC_CHECKS` (16 schemas, 125 positive and 227 negative fixtures, 222 with an exact path; 48 operations), planning `PASS`, docs `PASS` (181 Markdown files, 348 links), SQL inventory, reference arithmetic, engine vectors, decisions (shape only), TS contracts fresh (17 files, 165 types), independent hashes, DB tests fresh (18 files), static deploy checks |
+| `DROP DATABASE dt_test_h061_a6r1`; `pg_ctl stop -m fast` | 0 | the disposable database dropped and the cluster stopped |
+
+### R1.4 NOT RUN
+
+- Any live AI call.
+- The real executor's write_to_draft (A7's `effect.WriteDraft`: the draft written under CAS and the proposal applied). The DB stand-in records only the call's result `{draft_revision: 4}` (the ledger takes it: no foreign key binds the revision), with the proposal left ready, not applied.
+- A resume across a real worker restart for the §7 rows (the unit tests give the ledger an earlier attempt left; `TestAResumeSendsNoCallTwice` covers a stopped attempt on the database).
+- The 20-turn cap through the database's reservation trigger with a metered client (the unit tests seed `PlannerTurns`; A3's aispend tests cover the trigger).
+- `make backend-test`, `make frontend-test`, the browser suite (the task's test policy), `make integration-test`, `make backend-race` in full.
+- An independent review of this round.
+
+### R1.5 PROPOSED
+
+- None new. The fixture change of `TestTheStepCap` (R1.1) is offered for the reviewer's agreement.
+
+### R1.6 Risks
+
+- **The write_to_draft observation trusts the executor's binding.** The proposal it counts is the one the arguments name; the API's executor (A7) carries the call out only for this investigation's ready proposal (NOT_IN_INVESTIGATION, `check_proposal_effect`). The worker's read is the organization's, so at worst a wrong count, never another tenant's row (`TestADraftWritesProposalIsReadInItsOrganization`).
+- **Unrecorded invalid turns do not survive a restart** (H-061 §7 records none), so an attempt that lost one counts from the ledger's rows only: at most one more planner turn, inside the 20-turn cap.
+- **Planner turns across attempts still rely on the spend ledger** (§6 above): with the unmetered fake a resume starts from the reservations the database holds (none), so the app-side cap is per attempt there; metered, it is the investigation's.

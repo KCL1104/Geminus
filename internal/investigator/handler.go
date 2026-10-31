@@ -390,6 +390,12 @@ func (s *session) loop(ctx context.Context) error {
 			return s.finish(ctx, Ending{Reason: inv.DraftWritten})
 		}
 	}
+	// H-061 §7 counts on from the stored ledger, so the end does not depend
+	// on whether a worker restarted between the steps.
+	s.invalidRow, s.refusedRow = inARow(s.calls)
+	if s.invalidRow >= 2 || s.refusedRow >= 3 {
+		return s.finish(ctx, Ending{Reason: inv.InvalidAnswer})
+	}
 	for {
 		b := s.budget()
 		switch {
@@ -434,6 +440,22 @@ func (s *session) loop(ctx context.Context) error {
 			return s.retryable(ctx, Interrupted, "the investigation's agent failed; the next attempt resumes from its ledger")
 		}
 	}
+}
+
+// inARow is what the ledger's last calls count toward invalid_answer
+// (H-061 §7), as an attempt counts them while it records them: the
+// recorded invalid turns at its end (invalid_call rows; an invalid turn with
+// no tool_use leaves no row, so an earlier attempt's is not counted) and the
+// refused or failed steps at its end (invalid_call among them). A done step
+// ends both rows.
+func inARow(calls []inv.Call) (invalid, refused int) {
+	for n := len(calls) - 1; n >= 0 && calls[n].Status != inv.Done; n-- {
+		if calls[n].Tool == inv.InvalidCall && invalid == refused {
+			invalid++
+		}
+		refused++
+	}
+	return invalid, refused
 }
 
 // failed handles a failed planner turn (H-061 §13): again when the turn is

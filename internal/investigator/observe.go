@@ -1,6 +1,7 @@
 package investigator
 
 import (
+	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"github.com/kcl1104/geminus/internal/results/compare"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/storage/analyses"
+	inv "github.com/kcl1104/geminus/internal/storage/investigations"
 	"github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/storage/runs"
 	"github.com/kcl1104/geminus/internal/storage/scenarios"
@@ -48,10 +50,91 @@ type Children struct {
 	DraftRevision, OperationCount int64
 }
 
+// rows reads, in the attempt's organization, the rows a done call names.
+type rows interface {
+	proposal(ctx context.Context, id string) (proposals.Proposal, error)
+	scenario(ctx context.Context, id string) (scenarios.Scenario, error)
+	// run is the run and, once completed, its stored result JSON.
+	run(ctx context.Context, id string) (*runs.Run, []byte, error)
+	analysis(ctx context.Context, id string) (analyses.Analysis, error)
+}
+
+// childrenOf reads what the done call c made from what its ledger row
+// names, as migration 0019's investigation_tool_calls_effect holds it: a
+// propose call its proposal, save_scenario its scenario, run_what_if its run
+// pair, explain_results its analysis, and write_to_draft its draft revision
+// alone (H-061 §6.4: done {draft_revision}). write_to_draft's proposal, read
+// for the observation's operation count, is the one its stored arguments
+// name: the executor carried the call out only for this investigation's
+// ready proposal (NOT_IN_INVESTIGATION, PROPOSAL_NOT_READY), and the read is
+// the organization's like every other. A row that does not name what its
+// tool makes, or that cannot be read, is an error.
+func childrenOf(ctx context.Context, c inv.Call, r rows) (Children, error) {
+	var ch Children
+	e := c.Effect
+	switch reg.Tool(c.Tool) {
+	case reg.ProposeWhatIf, reg.ProposeModelEdit:
+		if e.ProposalID == nil {
+			return ch, errors.New("investigator: a done call names no proposal")
+		}
+		p, err := r.proposal(ctx, *e.ProposalID)
+		if err != nil {
+			return ch, err
+		}
+		ch.Proposal = &p
+	case reg.WriteToDraft:
+		if e.DraftRevision == nil || *e.DraftRevision < 1 {
+			return ch, errors.New("investigator: a done draft write names no draft revision")
+		}
+		call, err := reg.Decode(reg.Edit, c.Tool, canonical(c.Arguments))
+		a, ok := call.Arguments.(reg.WriteToDraftArguments)
+		if err != nil || !ok {
+			return ch, errors.New("investigator: a done draft write's arguments do not decode")
+		}
+		p, err := r.proposal(ctx, a.ProposalID)
+		if err != nil {
+			return ch, err
+		}
+		ch.Proposal, ch.DraftRevision, ch.OperationCount = &p, *e.DraftRevision, int64(patchOps(p.Patch))
+	case reg.SaveScenario:
+		if e.ScenarioID == nil {
+			return ch, errors.New("investigator: a done call names no scenario")
+		}
+		s, err := r.scenario(ctx, *e.ScenarioID)
+		if err != nil {
+			return ch, err
+		}
+		ch.Scenario = &s
+	case reg.RunWhatIf:
+		if e.BaselineRunID == nil || e.RunID == nil {
+			return ch, errors.New("investigator: a done call names no run pair")
+		}
+		var err error
+		if ch.Baseline, ch.BaselineResult, err = r.run(ctx, *e.BaselineRunID); err != nil {
+			return ch, err
+		}
+		if ch.Run, ch.RunResult, err = r.run(ctx, *e.RunID); err != nil {
+			return ch, err
+		}
+	case reg.ExplainResults:
+		if e.AnalysisID == nil {
+			return ch, errors.New("investigator: a done call names no analysis")
+		}
+		a, err := r.analysis(ctx, *e.AnalysisID)
+		if err != nil {
+			return ch, err
+		}
+		ch.Analysis = &a
+	default:
+		return ch, fmt.Errorf("investigator: a done %s call makes nothing to wait for", c.Tool)
+	}
+	return ch, nil
+}
+
 // settled reports whether a done call's children have left their
 // in-progress states, so its observation can be written (H-061 §5.6): a
 // proposal past generating, both runs final, the analysis past generating;
-// a saved scenario and a written draft at once.
+// a saved scenario and a written draft (its revision) at once.
 func settled(tool reg.Tool, c Children) bool {
 	switch tool {
 	case reg.ProposeWhatIf, reg.ProposeModelEdit:
@@ -63,7 +146,7 @@ func settled(tool reg.Tool, c Children) bool {
 	case reg.ExplainResults:
 		return c.Analysis != nil && c.Analysis.Status != analyses.Generating
 	case reg.WriteToDraft:
-		return c.Proposal != nil && c.DraftRevision > 0
+		return c.DraftRevision > 0
 	}
 	return false
 }

@@ -5,12 +5,17 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
 
 	reg "github.com/kcl1104/geminus/internal/ai/investigator"
+	"github.com/kcl1104/geminus/internal/storage/analyses"
 	inv "github.com/kcl1104/geminus/internal/storage/investigations"
+	"github.com/kcl1104/geminus/internal/storage/proposals"
+	"github.com/kcl1104/geminus/internal/storage/runs"
+	"github.com/kcl1104/geminus/internal/storage/scenarios"
 )
 
 // memLedger is an in-memory Ledger held to migration 0019's rules for the
@@ -18,7 +23,10 @@ import (
 // the running investigation before its deadline, the mode's tools, the
 // observation once on a resolved call, the end once), with the API's
 // executor played by resolve: each pending call is carried out at the
-// first poll after `after` polls of it.
+// first poll of it. A result the ledger's checks refuse
+// (investigation_tool_calls_effect, _error_iff_refused) fails that poll, and
+// what a done call made is read as the database's ledger reads it
+// (childrenOf over the rows its effect and arguments name).
 type memLedger struct {
 	mu    sync.Mutex
 	st    State
@@ -27,10 +35,9 @@ type memLedger struct {
 	// resolve carries a pending call out: its result and what it made
 	// (nil leaves it pending).
 	resolve func(c inv.Call) *resolution
-	// children is what each done call made, by seq; ready reports whether
-	// it is settled at the n-th read.
-	children map[int]Children
-	reads    map[int]int
+	// rows is what the executor made (each resolution's children), by ID.
+	rows  memRows
+	reads map[int]int
 	// grow makes a call's children ready only after this many reads.
 	grow int
 	// stopAt ends the investigation (stopped_by_person) at that poll,
@@ -48,11 +55,115 @@ type memLedger struct {
 	elsewhere map[int][]byte
 }
 
+// resolution is a call's result as the executor writes it, and the rows it
+// made (children: its proposal, scenario, run pair with their results, or
+// analysis; nothing for a draft write, whose proposal an earlier call made).
 type resolution struct {
 	status   inv.CallStatus
 	effect   inv.Effect
 	err      *inv.ToolError
 	children Children
+}
+
+// resolvable is migration 0019's rule for a call's result: carried out
+// (never pending again), an error exactly when refused or failed
+// (investigation_tool_calls_error_iff_refused), and only a done call names
+// what it made, exactly what its tool makes (investigation_tool_calls_effect:
+// a propose call its proposal, save_scenario its scenario, run_what_if its
+// run pair, explain_results its analysis, write_to_draft its draft revision
+// alone), a revision above 0.
+func resolvable(tool string, r resolution) bool {
+	if r.status == inv.Pending || (r.status == inv.Done) == (r.err != nil) {
+		return false
+	}
+	e := r.effect
+	named := [6]bool{e.ProposalID != nil, e.ScenarioID != nil, e.BaselineRunID != nil, e.RunID != nil, e.AnalysisID != nil, e.DraftRevision != nil}
+	var want [6]bool
+	if r.status == inv.Done {
+		switch reg.Tool(tool) {
+		case reg.ProposeWhatIf, reg.ProposeModelEdit:
+			want[0] = true
+		case reg.SaveScenario:
+			want[1] = true
+		case reg.RunWhatIf:
+			want[2], want[3] = true, true
+		case reg.ExplainResults:
+			want[4] = true
+		case reg.WriteToDraft:
+			want[5] = true
+		default:
+			return false // finish is recorded done, invalid_call refused: neither is ever pending
+		}
+	}
+	return named == want && (e.DraftRevision == nil || *e.DraftRevision > 0)
+}
+
+// memRows are the rows the executor made, by ID: what Children reads.
+type memRows struct {
+	proposals map[string]proposals.Proposal
+	scenarios map[string]scenarios.Scenario
+	runs      map[string]runs.Run
+	results   map[string][]byte
+	analyses  map[string]analyses.Analysis
+}
+
+// keep stores the rows a resolution made.
+func (r *memRows) keep(c Children) {
+	if r.proposals == nil {
+		r.proposals, r.scenarios, r.runs, r.results, r.analyses = map[string]proposals.Proposal{}, map[string]scenarios.Scenario{},
+			map[string]runs.Run{}, map[string][]byte{}, map[string]analyses.Analysis{}
+	}
+	if c.Proposal != nil {
+		r.proposals[c.Proposal.ID] = *c.Proposal
+	}
+	if c.Scenario != nil {
+		r.scenarios[c.Scenario.ID] = *c.Scenario
+	}
+	for _, run := range []struct {
+		r   *runs.Run
+		res []byte
+	}{{c.Baseline, c.BaselineResult}, {c.Run, c.RunResult}} {
+		if run.r != nil {
+			r.runs[run.r.ID], r.results[run.r.ID] = *run.r, run.res
+		}
+	}
+	if c.Analysis != nil {
+		r.analyses[c.Analysis.ID] = *c.Analysis
+	}
+}
+
+var errNoRow = errors.New("mem: no such row")
+
+func (r *memRows) proposal(_ context.Context, id string) (proposals.Proposal, error) {
+	if p, ok := r.proposals[id]; ok {
+		return p, nil
+	}
+	return proposals.Proposal{}, errNoRow
+}
+
+func (r *memRows) scenario(_ context.Context, id string) (scenarios.Scenario, error) {
+	if s, ok := r.scenarios[id]; ok {
+		return s, nil
+	}
+	return scenarios.Scenario{}, errNoRow
+}
+
+func (r *memRows) run(_ context.Context, id string) (*runs.Run, []byte, error) {
+	run, ok := r.runs[id]
+	if !ok {
+		return nil, nil, errNoRow
+	}
+	if run.Status != runs.Completed {
+		return &run, nil, nil
+	}
+	return &run, r.results[id], nil
+}
+
+func (r *memRows) analysis(_ context.Context, id string) (analyses.Analysis, error) {
+	if a, ok := r.analyses[id]; ok {
+		return a, nil
+	}
+	return analyses.Analysis{}, errNoRow
 }
 
 var errRefused = errors.New("mem: refused by the ledger's rules")
@@ -83,13 +194,13 @@ func (m *memLedger) Poll(_ context.Context, seq int) (Polled, error) {
 		c := &m.calls[seq-1]
 		if c.Status == inv.Pending && m.resolve != nil && i.Status == inv.Running {
 			if r := m.resolve(*c); r != nil {
+				if !resolvable(c.Tool, *r) {
+					return Polled{}, fmt.Errorf("%w: call %d (%s) resolved %s with effect %+v", errRefused, seq, c.Tool, r.status, r.effect)
+				}
 				c.Status, c.Effect, c.Error = r.status, r.effect, r.err
 				t := m.now
 				c.ResolvedAt = &t
-				if m.children == nil {
-					m.children = map[int]Children{}
-				}
-				m.children[seq] = r.children
+				m.rows.keep(r.children)
 			}
 		}
 		cc := *c
@@ -98,7 +209,7 @@ func (m *memLedger) Poll(_ context.Context, seq int) (Polled, error) {
 	return p, nil
 }
 
-func (m *memLedger) Children(_ context.Context, c inv.Call) (Children, error) {
+func (m *memLedger) Children(ctx context.Context, c inv.Call) (Children, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.reads == nil {
@@ -108,7 +219,7 @@ func (m *memLedger) Children(_ context.Context, c inv.Call) (Children, error) {
 	if m.reads[c.Seq] <= m.grow {
 		return Children{}, nil
 	}
-	return m.children[c.Seq], nil
+	return childrenOf(ctx, c, &m.rows)
 }
 
 func (m *memLedger) Insert(_ context.Context, c inv.NewCall, observation []byte) error {

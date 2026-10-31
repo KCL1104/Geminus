@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"path/filepath"
@@ -568,20 +569,23 @@ func TestEndsWithoutATurn(t *testing.T) {
 }
 
 // Edit mode: a written draft ends it with draft_written, with no turn
-// after it.
+// after it. The executor resolves write_to_draft done with its draft
+// revision only (H-061 §6.4; the one shape migration 0019 takes); the
+// observation's operation count is the patch of the proposal the call's
+// arguments name.
 func TestEditModeEndsWithTheDraft(t *testing.T) {
 	fx := newFixture(t, inv.Edit,
 		turn("", "toolu_01", "propose_model_edit", `{"idea":"Add a third ICT tester."}`),
 		turn("", "toolu_02", "write_to_draft", `{"proposal_id":"`+tProp1+`"}`),
 		turn("", "toolu_03", "finish", `{"outcome":"improvement_found","best_scenario_id":null}`))
-	p := &proposals.Proposal{ID: tProp1, Status: proposals.Ready, Patch: []byte(`[{"op":"replace","path":"/x","value":1}]`)}
+	p := &proposals.Proposal{ID: tProp1, Status: proposals.Ready,
+		Patch: []byte(`[{"op":"test","path":"/x","value":0},{"op":"replace","path":"/x","value":1}]`)}
 	fx.l.resolve = func(c inv.Call) *resolution {
 		switch reg.Tool(c.Tool) {
 		case reg.ProposeModelEdit:
 			return &resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1)}, children: Children{Proposal: p}}
 		case reg.WriteToDraft:
-			return &resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1), DraftRevision: ptr(int64(4))},
-				children: Children{Proposal: p, DraftRevision: 4, OperationCount: 1}}
+			return &resolution{status: inv.Done, effect: inv.Effect{DraftRevision: ptr(int64(4))}}
 		}
 		return nil
 	}
@@ -589,9 +593,331 @@ func TestEditModeEndsWithTheDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls, end := fx.l.snapshot()
-	if end == nil || end.Reason != inv.DraftWritten || len(calls) != 2 || len(fx.f.Requests()) != 2 ||
-		!strings.Contains(string(canonical(calls[1].Observation)), `"draft_revision":4`) {
+	if end == nil || end.Reason != inv.DraftWritten || end.Already || end.Steps != 2 || end.PlannerTurns != 2 || len(calls) != 2 ||
+		len(fx.f.Requests()) != 2 {
 		t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+	}
+	if o := string(canonical(calls[1].Observation)); !strings.Contains(o, `"draft_revision":4`) || !strings.Contains(o, `"operation_count":2`) {
+		t.Fatalf("observation %s", o)
+	}
+}
+
+// The test ledger refuses a result migration 0019 refuses, as the database
+// would the executor's: its poll fails and the call stays pending.
+func TestTheTestLedgerRefusesWhatTheDatabaseRefuses(t *testing.T) {
+	err := &inv.ToolError{Code: "NOT_IN_INVESTIGATION", Path: ""}
+	for _, c := range []struct {
+		tool string
+		r    resolution
+		ok   bool
+	}{
+		{"write_to_draft", resolution{status: inv.Done, effect: inv.Effect{DraftRevision: ptr(int64(4))}}, true},
+		{"write_to_draft", resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1), DraftRevision: ptr(int64(4))}}, false},
+		{"write_to_draft", resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1)}}, false},
+		{"write_to_draft", resolution{status: inv.Done, effect: inv.Effect{DraftRevision: ptr(int64(0))}}, false},
+		{"write_to_draft", resolution{status: inv.Refused, err: err}, true},
+		{"write_to_draft", resolution{status: inv.Refused, err: err, effect: inv.Effect{DraftRevision: ptr(int64(4))}}, false},
+		{"propose_model_edit", resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1)}}, true},
+		{"propose_model_edit", resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1), DraftRevision: ptr(int64(4))}}, false},
+		{"propose_what_if", resolution{status: inv.Done}, false},
+		{"save_scenario", resolution{status: inv.Done, effect: inv.Effect{ScenarioID: ptr(tScn1)}}, true},
+		{"save_scenario", resolution{status: inv.Done, effect: inv.Effect{ScenarioID: ptr(tScn1), ProposalID: ptr(tProp1)}}, false},
+		{"run_what_if", resolution{status: inv.Done, effect: inv.Effect{BaselineRunID: ptr(tBase), RunID: ptr(tRun1)}}, true},
+		{"run_what_if", resolution{status: inv.Done, effect: inv.Effect{RunID: ptr(tRun1)}}, false},
+		{"explain_results", resolution{status: inv.Done, effect: inv.Effect{AnalysisID: ptr(tAna1)}}, true},
+		{"explain_results", resolution{status: inv.Failed, err: &inv.ToolError{Code: "SERVICE_UNAVAILABLE", Path: ""}}, true},
+		{"explain_results", resolution{status: inv.Failed}, false},
+		{"explain_results", resolution{status: inv.Done, err: err, effect: inv.Effect{AnalysisID: ptr(tAna1)}}, false},
+		{"explain_results", resolution{status: inv.Pending}, false},
+		{"finish", resolution{status: inv.Done}, false},
+	} {
+		if got := resolvable(c.tool, c.r); got != c.ok {
+			t.Errorf("%s %s %+v: resolvable %v, want %v", c.tool, c.r.status, c.r.effect, got, c.ok)
+		}
+	}
+	fx := newFixture(t, inv.Edit)
+	fx.l.calls = []inv.Call{{OrganizationID: tOrg, InvestigationID: tInv, Seq: 1, Tool: "write_to_draft",
+		Arguments: []byte(`{"proposal_id": "` + tProp1 + `"}`), Status: inv.Pending}}
+	fx.l.resolve = func(inv.Call) *resolution {
+		return &resolution{status: inv.Done, effect: inv.Effect{ProposalID: ptr(tProp1), DraftRevision: ptr(int64(4))}}
+	}
+	if _, err := fx.l.Poll(context.Background(), 1); !errors.Is(err, errRefused) {
+		t.Fatalf("poll: %v", err)
+	}
+	if calls, _ := fx.l.snapshot(); calls[0].Status != inv.Pending {
+		t.Fatalf("call %+v", calls[0])
+	}
+}
+
+// What a done call made is read from what its ledger row names: a draft
+// write's revision from its effect and its proposal (for the operation
+// count) from its arguments; a row that does not name what its tool makes,
+// arguments that do not decode or a row that cannot be read fail.
+func TestChildrenOfReadsWhatTheRowNames(t *testing.T) {
+	p := proposals.Proposal{ID: tProp1, Status: proposals.Ready, Patch: []byte(`[{"op":"test","path":"/x","value":0},{"op":"remove","path":"/y"}]`)}
+	rows := &memRows{}
+	rows.keep(Children{Proposal: &p, Scenario: &scenarios.Scenario{ID: tScn1, Name: "A third ICT tester"}})
+	draft := func(args string, revision *int64) inv.Call {
+		return inv.Call{Seq: 2, Tool: "write_to_draft", Arguments: []byte(args), Status: inv.Done, Effect: inv.Effect{DraftRevision: revision}}
+	}
+	ch, err := childrenOf(context.Background(), draft(`{"proposal_id": "`+tProp1+`"}`, ptr(int64(4))), rows)
+	if err != nil || ch.DraftRevision != 4 || ch.OperationCount != 2 || !settled(reg.WriteToDraft, ch) {
+		t.Fatalf("children %+v, %v", ch, err)
+	}
+	if o, err := observe(reg.WriteToDraft, ch, 1, "", reg.Budget{StepsLeft: 12}); err != nil ||
+		!strings.Contains(string(o), `"draft_revision":4`) || !strings.Contains(string(o), `"operation_count":2`) {
+		t.Fatalf("observation %s, %v", o, err)
+	}
+	for name, c := range map[string]inv.Call{
+		"a draft write without its revision":      draft(`{"proposal_id": "`+tProp1+`"}`, nil),
+		"a draft write whose arguments are wrong": draft(`{"proposal_id": 7}`, ptr(int64(4))),
+		"a draft write of a proposal not there":   draft(`{"proposal_id": "`+tProp2+`"}`, ptr(int64(4))),
+		"a proposal call without its proposal":    {Seq: 1, Tool: "propose_model_edit", Status: inv.Done},
+		"a proposal not there":                    {Seq: 1, Tool: "propose_what_if", Status: inv.Done, Effect: inv.Effect{ProposalID: ptr(tProp2)}},
+		"a run call without its pair":             {Seq: 3, Tool: "run_what_if", Status: inv.Done, Effect: inv.Effect{RunID: ptr(tRun1)}},
+		"a save without its scenario":             {Seq: 2, Tool: "save_scenario", Status: inv.Done},
+		"an explanation without its analysis":     {Seq: 4, Tool: "explain_results", Status: inv.Done},
+		"a tool that makes nothing":               {Seq: 5, Tool: "finish", Status: inv.Done},
+	} {
+		if ch, err := childrenOf(context.Background(), c, rows); err == nil {
+			t.Errorf("%s: children %+v", name, ch)
+		}
+	}
+	// A done draft write is settled by its revision alone.
+	if settled(reg.WriteToDraft, Children{Proposal: &p}) || !settled(reg.WriteToDraft, Children{DraftRevision: 4}) {
+		t.Fatal("a draft write is settled by its revision")
+	}
+}
+
+// prior is a call an earlier attempt recorded and saw through, as the
+// ledger holds it: tool with args (canonical; none for invalid_call),
+// refused or failed with code, observed with its error observation and the
+// budget after it; or, with status pending, recorded and not yet carried
+// out.
+func (fx *fixture) prior(t *testing.T, tool, args string, status inv.CallStatus, code string) {
+	t.Helper()
+	seq := len(fx.l.calls) + 1
+	c := inv.Call{OrganizationID: tOrg, InvestigationID: tInv, Seq: seq, Tool: tool, Status: status, RequestedAt: fx.l.now}
+	if args != "" {
+		c.Arguments = jsonb([]byte(args))
+		c.ArgumentsHash = ptr(hashOf(canonical([]byte(args))))
+	}
+	if status != inv.Pending {
+		t0 := fx.l.now
+		c.ResolvedAt, c.ObservedAt = &t0, &t0
+		c.Error = &inv.ToolError{Code: code, Path: ""}
+		caps := capsOf(fx.l.st.Investigation)
+		caps.StepsLeft -= seq
+		obs, err := reg.ErrorObservation(reg.ToolError{Code: reg.Code(code), Path: ""}, caps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c.Observation, c.ObservationHash = jsonb(obs), ptr(hashOf(obs))
+	}
+	fx.l.calls = append(fx.l.calls, c)
+}
+
+// H-061 §7 over a resume: the refused steps and recorded invalid turns in a
+// row that an earlier attempt left in the ledger count on, so the end is
+// the stored ledger's, whether or not a worker restarted between the steps
+// (the same sequence in one attempt: TestThreeRefusedStepsEndIt,
+// TestInvalidTurns). A done step breaks the row.
+func TestAResumeCountsTheLedgersRow(t *testing.T) {
+	const (
+		bad    = `{"scenario_id":"scn_01M4YDQK00TA0000000000000Z"}`
+		finish = `{"outcome":"out_of_ideas","best_scenario_id":null}`
+	)
+	refuse := func(inv.Call) *resolution {
+		return &resolution{status: inv.Refused, err: &inv.ToolError{Code: "NOT_IN_INVESTIGATION", Path: "/scenario_id"}}
+	}
+	runCalls := func(n int, then ...fake.ToolAnswer) []fake.ToolAnswer {
+		var out []fake.ToolAnswer
+		for i := range n {
+			out = append(out, turn("", fmt.Sprintf("toolu_%02d", i+1), "run_what_if", bad))
+		}
+		return append(out, then...)
+	}
+	t.Run("two refused steps, then a third", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, runCalls(3, turn("", "toolu_04", "finish", finish))...)
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "run_what_if", bad, inv.Failed, "SERVICE_UNAVAILABLE")
+		fx.l.resolve = refuse
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		calls, end := fx.l.snapshot()
+		if end == nil || end.Reason != inv.InvalidAnswer || len(calls) != 3 || len(fx.l.inserts) != 1 || len(fx.f.Requests()) != 1 {
+			t.Fatalf("end %+v, %d calls, %d inserts, %d turns", end, len(calls), len(fx.l.inserts), len(fx.f.Requests()))
+		}
+	})
+	t.Run("the third is the call the resume settles", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, runCalls(3, turn("", "toolu_04", "finish", finish))...)
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "run_what_if", bad, inv.Pending, "")
+		fx.l.resolve = refuse
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		calls, end := fx.l.snapshot()
+		if end == nil || end.Reason != inv.InvalidAnswer || end.Steps != 3 || len(calls) != 3 || calls[2].ObservedAt == nil ||
+			len(fx.l.inserts) != 0 || len(fx.f.Requests()) != 0 {
+			t.Fatalf("end %+v, %d calls, %d inserts, %d turns", end, len(calls), len(fx.l.inserts), len(fx.f.Requests()))
+		}
+	})
+	t.Run("a recorded invalid turn, then one not recorded", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, turn("", "toolu_01", "finish", finish), fake.ToolAnswer{Text: "I would rather talk to the person."})
+		fx.prior(t, inv.InvalidCall, "", inv.Refused, "UNKNOWN_TOOL")
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		calls, end := fx.l.snapshot()
+		if end == nil || end.Reason != inv.InvalidAnswer || len(calls) != 1 || len(fx.f.Requests()) != 1 {
+			t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+		}
+	})
+	t.Run("a recorded invalid turn before a refused step", func(t *testing.T) {
+		// The refused step broke the row of invalid turns: the next
+		// unrecorded one is the first in a row, so the planner is asked once
+		// more before the second ends it.
+		fx := newFixture(t, inv.Scenario, turn("", "toolu_01", "finish", finish), turn("", "toolu_02", "finish", finish),
+			fake.ToolAnswer{Text: "I would rather talk to the person."})
+		fx.prior(t, inv.InvalidCall, "", inv.Refused, "UNKNOWN_TOOL")
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.InvalidAnswer || len(fx.f.Requests()) != 2 {
+			t.Fatalf("end %+v, %d turns", end, len(fx.f.Requests()))
+		}
+	})
+	t.Run("two recorded invalid turns", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, turn("", "toolu_01", "finish", finish))
+		fx.prior(t, inv.InvalidCall, "", inv.Refused, "UNKNOWN_TOOL")
+		fx.prior(t, inv.InvalidCall, "", inv.Refused, "INVALID_ARGUMENTS")
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.InvalidAnswer || end.Steps != 2 || len(fx.f.Requests()) != 0 {
+			t.Fatalf("end %+v, %d turns", end, len(fx.f.Requests()))
+		}
+	})
+	t.Run("two refused steps, then a done one", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, runCalls(2, turn("", "toolu_03", "propose_what_if", `{"idea":"Add a tester.","from_suggestion":null}`),
+			turn("", "toolu_04", "finish", finish))...)
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.l.resolve = executor(t)
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if calls, end := fx.l.snapshot(); end == nil || end.Reason != inv.FinishedByAI || len(calls) != 4 || len(fx.f.Requests()) != 2 {
+			t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+		}
+	})
+	t.Run("refused steps before a done one do not count", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, runCalls(3, turn("", "toolu_04", "run_what_if", bad), turn("", "toolu_05", "finish", finish))...)
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "run_what_if", bad, inv.Refused, "NOT_IN_INVESTIGATION")
+		fx.prior(t, "propose_what_if", `{"idea":"Add a tester.","from_suggestion":null}`, inv.Pending, "")
+		ex := executor(t)
+		fx.l.resolve = func(c inv.Call) *resolution {
+			if reg.Tool(c.Tool) == reg.ProposeWhatIf {
+				return ex(c)
+			}
+			return refuse(c)
+		}
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		calls, end := fx.l.snapshot()
+		if end == nil || end.Reason != inv.FinishedByAI || len(calls) != 5 || calls[2].Status != inv.Done || len(fx.f.Requests()) != 2 {
+			t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+		}
+	})
+}
+
+// flaky is a planner whose n-th turn of the attempt (from 1) fails as a
+// provider that answered 503 when fail(n); the others are inner's.
+type flaky struct {
+	inner interface {
+		PlanTurn(context.Context, provider.PlanContext) (provider.PlanResult, error)
+	}
+	fail func(n int) bool
+	mu   sync.Mutex
+	n    int
+}
+
+func (f *flaky) PlanTurn(ctx context.Context, pc provider.PlanContext) (provider.PlanResult, error) {
+	f.mu.Lock()
+	f.n++
+	n := f.n
+	f.mu.Unlock()
+	if f.fail(n) {
+		return provider.PlanResult{}, provider.NewError(provider.CodeUnavailable, 503, "")
+	}
+	return f.inner.PlanTurn(ctx, pc)
+}
+
+func (f *flaky) turns() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.n
+}
+
+// The 20 planner turns (H-061 §12), counted from the spend ledger's at the
+// attempt's start (Load's PlannerTurns) and this attempt's, whatever their
+// kind (a call, a failure asked again): the 20th is the last, and the end is
+// limit_reached with 20 turns.
+func TestThePlannerTurnCap(t *testing.T) {
+	saves := make([]fake.ToolAnswer, 14)
+	for n := range saves {
+		saves[n] = turn("", fmt.Sprintf("toolu_%02d", n+1), "save_scenario", `{"proposal_id":"`+tProp1+`"}`)
+	}
+	t.Run("twenty already", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, saves...)
+		fx.l.st.PlannerTurns, fx.l.resolve = 20, executor(t)
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if calls, end := fx.l.snapshot(); end == nil || end.Reason != inv.LimitReached || end.PlannerTurns != 20 || len(calls) != 0 ||
+			len(fx.f.Requests()) != 0 {
+			t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+		}
+	})
+	t.Run("nineteen already", func(t *testing.T) {
+		fx := newFixture(t, inv.Scenario, saves...)
+		fx.l.st.PlannerTurns, fx.l.resolve = 19, executor(t)
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if calls, end := fx.l.snapshot(); end == nil || end.Reason != inv.LimitReached || end.PlannerTurns != 20 || end.Steps != 1 ||
+			len(calls) != 1 || len(fx.f.Requests()) != 1 {
+			t.Fatalf("end %+v, %d calls, %d turns", end, len(calls), len(fx.f.Requests()))
+		}
+	})
+	for name, fail := range map[string]func(n int) bool{
+		// turns 1, 4, ..., 19 call save_scenario, the others fail and are
+		// asked again (twice at most): the 20th fails
+		"in one attempt, the 20th failing": func(n int) bool { return n%3 != 1 },
+		// turns 2, 5, ..., 20 call save_scenario: the 20th is a call within
+		// its run, and the run asks no 21st
+		"in one attempt, the 20th a call": func(n int) bool { return n%3 != 2 },
+	} {
+		t.Run(name, func(t *testing.T) {
+			fx := newFixture(t, inv.Scenario, saves...)
+			fx.l.resolve = executor(t)
+			planner := &flaky{inner: fx.h.cfg.Planner, fail: fail}
+			fx.h.cfg.Planner = planner
+			if err := fx.attempt(t, context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			calls, end := fx.l.snapshot()
+			if end == nil || end.Reason != inv.LimitReached || end.PlannerTurns != 20 || end.Steps != 7 || len(calls) != 7 ||
+				planner.turns() != 20 || len(fx.f.Requests()) != 7 {
+				t.Fatalf("end %+v, %d calls, %d turns (%d answered)", end, len(calls), planner.turns(), len(fx.f.Requests()))
+			}
+		})
 	}
 }
 
@@ -600,16 +926,31 @@ func TestEditModeEndsWithTheDraft(t *testing.T) {
 func TestTheStepCap(t *testing.T) {
 	fx := newFixture(t, inv.Scenario)
 	fx.l.st.Investigation.Caps.Steps = 14
-	for n := 1; n <= 14; n++ {
-		obs, _ := reg.ErrorObservation(reg.ToolError{Code: "UNKNOWN_TOOL"}, reg.Budget{WhatIfsLeft: 3, RunsLeft: 4, ExplanationsLeft: 4, StepsLeft: 14 - n})
+	// 13 steps, a refused run and a saved scenario by turns (no row of
+	// refused steps that H-061 §7 ends first), and a 14th invalid turn (only
+	// finish was offered).
+	scenario := &scenarios.Scenario{ID: tScn1, Name: "A third ICT tester", SourceProposalID: ptr(tProp1)}
+	for n := 1; n <= 13; n++ {
+		if n%2 == 1 {
+			fx.prior(t, "run_what_if", `{"scenario_id":"`+tScn1+`"}`, inv.Refused, "NOT_IN_INVESTIGATION")
+			continue
+		}
+		obs, err := observe(reg.SaveScenario, Children{Scenario: scenario}, 0, "",
+			reg.Budget{WhatIfsLeft: 3, RunsLeft: 4, ExplanationsLeft: 4, StepsLeft: 14 - n})
+		if err != nil {
+			t.Fatal(err)
+		}
+		args := []byte(`{"proposal_id":"` + tProp1 + `"}`)
 		t0 := fx.l.now
-		fx.l.calls = append(fx.l.calls, inv.Call{Seq: n, Tool: inv.InvalidCall, Status: inv.Refused, Error: &inv.ToolError{Code: "UNKNOWN_TOOL"},
-			Observation: obs, ResolvedAt: &t0, ObservedAt: &t0})
+		fx.l.calls = append(fx.l.calls, inv.Call{Seq: n, Tool: "save_scenario", Arguments: jsonb(args), ArgumentsHash: ptr(hashOf(args)),
+			Status: inv.Done, Effect: inv.Effect{ScenarioID: ptr(tScn1)}, Observation: jsonb(obs), ObservationHash: ptr(hashOf(obs)),
+			ResolvedAt: &t0, ObservedAt: &t0})
 	}
+	fx.prior(t, inv.InvalidCall, "", inv.Refused, "UNKNOWN_TOOL")
 	if err := fx.attempt(t, context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.LimitReached || len(fx.f.Requests()) != 0 {
+	if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.LimitReached || end.Steps != 14 || len(fx.f.Requests()) != 0 {
 		t.Fatalf("end %+v", end)
 	}
 }

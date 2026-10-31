@@ -95,17 +95,20 @@ func dbSetup(t *testing.T) *dbEnv {
 	return e
 }
 
-// start stores a scenario investigation of the editor with its job, as
-// createInvestigation does.
-func (e *dbEnv) start(t *testing.T) inv.Investigation {
+// start stores an investigation of the editor in mode with its job, as
+// createInvestigation does (scenario mode with its objective and frozen run
+// settings; edit mode with none).
+func (e *dbEnv) start(t *testing.T, mode inv.Mode) inv.Investigation {
 	t.Helper()
-	i := inv.Investigation{ID: ids.New("inv"), OrganizationID: e.org.ID, ModelID: e.model, BaseVersionID: e.base, Mode: inv.Scenario,
+	i := inv.Investigation{ID: ids.New("inv"), OrganizationID: e.org.ID, ModelID: e.model, BaseVersionID: e.base, Mode: mode,
 		Source: inv.FromRequest, Intent: ptr(dbIntent), Context: []byte(`{}`), OutputLocale: "en", ProposalModel: "muse-spark-1.3",
-		PlannerModel: "muse-spark-1.3", PromptTemplateVersion: "investigator-0.1.0",
-		Objective:     []byte(`{"metric_path":"/metrics/lead_time_minutes/p50","better":"lower"}`),
-		RunConfig:     []byte(`{"horizon":{"value":7,"unit":"day"},"warmup":{"value":0,"unit":"day"},"replications":5,"seed":1,"trace_level":"sampled"}`),
-		RunConfigHash: ptr("sha256:1111111111111111111111111111111111111111111111111111111111111111"), BaselineName: ptr("Baseline"),
-		Caps: inv.CapsFor(inv.Scenario, false), CreatedBy: e.editor}
+		PlannerModel: "muse-spark-1.3", PromptTemplateVersion: "investigator-0.1.0", Caps: inv.CapsFor(mode, false), CreatedBy: e.editor}
+	if mode == inv.Scenario {
+		i.Objective = []byte(`{"metric_path":"/metrics/lead_time_minutes/p50","better":"lower"}`)
+		i.RunConfig = []byte(`{"horizon":{"value":7,"unit":"day"},"warmup":{"value":0,"unit":"day"},"replications":5,"seed":1,"trace_level":"sampled"}`)
+		i.RunConfigHash = ptr("sha256:1111111111111111111111111111111111111111111111111111111111111111")
+		i.BaselineName = ptr("Baseline")
+	}
 	var out inv.Investigation
 	if err := e.api.Run(context.Background(), tenant.Scope{OrganizationID: e.org.ID, UserID: e.editor}, tenant.ReadWrite,
 		func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
@@ -226,6 +229,53 @@ func (e *dbEnv) state(t *testing.T, id string) (inv.Investigation, []inv.Call, s
 	return i, calls, job
 }
 
+// generate is the proposal's pipeline once the executor inserted it (the
+// test as its job: a job, then the content, as the owner): ready, with one
+// patch operation.
+func (e *dbEnv) generate(t *testing.T, proposal string) {
+	for {
+		time.Sleep(20 * time.Millisecond)
+		var n int
+		if err := e.admin.QueryRow(context.Background(), `SELECT count(*) FROM twin.ai_proposals WHERE id=$1`, proposal).Scan(&n); err != nil || n == 0 {
+			continue
+		}
+		job := ids.New("job")
+		if err := postgres.OpenPool(e.admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+			for _, q := range []struct {
+				sql  string
+				args []any
+			}{
+				{`INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES ($1,$2,'model_proposal','queued','{}',$3)`,
+					[]any{job, e.org.ID, proposal}},
+				{`UPDATE twin.jobs SET status='running', attempt=1, lease_token=lease_token+1, locked_at=now(), locked_by='w',
+					lease_expires_at=now()+interval '30 seconds' WHERE organization_id=$1 AND id=$2`, []any{e.org.ID, job}},
+				{`UPDATE twin.ai_proposals SET status='ready', summary='A second reviewer.', patch='[{"op":"test","path":"/name","value":"M"}]',
+					patch_hash='sha256:1111111111111111111111111111111111111111111111111111111111111111', validation='{"valid":true,"issues":[]}',
+					confidence=0.9, server_risk_level='low', provider_risk_claim='low', risk_level='low' WHERE organization_id=$1 AND id=$2`,
+					[]any{e.org.ID, proposal}},
+				{`UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id=$1 AND id=$2`,
+					[]any{e.org.ID, job}},
+			} {
+				if _, err := tx.Exec(ctx, q.sql, q.args...); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			t.Error(err)
+		}
+		return
+	}
+}
+
+// reasonOf is an investigation's end as text ("" while it runs).
+func reasonOf(r *inv.Reason) string {
+	if r == nil {
+		return ""
+	}
+	return string(*r)
+}
+
 func toolTurn(id, name, input string) fake.ToolAnswer {
 	return fake.ToolAnswer{Calls: []provider.ToolCall{{ID: id, Name: name, Input: jsontext.Value(input)}}}
 }
@@ -237,7 +287,7 @@ func toolTurn(id, name, input string) fake.ToolAnswer {
 // transaction, and one worker event investigation.end.
 func TestTheJobOnTheDatabase(t *testing.T) {
 	e := dbSetup(t)
-	i := e.start(t)
+	i := e.start(t, inv.Scenario)
 	e.f.ScriptTools(provider.RoleInvestigator, dbIntent,
 		toolTurn("toolu_01", "run_what_if", `{"scenario_id":"`+ids.New("scn")+`"}`),
 		toolTurn("toolu_02", "propose_what_if", `{"idea":"Add a second reviewer.","from_suggestion":null}`),
@@ -254,43 +304,8 @@ func TestTheJobOnTheDatabase(t *testing.T) {
 		}
 		return inv.Resolution{Status: inv.Done, Effect: inv.Effect{ProposalID: &proposal}}
 	}, stop)
-	// The proposal's own job generates it a little later (the test as its
-	// pipeline: a job, then the content, as the owner).
-	go func() {
-		for {
-			time.Sleep(20 * time.Millisecond)
-			var n int
-			if err := e.admin.QueryRow(context.Background(), `SELECT count(*) FROM twin.ai_proposals WHERE id=$1`, proposal).Scan(&n); err != nil || n == 0 {
-				continue
-			}
-			job := ids.New("job")
-			if err := postgres.OpenPool(e.admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
-				for _, q := range []struct {
-					sql  string
-					args []any
-				}{
-					{`INSERT INTO twin.jobs(id,organization_id,type,status,payload,ai_proposal_id) VALUES ($1,$2,'model_proposal','queued','{}',$3)`,
-						[]any{job, e.org.ID, proposal}},
-					{`UPDATE twin.jobs SET status='running', attempt=1, lease_token=lease_token+1, locked_at=now(), locked_by='w',
-						lease_expires_at=now()+interval '30 seconds' WHERE organization_id=$1 AND id=$2`, []any{e.org.ID, job}},
-					{`UPDATE twin.ai_proposals SET status='ready', summary='A second reviewer.', patch='[{"op":"test","path":"/name","value":"M"}]',
-						patch_hash='sha256:1111111111111111111111111111111111111111111111111111111111111111', validation='{"valid":true,"issues":[]}',
-						confidence=0.9, server_risk_level='low', provider_risk_claim='low', risk_level='low' WHERE organization_id=$1 AND id=$2`,
-						[]any{e.org.ID, proposal}},
-					{`UPDATE twin.jobs SET status='completed', locked_at=NULL, locked_by=NULL, lease_expires_at=NULL WHERE organization_id=$1 AND id=$2`,
-						[]any{e.org.ID, job}},
-				} {
-					if _, err := tx.Exec(ctx, q.sql, q.args...); err != nil {
-						return err
-					}
-				}
-				return nil
-			}); err != nil {
-				t.Error(err)
-			}
-			return
-		}
-	}()
+	// The proposal's own job generates it a little later.
+	go e.generate(t, proposal)
 	w := e.loop(t, map[jobs.Type]handler.Handler{jobs.Investigation: e.handler(t)})
 	runUntil(t, context.Background(), w, func() bool { _, _, job := e.state(t, i.ID); return job == "completed" })
 	close(stop)
@@ -319,12 +334,129 @@ func TestTheJobOnTheDatabase(t *testing.T) {
 	}
 }
 
+// Edit mode on the database (H-061 §6.4, §5.8): the executor resolves
+// write_to_draft done with its draft revision only, the one shape
+// investigation_tool_calls_effect takes (a done write_to_draft that names its
+// proposal is refused); the worker observes it from that revision and the
+// proposal the call's arguments name, read in its organization, and ends
+// draft_written with no turn after it: the job completed, one
+// investigation.end.
+func TestEditModeEndsWithTheDraftOnTheDatabase(t *testing.T) {
+	e := dbSetup(t)
+	i := e.start(t, inv.Edit)
+	proposal := ids.New("aip")
+	e.f.ScriptTools(provider.RoleInvestigator, dbIntent,
+		toolTurn("toolu_01", "propose_model_edit", `{"idea":"Add a second reviewer."}`),
+		toolTurn("toolu_02", "write_to_draft", `{"proposal_id":"`+proposal+`"}`),
+		toolTurn("toolu_03", "finish", `{"outcome":"improvement_found","best_scenario_id":null}`))
+	revision := int64(4)
+	var named error // the database's answer to a done write_to_draft that names its proposal
+	stop := make(chan struct{})
+	wg := e.executor(t, i, func(ctx context.Context, tx tenant.Tx, c inv.Call) inv.Resolution {
+		switch c.Tool {
+		case "propose_model_edit":
+			if _, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: proposal, OrganizationID: e.org.ID, ModelID: e.model, BaseVersionID: e.base,
+				Mode: "edit", Intent: "Add a second reviewer.", OutputLocale: "en", IDPool: e.idPool, CreatedBy: e.editor}); err != nil {
+				t.Error(err)
+			}
+			return inv.Resolution{Status: inv.Done, Effect: inv.Effect{ProposalID: &proposal}}
+		case "write_to_draft":
+			// A7's effect.WriteDraft writes the draft and applies the
+			// proposal; the stand-in records only the call's result.
+			sp, err := tx.Begin(ctx)
+			if err != nil {
+				t.Error(err)
+				break
+			}
+			named = inv.Resolve(ctx, sp, i.OrganizationID, i.ID, c.Seq, inv.Resolution{Status: inv.Done,
+				Effect: inv.Effect{ProposalID: &proposal, DraftRevision: &revision}})
+			if err := sp.Rollback(ctx); err != nil {
+				t.Error(err)
+			}
+			return inv.Resolution{Status: inv.Done, Effect: inv.Effect{DraftRevision: &revision}}
+		}
+		return inv.Resolution{Status: inv.Refused, Error: &inv.ToolError{Code: "NOT_IN_INVESTIGATION", Path: ""}}
+	}, stop)
+	go e.generate(t, proposal)
+	w := e.loop(t, map[jobs.Type]handler.Handler{jobs.Investigation: e.handler(t)})
+	runUntil(t, context.Background(), w, func() bool { _, _, job := e.state(t, i.ID); return job == "completed" || job == "failed" })
+	close(stop)
+	wg.Wait()
+	got, calls, job := e.state(t, i.ID)
+	if job != "completed" || got.Status != inv.Finished || got.Reason == nil || *got.Reason != inv.DraftWritten || got.AIOutcome != nil {
+		t.Fatalf("job %s, investigation %s (%s)", job, got.Status, reasonOf(got.Reason))
+	}
+	if named == nil {
+		t.Fatal("the database took a done write_to_draft that names its proposal")
+	}
+	if len(calls) != 2 || calls[0].Tool != "propose_model_edit" || calls[1].Tool != "write_to_draft" || calls[1].Status != inv.Done ||
+		calls[1].Effect.ProposalID != nil || calls[1].Effect.DraftRevision == nil || *calls[1].Effect.DraftRevision != revision {
+		t.Fatalf("calls %+v", calls)
+	}
+	if o := string(canonical(calls[1].Observation)); !strings.Contains(o, `"draft_revision":4`) || !strings.Contains(o, `"operation_count":1`) ||
+		calls[1].ObservationHash == nil || *calls[1].ObservationHash != hashOf(canonical(calls[1].Observation)) {
+		t.Fatalf("observation %s", calls[1].Observation)
+	}
+	if n := len(e.f.Requests()); n != 2 {
+		t.Fatalf("%d planner turns, want 2 (none after the draft)", n)
+	}
+	var events, steps, turns int
+	var reason string
+	if err := e.admin.QueryRow(context.Background(), `SELECT count(*), max(metadata->>'reason'), max((metadata->>'steps')::int),
+		max((metadata->>'planner_turns')::int) FROM twin.audit_events WHERE organization_id=$1 AND action='investigation.end' AND target_id=$2`,
+		e.org.ID, i.ID).Scan(&events, &reason, &steps, &turns); err != nil {
+		t.Fatal(err)
+	}
+	if events != 1 || reason != "draft_written" || steps != 2 || turns != 2 {
+		t.Fatalf("investigation.end: %d events, %s %d %d", events, reason, steps, turns)
+	}
+}
+
+// Tenant isolation of the draft write's read: its proposal, named by its
+// arguments (not by the row's effect, so no foreign key or trigger binds
+// it), is read in the job's organization only. Arguments that name another
+// organization's proposal read nothing (the read's filter and RLS under
+// the worker scope), and nothing is observed from it.
+func TestADraftWritesProposalIsReadInItsOrganization(t *testing.T) {
+	e := dbSetup(t)
+	i := e.start(t, inv.Edit)
+	other := dbtest.NewOrg(t, e.admin, "https://test.invalid", tenant.Owner, tenant.Editor)
+	_, otherModel, otherBase := dbtest.NewModel(t, e.admin, other)
+	ours, theirs := ids.New("aip"), ids.New("aip")
+	for _, p := range []struct {
+		org                 dbtest.Org
+		id, model, base, by string
+	}{{e.org, ours, e.model, e.base, e.editor}, {other, theirs, otherModel, otherBase, other.Members[tenant.Editor].UserID}} {
+		if err := e.api.Run(context.Background(), tenant.Scope{OrganizationID: p.org.ID, UserID: p.by}, tenant.ReadWrite,
+			func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+				_, err := proposals.Insert(ctx, tx, proposals.Proposal{ID: p.id, OrganizationID: p.org.ID, ModelID: p.model, BaseVersionID: p.base,
+					Mode: "edit", Intent: "Add a second reviewer.", OutputLocale: "en", IDPool: e.idPool, CreatedBy: p.by})
+				return err
+			}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	l := &dbLedger{run: staleRun{e: e, job: jobs.Job{OrganizationID: e.org.ID}}, org: e.org.ID, id: i.ID}
+	revision := int64(4)
+	draft := func(proposal string) inv.Call {
+		return inv.Call{OrganizationID: e.org.ID, InvestigationID: i.ID, Seq: 2, Tool: "write_to_draft",
+			Arguments: []byte(`{"proposal_id": "` + proposal + `"}`), Status: inv.Done, Effect: inv.Effect{DraftRevision: &revision}}
+	}
+	if ch, err := l.Children(context.Background(), draft(ours)); err != nil || ch.DraftRevision != revision || ch.Proposal == nil ||
+		ch.Proposal.ID != ours {
+		t.Fatalf("our proposal: %+v, %v", ch, err)
+	}
+	if ch, err := l.Children(context.Background(), draft(theirs)); err == nil {
+		t.Fatalf("another organization's proposal was read: %+v", ch)
+	}
+}
+
 // A stopping worker (SIGTERM) leaves the pending call recorded and ends its
 // attempt; the next attempt waits for that call (never records it again)
 // and asks the planner the next step only.
 func TestAResumeSendsNoCallTwice(t *testing.T) {
 	e := dbSetup(t)
-	i := e.start(t)
+	i := e.start(t, inv.Scenario)
 	e.f.ScriptTools(provider.RoleInvestigator, dbIntent,
 		toolTurn("toolu_01", "run_what_if", `{"scenario_id":"`+ids.New("scn")+`"}`),
 		toolTurn("toolu_02", "finish", `{"outcome":"out_of_ideas","best_scenario_id":null}`))
@@ -384,7 +516,7 @@ func (r staleRun) Finish(context.Context, jobs.Status, func(context.Context, ten
 // thinks it holds.
 func TestAStaleLeaseCannotRecordACall(t *testing.T) {
 	e := dbSetup(t)
-	i := e.start(t)
+	i := e.start(t, inv.Scenario)
 	var job jobs.Job
 	if err := e.scope.Run(context.Background(), e.org.ID, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		j, _, ok, err := jobs.Claim(ctx, tx, e.org.ID, "worker-test:agent1", []jobs.Type{jobs.Investigation}, dbPolicy)
@@ -414,7 +546,7 @@ func TestAStaleLeaseCannotRecordACall(t *testing.T) {
 // JOB_CANCELLED, before its paid call, once the investigation has ended.
 func TestTheGeneratorFailsFastOnAnEndedInvestigation(t *testing.T) {
 	e := dbSetup(t)
-	i := e.start(t)
+	i := e.start(t, inv.Scenario)
 	proposal, pjob := ids.New("aip"), ids.New("job")
 	// The executor's propose_what_if (A7): the labelled proposal and its job.
 	if err := e.scope.Run(context.Background(), e.org.ID, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {

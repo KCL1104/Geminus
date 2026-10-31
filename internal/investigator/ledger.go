@@ -3,10 +3,8 @@ package investigator
 import (
 	"context"
 	"encoding/json/v2"
-	"errors"
 	"time"
 
-	reg "github.com/kcl1104/geminus/internal/ai/investigator"
 	"github.com/kcl1104/geminus/internal/storage/analyses"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
 	inv "github.com/kcl1104/geminus/internal/storage/investigations"
@@ -174,69 +172,46 @@ func (l *dbLedger) Poll(ctx context.Context, seq int) (Polled, error) {
 func (l *dbLedger) Children(ctx context.Context, c inv.Call) (Children, error) {
 	var ch Children
 	err := l.checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
-		e := c.Effect
-		switch reg.Tool(c.Tool) {
-		case reg.ProposeWhatIf, reg.ProposeModelEdit, reg.WriteToDraft:
-			if e.ProposalID == nil {
-				return errors.New("investigator: a done call names no proposal")
-			}
-			p, err := proposals.Get(ctx, tx, l.org, *e.ProposalID)
-			if err != nil {
-				return err
-			}
-			ch.Proposal = &p
-			if e.DraftRevision != nil {
-				ch.DraftRevision, ch.OperationCount = *e.DraftRevision, int64(patchOps(p.Patch))
-			}
-		case reg.SaveScenario:
-			if e.ScenarioID == nil {
-				return errors.New("investigator: a done call names no scenario")
-			}
-			s, err := scenarios.Get(ctx, tx, l.org, *e.ScenarioID)
-			if err != nil {
-				return err
-			}
-			ch.Scenario = &s
-		case reg.RunWhatIf:
-			if e.BaselineRunID == nil || e.RunID == nil {
-				return errors.New("investigator: a done call names no run pair")
-			}
-			var err error
-			if ch.Baseline, ch.BaselineResult, err = runOf(ctx, tx, l.org, *e.BaselineRunID); err != nil {
-				return err
-			}
-			if ch.Run, ch.RunResult, err = runOf(ctx, tx, l.org, *e.RunID); err != nil {
-				return err
-			}
-		case reg.ExplainResults:
-			if e.AnalysisID == nil {
-				return errors.New("investigator: a done call names no analysis")
-			}
-			a, err := analyses.Get(ctx, tx, l.org, *e.AnalysisID)
-			if err != nil {
-				return err
-			}
-			ch.Analysis = &a
-		}
-		return nil
+		var err error
+		ch, err = childrenOf(ctx, c, txRows{tx: tx, org: l.org})
+		return err
 	})
 	return ch, err
 }
 
-// runOf is a run and, once completed, its stored result.
-func runOf(ctx context.Context, tx tenant.Tx, org, id string) (*runs.Run, []byte, error) {
-	r, err := runs.Get(ctx, tx, org, id)
+// txRows reads a done call's rows in the attempt's Checkpoint, each scoped
+// to the job's organization (the read and RLS).
+type txRows struct {
+	tx  tenant.Tx
+	org string
+}
+
+func (r txRows) proposal(ctx context.Context, id string) (proposals.Proposal, error) {
+	return proposals.Get(ctx, r.tx, r.org, id)
+}
+
+func (r txRows) scenario(ctx context.Context, id string) (scenarios.Scenario, error) {
+	return scenarios.Get(ctx, r.tx, r.org, id)
+}
+
+func (r txRows) analysis(ctx context.Context, id string) (analyses.Analysis, error) {
+	return analyses.Get(ctx, r.tx, r.org, id)
+}
+
+// run is a run and, once completed, its stored result.
+func (r txRows) run(ctx context.Context, id string) (*runs.Run, []byte, error) {
+	run, err := runs.Get(ctx, r.tx, r.org, id)
 	if err != nil {
 		return nil, nil, err
 	}
-	if r.Status != runs.Completed {
-		return &r, nil, nil
+	if run.Status != runs.Completed {
+		return &run, nil, nil
 	}
-	res, err := runs.GetResult(ctx, tx, org, id)
+	res, err := runs.GetResult(ctx, r.tx, r.org, id)
 	if err != nil {
 		return nil, nil, err
 	}
-	return &r, res.Result, nil
+	return &run, res.Result, nil
 }
 
 func (l *dbLedger) Insert(ctx context.Context, c inv.NewCall, observation []byte) error {
