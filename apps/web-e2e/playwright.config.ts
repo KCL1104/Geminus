@@ -10,13 +10,12 @@ const provider = "http://127.0.0.1:3101";
 
 // H-051, H-065: whether the build offers Muse Wonder 1.0 is fixed when it is
 // built (NEXT_PUBLIC_GEMINUS_OFFER_WONDER, next.config.ts), so one run checks
-// one build: production's (the switch off) unless GEMINUS_E2E_OFFER_WONDER=1,
-// which builds it with the switch on (tests/helpers.ts offersWonder says which
-// to the tests). make e2e-test and CI run both. The screenshot baselines are
-// the production build's, so the run with Muse Wonder on offer does not
-// compare them (the baselines that will change when the switch is turned on
-// are listed in checks/H-065_WONDER_CHOICE_VALIDATION.md).
-const offerWonder = process.env.GEMINUS_E2E_OFFER_WONDER === "1";
+// one build: production's (the switch on since H-069) unless
+// GEMINUS_E2E_OFFER_WONDER=0, which builds it with the switch off
+// (tests/helpers.ts offersWonder says which to the tests). make e2e-test and
+// CI run both. The screenshot baselines are the production build's, so the
+// run without Muse Wonder does not compare them.
+const offerWonder = process.env.GEMINUS_E2E_OFFER_WONDER !== "0";
 
 // Test values only: a fixed sealing key and the fake provider's client.
 const session = {
@@ -61,7 +60,7 @@ export default defineConfig({
     // in contextOptions, T-045 review 1 L1.) simplicity.spec.ts emulates
     // reduced motion itself to check the rule.
   },
-  projects: [offerWonder ? { name: "chromium-wonder", testIgnore: ["**/screenshots.spec.ts"] } : { name: "chromium" }],
+  projects: [offerWonder ? { name: "chromium" } : { name: "chromium-no-wonder", testIgnore: ["**/screenshots.spec.ts"] }],
   webServer: [
     {
       command: "node fake/servers.mjs",

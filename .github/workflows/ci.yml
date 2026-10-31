@@ -107,9 +107,9 @@ jobs:
           node-version-file: apps/web/.nvmrc
       - run: npm ci --prefix apps/web --no-audit
       - run: npm ci --prefix apps/web-e2e --no-audit
-      # The image has no make: the same commands as `make e2e-test` (H-065:
-      # the production build, then one with Muse Wonder 1.0 on offer, whose
-      # run compares no screenshots).
+      # The image has no make: the same commands as `make e2e-test` (H-065,
+      # H-069: the production build with Muse Wonder 1.0 on offer, then one
+      # without it, whose run compares no screenshots).
       - if: ${{ !inputs.update_screenshots }}
         run: npm --prefix apps/web-e2e test
         env:
@@ -117,7 +117,7 @@ jobs:
       - if: ${{ !inputs.update_screenshots }}
         run: npm --prefix apps/web-e2e test
         env:
-          GEMINUS_E2E_OFFER_WONDER: "1"
+          GEMINUS_E2E_OFFER_WONDER: "0"
       - name: Make new screenshot baselines (never committed by CI)
         if: ${{ inputs.update_screenshots }}
         run: npm --prefix apps/web-e2e test -- tests/screenshots.spec.ts --update-snapshots
