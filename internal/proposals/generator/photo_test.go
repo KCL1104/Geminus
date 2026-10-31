@@ -498,7 +498,10 @@ func TestAnEmptyPhotoProposalIsRefusedAtChanges(t *testing.T) {
 	if gen, err := generated(g.outcome, *g.meta, g.manifest); err != nil || gen.Status != store.Invalid {
 		t.Errorf("not storable: %v", err)
 	}
+	// H-057: the refused answer gets its one repair; the fake answers the
+	// same empty patch again, so both calls are refused.
 	var codes []string
+	var attempts []float64
 	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
 		var m map[string]any
 		if err := json.Unmarshal(line, &m); err != nil {
@@ -506,10 +509,12 @@ func TestAnEmptyPhotoProposalIsRefusedAtChanges(t *testing.T) {
 		}
 		if m["msg"] == "ai provider call ended" {
 			codes = append(codes, m["code"].(string))
+			n, _ := m["call_attempt"].(float64)
+			attempts = append(attempts, n)
 		}
 	}
-	if !slices.Equal(codes, []string{"AI_INVALID_OUTPUT"}) {
-		t.Errorf("the calls' lines: %v", codes)
+	if !slices.Equal(codes, []string{"AI_INVALID_OUTPUT", "AI_INVALID_OUTPUT"}) || !slices.Equal(attempts, []float64{1, 2}) {
+		t.Errorf("the calls' lines: %v, attempts %v", codes, attempts)
 	}
 	if strings.Contains(buf.String(), "Add the AOI") {
 		t.Error("the log carries the answer's text")

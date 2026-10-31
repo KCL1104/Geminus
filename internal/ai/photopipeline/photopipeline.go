@@ -20,8 +20,14 @@
 //     image is counted with count_tokens and reserved at the count and 10%
 //     before it is sent, H-037) proposes the stations and flow from the
 //     image and the segments (aicontext.ImageProposal).
-//  4. The server reviews the answer as any edit (review.Review) and then by
-//     the photo rules (review.Photo).
+//  4. The server reviews the answer as any edit (review.Review), then by
+//     the photo rules (review.Photo), then by the caller's later stage
+//     (Request.Bind: the worker's dataset binding stage).
+//  5. An answer the server refused for what it says gets one repair
+//     (H-057, internal/ai/repair): the vision model is asked once more,
+//     with the same image and the same segments (the segmenter is not asked
+//     again), its own answer and the server's issues; the same checks of
+//     step 4 decide the outcome.
 //
 // It does no I/O of its own and keeps nothing: the callers read the image,
 // write the outcome and record what was spent.
@@ -34,8 +40,10 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/locale"
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/repair"
 	"github.com/kcl1104/geminus/internal/ai/review"
 	"github.com/kcl1104/geminus/internal/domainpack"
+	"github.com/kcl1104/geminus/internal/model"
 )
 
 // Concepts is what pack names for a segmenter to look for in a photo, or
@@ -97,13 +105,20 @@ type Request struct {
 	// Model is the vision model the person chose (H-049); "" for the
 	// vision client's own.
 	Model string
+	// Bind, when set, is the caller's later stage on a candidate the
+	// review and the photo rules found ready (the worker's dataset binding
+	// stage, over the snapshots it read before any call; H-057): its issues
+	// refuse the outcome or stay with it as warnings (review.Outcome.Refuse),
+	// before a repair is considered; its error ends Propose (a *BindError).
+	Bind func(candidate *model.ModelIR) ([]model.ValidationIssue, error)
 }
 
 // Observer is told of each call's end (the worker's log lines); either may
-// be nil.
+// be nil. Answered's call is 1 for the vision model's first call, 2 for its
+// repair (H-057).
 type Observer struct {
 	Segmented func(m provider.SegmentMetadata, segments int, err error)
-	Answered  func(m provider.Metadata, err error)
+	Answered  func(call int, m provider.Metadata, err error)
 }
 
 // Result is what a photo proposal's AI part produced.
@@ -116,9 +131,13 @@ type Result struct {
 	Segmenter    *provider.SegmentMetadata
 	Segmentation *provider.Segmentation
 	Segments     int
-	// Vision is the vision model's call once it was asked (also when it
-	// failed).
+	// Vision is the vision model's first call once it was asked (also when
+	// it failed).
 	Vision *provider.Metadata
+	// Repair is what the one repair did (H-057), when the server refused the
+	// first answer for what it says; nil when there was none. Its Call is the
+	// vision model's second call.
+	Repair *repair.Record
 }
 
 // ContextError: the proposal's context could not be built
@@ -140,6 +159,13 @@ type ReviewError struct{ Err error }
 func (e *ReviewError) Error() string { return "photopipeline: the review: " + e.Err.Error() }
 func (e *ReviewError) Unwrap() error { return e.Err }
 
+// BindError: the caller's later stage (Request.Bind) failed: a fault of
+// the caller's own, never the provider's.
+type BindError struct{ Err error }
+
+func (e *BindError) Error() string { return "photopipeline: the later stage: " + e.Err.Error() }
+func (e *BindError) Unwrap() error { return e.Err }
+
 // noBoxes is the server's request for input when the segmenter found
 // nothing: the photo shows no station to propose.
 func noBoxes(outputLocale string) review.Outcome {
@@ -153,12 +179,14 @@ func noBoxes(outputLocale string) review.Outcome {
 }
 
 // Propose runs the segmenter, the server's checks of its answer, the
-// vision model and the server's review (steps 2 to 4). A provider failure
-// of either client is its *provider.Error (a cancellation is the client's
-// cancelled error: the caller tells it by its own context), a context that
-// cannot be built a *ContextError, a review that cannot run a
-// *ReviewError; the Result says which calls were made either way. An
-// answer the server refuses is an outcome (invalid), not an error.
+// vision model, the server's review and the one repair (steps 2 to 5). A
+// provider failure of either client is its *provider.Error (a cancellation
+// is the client's cancelled error: the caller tells it by its own context),
+// a context that cannot be built a *ContextError, a review that cannot run
+// a *ReviewError, a later stage that fails a *BindError; the Result says
+// which calls were made either way. An answer the server refuses is an
+// outcome (invalid), not an error; so is a repair call that fails (the
+// first outcome stays, Result.Repair says so).
 func Propose(ctx context.Context, c Clients, req Request, obs Observer) (Result, error) {
 	var r Result
 	if c.Segmenter == nil || c.Vision == nil {
@@ -213,22 +241,52 @@ func Propose(ctx context.Context, c Clients, req Request, obs Observer) (Result,
 	meta := res.Metadata
 	r.Vision = &meta
 	if obs.Answered != nil {
-		obs.Answered(meta, err)
+		obs.Answered(1, meta, err)
 	}
+	// check is the server's checks of a schema-valid answer: the review, the
+	// photo rules, the caller's later stage. The repair's answer goes through
+	// exactly these.
+	check := func(out provider.ProposalOutput) (review.Outcome, error) {
+		outcome, err := review.Review(review.Input{Mode: provider.ModeEdit, Base: req.BaseIR, Pool: req.Pool.IDs, Pack: req.Pack, Output: out})
+		if err != nil {
+			return review.Outcome{}, &ReviewError{Err: err}
+		}
+		if outcome.Status == review.Ready {
+			outcome = outcome.Refuse(review.Photo(req.Base.IR, outcome.Candidate, len(seg.Segments)))
+		}
+		if outcome.Status == review.Ready && req.Bind != nil {
+			issues, err := req.Bind(outcome.Candidate)
+			if err != nil {
+				return review.Outcome{}, &BindError{Err: err}
+			}
+			outcome = outcome.Refuse(issues)
+		}
+		return outcome, nil
+	}
+	var outcome review.Outcome
 	if err != nil {
 		var pe *provider.Error
-		if ctx.Err() == nil && errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			r.Outcome = review.InvalidOutput(pe.Issues)
-			return r, nil
+		if ctx.Err() != nil || !errors.As(err, &pe) || pe.Code != provider.CodeInvalidOutput {
+			return r, err
 		}
+		outcome = review.InvalidOutput(pe.Issues)
+	} else if outcome, err = check(res.Output); err != nil {
 		return r, err
 	}
-	outcome, err := review.Review(review.Input{Mode: provider.ModeEdit, Base: req.BaseIR, Pool: req.Pool.IDs, Pack: req.Pack, Output: res.Output})
-	if err != nil {
-		return r, &ReviewError{Err: err}
+	// H-057: one repair of an answer refused for what it says, on the same
+	// image and segments; the segmenter is not asked again.
+	answered := func(m provider.Metadata, err error) {
+		if obs.Answered != nil {
+			obs.Answered(2, m, err)
+		}
 	}
-	if outcome.Status == review.Ready {
-		outcome = outcome.Refuse(review.Photo(req.Base.IR, outcome.Candidate, len(seg.Segments)))
+	outcome, r.Repair, err = repair.Once(ctx, c.Vision, pctx, res.Prior, outcome, check, answered)
+	if err != nil {
+		var ae *aicontext.Error
+		if errors.As(err, &ae) {
+			return r, &ContextError{Code: ae.Code, Err: err}
+		}
+		return r, err
 	}
 	r.Outcome = outcome
 	return r, nil

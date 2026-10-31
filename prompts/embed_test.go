@@ -21,6 +21,12 @@ func TestTemplates(t *testing.T) {
 		// H-046 (2): the research rules a research proposal's system text
 		// adds after its role's (internal/ai/aicontext).
 		"research": {"RESEARCH_MODE: on", "USER_INTENT", "CURRENT_MODEL_IR", "untrusted_data", "needs_input", "sources"},
+		// H-057: the follow-up of a proposal's one repair, after the model's
+		// refused answer (internal/ai/aicontext Revise): the server's issues,
+		// the same format, a complete answer, no tools, needs_input over a
+		// guess, and that it is the last chance.
+		"repair": {"FOLLOW_UP", "SERVER_REVIEW", "server_data", "issues_not_listed", "/changes", "same format", "complete JSON document",
+			"no web search", "needs_input", "last chance"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {

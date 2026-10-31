@@ -34,7 +34,12 @@ type billedFake struct {
 }
 
 func (b *billedFake) Quote(_ context.Context, req provider.Request) (provider.Quote, error) {
-	return provider.Quote{Model: "claude-opus-5-5", MaxInputTokens: int64(len(req.Prompt.System) + len(req.Prompt.User()))}, nil
+	n := int64(len(req.Prompt.System) + len(req.Prompt.User()))
+	if r := req.Prompt.Revision; r != nil {
+		// H-057: a repair's two turns, as the live adapters quote them.
+		n += int64(r.Prior.Len() + len(r.User()))
+	}
+	return provider.Quote{Model: "claude-opus-5-5", MaxInputTokens: n}, nil
 }
 
 func (b *billedFake) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {

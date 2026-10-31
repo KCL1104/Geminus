@@ -380,8 +380,10 @@ func TestProviderFailuresFailTheProposal(t *testing.T) {
 
 // H-003 review M2: an answer holding U+0000 (in its text, a patch value or
 // a member name), which PostgreSQL text and jsonb cannot store, becomes
-// invalid in one attempt: the provider is asked once, the job completes,
-// and nothing of the answer is stored.
+// invalid in one attempt: the job completes, and nothing of the answer is
+// stored. H-057: in that attempt the provider is asked twice, the second
+// time for the one repair (the fake repeats the answer, refused again), and
+// the stored metadata says the repair came to invalid.
 func TestUnstorableAnswersAreInvalid(t *testing.T) {
 	e := setup(t)
 	mdl, mv := e.model(t)
@@ -413,11 +415,15 @@ func TestUnstorableAnswersAreInvalid(t *testing.T) {
 			if p.Status != "invalid" || !slices.Contains(issueCodes(t, p)[c.path], review.OutputInvalid) || p.Summary != nil || p.Changes != nil {
 				t.Fatalf("%+v %s", p, p.Validation)
 			}
-			if n := len(f.Requests()); n != 1 {
-				t.Errorf("the provider was asked %d times", n)
+			if reqs := f.Requests(); len(reqs) != 2 || reqs[0].Prompt.Revision != nil || reqs[1].Prompt.Revision == nil {
+				t.Errorf("the provider was asked %d times", len(reqs))
 			}
 			if n := e.count(t, `SELECT count(*) FROM twin.jobs WHERE ai_proposal_id=$1 AND status='completed' AND attempt=1`, id); n != 1 {
 				t.Error("the job did not complete in its first attempt")
+			}
+			if n := e.count(t, `SELECT count(*) FROM twin.ai_proposals WHERE id=$1 AND provider_metadata->'repair'->>'outcome'='invalid'
+				AND position('\u0000' in provider_metadata::text)=0`, id); n != 1 {
+				t.Error("the stored metadata does not say the repair came to invalid")
 			}
 		})
 	}

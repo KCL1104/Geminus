@@ -343,7 +343,7 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 		return provider.Quote{Model: asked, MaxInputTokens: contextWindowTokens, MaxToolCalls: researchMaxToolCalls}, nil
 	}
 	if len(req.Prompt.Images) == 0 {
-		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+proj.size) + quoteOverheadTokens
+		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+revisionBytes(req.Prompt)+proj.size) + quoteOverheadTokens
 		return provider.Quote{Model: asked, MaxInputTokens: min(n, contextWindowTokens)}, nil
 	}
 	n, err := b.count(ctx, req, proj)
@@ -473,7 +473,13 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 // message of the prompt's images (base64 image blocks, first) and its text,
 // and output_config.format, the projected schema; for a research prompt
 // (H-046 (2)) also tools, the one built-in web_search tool, without
-// user_location or any other member. Nothing else: no other tool and no
+// user_location or any other member; for a repair (H-057) two more
+// messages after the user message: the model's previous answer as an
+// assistant message of one text block, then the server's follow-up as a
+// user message of one text block. NOT RUN live: that Meta's
+// Anthropic-compatible endpoint takes a prior assistant turn without its
+// reasoning blocks with output_config is the documented Messages shape, not
+// yet observed. Nothing else: no other tool and no
 // tool_choice (the model decides whether to search), no thinking
 // ("disabled" is a 400; the model's own default decides how much it
 // reasons), no sampling, no metadata, no stop_sequences, top_k, container or
@@ -545,10 +551,27 @@ func messagesOf(modelID string, req provider.Request, schema map[string]any) (me
 	content = append(content, textBlock{Type: "text", Text: req.Prompt.User()})
 	m := messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
 		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}}
+	if r := req.Prompt.Revision; r != nil {
+		// H-057: a repair goes on from the first request: the model's own
+		// previous answer as its assistant turn (the text it wrote, its
+		// reasoning not kept), then the server's follow-up.
+		m.Messages = append(m.Messages,
+			userMessage{Role: "assistant", Content: []any{textBlock{Type: "text", Text: string(r.Prior.Bytes())}}},
+			userMessage{Role: "user", Content: []any{textBlock{Type: "text", Text: r.User()}}})
+	}
 	if req.Prompt.Research {
 		m.Tools = []builtinTool{{Type: webSearchTool}}
 	}
 	return m, nil
+}
+
+// revisionBytes are the bytes a repair's two turns add to a request (H-057):
+// the prior answer and the follow-up; 0 for a first request.
+func revisionBytes(p provider.Prompt) int {
+	if r := p.Revision; r != nil {
+		return r.Prior.Len() + len(r.User())
+	}
+	return 0
 }
 
 func messagesBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
@@ -756,8 +779,11 @@ func (b *Backend) researchAnswer(m message, resp provider.Response, proj structu
 	return b.decoded(resp, proj, m.Content[last].Text)
 }
 
-// decoded is resp with text, the answer, decoded from the projection.
+// decoded is resp with text, the answer, decoded from the projection. The
+// text as the model wrote it is resp.Answer either way (H-057: a repair
+// sends it back when the server refuses what it says).
 func (b *Backend) decoded(resp provider.Response, proj structured.Projection, text string) (provider.Response, error) {
+	resp.Answer = []byte(text)
 	decoded, issues := proj.Decode([]byte(text))
 	if len(issues) > 0 {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)

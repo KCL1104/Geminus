@@ -203,8 +203,19 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		return generation{photo: pc}, err
 	}
 
-	// The AI part (segmenter, checks, vision model, review, photo rules) is
-	// internal/ai/photopipeline's, which the live photo smoke runs too.
+	// The dataset binding stage on a ready candidate, from the copies read
+	// before any call: the pipeline's later stage, so a repair's answer goes
+	// through it too (H-057).
+	bind := func(candidate *model.ModelIR) ([]model.ValidationIssue, error) {
+		resolution, err := datasets.Resolve(ctx, snaps, org, candidate, v.DatasetBindings)
+		if err != nil {
+			return nil, err
+		}
+		return withoutIR(resolution.Issues), nil
+	}
+	// The AI part (segmenter, checks, vision model, review, photo rules, the
+	// one repair) is internal/ai/photopipeline's, which the live photo smoke
+	// runs too.
 	res, err := photopipeline.Propose(ctx, photopipeline.Clients{Segmenter: h.cfg.Segmenter, Vision: h.cfg.Vision}, photopipeline.Request{
 		OrganizationID: org,
 		Base:           aicontext.Version{OrganizationID: org, ModelID: v.ModelID, VersionID: v.ID, IR: &ir},
@@ -217,9 +228,10 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		Budget:         h.cfg.Budget,
 		Attribution:    attr,
 		Model:          chosen,
+		Bind:           bind,
 	}, photopipeline.Observer{
 		Segmented: func(m provider.SegmentMetadata, n int, err error) { h.logSegment(ctx, m, n, err) },
-		Answered:  func(m provider.Metadata, err error) { h.logCall(ctx, m, err) },
+		Answered:  func(call int, m provider.Metadata, err error) { h.logCall(ctx, m, err, call) },
 	})
 	pc.segmenter, pc.segments = res.Segmenter, res.Segments
 	pc.boxes = keptBoxes(res.Segmentation, pc.image)
@@ -229,15 +241,22 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		}
 		var ce *photopipeline.ContextError
 		var re *photopipeline.ReviewError
+		var be *photopipeline.BindError
 		switch {
 		case errors.As(err, &ce) && ce.Code == aicontext.TooLarge:
 			return generation{photo: pc}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
 		case errors.As(err, &ce):
 			h.cfg.Log.WarnContext(ctx, "building a photo proposal context failed", "organization_id", org, "proposal_id", pr.ID, "code", string(ce.Code))
-			return generation{photo: pc}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
+			return generation{meta: res.Vision, photo: pc, repair: res.Repair}, failure(InputInvalid, "the proposal's stored request cannot be built into a context", false)
 		case errors.As(err, &re):
 			h.cfg.Log.ErrorContext(ctx, "reviewing a photo proposal failed", "organization_id", org, "proposal_id", pr.ID, "error", re.Err.Error())
-			return generation{meta: res.Vision, photo: pc}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
+			return generation{meta: res.Vision, photo: pc, repair: res.Repair}, failure(InputInvalid, "the server could not review the answer against the stored base", false)
+		case errors.As(err, &be):
+			// No storage is read here, so this is the server's own fault; a
+			// retry would ask the provider again, so the attempt fails for
+			// good.
+			h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", be.Err.Error())
+			return generation{meta: res.Vision, photo: pc, repair: res.Repair}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
 		}
 		if provider.SlowModel(chosen) {
 			// A slow vision model's attempt is never run again (H-049 review
@@ -246,19 +265,7 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		}
 		return generation{meta: res.Vision, photo: pc}, providerFailure(err)
 	}
-	outcome := res.Outcome
-	if outcome.Status != review.Ready {
-		return generation{outcome: outcome, meta: res.Vision, photo: pc, manifest: manifest}, nil
-	}
-	resolution, err := datasets.Resolve(ctx, snaps, org, outcome.Candidate, v.DatasetBindings)
-	if err != nil {
-		if ctx.Err() != nil {
-			return generation{}, err
-		}
-		h.cfg.Log.ErrorContext(ctx, "the dataset binding stage failed after the provider answered", "organization_id", org, "proposal_id", pr.ID, "error", err.Error())
-		return generation{meta: res.Vision, photo: pc}, failure(DatasetStorageFailed, "the dataset binding stage failed after the provider answered", false)
-	}
-	return generation{outcome: outcome.Refuse(withoutIR(resolution.Issues)), meta: res.Vision, photo: pc, manifest: manifest}, nil
+	return generation{outcome: res.Outcome, meta: res.Vision, photo: pc, manifest: manifest, repair: res.Repair}, nil
 }
 
 // logSegment is the segmentation's operational line: labels, counts,

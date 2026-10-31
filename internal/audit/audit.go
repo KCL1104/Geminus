@@ -64,9 +64,10 @@ func (e *InvalidError) Unwrap() error { return ErrInvalid }
 // MaxFields bounds an event's metadata. It is at least the most fields an
 // action declares (TestEveryDeclaredFieldFits): proposal.generate of a ready
 // photo proposal records 34 (the provider's call, the photo's segmentation,
-// the risk), and 32 refused it live (2026-10-27). Each field's shape is
+// the risk), and 32 refused it live (2026-10-27); H-057's repair adds up to
+// 13 (repairCall), so proposal.generate declares 53. Each field's shape is
 // still checked one by one.
-const MaxFields = 40
+const MaxFields = 56
 
 // maxLabels bounds a label list (failed_over_from).
 const maxLabels = 8
@@ -165,6 +166,18 @@ var (
 		"segmenter_latency_ms": {shape: count}, "segmenter_cost_nano_usd": {shape: count}, "segmenter_spend_reservations": {shape: count},
 		"segmenter_spend_unsettled": {shape: flag},
 	}
+	// repairCall is what the generator records of a proposal's one repair
+	// (H-057, internal/ai/repair): what came of it, a failed second call's
+	// code, how many issues the follow-up listed, and the second call's
+	// template, hashes, tokens, latency, provider request ID and spend;
+	// never the prompt or either answer.
+	repairCall = map[string]field{
+		"repair": oneOf("ready", "needs_input", "invalid", "failed"), "repair_code": {shape: code}, "repair_issues": {shape: count},
+		"repair_prompt_template_version": {shape: label}, "repair_input_hash": {shape: hash}, "repair_output_hash": {shape: hash},
+		"repair_input_tokens": {shape: count}, "repair_output_tokens": {shape: count}, "repair_latency_ms": {shape: count},
+		"repair_provider_request_id": {shape: label}, "repair_cost_nano_usd": {shape: count}, "repair_spend_reservation_id": idOf("asr"),
+		"repair_spend_unsettled": {shape: flag},
+	}
 	aiRoles = oneOf("modeler", "scenario", "analyst", "importer")
 	// spendTargets are what a live AI call is for (provider.Attribution).
 	spendTargets = []string{"ai_proposal", "ai_analysis", "import"}
@@ -229,10 +242,10 @@ var catalogue = map[string]spec{
 		"outcome": oneOf("stale", "FAILED", "VALIDATED", "AWAITING_MAPPING"), "code": {shape: code}, "rows": {shape: count},
 		"dataset_size_bytes": {shape: count}, "invalid_rows": {shape: count}, "issues": {shape: count},
 		"warnings": {shape: count}}}, // T-052: the pack's data-quality warnings (D-059)
-	"proposal.generate": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, map[string]field{"attempt": {shape: count},
+	"proposal.generate": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, repairCall, map[string]field{"attempt": {shape: count},
 		"status": oneOf("ready", "needs_input", "invalid"), "issues": {shape: count}, "patch_hash": {shape: hash},
 		"server_risk_level": risks, "provider_risk_claim": oneOf("low", "medium", "high", ""), "risk_level": risks})},
-	"proposal.attempt_failed": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, map[string]field{"attempt": {shape: count},
+	"proposal.attempt_failed": {Worker, []string{"ai_proposal"}, fieldsOf(providerCall, photoCall, repairCall, map[string]field{"attempt": {shape: count},
 		"code": {shape: code}, "retryable": {shape: flag}})},
 	// T-030: an analysis of completed runs, asked for by a person and
 	// written by its job; IDs, counts and codes, never the question or what

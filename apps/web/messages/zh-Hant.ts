@@ -743,6 +743,8 @@ export const zhHant: Catalog = {
   "proposal.latest.same": "版本 {version} 是模型的最新版本。",
   "proposal.latest.newer": "模型的最新版本現在是版本 {version}。",
   "proposal.fromPhoto": "以照片提出（{type}，{width} × {height} 像素）。",
+  // H-057：Geminus 退回 AI 的第一份回答並再問一次；這是第二份。
+  "proposal.revisedAfterCheck": "經 Geminus 檢查後修正過一次。",
   "proposal.photo": "照片",
   "proposal.photo.alt": "提出這個提案時上傳的照片或平面圖。",
   "proposal.photo.boxesHint": "每個框是 {model} 在照片中找到的一個物件。",

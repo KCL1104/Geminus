@@ -497,7 +497,7 @@
     },
     "GeneratedBy": {
       "type": "object",
-      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. H-052: for a photo proposal, also the boxes of those objects (segmenter.boxes). Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash, latency or object ID. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own.",
+      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. H-052: for a photo proposal, also the boxes of those objects (segmenter.boxes). Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash, latency or object ID. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. H-057: revised_after_check says the proposal holds the AI's second answer, written after the server refused its first. A label for people, not a check of anything: the server's validation and risk stand on their own.",
       "properties": {
         "provider": {
           "type": "string",
@@ -561,6 +561,10 @@
             "sources_dropped"
           ],
           "additionalProperties": false
+        },
+        "revised_after_check": {
+          "type": "boolean",
+          "description": "H-057: true when the server refused the AI's first answer for what it said (the output schema, the patch rules, the model's validation such as ROUTING_INVALID, the photo rules or the dataset binding stage) and the proposal holds the AI's second and last answer, which it wrote after the server listed those issues back to it (each by its code, JSON Pointer path and the server's own fixed sentence); the server reviewed that second answer exactly as the first, and the proposal's state is that review's. Absent (false) when the first answer stood, or when the second request failed (the first answer's outcome stands). A proposal is asked again at most once. Never on an analysis."
         }
       },
       "required": [

@@ -14,6 +14,7 @@
 package provider
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"errors"
@@ -144,6 +145,13 @@ type ProposalResult struct {
 	// Sources are the answer's sources the research call opened
 	// (FilterSources, H-046 (2)); none for a call without research.
 	Sources []WebSource
+	// Prior is the model's answer as its backend took it, for one repair
+	// (H-057, revision.go): present when the answer is the request's (the
+	// model asked for, no web search it was not offered, within the output
+	// budget) and either schema-valid or refused only for what it says (the
+	// schema, or the backend's decoding of it: invalid_output). Absent for
+	// every other failure. Withheld when printed; never store or log it.
+	Prior PriorAnswer
 }
 
 type MappingResult struct {
@@ -175,7 +183,15 @@ type Request struct {
 
 // Response is a Backend's answer: untrusted text and accounting.
 type Response struct {
-	Text              []byte
+	// Text is the answer as the backend decoded it (a projection's encoded
+	// places decoded): what the client checks.
+	Text []byte
+	// Answer is the answer as the model wrote it: the text the backend took
+	// as the answer, before decoding it (H-057). Untrusted, held only for one
+	// repair (ProposalResult.Prior), never logged or stored. A backend sets
+	// it whenever it took a complete answer's text, also when decoding that
+	// text failed (invalid_output); nil when it took none.
+	Answer            []byte
 	Model             string
 	Credential        string   // label only
 	FailedOver        []string // labels refused (401/402/403) during this call
@@ -287,24 +303,24 @@ func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 // call runs one checked request and returns the schema-valid answer and,
 // for a research call, what its web search did. A metered client also
 // reserves before the call and settles after it (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, chosen string, out any) (jsontext.Value, Metadata, Research, error) {
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, chosen string, out any) (called, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, Metadata{}, Research{}, NewError(CodeCancelled, 0, "").WithCause(err)
+		return called{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
 	if d, ok := c.backend.(Disabled); ok {
-		return nil, Metadata{}, Research{}, d.err()
+		return called{}, d.err()
 	}
 	if role == "" || !organizationID.MatchString(org) || p.OrganizationID != org || p.Role != role || p.Verify() != nil {
-		return nil, Metadata{}, Research{}, invalidRequest()
+		return called{}, invalidRequest()
 	}
 	if c.meter != nil && !attr.complete() {
-		return nil, Metadata{}, Research{}, invalidRequest()
+		return called{}, invalidRequest()
 	}
 	if len(p.Images) > 0 {
 		// Images go only to a backend that sends them under its approval's
 		// data policy (T-055); no other backend ever sees the call.
 		if ii, ok := c.backend.(ImageInput); !ok || !ii.AcceptsImages() {
-			return nil, Metadata{}, Research{}, invalidRequest()
+			return called{}, invalidRequest()
 		}
 	}
 	if p.Research {
@@ -312,22 +328,28 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// the role (H-046 (2)); no other backend ever sees the call.
 		r, ok := c.backend.(Researcher)
 		if !ok {
-			return nil, Metadata{}, Research{}, NewError(CodeResearchUnsupported, 0, "")
+			return called{}, NewError(CodeResearchUnsupported, 0, "")
 		}
 		if !r.AcceptsResearch(role) {
-			return nil, Metadata{}, Research{}, NewError(CodePolicyNotApproved, 0, "")
+			return called{}, NewError(CodePolicyNotApproved, 0, "")
 		}
 	}
 	if chosen != "" && !c.AcceptsModel(role, chosen) {
 		// A model the backend cannot ask, or may not for the role (H-049):
 		// never asked of another model instead.
-		return nil, Metadata{}, Research{}, NewError(CodeModelNotApproved, 0, "")
+		return called{}, NewError(CodeModelNotApproved, 0, "")
 	}
 	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
-		return nil, Metadata{}, Research{}, NewError(CodeContextTooLarge, 0, "")
+		return called{}, NewError(CodeContextTooLarge, 0, "")
+	}
+	// H-057: a repair's second turn is bounded too: the prior answer by the
+	// output budget the client took it under, the follow-up by its own
+	// bound, so a repair is never refused for a size its first call passed.
+	if r := p.Revision; r != nil && (r.Prior.Len() > c.budget.MaxOutputBytes || len(r.User()) > MaxRevisionBytes) {
+		return called{}, NewError(CodeContextTooLarge, 0, "")
 	}
 	if !c.acquire(org) {
-		return nil, Metadata{}, Research{}, NewError(CodeConcurrencyLimited, 0, "")
+		return called{}, NewError(CodeConcurrencyLimited, 0, "")
 	}
 	defer c.release(org)
 
@@ -344,8 +366,14 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if len(p.Images) > 0 {
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
 	}
-	if p.Research {
+	if p.Research || (p.Revision != nil && p.Revision.Researched) {
+		// H-057: a research proposal's repair keeps its first call's output
+		// bound and timeouts (its reasoning is not cut, H-055); it has no web
+		// search, so no search loop a retry would bill again, and it keeps
+		// the budget's retries.
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ResearchMaxOutputTokens, c.budget.ResearchTimeout(req.AttemptTimeout), c.budget.ResearchTimeout(timeout)
+	}
+	if p.Research {
 		req.MaxRetries = ResearchMaxRetries
 	}
 	// One deadline for the whole call: a billable backend's quote (which may
@@ -356,7 +384,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if c.meter != nil {
 		var err error
 		if m, err = c.reserve(ctx, callCtx, org, role, attr, req); err != nil {
-			return nil, meta, Research{}, err
+			return called{meta: meta}, err
 		}
 		req.Reservation = m.res.ID
 	}
@@ -372,40 +400,60 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		meta.WebSearch = &WebSearch{Queries: max(0, resp.Research.Queries), ToolCalls: max(0, resp.Research.ToolCalls),
 			PagesOpened: pagesOpened(resp.Research.Opened), StepsWithIDs: StepsWithIDs(resp.Research, markers)}
 	}
+	// prior is the answer for a repair (H-057) when it is the request's own:
+	// from the model asked for, with no web search it was not offered, within
+	// the output budget. It goes with a schema-valid answer and with one
+	// refused for what it says, never with any other failure.
+	var prior PriorAnswer
+	if len(resp.Answer) > 0 && len(resp.Answer) <= c.budget.MaxOutputBytes && (p.Research || resp.Research.None()) &&
+		(req.Model == "" || c.meter == nil || resp.Model == req.Model) {
+		prior = PriorAnswer{text: bytes.Clone(resp.Answer)}
+	}
 	switch {
 	case ctx.Err() != nil:
-		return nil, meta, Research{}, NewError(CodeCancelled, 0, resp.Credential).WithCause(ctx.Err())
+		return called{meta: meta}, NewError(CodeCancelled, 0, resp.Credential).WithCause(ctx.Err())
 	case err != nil && errors.Is(callCtx.Err(), context.DeadlineExceeded):
-		return nil, meta, Research{}, NewError(CodeTimeout, 0, resp.Credential).WithCause(context.DeadlineExceeded)
+		return called{meta: meta}, NewError(CodeTimeout, 0, resp.Credential).WithCause(context.DeadlineExceeded)
 	case err != nil:
 		var pe *Error
 		if errors.As(err, &pe) {
-			return nil, meta, Research{}, pe
+			if pe.Code == CodeInvalidOutput {
+				// The backend took the answer's text and refused what it says
+				// (an encoded place that does not decode): prior holds the text
+				// only when the backend took one.
+				return called{meta: meta, prior: prior}, pe
+			}
+			return called{meta: meta}, pe
 		}
-		return nil, meta, Research{}, NewError(CodeUnavailable, 0, resp.Credential)
+		return called{meta: meta}, NewError(CodeUnavailable, 0, resp.Credential)
 	}
 
-	invalid := func(issues ...model.ValidationIssue) (jsontext.Value, Metadata, Research, error) {
+	// invalid refuses the answer; content says whether it was refused only
+	// for what it says, so that a repair may send it back (H-057).
+	invalid := func(content bool, issues ...model.ValidationIssue) (called, error) {
 		e := NewError(CodeInvalidOutput, 0, resp.Credential)
 		e.Issues = issues
-		return nil, meta, Research{}, e
+		if !content {
+			prior = PriorAnswer{}
+		}
+		return called{meta: meta, prior: prior}, e
 	}
 	if !p.Research && !resp.Research.None() {
 		// A backend that searched for a call that did not ask: not an
 		// answer this request may take (H-046 (2)).
-		return invalid(model.NewIssue(OutputInvalid, "", "the answer used web search, which the request did not offer", model.SeverityError))
+		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer used web search, which the request did not offer", model.SeverityError))
 	}
 	if req.Model != "" && c.meter != nil && resp.Model != req.Model {
 		// A live answer from another model than the one the person chose
 		// (H-049): never taken in its place (its usage is settled above).
-		return invalid(model.NewIssue(OutputInvalid, "", "the answer is not from the model the request asked for", model.SeverityError))
+		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer is not from the model the request asked for", model.SeverityError))
 	}
 	if len(resp.Text) == 0 || len(resp.Text) > c.budget.MaxOutputBytes {
-		return invalid(model.NewIssue(OutputInvalid, "", "the answer is empty or larger than the output budget", model.SeverityError))
+		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer is empty or larger than the output budget", model.SeverityError))
 	}
 	issues, err := validate.Document(resp.Text, role.OutputSchema(), OutputInvalid)
 	if err != nil {
-		return nil, meta, Research{}, NewError(CodeInvalidOutput, 0, resp.Credential)
+		return called{meta: meta}, NewError(CodeInvalidOutput, 0, resp.Credential)
 	}
 	if len(issues) > 0 {
 		// Keep where the answer is wrong, never what it says (AI_SPEC §4).
@@ -413,55 +461,67 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		for _, is := range issues[:min(len(issues), 20)] {
 			clean = append(clean, model.NewIssue(OutputInvalid, is.Path, "does not match "+role.OutputSchema(), model.SeverityError))
 		}
-		return invalid(clean...)
+		return invalid(true, clean...)
 	}
 	if err := unmarshalStrict(resp.Text, out); err != nil {
 		// The schema and the Go types are kept equal by contract tests.
-		return invalid(model.NewIssue(OutputInvalid, "", "does not decode", model.SeverityError))
+		return invalid(true, model.NewIssue(OutputInvalid, "", "does not decode", model.SeverityError))
 	}
 	raw := jsontext.Value(append([]byte(nil), resp.Text...))
 	if h, err := hashing.Of(raw); err == nil {
 		meta.OutputHash = h
 	}
-	return raw, meta, resp.Research, nil
+	return called{raw: raw, meta: meta, research: resp.Research, prior: prior}, nil
+}
+
+// called is what one checked call returned: the schema-valid answer, the
+// call's metadata, a research call's web search, and the answer for a
+// repair (H-057).
+type called struct {
+	raw      jsontext.Value
+	meta     Metadata
+	research Research
+	prior    PriorAnswer
 }
 
 // GenerateModelProposal asks for an edit or scenario proposal. For a
 // research call the answer's sources are kept only when the call opened
 // them (FilterSources); a call without research keeps none, whatever the
-// answer names.
+// answer names. The result's Prior is the answer for one repair (H-057),
+// with an invalid_output error too.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	raw, meta, research, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, in.Model, &out)
+	r, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, in.Model, &out)
+	meta := r.meta
 	if err != nil {
-		return ProposalResult{Metadata: meta}, err
+		return ProposalResult{Metadata: meta, Prior: r.prior}, err
 	}
 	var kept []WebSource
 	if meta.WebSearch != nil {
 		var dropped int
-		kept, dropped = FilterSources(out.Sources, research.Opened, in.Markers...)
+		kept, dropped = FilterSources(out.Sources, r.research.Opened, in.Markers...)
 		meta.WebSearch.SourcesKept, meta.WebSearch.SourcesDropped = len(kept), dropped
 	}
 	out.Sources = nil
-	return ProposalResult{Output: out, Raw: raw, Metadata: meta, Sources: kept}, nil
+	return ProposalResult{Output: out, Raw: r.raw, Metadata: meta, Sources: kept, Prior: r.prior}, nil
 }
 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, "", &out)
+	r, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, "", &out)
 	if err != nil {
-		return MappingResult{Metadata: meta}, err
+		return MappingResult{Metadata: r.meta}, err
 	}
-	return MappingResult{Output: out, Raw: raw, Metadata: meta}, nil
+	return MappingResult{Output: out, Raw: r.raw, Metadata: r.meta}, nil
 }
 
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	raw, meta, _, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out)
+	r, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out)
 	if err != nil {
-		return AnalysisResult{Metadata: meta}, err
+		return AnalysisResult{Metadata: r.meta}, err
 	}
-	return AnalysisResult{Output: out, Raw: raw, Metadata: meta}, nil
+	return AnalysisResult{Output: out, Raw: r.raw, Metadata: r.meta}, nil
 }

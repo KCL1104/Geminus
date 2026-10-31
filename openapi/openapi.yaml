@@ -1198,7 +1198,10 @@ paths:
         the server checks nothing of; never for an invalid or a failed proposal. H-052: a proposal asked for with a photo
         has generated_by.segmenter.boxes once it is answered (each object the segmenter found: its concept, its box in
         the photo''s pixels and its confidence), when the stored boxes pass the server''s checks again; the photo itself
-        is getProposalImage.'
+        is getProposalImage. H-057: when the server refused the AI''s first answer for what it said, the worker asked
+        the AI once more in the same job, with the server''s issues (code, path and the server''s fixed sentence),
+        and reviewed the second answer as the first; the proposal''s state is that review''s, and generated_by.revised_after_check
+        is true. A second request that failed leaves the first answer''s outcome, without the flag.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1468,6 +1471,29 @@ paths:
                         path: /nodes/9/id
                         message: a new entity's ID is not one of this proposal's allocated IDs (D-046)
                         severity: error
+                invalid_revised:
+                  summary: H-057; the server refused the first answer, the AI revised it once, and the server refused the second too
+                  value:
+                    proposal_id: aip_01M4YDQK00ADN261CME3WV5HZD
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    status: invalid
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-10-31T08:30:00Z'
+                    requires_confirmation: true
+                    validation:
+                      valid: false
+                      issues:
+                      - code: ROUTING_INVALID
+                        path: /nodes/45
+                        message: the outgoing routing probabilities are not valid
+                        severity: error
+                    generated_by:
+                      provider: meta
+                      model: muse-spark-1.3
+                      revised_after_check: true
                 failed:
                   summary: The provider's rate limit outlasted the job's attempts
                   value:

@@ -2421,6 +2421,30 @@
       "layer": "schema"
     },
     {
+      "id": "valid-ready-proposal-revised",
+      "instance": "testdata/contracts/valid-ready-proposal-revised.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-invalid-revised",
+      "instance": "testdata/contracts/valid-proposal-invalid-revised.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-revised-not-boolean",
+      "instance": "testdata/contracts/invalid-proposal-revised-not-boolean.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by/revised_after_check"
+      ]
+    },
+    {
       "id": "invalid-proposal-sources-without-web-search",
       "instance": "testdata/contracts/invalid-proposal-sources-without-web-search.json",
       "schema": "schemas/proposal.schema.json",
