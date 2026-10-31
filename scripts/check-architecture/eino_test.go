@@ -109,11 +109,20 @@ func TestEinoPlacement(t *testing.T) {
 			"internal/aigraph/proposal/zz_probe.go": graph,
 			"internal/runs/zz_probe.go":             blankImports("runs", m("internal/aigraph/proposal")),
 		}, "aigraph-only-in-the-worker", "./internal/runs", "./internal/aigraph/proposal", ""},
+		// E3 made the proposal graph a real package, which imports the context
+		// builder; the context builder's own tests import the electronics pack
+		// and the engine, so the engine or the pack importing the real graph
+		// is an import cycle Go refuses before any rule is read. These two
+		// probes therefore stand the synthetic graph in for the real one
+		// (proposal.go), as it was when E0 wrote them; what they expect is
+		// unchanged.
 		{"the engine links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/proposal.go":  graph,
 			"internal/aigraph/proposal/zz_probe.go":  graph,
 			"internal/simulation/engine/zz_probe.go": blankImports("engine", m("internal/aigraph/proposal")),
 		}, "no-eino-in-kernel-packs-transport", "./internal/simulation/engine", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
 		{"a pack links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/proposal.go":           graph,
 			"internal/aigraph/proposal/zz_probe.go":           graph,
 			"internal/domainpack/electronicsline/zz_probe.go": blankImports("electronicsline", m("internal/aigraph/proposal")),
 		}, "no-eino-in-kernel-packs-transport", "./internal/domainpack/electronicsline", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},

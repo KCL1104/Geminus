@@ -640,10 +640,35 @@ func (p panicked) Error() string {
 func (w *Worker) handle(ctx context.Context, a *attempt) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
-			err = panicked{value: v, stack: string(debug.Stack())}
+			err = first(v, debug.Stack())
 		}
 	}()
 	return w.cfg.Handlers[a.job.Type].Handle(ctx, a)
+}
+
+// first is the handler's panic v, recovered on stack: a handler.Reraised's
+// first value and stack in its place (E3 review round 1), when it can be
+// read and has them.
+func first(v any, stack []byte) (p panicked) {
+	p = panicked{value: v, stack: string(stack)}
+	r, ok := v.(handler.Reraised)
+	if !ok {
+		return p
+	}
+	defer func() {
+		if recover() != nil {
+			p = panicked{value: v, stack: string(stack)}
+		}
+	}()
+	inner, at := r.PanicValue(), r.PanicStack()
+	if inner == nil {
+		return p
+	}
+	p.value = inner
+	if len(at) > 0 {
+		p.stack = string(at)
+	}
+	return p
 }
 
 // heartbeat renews the lease every Heartbeat until ctx ends, and stops the

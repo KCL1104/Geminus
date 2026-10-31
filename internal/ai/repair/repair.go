@@ -3,9 +3,11 @@
 // refuses the model's first answer for what it says, the model is asked
 // once more, with its own answer and the server's issues, and the server's
 // review of that second answer is the proposal's outcome. Both paths that
-// ask for a proposal run it: the worker's text proposals
-// (internal/proposals/generator) and the photo pipeline
-// (internal/ai/photopipeline, which the live photo smoke runs too).
+// ask for a proposal run it: the worker's text proposals (the proposal role
+// graph, internal/aigraph/proposal, which internal/proposals/generator runs:
+// Plan and Settle around a second call of its own, H-059) and the photo
+// pipeline (internal/ai/photopipeline, Once, which the live photo smoke
+// runs too).
 //
 //   - A repair follows an invalid outcome with at least one error, when the
 //     client handed back the model's answer (provider.ProposalResult.Prior:
@@ -111,27 +113,56 @@ func Issues(o review.Outcome) ([]model.ValidationIssue, int) {
 // second call that fails otherwise is no error. Only a second answer the
 // client handed back is reviewed (Record.Revised): an invalid_output with
 // none is a failed call.
+//
+// It is Plan, the second call, then Settle; the proposal role graph
+// (internal/aigraph/proposal, H-059) runs the same three as nodes of its
+// own, with the second call made through the metered Eino ChatModel.
 func Once(ctx context.Context, client provider.LLMProvider, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome,
 	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
-	issues, notListed := Issues(refused)
-	if len(issues) == 0 || !prior.Present() {
-		return refused, nil, nil
-	}
-	rc, err := aicontext.Revise(first, prior, issues, notListed)
-	if err != nil {
+	rc, rec, err := Plan(ctx, first, prior, refused)
+	if rec == nil || err != nil {
 		return refused, nil, err
 	}
-	if err := ctx.Err(); err != nil {
-		// Stopping between the two calls: no second call.
-		return refused, nil, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
-	}
-	rec := &Record{Issues: len(issues), NotListed: notListed}
 	res, err := client.GenerateModelProposal(ctx, rc)
 	meta := res.Metadata
 	rec.Call = &meta
 	if answered != nil {
 		answered(meta, err)
 	}
+	return Settle(ctx, rec, refused, res, err, check)
+}
+
+// Plan is what a repair of refused asks the second time: the follow-up of
+// refused's errors (aicontext.Revise of the first request and the prior
+// answer) and the record the repair starts, with what it lists. A nil record
+// is nothing to repair: an outcome that is not invalid or has no error, or
+// no answer handed back. The error is the follow-up's that could not be
+// built (an *aicontext.Error: the server's own fault), or the attempt's
+// when ctx ended before the second call (the client's cancelled error); no
+// record comes with either.
+func Plan(ctx context.Context, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome) (provider.ProposalContext, *Record, error) {
+	issues, notListed := Issues(refused)
+	if len(issues) == 0 || !prior.Present() {
+		return provider.ProposalContext{}, nil, nil
+	}
+	rc, err := aicontext.Revise(first, prior, issues, notListed)
+	if err != nil {
+		return provider.ProposalContext{}, nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		// Stopping between the two calls: no second call.
+		return provider.ProposalContext{}, nil, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
+	}
+	return rc, &Record{Issues: len(issues), NotListed: notListed}, nil
+}
+
+// Settle is what came of a repair's second call, res and err, for rec (the
+// record Plan started, its Call set by the caller to the call's metadata)
+// and refused, the first outcome: check's review of a second answer, the
+// client's refusal of a second answer it handed back, or, for a call that
+// failed otherwise, refused itself with the record saying how. The error is
+// the attempt's when ctx ended during the call, or check's.
+func Settle(ctx context.Context, rec *Record, refused review.Outcome, res provider.ProposalResult, err error, check Check) (review.Outcome, *Record, error) {
 	if err != nil {
 		if ctx.Err() != nil {
 			return refused, rec, err
