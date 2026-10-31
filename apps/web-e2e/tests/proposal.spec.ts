@@ -179,7 +179,9 @@ const words = states.flatMap((s) => {
 const patchNames = Object.values(hostileNames).map((n) => visible(n));
 const addedIds = states.flatMap((s) => (sampleFor(s).proposal.changes ?? []).flatMap((op) => (op.op === "add" && typeof (op.value as { id?: unknown })?.id === "string" ? [(op.value as { id: string }).id] : [])));
 const lineIds = [...sampleLine.nodes, ...sampleLine.resources, ...sampleLine.entity_types, ...(sampleLine.calendars ?? []), ...sampleLine.flows].map((e) => e.id);
-const data = [sampleLine.name, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words, ...patchNames, ...addedIds, ...lineIds].filter((x): x is string => typeof x === "string");
+// H-052: what the segmenter was asked to find, as its boxes are labelled on the photo.
+const boxConcepts = states.flatMap((s) => (sampleFor(s).proposal.generated_by?.segmenter?.boxes ?? []).map((b) => b.concept));
+const data = [sampleLine.name, ...boxConcepts, ...sampleLine.nodes.map((n) => n.name ?? n.id), ...sampleLine.resources.map((r) => r.name), "X-ray inspection", "Before X-ray", "X-ray machine", "Raised the AOI buffer to 30 boards.", ...words, ...patchNames, ...addedIds, ...lineIds].filter((x): x is string => typeof x === "string");
 
 for (const locale of locales) {
   test(`${locale}: every string on the proposal pages is the catalog's or data`, async ({ page }) => {
