@@ -102,12 +102,14 @@ type Handler interface {
 }
 
 // Reraised is a panic raised again after code between the handler and the
-// frame that panicked recovered it, unwinding that frame: the analyst's
-// graph raises a node's panic, which Eino recovers, as one
-// (internal/aigraph/analysis.Panic). The worker records it with the value
-// and the stack it carries, as it records a panic that reached it
-// directly; one whose methods panic, or that carries no value or no
-// stack, is recorded as any other value.
+// frame that panicked recovered it, unwinding that frame: a role graph
+// raises a node's panic, which Eino recovers, as one on the handler's
+// goroutine (internal/aigraph/analysis.Panic, internal/aigraph/proposal.Panic;
+// H-059). The worker records it with the value and the stack it carries,
+// as it records a panic that reached it directly: INTERNAL, not retried,
+// of its value only a Go runtime error's message, the stack where the code
+// panicked. One whose methods panic, or that carries no value or no stack,
+// is recorded as any other value, with the worker's own stack.
 type Reraised interface {
 	// PanicValue is the value the code panicked with.
 	PanicValue() any

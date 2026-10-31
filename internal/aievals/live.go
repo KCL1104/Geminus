@@ -34,6 +34,8 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/review"
 	"github.com/kcl1104/geminus/internal/ai/spend"
+	"github.com/kcl1104/geminus/internal/aigraph/einomodel"
+	proposalgraph "github.com/kcl1104/geminus/internal/aigraph/proposal"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/model"
@@ -243,6 +245,14 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 	if cfg.Client == nil || cfg.Packs == nil || cfg.Provider == "" {
 		return nil, errors.New("aievals: a client, packs and the provider are required")
 	}
+	m, err := einomodel.New(cfg.Client)
+	if err != nil {
+		return nil, fmt.Errorf("aievals: %w", err)
+	}
+	graph, err := proposalgraph.New(proposalgraph.Config{Model: m, Packs: cfg.Packs, Budget: cfg.Budget})
+	if err != nil {
+		return nil, fmt.Errorf("aievals: %w", err)
+	}
 	now := time.Now
 	if cfg.Now != nil {
 		now = cfg.Now
@@ -280,7 +290,7 @@ func Run(ctx context.Context, cfg Config) (*Report, error) {
 			r.Statuses[o.Status]++
 			continue
 		}
-		meta, err := runCase(ctx, cfg, c, &o, r)
+		meta, err := runCase(ctx, cfg, graph, c, &o, r)
 		if err != nil {
 			r.Complete = false
 			r.finish(cfg, templates, served)
@@ -360,8 +370,8 @@ const (
 	evalMv  = "mv_01M4YDQK00EVA0000000000001"
 )
 
-// runCase runs one case into o and returns its call's metadata.
-func runCase(ctx context.Context, cfg Config, c Case, o *Outcome, r *Report) (provider.Metadata, error) {
+// runCase runs one case into o, on graph, and returns its call's metadata.
+func runCase(ctx context.Context, cfg Config, graph *proposalgraph.Graph, c Case, o *Outcome, r *Report) (provider.Metadata, error) {
 	var doc map[string]any
 	data, err := os.ReadFile(filepath.Join(cfg.Root, filepath.FromSlash(c.ModelFixture)))
 	if err != nil {
@@ -380,35 +390,51 @@ func runCase(ctx context.Context, cfg Config, c Case, o *Outcome, r *Report) (pr
 	if err := model.Decode(base, &ir); err != nil {
 		return provider.Metadata{}, fmt.Errorf("aievals: %s: %w", c.ID, err)
 	}
-	pack, err := cfg.Packs.Lookup(ir.Domain)
-	if err != nil {
+	if _, err := cfg.Packs.Lookup(ir.Domain); err != nil {
 		return provider.Metadata{}, fmt.Errorf("aievals: %s: no pack for the fixture's domain", c.ID)
 	}
 	pool, err := idpool.New(&ir)
 	if err != nil {
 		return provider.Metadata{}, fmt.Errorf("aievals: %s: %w", c.ID, err)
 	}
-	mode := provider.Mode(c.Mode)
-	aip := ids.New("aip")
-	pc, err := aicontext.Proposal(aicontext.ProposalInput{
-		Scope: aicontext.Scope{OrganizationID: evalOrg, ModelID: evalMdl}, Mode: mode,
-		Base:   aicontext.Version{OrganizationID: evalOrg, ModelID: evalMdl, VersionID: evalMv, IR: &ir},
-		Domain: pack.PromptContext(), Intent: c.Intent,
-		Pool: aicontext.Pool{OrganizationID: evalOrg, ProposalID: aip, IDs: pool}, OutputLocale: cfg.Locale, Budget: cfg.Budget,
-	})
+	poolJSON, err := json.Marshal(pool)
 	if err != nil {
-		o.Status, o.Code = "failed", "AI_CONTEXT_"+strings.ToUpper(string(aicontext.CodeOf(err)))
-		return provider.Metadata{}, nil
+		return provider.Metadata{}, fmt.Errorf("aievals: %s: %w", c.ID, err)
 	}
-	pc.Attribution = provider.Attribution{TargetType: "ai_proposal", TargetID: aip, RequestID: ids.New("req")}
-	res, err := cfg.Client.GenerateModelProposal(ctx, pc)
-	meta := res.Metadata
-	if err != nil {
+	// The worker's proposal graph (H-059, internal/aigraph/proposal): the
+	// context builder, the metered client behind the Eino ChatModel and the
+	// server's review, as the model_proposal job runs them; without the
+	// database (no snapshots, no binding stage) and without the repair: the
+	// eval scores first answers only.
+	aip := ids.New("aip")
+	res, err := graph.Run(ctx, proposalgraph.Request{
+		Scope: aicontext.Scope{OrganizationID: evalOrg, ModelID: evalMdl}, Mode: provider.Mode(c.Mode),
+		Base:   proposalgraph.Base{OrganizationID: evalOrg, ModelID: evalMdl, VersionID: evalMv, IR: base},
+		Intent: c.Intent, ProposalID: aip, Pool: poolJSON, OutputLocale: cfg.Locale,
+		Attribution: provider.Attribution{TargetType: "ai_proposal", TargetID: aip, RequestID: ids.New("req")},
+	}, proposalgraph.Hooks{})
+	var meta provider.Metadata
+	if res.Call != nil {
+		meta = *res.Call
+	}
+	var ie *proposalgraph.InputError
+	var ce *proposalgraph.ContextError
+	var re *proposalgraph.ReviewError
+	switch {
+	case err == nil:
+		judge(o, c, res.Outcome, r)
+	case errors.As(err, &ce):
+		o.Status, o.Code = "failed", "AI_CONTEXT_"+strings.ToUpper(string(ce.Code))
+	case errors.As(err, &ie):
+		return meta, fmt.Errorf("aievals: %s: %w", c.ID, err)
+	case errors.As(err, &re):
+		return meta, fmt.Errorf("aievals: %s: the review: %w", c.ID, re.Err)
+	default:
+		// The call failed (proposalgraph.CallError; once the run is
+		// stopped, the client refuses it with its cancelled error, as a
+		// direct call): the case failed, with the client's code.
+		err = proposalgraph.Cause(err)
 		var pe *provider.Error
-		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			judge(o, c, review.InvalidOutput(pe.Issues), r)
-			return meta, nil
-		}
 		o.Status, o.Code = "failed", "AI_"+strings.ToUpper(string(provider.CodeOf(err)))
 		if provider.CodeOf(err) == "" {
 			o.Code = "ERROR"
@@ -417,13 +443,7 @@ func runCase(ctx context.Context, cfg Config, c Case, o *Outcome, r *Report) (pr
 			o.ProviderStatus, o.ProviderErrorType = pe.Status, pe.ErrorType
 		}
 		judge(o, c, review.Outcome{}, r)
-		return meta, nil
 	}
-	outcome, err := review.Review(review.Input{Mode: mode, Base: base, Pool: pool, Pack: pack, Output: res.Output})
-	if err != nil {
-		return meta, fmt.Errorf("aievals: %s: the review: %w", c.ID, err)
-	}
-	judge(o, c, outcome, r)
 	return meta, nil
 }
 
