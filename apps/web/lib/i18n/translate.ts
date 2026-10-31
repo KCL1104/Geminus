@@ -71,6 +71,14 @@ export function formatDateTime(locale: Locale, iso: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(d);
 }
 
+/** A time of day from the API, in the reader's time zone, written the locale's way ("14:32", 「下午2:32」); H-061's clock sentence. */
+export function formatTime(locale: Locale, iso: string): string {
+  const m = dateTime.exec(iso);
+  const d = new Date(iso.toUpperCase());
+  if (m === null || !exists(m) || Number.isNaN(d.getTime())) throw new Error("not a date-time");
+  return new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(d);
+}
+
 export function formatNumber(locale: Locale, n: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(locale, options).format(n);
 }

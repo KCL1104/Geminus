@@ -24,6 +24,8 @@ import { advice } from "../ai-proposals/ask-form";
 import { useWriter } from "../ai-proposals/generated-by";
 import { DEFAULT_MODEL, ModelChoice, modelField } from "../ai-proposals/model-choice";
 import { visible } from "../ai-proposals/shown";
+import { investigationsOffered } from "../investigations/flags";
+import { TestThese } from "../investigations/test-these";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { formatAbsolute, formatRelative } from "./format";
@@ -54,7 +56,7 @@ export function Analysis({ baseline, scenario, rows, analysisId, onAnalysis, pol
         <AskForm baseline={baseline} scenario={scenario} onAnalysis={onAnalysis} />
       ) : (
         <Followed key={analysisId} id={analysisId} runs={{ run: scenario.id, baseline: baseline.id }} rows={rows} pollMs={pollMs}
-          onAgain={canEdit(role) ? () => onAnalysis(null) : null} modelId={canEdit(role) ? scenario.model_id : null} />
+          onAgain={canEdit(role) ? () => onAnalysis(null) : null} modelId={canEdit(role) ? scenario.model_id : null} baseline={baseline} />
       )}
     </section>
   );
@@ -100,10 +102,12 @@ function failureProblem(r: AnalysisRecord): Problem | null {
   return problemFromResponse(status, new Headers(), r.error);
 }
 
-function Followed({ id, runs, rows, pollMs, onAgain, modelId }: {
+function Followed({ id, runs, rows, pollMs, onAgain, modelId, baseline }: {
   id: string;
   /** The model whose next experiment an editor may ask the AI for (H-043), or null. */
   modelId: string | null;
+  /** This page's baseline run, which an AI investigation from this analysis reuses (H-061 A8). */
+  baseline: Run;
   /** This page's runs: an analysis of others (an old or edited address) is not shown here (T-030 review r1 M2). */
   runs: { run: string; baseline: string };
   rows: MetricRow[];
@@ -155,7 +159,7 @@ function Followed({ id, runs, rows, pollMs, onAgain, modelId }: {
     <>
       <StatusRegion message={generating ? t("analysis.generating") : record.status === "completed" ? t("analysis.done") : t("analysis.notKept")} />
       {record?.status === "completed" && record.analysis && (
-        <Explained analysis={record.analysis} rows={rows} generatedBy={record.generated_by} modelId={modelId} />
+        <Explained analysis={record.analysis} rows={rows} generatedBy={record.generated_by} modelId={modelId} analysisId={record.id} baseline={baseline} />
       )}
       {record?.status === "failed" && <Failed record={record} />}
       {!generating && onAgain && <Button onPress={onAgain}>{t("analysis.again")}</Button>}
@@ -230,7 +234,7 @@ function ProposeNext({ modelId, name, intent, aiModel }: { modelId: string; name
   );
 }
 
-function Explained({ analysis, rows, generatedBy, modelId }: { analysis: AnalysisOutput; rows: MetricRow[]; generatedBy?: GeneratedBy; modelId: string | null }) {
+function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline }: { analysis: AnalysisOutput; rows: MetricRow[]; generatedBy?: GeneratedBy; modelId: string | null; analysisId: string; baseline: Run }) {
   const i18n = useI18n();
   const { t } = i18n;
   const writer = useWriter(generatedBy);
@@ -325,7 +329,8 @@ function Explained({ analysis, rows, generatedBy, modelId }: { analysis: Analysi
       {analysis.suggested_next_experiments.length > 0 && (
         <>
           <h3>{t("analysis.next")}</h3>
-          <p className={styles.note}>{t("analysis.nextNote")}</p>
+          {/* H-061 A8 review round 1: where the AI can also test them (H-056 §14's revised note), the note says both ways. */}
+          <p className={styles.note}>{t(modelId !== null && investigationsOffered() ? "analysis.nextNote.act" : "analysis.nextNote")}</p>
           {modelId !== null && <ModelChoice value={aiModel} onChange={setAiModel} label={t("analysis.model")} />}
           <ul className={styles.explained}>
             {analysis.suggested_next_experiments.map((x, i) => (
@@ -335,6 +340,8 @@ function Explained({ analysis, rows, generatedBy, modelId }: { analysis: Analysi
               </li>
             ))}
           </ul>
+          {/* H-061 A8: or let the AI test these by itself (entry B), in a build with investigations on. */}
+          {modelId !== null && investigationsOffered() && <TestThese modelId={modelId} analysisId={analysisId} baseline={baseline} aiModel={aiModel} />}
         </>
       )}
     </div>

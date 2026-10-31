@@ -37,6 +37,7 @@ import { applyPatch, type Op, reapplyPatch } from "./patch";
 import { Properties } from "./properties";
 import { Segmented } from "../../ui/segmented";
 import { Twin3D } from "../twin-3d/viewer";
+import { InvestigationLink } from "../investigations/ai-mark";
 
 const WIDE = "(min-width: 721px)";
 const subscribeWide = (cb: () => void) => {
@@ -116,7 +117,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
   const [reapplyFailed, setReapplyFailed] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [nameFocus, setNameFocus] = useState<string | null>(null);
-  const [base, setBase] = useState<{ id: string; hash: string } | null>(null);
+  const [base, setBase] = useState<{ id: string; hash: string; aiEdit: boolean } | null>(null);
   const sent = useRef<Op[]>([]);
   const publishKey = useRef<{ revision: number; key: string } | null>(null);
 
@@ -124,7 +125,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
   useEffect(() => {
     const ctl = new AbortController();
     api.getModelVersion(remote.base_version_id, { signal: ctl.signal }).then((r) => {
-      if (r.ok && !ctl.signal.aborted) setBase({ id: r.data.id, hash: r.data.hash });
+      if (r.ok && !ctl.signal.aborted) setBase({ id: r.data.id, hash: r.data.hash, aiEdit: r.data.ai_edit !== undefined });
     });
     return () => ctl.abort();
   }, [api, remote.base_version_id]);
@@ -277,14 +278,37 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
     </>
   );
 
+  // H-061 A8: the latest version includes a change an AI investigation wrote (a person published it).
+  const aiVersion = base !== null && base.aiEdit && base.id === model.latest_version.id;
   const band = (actions?: ReactNode) => (
-    <PageHeader trail={header.trail} title={model.name} facts={[...header.facts, { label: t("band.draft"), value: statusLine }]} actions={actions} />
+    <PageHeader
+      trail={header.trail}
+      title={model.name}
+      facts={[
+        ...header.facts,
+        // H-056 §13's version fact as approved ("Includes a change the AI wrote"), named by its version.
+        ...(aiVersion ? [{ label: t("aiEdit.versionLabel", { version: String(model.latest_version.version) }), value: t("aiEdit.version") }] : []),
+        { label: t("band.draft"), value: statusLine },
+      ]}
+      actions={actions}
+    />
+  );
+  // H-061 A8: the draft holds a change an AI investigation wrote for the person who asked; a person checks and publishes it.
+  const aiDraft = remote.ai_edit && (
+    <Callout tone="info" data-ai-edit="">
+      <p>
+        {t("aiEdit.draft")}
+        {gap}
+        <InvestigationLink id={remote.ai_edit.investigation_id} />
+      </p>
+    </Callout>
   );
 
   if (!wide) {
     return (
       <section aria-label={t("editor.label")} className={styles.editor}>
         {band()}
+        {aiDraft}
         <Callout tone="info">{t("editor.narrow")}</Callout>
         {/* A phone edits no topology, but the AI can still be asked (review M4). */}
         {ask}
@@ -328,6 +352,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
       )}
 
       <ReadOnlyNotice role={role} />
+      {aiDraft}
       {remote.out_of_date && <Callout tone="warning">{t("draft.outOfDate")}</Callout>}
       {session.problem && <ProblemView problem={session.problem} />}
       {session.status === "conflict" && canEdit(role) && (
@@ -442,6 +467,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
         onConfirm={() => void publish()}
       >
         <p>{t("editor.publish.body", { version: String(nextVersion), previous: String(model.latest_version.version) })}</p>
+        {remote.ai_edit && <p data-ai-edit-publish>{t("aiEdit.publish")}</p>}
       </ConfirmDialog>
     </section>
   );

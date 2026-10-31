@@ -76,9 +76,10 @@ export default defineConfig({
       timeout: 300_000,
       reuseExistingServer: false,
       // H-051: built as production is, without Muse Wonder 1.0 on offer,
-      // whatever the shell running the tests has set; H-065: with it, only
-      // when GEMINUS_E2E_OFFER_WONDER=1.
-      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: offerWonder ? "1" : "", ...session },
+      // whatever the shell running the tests has set; H-069: with it unless
+      // GEMINUS_E2E_OFFER_WONDER=0; H-061 A8: without AI investigations or
+      // Muse Wonder 1.0 as their planner.
+      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: offerWonder ? "1" : "", NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: "", NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: "", ...session },
       stdout: "ignore",
       stderr: "pipe",
     },

@@ -76,8 +76,10 @@
   color: var(--gm-color-scenario);
 }
 
+/* "ai" marks what the AI made (H-061 A8, H-056 §13): the accent, which stands for the AI. */
 .pill[data-tone="accent"],
-.pill[data-tone="busy"] {
+.pill[data-tone="busy"],
+.pill[data-tone="ai"] {
   background: var(--gm-color-accent-wash);
   color: var(--gm-color-accent);
 }

@@ -22,6 +22,7 @@ import { Callout } from "../../ui/callout";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { RemoteView } from "../../app/_components/states";
+import { AiMark, MadeFor } from "../investigations/ai-mark";
 import { useRemote } from "../../app/_components/use-remote";
 import { loadEarlierRuns, MAX_RUN_PAGES, resultsHref } from "./load";
 import { isActive } from "./run-pair";
@@ -86,7 +87,16 @@ export function SimulateView({ scenario, version, onStarted }: {
   return (
     <>
       <RailModel id={scenario.model_id} />
-      <PageHeader trail={[]} title={scenario.name} />
+      <PageHeader
+        trail={[]}
+        title={scenario.name}
+        // H-061 A8: a scenario an AI investigation saved for the person who asked ("Saved by the AI", H-056 §13).
+        facts={
+          scenario.made_by_ai
+            ? [{ label: t("aiMark.label"), value: <><AiMark kind="saved" />{" "}<MadeFor made={scenario.made_by_ai} /></> }]
+            : []
+        }
+      />
       <p className={styles.intro}>{t("scenario.summary", { version: String(version.version), model: version.ir.name, count: changes })}</p>
       {canEdit(role) ? (
         <section aria-labelledby="run-heading" className={styles.section}>

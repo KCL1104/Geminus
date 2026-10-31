@@ -134,6 +134,36 @@ describe("the landing's content (H-048)", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // H-061 A8 (H-056, H-060: the Guardrails revised): with investigations on,
+  // the first and third rules say what the AI may now do for a person and what
+  // it never does; the other three stay as they are. Off (the production
+  // build), the five rules are byte for byte as before.
+  it.each(["en", "zh-Hant"] as const)("%s, with investigations on (H-061 A8): the AI acts only when asked, and only a person publishes", async (locale) => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    const c = catalogs[locale];
+    const el = await page(auth.signedOut, locale);
+    expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dt")].map(text)).toEqual(
+      (["acts", "checks", "publishes", "versions", "synthetic"] as const).map((k) => c[`landing.safe.${k}`]),
+    );
+    expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dd")].map(text)).toEqual(
+      (["acts", "checks", "publishes", "versions", "synthetic"] as const).map((k) => c[`landing.safe.${k}.body`]),
+    );
+    // What is no longer true with the AI acting is not said.
+    expect(text(el)).not.toContain(c["landing.safe.proposes"]);
+    expect(text(el)).not.toContain(c["landing.safe.proposes.body"]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it.each(["en", "zh-Hant"] as const)("%s, with investigations off (the production build): the five rules as before", async (locale) => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", undefined);
+    const c = catalogs[locale];
+    const el = await page(auth.signedOut, locale);
+    expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dt")].map(text)).toEqual(
+      (["proposes", "checks", "person", "versions", "synthetic"] as const).map((k) => c[`landing.safe.${k}`]),
+    );
+    expect(text(el)).not.toContain(c["landing.safe.acts"]);
+  });
+
   it("names no account, address, password or key in either language, signed out or in", async () => {
     for (const locale of ["en", "zh-Hant"] as const) {
       for (const value of [auth.signedOut, auth.ready]) {

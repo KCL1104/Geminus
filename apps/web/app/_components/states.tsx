@@ -15,7 +15,7 @@ import { useOrganizationLabels } from "./account";
 import { ProblemView } from "./problem-view";
 
 /** What a page loads; each has its own sentence in the catalog. */
-export type Loadable = "projects" | "models" | "model" | "scenario" | "scenarios" | "runs" | "results" | "account" | "proposal" | "proposals";
+export type Loadable = "projects" | "models" | "model" | "scenario" | "scenarios" | "runs" | "results" | "account" | "proposal" | "proposals" | "investigation";
 
 export function Loading({ what }: { what: Loadable }) {
   const { t } = useI18n();
