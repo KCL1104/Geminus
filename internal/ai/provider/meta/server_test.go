@@ -92,7 +92,13 @@ type server struct {
 func newServer(t *testing.T, scripts map[string][]reply) *server {
 	s := &server{t: t, scripts: scripts, hits: map[string]int{}}
 	s.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		data, _ := io.ReadAll(r.Body)
+		data, err := io.ReadAll(r.Body)
+		if err != nil {
+			// The client gave up in the middle of its body (a deadline or a
+			// cancel the test set, e.g. TestTheCountKeepsTheCallsDeadline on a
+			// loaded CI host): nothing was asked, so nothing is recorded.
+			return
+		}
 		var body map[string]any
 		if err := json.Unmarshal(data, &body); err != nil {
 			t.Errorf("request body: %v", err)
