@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"math"
 	"path/filepath"
 	"reflect"
@@ -468,25 +469,43 @@ func (c cancelling) Complete(ctx context.Context, req provider.Request) (provide
 }
 
 // A panic in a node is the caller's panic, with the value it was raised
-// with, as when the steps were one function: the worker records it as
-// INTERNAL and does not retry it (it is never turned into an error the
-// worker would retry, whose text would carry the stack).
+// with and the stack where it was raised, as when the steps were one
+// function: Run raises an analysis.Panic, which the worker records as
+// INTERNAL, not retried, with that value and that stack (handler.Reraised).
+// It is never turned into an error the worker would retry, whose text
+// would carry the stack. (Review round 1, finding 1: Eino recovers a
+// node's panic, so a stack taken where the caller recovers ends at Run.)
 func TestAPanicIsTheCallersPanic(t *testing.T) {
-	type boom struct{ n int }
-	for name, set := range map[string]func(*analysis.Input, *analysis.PackLookup){
-		"in the comparison": func(in *analysis.Input, _ *analysis.PackLookup) {
-			in.Compare = func(*simulation.Result, *simulation.Result) (compare.Comparison, error) { panic(boom{1}) }
-		},
-		"in the pack lookup": func(_ *analysis.Input, l *analysis.PackLookup) { *l = panicking{boom{1}} },
+	for name, c := range map[string]struct {
+		set    func(*analysis.Input, *analysis.PackLookup)
+		origin string // the frame that panicked
+	}{
+		"in the comparison": {func(in *analysis.Input, _ *analysis.PackLookup) { in.Compare = comparePanics }, "analysis_test.comparePanics("},
+		"in the pack lookup": {func(_ *analysis.Input, l *analysis.PackLookup) { *l = panicking{boom{secret}} },
+			"analysis_test.panicking.Lookup("},
 	} {
 		t.Run(name, func(t *testing.T) {
 			in, lookup := input(t), analysis.PackLookup(packs(t))
-			set(&in, &lookup)
+			c.set(&in, &lookup)
 			f := fake.New()
 			g := graph(t, client(t, f), lookup, provider.DefaultBudget(), nil)
 			defer func() {
-				if v := recover(); v != (boom{1}) {
-					t.Errorf("recovered %#v, want the node's own value", v)
+				v := recover()
+				p, ok := v.(analysis.Panic)
+				if !ok {
+					t.Fatalf("recovered %#v, want an analysis.Panic", v)
+				}
+				if p.Value != (boom{secret}) || p.PanicValue() != (boom{secret}) {
+					t.Errorf("recovered %#v, want the node's own value", p.Value)
+				}
+				if !strings.Contains(p.Stack, c.origin) || p.PanicStack() != p.Stack || !strings.HasPrefix(p.Stack, "goroutine ") {
+					t.Errorf("the stack does not name the frame that panicked (%s):\n%s", c.origin, p.Stack)
+				}
+				// Formatted, it names neither the value's data nor the stack.
+				for _, s := range []string{fmt.Sprint(p), fmt.Sprintf("%v %s", p, p)} {
+					if strings.Contains(s, secret) || strings.Contains(s, "goroutine") {
+						t.Errorf("formatted: %q", s)
+					}
 				}
 				if len(f.Requests()) != 0 {
 					t.Error("the provider was asked after a panic")
@@ -498,9 +517,51 @@ func TestAPanicIsTheCallersPanic(t *testing.T) {
 	}
 }
 
+const secret = "PANIC-VALUE-SENTINEL"
+
+type boom struct{ s string }
+
+func comparePanics(*simulation.Result, *simulation.Result) (compare.Comparison, error) {
+	panic(boom{secret})
+}
+
 type panicking struct{ v any }
 
 func (p panicking) Lookup(string) (domainpack.DomainPack, error) { panic(p.v) }
+
+type callerKey struct{}
+
+// The observer is told of each call with the caller's context: its values
+// (the worker's job correlation, observability.With, D-093 (b)) reach the
+// call's log line only that way. Review round 1, finding 2.
+func TestTheObserverGetsTheCallersContext(t *testing.T) {
+	for name, script := range map[string]func(*fake.Backend){
+		"an answered call": nil,
+		"a failed call": func(f *fake.Backend) {
+			f.Fail(provider.RoleAnalyst, question, provider.NewError(provider.CodeRefused, 0, ""))
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := fake.New()
+			if script != nil {
+				script(f)
+			}
+			var seen []any
+			g, err := analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
+				Called: func(ctx context.Context, _ provider.Metadata, _ error) { seen = append(seen, ctx.Value(callerKey{})) }})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = g.Run(context.WithValue(context.Background(), callerKey{}, "job_sentinel"), input(t))
+			if (err == nil) != (script == nil) {
+				t.Fatalf("run: %v", err)
+			}
+			if len(seen) != 1 || seen[0] != "job_sentinel" {
+				t.Errorf("the observer saw %v, want the caller's value once", seen)
+			}
+		})
+	}
+}
 
 // The configuration is checked when the graph is built.
 func TestNewChecksTheConfiguration(t *testing.T) {

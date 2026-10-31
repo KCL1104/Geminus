@@ -10,6 +10,7 @@ import (
 
 	"github.com/kcl1104/geminus/internal/ids"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
+	"github.com/kcl1104/geminus/internal/worker/handler"
 )
 
 // Review L5: how an attempt ended whose failure the loop tried to record,
@@ -81,5 +82,79 @@ func TestPanickedTrustsOnlyTheRuntime(t *testing.T) {
 	}()
 	if got != "handler panicked: assignment to entry in nil map" || strings.Contains(got, "SENTINEL") {
 		t.Errorf("%q", got)
+	}
+}
+
+// reraised is a handler.Reraised: a panic raised again after something
+// between the handler and the code that panicked recovered it, as the
+// analyst's graph raises a node's panic (internal/aigraph/analysis.Panic).
+type reraised struct {
+	value any
+	stack string
+}
+
+var _ handler.Reraised = reraised{}
+
+func (r reraised) PanicValue() any    { return r.value }
+func (r reraised) PanicStack() string { return r.stack }
+
+// brokenReraised's methods panic.
+type brokenReraised struct{}
+
+func (brokenReraised) PanicValue() any    { panic("PanicValue called") }
+func (brokenReraised) PanicStack() string { panic("PanicStack called") }
+
+// nilMapPanic is the runtime's panic of a nil map assignment.
+func nilMapPanic() (v any) {
+	defer func() { v = recover() }()
+	var m map[string]int
+	m["x"] = 1
+	return nil
+}
+
+// panickingWith runs handle on a handler that panics with v and returns
+// what the loop reads of it.
+func panickingWith(t *testing.T, v any) *panicked {
+	t.Helper()
+	w := &Worker{cfg: Config{Handlers: map[jobs.Type]handler.Handler{jobs.Analysis: handler.Func(func(context.Context, handler.Run) error {
+		panic(v)
+	})}}}
+	got := read(w.handle(context.Background(), &attempt{w: w, job: job(jobs.Analysis, jobs.Resource{AIAnalysisID: ids.New("ana")}, `{}`)}))
+	if got.panicked == nil || got.failure != nil || got.broken || got.large {
+		t.Fatalf("read %+v, want a panic", got)
+	}
+	return got.panicked
+}
+
+// Review round 1 (E2), finding 1: a handler.Reraised is recorded with its
+// own value (only a runtime error's message logged, as for any panic) and
+// the stack where the code panicked, not where the worker recovered it;
+// any other panic with the worker's stack, as before. A Reraised whose
+// methods panic, or that carries no value or no stack, is recorded as any
+// other value, and the worker survives it.
+func TestAReraisedPanicKeepsItsValueAndStack(t *testing.T) {
+	const origin = "goroutine 7 [running]:\norigin.frame()\n\t/src/origin.go:12 +0x1d\n"
+	if p := panickingWith(t, reraised{value: nilMapPanic(), stack: origin}); p.Error() != "handler panicked: assignment to entry in nil map" ||
+		p.stack != origin {
+		t.Errorf("a re-raised runtime panic: %q, stack %q", p.Error(), p.stack)
+	}
+	if p := panickingWith(t, reraised{value: "cell CASE-SENTINEL", stack: origin}); p.Error() != "handler panicked with a string" || p.stack != origin {
+		t.Errorf("a re-raised value: %q, stack %q", p.Error(), p.stack)
+	}
+	for name, v := range map[string]any{
+		"a value":                   "cell CASE-SENTINEL",
+		"a runtime panic":           nilMapPanic(),
+		"a reraised that panics":    brokenReraised{},
+		"a reraised without stack":  reraised{value: "x"},
+		"a reraised without value":  reraised{stack: origin},
+		"a nil pointer to reraised": (*reraised)(nil),
+	} {
+		p := panickingWith(t, v)
+		if p.value != v || !strings.Contains(p.stack, "worker.(*Worker).handle(") || strings.Contains(p.stack, "origin.frame") {
+			t.Errorf("%s: recorded %#v with stack\n%s", name, p.value, p.stack)
+		}
+		if strings.Contains(p.Error(), "SENTINEL") {
+			t.Errorf("%s: %q", name, p.Error())
+		}
 	}
 }

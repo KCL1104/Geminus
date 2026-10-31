@@ -35,9 +35,10 @@
 // the call; Eino also stops between nodes once ctx is done. No callback
 // handler is attached, per run or globally (a graph-level handler would see
 // the input and the answer: checks/E1_VALIDATION.md finding 4). A panic in
-// a node is the caller's panic, with its own value (Run re-raises it), as
-// when the steps were one function: the worker records it as INTERNAL and
-// does not retry it.
+// a node is the caller's panic: Run raises it again as a Panic, the node's
+// own value and the stack where the node panicked, which the worker records
+// as when the steps were one function (handler.Reraised): INTERNAL, not
+// retried, logged with that stack.
 package analysis
 
 import (
@@ -46,6 +47,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"runtime"
 	"slices"
 
 	"github.com/cloudwego/eino/compose"
@@ -224,7 +226,8 @@ func New(cfg Config) (*Graph, error) {
 
 // Run runs one analysis. Its error is an *Error for every failure the
 // graph classifies; otherwise ctx's end (a cancellation wrapped by Eino) or,
-// for a bug in the graph's wiring, Eino's own error.
+// for a bug in the graph's wiring, Eino's own error. A node's panic is
+// raised again as a Panic.
 func (g *Graph) Run(ctx context.Context, in Input) (Output, error) {
 	out, err := g.r.Invoke(ctx, in)
 	if err == nil {
@@ -232,7 +235,7 @@ func (g *Graph) Run(ctx context.Context, in Input) (Output, error) {
 	}
 	var p *nodePanic
 	if errors.As(err, &p) {
-		panic(p.value)
+		panic(p.p)
 	}
 	var e *Error
 	if errors.As(err, &e) {
@@ -392,22 +395,57 @@ func (n *nodes) ground(_ context.Context, a *answered) (Output, error) {
 	return Output{Analysis: out, Metadata: md}, nil
 }
 
+// Panic is a node's panic as Run raises it again in the caller's
+// goroutine: the value the node panicked with and the stack where it did.
+// Eino recovers a node's panic, unwinding the frames that panicked, so a
+// stack taken where the caller recovers Run's panic ends at Run; Stack is
+// the panicking goroutine's, taken as the node's panic was recovered. It is
+// a handler.Reraised (internal/worker/handler): the worker records the
+// panic with this value and this stack, INTERNAL and not retried.
+type Panic struct {
+	Value any
+	Stack string
+}
+
+// PanicValue is the node's own value.
+func (p Panic) PanicValue() any { return p.Value }
+
+// PanicStack is the stack where the node panicked.
+func (p Panic) PanicStack() string { return p.Stack }
+
+// String names the value's type only: the value may hold the data the node
+// worked on, and the stack is for the worker's own field.
+func (p Panic) String() string { return fmt.Sprintf("analysis: a node panicked with a %T", p.Value) }
+
 // nodePanic is a node's panic, carried out of Eino (which recovers a node's
 // panic into an error whose text holds the stack) so that Run raises it
 // again in the caller's goroutine.
-type nodePanic struct{ value any }
+type nodePanic struct{ p Panic }
 
-func (p *nodePanic) Error() string { return "analysis: a node panicked" }
+func (*nodePanic) Error() string { return "analysis: a node panicked" }
 
-// guard turns a panic of fn into a *nodePanic.
+// guard turns a panic of fn into a *nodePanic, with the stack of the
+// goroutine that panicked: recover does not unwind it until the deferred
+// call returns.
 func guard[I, O any](fn func(context.Context, I) (O, error)) func(context.Context, I) (O, error) {
 	return func(ctx context.Context, in I) (out O, err error) {
 		defer func() {
 			if v := recover(); v != nil {
 				var zero O
-				out, err = zero, &nodePanic{value: v}
+				out, err = zero, &nodePanic{Panic{Value: v, Stack: stack()}}
 			}
 		}()
 		return fn(ctx, in)
+	}
+}
+
+// stack is the calling goroutine's stack, as runtime/debug.Stack formats
+// it (runtime/debug is not among the graph's imports: aigraph-has-no-storage).
+func stack() string {
+	for n := 4 << 10; ; n *= 2 {
+		buf := make([]byte, n)
+		if m := runtime.Stack(buf, false); m < n {
+			return string(buf[:m])
+		}
 	}
 }

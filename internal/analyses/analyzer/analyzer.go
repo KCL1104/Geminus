@@ -77,6 +77,10 @@ type Handler struct {
 
 var _ handler.Handler = (*Handler)(nil)
 
+// A node's panic leaves the graph as an analysis.Panic, which the worker
+// records with the node's value and the stack where it panicked.
+var _ handler.Reraised = analysis.Panic{}
+
 var (
 	actorRef    = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.:-]{0,127}$`)
 	analysisIDs = regexp.MustCompile(`^ana_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
