@@ -10,6 +10,8 @@ export type * from "./dataset-snapshot";
 export type * from "./http";
 export type * from "./import-mapping";
 export type * from "./import";
+export type * from "./investigation";
+export type * from "./investigator";
 export type * from "./json-patch";
 export type * from "./model-ir";
 export type * from "./proposal-output";

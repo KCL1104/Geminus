@@ -1,0 +1,19 @@
+{
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "mode": "scenario",
+  "intent": "Lower the lead time.",
+  "run_config": {
+    "horizon": {
+      "value": 7,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 0,
+      "unit": "day"
+    },
+    "replications": 5,
+    "seed": 1,
+    "trace_level": "sampled"
+  },
+  "baseline_name": "Baseline"
+}

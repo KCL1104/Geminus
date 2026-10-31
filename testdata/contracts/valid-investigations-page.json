@@ -1,0 +1,218 @@
+{
+  "items": [
+    {
+      "id": "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A",
+      "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+      "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+      "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+      "mode": "scenario",
+      "source": "request",
+      "source_analysis_id": null,
+      "objective": {
+        "metric_path": "/metrics/lead_time_minutes/p50",
+        "better": "lower"
+      },
+      "output_locale": "en",
+      "research": false,
+      "proposal_model": "muse-spark-1.3",
+      "planner": {
+        "provider": "meta",
+        "model": "muse-spark-1.3",
+        "prompt_template_version": "investigator-0.1.0"
+      },
+      "status": "finished",
+      "reason": "finished_by_ai",
+      "activity": {
+        "state": "ended"
+      },
+      "caps": {
+        "what_ifs": 3,
+        "runs": 4,
+        "explanations": 4,
+        "steps": 14,
+        "minutes": 20
+      },
+      "used": {
+        "what_ifs": 1,
+        "runs": 2,
+        "explanations": 1,
+        "steps": 5
+      },
+      "run_config": {
+        "horizon": {
+          "value": 7,
+          "unit": "day"
+        },
+        "warmup": {
+          "value": 0,
+          "unit": "day"
+        },
+        "replications": 5,
+        "seed": 1,
+        "trace_level": "sampled"
+      },
+      "baseline_run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK50",
+      "steps": [
+        {
+          "seq": 1,
+          "tool": "propose_what_if",
+          "arguments": {
+            "idea": "Add a second ICT tester beside the first, so boards stop waiting for the one tester.",
+            "from_suggestion": null
+          },
+          "status": "done",
+          "effect": {
+            "proposal_id": "aip_01M4YDQK00B8S5WQXJ3TQ7ZK30"
+          },
+          "error": null,
+          "note": "The ICT step has the longest queue, so I start there.",
+          "requested_at": "2026-11-01T06:00:05Z",
+          "resolved_at": "2026-11-01T06:00:06Z",
+          "observed_at": "2026-11-01T06:00:21Z"
+        },
+        {
+          "seq": 2,
+          "tool": "save_scenario",
+          "arguments": {
+            "proposal_id": "aip_01M4YDQK00B8S5WQXJ3TQ7ZK30"
+          },
+          "status": "done",
+          "effect": {
+            "scenario_id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40"
+          },
+          "error": null,
+          "note": null,
+          "requested_at": "2026-11-01T06:00:25Z",
+          "resolved_at": "2026-11-01T06:00:26Z",
+          "observed_at": "2026-11-01T06:00:26Z"
+        },
+        {
+          "seq": 3,
+          "tool": "run_what_if",
+          "arguments": {
+            "scenario_id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40"
+          },
+          "status": "done",
+          "effect": {
+            "baseline_run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK50",
+            "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51"
+          },
+          "error": null,
+          "note": null,
+          "requested_at": "2026-11-01T06:00:30Z",
+          "resolved_at": "2026-11-01T06:00:31Z",
+          "observed_at": "2026-11-01T06:00:44Z"
+        },
+        {
+          "seq": 4,
+          "tool": "explain_results",
+          "arguments": {
+            "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+            "question": null
+          },
+          "status": "done",
+          "effect": {
+            "analysis_id": "ana_01M4YDQK00B8S5WQXJ3TQ7ZK60"
+          },
+          "error": null,
+          "note": null,
+          "requested_at": "2026-11-01T06:00:45Z",
+          "resolved_at": "2026-11-01T06:00:46Z",
+          "observed_at": "2026-11-01T06:01:40Z"
+        },
+        {
+          "seq": 5,
+          "tool": "finish",
+          "arguments": {
+            "outcome": "improvement_found",
+            "best_scenario_id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40"
+          },
+          "status": "done",
+          "effect": null,
+          "error": null,
+          "note": "The second tester helps; I stop here.",
+          "requested_at": "2026-11-01T06:01:50Z",
+          "resolved_at": "2026-11-01T06:01:50Z",
+          "observed_at": "2026-11-01T06:01:50Z"
+        }
+      ],
+      "candidates": [
+        {
+          "index": 1,
+          "source": "idea",
+          "idea": "Add a second ICT tester beside the first, so boards stop waiting for the one tester.",
+          "proposal_id": "aip_01M4YDQK00B8S5WQXJ3TQ7ZK30",
+          "proposal_status": "applied",
+          "scenario_id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40",
+          "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+          "analysis_ids": [
+            "ana_01M4YDQK00B8S5WQXJ3TQ7ZK60"
+          ],
+          "applied_draft_revision": null,
+          "comparison": {
+            "comparable": true,
+            "incomparable_reasons": [],
+            "objective": {
+              "metric_path": "/metrics/lead_time_minutes/p50",
+              "baseline": 42.5,
+              "scenario": 39.9,
+              "absolute_delta": -2.6000000000000014,
+              "relative_delta": -0.06117647058823533,
+              "status": "available",
+              "reason": null
+            },
+            "metrics": [
+              {
+                "metric_path": "/metrics/lead_time_minutes/p50",
+                "baseline": 42.5,
+                "scenario": 39.9,
+                "absolute_delta": -2.6000000000000014,
+                "relative_delta": -0.06117647058823533,
+                "status": "available",
+                "reason": null
+              },
+              {
+                "metric_path": "/metrics/throughput/mean",
+                "baseline": 120,
+                "scenario": 126,
+                "absolute_delta": 6,
+                "relative_delta": 0.05,
+                "status": "available",
+                "reason": null
+              }
+            ],
+            "warnings": []
+          }
+        }
+      ],
+      "best": {
+        "index": 1,
+        "objective": {
+          "metric_path": "/metrics/lead_time_minutes/p50",
+          "baseline": 42.5,
+          "scenario": 39.9,
+          "absolute_delta": -2.6000000000000014,
+          "relative_delta": -0.06117647058823533,
+          "status": "available",
+          "reason": null
+        }
+      },
+      "ai_outcome": "improvement_found",
+      "closing_line": {
+        "key": "improved",
+        "candidate_index": 1,
+        "metric_path": "/metrics/lead_time_minutes/p50",
+        "absolute_delta": -2.6000000000000014,
+        "relative_delta": -0.06117647058823533,
+        "compared": 1,
+        "draft_revision": null
+      },
+      "stop": null,
+      "deadline_at": "2026-11-01T06:20:00Z",
+      "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+      "created_at": "2026-11-01T06:00:00Z",
+      "finished_at": "2026-11-01T06:01:50Z"
+    }
+  ],
+  "next_cursor": null
+}

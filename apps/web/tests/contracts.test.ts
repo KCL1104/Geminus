@@ -42,6 +42,19 @@ import type {
   TargetField,
   Transform,
   ValidationCode,
+  ErrorObservation,
+  FinishArguments,
+  Investigation,
+  InvestigationAccepted,
+  InvestigationCaps,
+  InvestigationReason,
+  InvestigationRequest,
+  InvestigationToolCode,
+  InvestigatorTool,
+  PlannerModel,
+  ProposeWhatIfArguments,
+  SaveScenarioArguments,
+  StopInvestigation,
 } from "../lib/contracts";
 
 const fixture = (name: string): unknown =>
@@ -471,6 +484,151 @@ const lineFlowParts = {
   gated: "PRIMITIVE_NOT_SUPPORTED" satisfies ValidationCode,
 };
 
+// H-061 (PROPOSED): an AI investigation, its request and the planner's tool
+// arguments and results (investigation.schema.json, investigator.schema.json).
+const INV = "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2B";
+const investigationRequest: InvestigationRequest = {
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  mode: "scenario",
+  intent: "Find a change that lowers the median lead time without a new line.",
+  output_locale: "en",
+  research: false,
+  model: "muse-spark-1.3",
+  planner_model: "muse-spark-1.3",
+  run_config: { horizon: { value: 7, unit: "day" }, warmup: { value: 0, unit: "day" }, replications: 5, seed: 1, trace_level: "sampled" },
+  baseline_name: "Baseline for the AI",
+  objective: { metric_path: "/metrics/lead_time_minutes/p50" },
+};
+const fromAnalysis: InvestigationRequest = {
+  from_analysis_id: "ana_01M4YDQK00B8S5WQXJ3TQ7ZK61",
+  output_locale: "zh-Hant",
+  planner_model: "muse-spark-1.3",
+};
+const investigationAccepted: InvestigationAccepted = { investigation_id: "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A", status: "running" };
+const stopBody: StopInvestigation = {};
+const proposeWhatIf: ProposeWhatIfArguments = {
+  idea: "Add a second ICT tester beside the first, so boards stop waiting for the one tester.",
+  from_suggestion: null,
+};
+const finishArgs: FinishArguments = { outcome: "improvement_found", best_scenario_id: "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40" };
+const refusedObservation: ErrorObservation = {
+  is_error: true,
+  error: { code: "PROPOSAL_DECIDED", path: "/proposal_id" },
+  budget: { what_ifs_left: 2, runs_left: 4, explanations_left: 4, steps_left: 12 },
+};
+const editCaps: InvestigationCaps = { what_ifs: 1, runs: 0, explanations: 0, steps: 14, minutes: 20 };
+const editIdea = "Model the two ICT testers as one step with capacity 2.";
+const editAip = "aip_01M4YDQK00B8S5WQXJ3TQ7ZK32";
+const editWritten: Investigation = {
+  id: INV,
+  organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  mode: "edit",
+  source: "request",
+  source_analysis_id: null,
+  objective: null,
+  output_locale: "en",
+  research: false,
+  proposal_model: "muse-spark-1.3",
+  planner: { provider: "meta", model: "muse-spark-1.3", prompt_template_version: "investigator-0.1.0" },
+  status: "finished",
+  reason: "draft_written",
+  activity: { state: "ended" },
+  caps: editCaps,
+  used: { what_ifs: 1, runs: 0, explanations: 0, steps: 2 },
+  run_config: null,
+  baseline_run_id: null,
+  steps: [
+    {
+      seq: 1,
+      tool: "propose_model_edit",
+      arguments: { idea: editIdea },
+      status: "done",
+      effect: { proposal_id: editAip },
+      error: null,
+      note: null,
+      requested_at: "2026-11-01T07:00:05Z",
+      resolved_at: "2026-11-01T07:00:06Z",
+      observed_at: "2026-11-01T07:00:30Z",
+    },
+    {
+      seq: 2,
+      tool: "write_to_draft",
+      arguments: { proposal_id: editAip },
+      status: "done",
+      effect: { draft_revision: 4 },
+      error: null,
+      note: null,
+      requested_at: "2026-11-01T07:00:35Z",
+      resolved_at: "2026-11-01T07:00:36Z",
+      observed_at: "2026-11-01T07:00:36Z",
+    },
+  ],
+  candidates: [
+    {
+      index: 1,
+      source: "idea",
+      idea: editIdea,
+      proposal_id: editAip,
+      proposal_status: "applied",
+      scenario_id: null,
+      run_id: null,
+      analysis_ids: [],
+      applied_draft_revision: 4,
+      comparison: null,
+    },
+  ],
+  best: null,
+  ai_outcome: null,
+  closing_line: {
+    key: "draft_written",
+    candidate_index: null,
+    metric_path: null,
+    absolute_delta: null,
+    relative_delta: null,
+    compared: 0,
+    draft_revision: 4,
+  },
+  stop: null,
+  deadline_at: "2026-11-01T07:20:00Z",
+  created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  created_at: "2026-11-01T07:00:00Z",
+  finished_at: "2026-11-01T07:00:36Z",
+};
+
+describe("H-061 investigation contract types (PROPOSED)", () => {
+  it.each([
+    ["valid-investigation-request.json", investigationRequest],
+    ["valid-investigation-request-from-analysis.json", fromAnalysis],
+    ["valid-investigation-accepted.json", investigationAccepted],
+    ["valid-investigation-stop-request.json", stopBody],
+    ["valid-investigator-propose-what-if.json", proposeWhatIf],
+    ["valid-investigator-finish.json", finishArgs],
+    ["valid-investigator-observation-error.json", refusedObservation],
+    ["valid-investigation-edit-written.json", editWritten],
+  ])("%s", (name, typed) => {
+    expect(typed).toEqual(fixture(name));
+  });
+
+  it("an applied proposal is the AI's, never a person's approval", () => {
+    const applied = fixture("valid-proposal-applied-edit.json") as Proposal;
+    const status: Proposal["status"] = "applied";
+    expect([applied.status, applied.investigation?.index, applied.decided_by]).toEqual([status, 1, undefined]);
+  });
+
+  it("each step's tool is one of the seven, or invalid_call", () => {
+    const running = fixture("valid-investigation-running.json") as Investigation;
+    const tools: readonly InvestigatorTool[] = ["propose_what_if", "save_scenario", "run_what_if"];
+    expect(running.steps.map((s) => s.tool)).toEqual(tools);
+    // Waiting for the runs: the last row is carried out and not yet observed,
+    // and every earlier row is (H-061 §11: a row follows only an observed one).
+    const last = running.steps.at(-1);
+    expect([running.activity.state, last?.status, last?.observed_at]).toEqual(["waiting", "done", null]);
+    expect(running.steps.slice(0, -1).every((s) => s.observed_at !== null)).toBe(true);
+  });
+});
+
 describe("generated contract types match the shared fixtures", () => {
   it.each([
     ["valid-minimal-ir.json", minimalIR],
@@ -621,4 +779,28 @@ export const rejected = {
   comparisonWithoutReasons: { ...incomparableComparison, incomparable_reasons: undefined } satisfies Comparison,
   // @ts-expect-error another trace level does not make runs incomparable (SIMULATION_SPEC §9)
   traceMismatch: "TRACE_LEVEL_MISMATCH" satisfies IncomparableReason,
+  // @ts-expect-error H-061: a person deciding first is a step's result, never an end reason
+  decidedByPerson: "decided_by_person" satisfies InvestigationReason,
+  // @ts-expect-error H-061: no advance operation; the page drives nothing
+  advanceStep: { ...investigationRequest, expected_step: 0 } satisfies InvestigationRequest,
+  // @ts-expect-error H-061: a request never names the caps
+  requestCaps: { ...investigationRequest, caps: editCaps } satisfies InvestigationRequest,
+  // @ts-expect-error H-061: the resource has no step counter, only the ledger's steps
+  stepCounter: { ...editWritten, step: 2 } satisfies Investigation,
+  // @ts-expect-error H-061: the cap of 14 steps is fixed
+  moreSteps: { ...editCaps, steps: 20 } satisfies InvestigationCaps,
+  // @ts-expect-error H-061: publishing is never a tool
+  publishTool: "publish_version" satisfies InvestigatorTool,
+  // @ts-expect-error H-061: a tool's refusal code is not an HTTP error code
+  httpToolCode: "FORBIDDEN" satisfies InvestigationToolCode,
+  // @ts-expect-error H-061: only Muse Spark 1.3 or Muse Wonder 1.0 plans
+  otherPlanner: "claude-opus-5-5" satisfies PlannerModel,
+  // @ts-expect-error H-061: a stop takes no option
+  stopReason: { reason: "time_limit" } satisfies StopInvestigation,
+  // @ts-expect-error H-061: the AI's outcome is a claim, never an approval
+  finishApproved: { outcome: "approved", best_scenario_id: null } satisfies FinishArguments,
+  // @ts-expect-error H-061: the model never names the organization
+  argsOrganization: { proposal_id: editAip, organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH" } satisfies SaveScenarioArguments,
+  // @ts-expect-error H-061: every member is required, null where optional
+  argsMissingNull: { idea: "Add a tester" } satisfies ProposeWhatIfArguments,
 };

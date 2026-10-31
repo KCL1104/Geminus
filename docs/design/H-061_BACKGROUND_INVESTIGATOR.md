@@ -428,6 +428,7 @@ Every other prompt, golden and InputHash is byte-identical.
 - `model` stays the proposal model (H-049).
 - research applies to what-if 1 only.
 - Entry B {from_analysis_id, output_locale, model?, planner_model?, objective?} is otherwise unchanged.
+- The entry is picked by from_analysis_id (if/then/else, not §7's oneOf): a body with it is checked as entry B only, any other as entry A only. So a 422 names only the failures of the entry the person used. Edit mode refuses run_config, baseline_name and objective like unknown members (A2 review round 1).
 
 **Investigation: added fields**
 - steps[≤14] {seq, tool, arguments (server-validated; idea is AI text), status pending|done|refused|failed, effect refs, error {code, path} | null, note (AI text, optional), requested_at, resolved_at, observed_at};

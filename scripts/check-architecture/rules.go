@@ -108,6 +108,14 @@ var kernelThirdParty = []string{
 	"golang.org/x/text/message/...",
 }
 
+// aiThirdParty is what the AI packages outside the adapters may link: the
+// kernel's list, and Unicode normalization (H-061 A2: the investigator's
+// tool decoder refuses text that is not NFC, internal/ai/investigator).
+// golang.org/x/text/unicode/norm and the transform package it links are
+// tables and computation; the rest of golang.org/x/text stays out
+// (unicode/cldr reads files).
+var aiThirdParty = cat(kernelThirdParty, []string{"golang.org/x/text/transform", "golang.org/x/text/unicode/norm"})
+
 // otelAPI is the OpenTelemetry API (T-035, ADR-028): attributes, codes,
 // the metric and trace interfaces and their no-op implementations, and
 // what they link. Not the SDK or an exporter (otel-sdk-only-in-export).
@@ -620,7 +628,7 @@ var rules = []rule{
 		except: []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/...", // T-055: the Meta adapter's own HTTP client
 			"./internal/ai/photopipeline"},
 		forbid:     cat(ioStd, llmSDKs),
-		thirdParty: kernelThirdParty,
+		thirdParty: aiThirdParty,
 		stdOnly:    kernelStd,
 		goOnly:     true,
 	},

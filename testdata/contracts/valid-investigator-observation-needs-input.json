@@ -1,0 +1,18 @@
+{
+  "proposal_id": "aip_01M4YDQK00B8S5WQXJ3TQ7ZK31",
+  "index": 2,
+  "status": "needs_input",
+  "summary": null,
+  "change_count": 0,
+  "server_risk_level": null,
+  "questions": [
+    "Which station should get the second tester?"
+  ],
+  "issue_codes": [],
+  "budget": {
+    "what_ifs_left": 1,
+    "runs_left": 4,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}

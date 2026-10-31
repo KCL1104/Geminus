@@ -32,7 +32,7 @@
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "source_proposal_id": {
-      "description": "The approved scenario proposal whose one effect this scenario is (T-026; its Approval's scenario_id), or null for a scenario a person saved with createManualScenario (T-028).",
+      "description": "The scenario proposal whose one effect this scenario is: approved by a person (T-026; its Approval's scenario_id) or, with made_by_ai, applied by an AI investigation (H-061, PROPOSED); or null for a scenario a person saved with createManualScenario (T-028).",
       "anyOf": [
         {
           "$ref": "common.schema.json#/$defs/ProposalID"
@@ -48,6 +48,10 @@
     "created_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "made_by_ai": {
+      "$ref": "common.schema.json#/$defs/MadeByAI",
+      "description": "H-061 (PROPOSED): present only on a scenario an AI investigation saved (\"Saved by the AI\"); it always has a source proposal."
     }
   },
   "required": [
@@ -62,5 +66,21 @@
     "created_by",
     "created_at"
   ],
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "made_by_ai"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source_proposal_id": {
+            "$ref": "common.schema.json#/$defs/ProposalID"
+          }
+        }
+      }
+    }
+  ]
 }
