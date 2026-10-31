@@ -1,5 +1,7 @@
 package main
 
+import "slices"
+
 // The dependency rules of docs/ARCHITECTURE.md §2 and AGENTS.md §2–§3 that a
 // package graph can show. A pattern is an import path; a trailing "/..."
 // also matches everything below it. Module-relative patterns start with "./".
@@ -42,8 +44,9 @@ var appLayers = []string{
 	"./internal/audit/...",         // the audit catalogue (T-035)
 	"./internal/observability/...", // structured logs and the privacy filter (T-035)
 	"./internal/config/...",
-	"./internal/httpapi/...", // HTTP transport (T-009, ADR-019)
-	"./internal/api/...",     // route assembly
+	"./internal/httpapi/...",        // HTTP transport (T-009, ADR-019)
+	"./internal/api/...",            // route assembly
+	"./internal/investigations/...", // AI investigations (H-056, H-060; ADR-031): a service, wherever it runs
 }
 
 // Standard-library packages that mean network, database, process or
@@ -116,6 +119,95 @@ var otelAPI = []string{
 	"github.com/cespare/xxhash/v2", // attribute set hashing
 }
 
+// Eino (H-058, H-059; ADR-031) orchestrates the AI roles. einoUsers are the
+// only packages that import it (docs/design/H-056_INVESTIGATIONS_ON_EINO.md
+// §6.2): the metered ChatModel adapter and the role graphs, and the
+// investigation loop. None of them exists yet (E0 adds the rules).
+var eino = []string{"github.com/cloudwego/eino/..."}
+var einoUsers = []string{"./internal/aigraph/...", "./internal/investigations/loop/..."}
+
+// eino-ext's components call providers with their own SDKs and clients,
+// around the metered client (ADR-031). eino-contrib/jsonschema, which Eino
+// itself links, is not part of it.
+var einoExt = []string{"github.com/cloudwego/eino-ext/..."}
+
+// einoClosure is every non-standard package that the Eino packages the
+// design uses (compose, schema, components/model, components/tool,
+// components/tool/utils, callbacks, adk) link at v0.9.21 on any platform of
+// the matrix, besides logrus's golang.org/x/sys, which einoBrings brings
+// instead (TestEinoAgreedPlacementsConform reads the matrix). sonic is listed
+// package by package: its compat path only (sonicJIT). ADR-031 has the
+// modules, versions and licenses; adding one is a reviewed change to both.
+var einoClosure = []string{
+	"github.com/cloudwego/eino/...",
+	"github.com/bytedance/sonic",
+	"github.com/bytedance/sonic/ast",
+	"github.com/bytedance/sonic/option",
+	"github.com/bytedance/sonic/unquote",
+	"github.com/bytedance/sonic/internal/caching",
+	"github.com/bytedance/sonic/internal/compat",
+	"github.com/bytedance/sonic/internal/native/types",
+	"github.com/bytedance/sonic/internal/rt",
+	"github.com/bytedance/sonic/internal/utils",
+	"github.com/bytedance/gopkg/lang/dirtmake",
+	"github.com/bahlo/generic-list-go",
+	"github.com/buger/jsonparser",
+	"github.com/dustin/go-humanize",
+	"github.com/eino-contrib/jsonschema",
+	"github.com/google/uuid",
+	"github.com/goph/emperror",
+	"github.com/json-iterator/go",
+	"github.com/mailru/easyjson/buffer",
+	"github.com/mailru/easyjson/jwriter",
+	"github.com/modern-go/concurrent",
+	"github.com/modern-go/reflect2",
+	"github.com/nikolalohinski/gonja/...", // Jinja2 prompt templates; the design uses no ChatTemplate
+	"github.com/pelletier/go-toml/v2/...",
+	"github.com/pkg/errors",
+	"github.com/sirupsen/logrus",
+	"github.com/slongfield/pyfmt",
+	"github.com/wk8/go-ordered-map/v2",
+	"github.com/yargevad/filepathx",
+	"golang.org/x/exp/constraints",
+	"golang.org/x/exp/slices",
+	"gopkg.in/yaml.v3",
+}
+
+// einoBrings are the imports of Eino's closure that aigraph-has-no-storage's
+// I/O lists would refuse but that open nothing (ADR-031): google/uuid's
+// database/sql/driver (its UUID is a driver.Valuer, as in
+// db-only-in-storage) and net (net.Interfaces, for version 1 node IDs);
+// jsonschema's net (the type net.IP); easyjson's buffer's net (net.Buffers,
+// written to the writer it is given); logrus's golang.org/x/sys (its
+// terminal check). Through any other package, or imported directly, each is
+// still a violation (TestEinoBringsOnlyTheirImports).
+var einoBrings = map[string][]string{
+	"github.com/google/uuid":             {"database/sql/driver", "net"},
+	"github.com/eino-contrib/jsonschema": {"net"},
+	"github.com/mailru/easyjson/buffer":  {"net"},
+	"github.com/sirupsen/logrus":         {"golang.org/x/sys/unix", "golang.org/x/sys/windows"},
+}
+
+// sonicJIT is sonic's native path: the JIT and its assembler, the loader
+// that maps generated machine code into executable memory, and the native
+// assembly. On go1.27 sonic v1.15.0 builds its compat path (encoding/json)
+// instead; this keeps it there (ADR-031): a sonic release that supports
+// go1.27 natively (the design names v1.15.4) would switch to the JIT
+// without any import changing.
+var sonicJIT = []string{
+	"github.com/bytedance/sonic/loader/...",
+	"github.com/bytedance/sonic/internal/jit/...",
+	"github.com/bytedance/sonic/internal/decoder/jitdec/...",
+	"github.com/bytedance/sonic/internal/encoder/x86/...",
+	"github.com/bytedance/sonic/internal/native/...", // but native/types (sonicJITAllow)
+	"github.com/twitchyliquid64/golang-asm/...",
+	"github.com/cloudwego/base64x/...",
+}
+var sonicJITAllow = []string{"github.com/bytedance/sonic/internal/native/types"}
+
+// The live provider adapters (T-024, T-055).
+var liveAdapters = []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/..."}
+
 // Test infrastructure: imported from _test.go files only.
 var testInfra = []string{
 	"./internal/contracttest/...",
@@ -166,6 +258,17 @@ func cat(lists ...[]string) []string {
 	var out []string
 	for _, l := range lists {
 		out = append(out, l...)
+	}
+	return out
+}
+
+// without is list less the given entries.
+func without(list []string, drop ...string) []string {
+	var out []string
+	for _, s := range list {
+		if !slices.Contains(drop, s) {
+			out = append(out, s)
+		}
 	}
 	return out
 }
@@ -449,6 +552,10 @@ var rules = []rule{
 		// approvals and the token the live adapter requires (review L5); the
 		// rest of internal/config stays out of reach.
 		allow: []string{"./internal/ai/...", "./internal/config/aiapproval"},
+		// ADR-031: the photo pipeline links Eino through the photo graph,
+		// and Eino links github.com/google/uuid, whose database/sql/driver
+		// import opens nothing (as in db-only-in-storage); only that import.
+		bring: map[string][]string{"github.com/google/uuid": {"database/sql/driver"}},
 	},
 	{
 		// The provider adapters (Anthropic's; T-055: Meta's) are the only AI
@@ -456,13 +563,121 @@ var rules = []rule{
 		// interface, the fake, the ID pool, the locale checks and the shared
 		// projection (structured) are computation on what the server read, so
 		// they import computation, encoding and embed packages only.
-		name:       "ai-is-pure-but-the-adapter",
-		why:        "outside the provider adapters, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)",
-		applies:    []string{"./internal/ai/..."},
-		except:     []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/..."}, // T-055: the Meta adapter's own HTTP client
+		// ADR-031: the photo pipeline has a rule of its own with the same
+		// lists and one gateway (photopipeline-is-pure-but-its-graph).
+		name:    "ai-is-pure-but-the-adapter",
+		why:     "outside the provider adapters, the AI packages do no I/O: no network, database, process or file access (AGENTS.md §2, SECURITY §7)",
+		applies: []string{"./internal/ai/..."},
+		except: []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/...", // T-055: the Meta adapter's own HTTP client
+			"./internal/ai/photopipeline"},
 		forbid:     cat(ioStd, llmSDKs),
 		thirdParty: kernelThirdParty,
 		stdOnly:    kernelStd,
 		goOnly:     true,
+	},
+	{
+		// ADR-031 (design §6.2, §6.4): the photo pipeline becomes a facade
+		// over the photo role graph. Its own imports stay those of every pure
+		// AI package (TestPhotopipelineRuleKeepsTheAIPackagesLists); it
+		// reaches Eino's closure, which links net, os and syscall underneath,
+		// only through internal/aigraph/photo, which aigraph-has-no-storage
+		// holds. No other AI package has a gateway.
+		name:       "photopipeline-is-pure-but-its-graph",
+		why:        "the photo pipeline does no I/O of its own, like every AI package outside the adapters; it reaches Eino only through the photo role graph (ADR-031, AGENTS.md §2, SECURITY §7)",
+		applies:    []string{"./internal/ai/photopipeline"},
+		forbid:     cat(ioStd, llmSDKs),
+		thirdParty: kernelThirdParty,
+		stdOnly:    kernelStd,
+		goOnly:     true,
+		through:    []string{"./internal/aigraph/photo"},
+	},
+	{
+		// H-058, H-059 (ADR-031): Eino orchestrates the AI roles and reaches a
+		// model only through the metered ChatModel adapter in
+		// internal/aigraph. Every other package links it only through
+		// internal/aigraph or the investigation loop, so no service, handler,
+		// adapter or binary builds a graph, a model or a tool of its own
+		// around the reviewed path.
+		name:    "eino-fenced",
+		why:     "only internal/aigraph (the role graphs and the metered ChatModel adapter) and internal/investigations/loop import Eino; everything else reaches it through them (H-058, H-059, ADR-031)",
+		applies: []string{"./..."},
+		except:  einoUsers,
+		forbid:  eino,
+		through: einoUsers,
+	},
+	{
+		name:    "no-eino-ext",
+		why:     "eino-ext's components call models and services with their own SDKs and clients, around the metered client, the Standard-mode check, strict decoding and no-store: no package links it (ADR-031)",
+		applies: []string{"./..."},
+		forbid:  einoExt,
+	},
+	{
+		name:    "no-eino-ext-in-tests",
+		why:     "no test links eino-ext either: it would enter go.mod and go.sum, one import away from production (ADR-031)",
+		applies: []string{"./..."},
+		forbid:  einoExt,
+		tests:   true,
+	},
+	{
+		// The kernel and the packs refuse Eino through their third-party
+		// allowlists already; this says so, with no gateway, and covers the
+		// HTTP transport, which has no allowlist.
+		name:    "no-eino-in-kernel-packs-transport",
+		why:     "the engine, the IR, results, the DomainPack interface, the packs and the HTTP transport never link Eino, directly or through another package (H-058, ADR-031)",
+		applies: cat(genericKernel, []string{"./internal/domainpack/...", "./internal/httpapi/..."}),
+		forbid:  cat(eino, einoExt),
+	},
+	{
+		name:    "no-eino-in-kernel-packs-transport-tests",
+		why:     "the tests of the engine, the IR, results, the DomainPack interface, the packs and the HTTP transport never link Eino either (H-058, ADR-031)",
+		applies: cat(genericKernel, []string{"./internal/domainpack/...", "./internal/httpapi/..."}),
+		forbid:  cat(eino, einoExt),
+		tests:   true,
+	},
+	{
+		// ADR-031: sonic (Eino's JSON library) runs its compat path on
+		// go1.27, encoding/json, with no executable memory. The cost is one
+		// constant line on stderr at init (TestSonicRunsItsCompatPath).
+		name:    "json-without-jit",
+		why:     "sonic stays on its compat path (encoding/json): nothing links its JIT, its assembler, its loader of machine code into executable memory or its native assembly (ADR-031)",
+		applies: []string{"./..."},
+		forbid:  sonicJIT,
+		allow:   sonicJITAllow,
+	},
+	{
+		// Design §6.2: the role graphs and the adapter are computation on
+		// what the job handler read and hands them; every I/O node body
+		// (preload, verify, bind, compare, SAM) is injected by the handler,
+		// and the model is reached through provider.LLMProvider, the metered
+		// client. Eino's closure links os underneath (gonja's template
+		// loaders, logrus, uuid, filepathx, sonic's warning) and syscall
+		// through logrus's golang.org/x/sys, so the standard-library allowlist
+		// applies to the packages' own imports; the I/O list applies to the
+		// whole closure, but for einoBrings.
+		name:    "aigraph-has-no-storage",
+		why:     "internal/aigraph is the AI role graphs and their metered ChatModel adapter: the pure AI packages, the kernel and Eino, no storage, tenant scope, write service, live adapter, network, process, file or SQL access of its own (ADR-031, AGENTS.md §2)",
+		applies: []string{"./internal/aigraph/..."},
+		forbid: cat(without(appLayers, "./internal/ai/..."), liveAdapters, testInfra, ioStd, dbDrivers, llmSDKs,
+			einoExt, sonicJIT, []string{"testing"}),
+		allow:      sonicJITAllow,
+		thirdParty: cat(kernelThirdParty, einoClosure),
+		stdOnly:    kernelStd,
+		moduleOnly: cat(genericKernel, []string{"./internal/aigraph/...", "./internal/ai/...", "./internal/ids", "./prompts"}),
+		bring:      einoBrings,
+		goOnly:     true,
+		future:     true,
+	},
+	{
+		// Design §6.2: the role graphs call models, so like the live
+		// adapters (live-ai-only-in-the-worker) only the worker's side links
+		// them: the worker binary, its proposal and analysis handlers, the
+		// photo pipeline they use (a facade over the photo graph, §6.4) and
+		// the live eval. Never the API or a service it shares.
+		name:    "aigraph-only-in-the-worker",
+		why:     "the role graphs call models through the metered adapter: only the worker, its AI job handlers, the photo pipeline and the live eval link internal/aigraph, never the API or a service it shares (H-059, ADR-031)",
+		applies: []string{"./..."},
+		except: []string{"./internal/aigraph/...", "./cmd/worker/...", "./cmd/ai-eval-live/...", "./internal/proposals/generator/...",
+			"./internal/analyses/analyzer/...", "./internal/aievals/...", "./internal/ai/photopipeline"},
+		forbid: []string{"./internal/aigraph/..."},
 	},
 }
