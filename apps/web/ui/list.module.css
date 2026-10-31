@@ -41,11 +41,15 @@
 .folded {
   max-width: var(--gm-content-width);
   margin: 0 0 var(--gm-space-gutter);
-  color: var(--gm-color-ink-2);
 }
 
+/* In the error tone, so a failure is noticed while it stays folded (review M2). */
 .folded > summary {
   cursor: pointer;
+  color: var(--gm-color-error);
+}
+
+.folded[open] > summary {
   margin-bottom: var(--gm-space-md);
 }
 

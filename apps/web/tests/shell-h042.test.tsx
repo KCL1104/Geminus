@@ -168,6 +168,8 @@ describe("the model's list pages (H-042)", () => {
       { ...base, proposal_id: "aip_01M4YDQK00TA0000000000H0A1", mode: "scenario", status: "failed" },
       { ...base, proposal_id: "aip_01M4YDQK00TA0000000000H0A2", mode: "scenario", status: "approved", summary: "A third ICT tester." },
       { ...base, proposal_id: "aip_01M4YDQK00TA0000000000H0A3", mode: "edit", status: "invalid", summary: "Bad patch." },
+      // Review M1: what a person still acts on, or may look for, stays in the list.
+      ...(["needs_input", "conflicted", "generating", "ready", "rejected"] as const).map((status, i) => ({ ...base, proposal_id: `aip_01M4YDQK00TA0000000000H0B${i}`, mode: "edit", status, summary: status })),
     ], next_cursor: null });
     const el = await page(<ProposalsPage modelId={MODEL} />);
     await settle();
@@ -176,7 +178,7 @@ describe("the model's list pages (H-042)", () => {
     expect(folded.open).toBe(false);
     expect(folded.querySelector("summary")?.textContent).toBe("2 proposals that did not work");
     expect(hrefs(folded)).toEqual(["/proposals/aip_01M4YDQK00TA0000000000H0A1", "/proposals/aip_01M4YDQK00TA0000000000H0A3"]);
-    expect([...el.querySelectorAll("li a")].map((a) => a.getAttribute("href"))[0]).toBe("/proposals/aip_01M4YDQK00TA0000000000H0A2");
+    expect(hrefs(el.querySelector("ul")!.parentElement!)).toEqual(["/proposals/aip_01M4YDQK00TA0000000000H0A2", ...[0, 1, 2, 3, 4].map((i) => `/proposals/aip_01M4YDQK00TA0000000000H0B${i}`)]);
     expect(el.textContent).not.toContain(en["proposals.empty"]);
     expect(await violations()).toEqual([]);
   });
@@ -192,6 +194,7 @@ describe("the model's list pages (H-042)", () => {
     expect(el.querySelector("details summary")?.textContent).toBe("1 proposal that did not work");
     expect(el.querySelectorAll("li")).toHaveLength(1);
     expect(el.textContent).not.toContain(en["proposals.empty"]);
+    expect(await violations()).toEqual([]);
   });
 
   // Review M3: the summary is the AI's prose, which the server does not keep
