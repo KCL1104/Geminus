@@ -1,6 +1,6 @@
 # H-062 validation report: a new model can start from a photo or floor plan
 
-**Date: 2026-10-31 | Status: agent self-check; no independent review yet; no live call | Decision: H-062 (owner, 2026-10-31: 「為啥還需要指定特定東西來試」, then 「好」 to the fix offered: a new-model entry "Start from a photo or floor plan" beside the templates; the server creates the model from a minimal line template of the electronics pack, the page sends the photo as the first photo proposal on its first version and opens the proposal; no special model to pick), with T-056, H-033, H-052, H-053 and H-054 kept | Requirements: REQ-004 (a template is a valid model), REQ-008 and REQ-009 (an AI proposal a person reviews and approves), REQ-022 (en and zh-Hant), REQ-023 (keyboard, focus, WCAG 2.2 AA, 390 px), D-011 (idempotency keys), ELECTRONICS_LINE §3.4 rule 4 (synthetic labelling)**
+**Date: 2026-10-31 | Status: agent self-check; independent review round 1 found two Medium and one Low, fixed in [Review round 1](#review-round-1) (no second review yet); no live call | Decision: H-062 (owner, 2026-10-31: 「為啥還需要指定特定東西來試」, then 「好」 to the fix offered: a new-model entry "Start from a photo or floor plan" beside the templates; the server creates the model from a minimal line template of the electronics pack, the page sends the photo as the first photo proposal on its first version and opens the proposal; no special model to pick), with T-056, H-033, H-052, H-053 and H-054 kept | Requirements: REQ-004 (a template is a valid model), REQ-008 and REQ-009 (an AI proposal a person reviews and approves), REQ-022 (en and zh-Hant), REQ-023 (keyboard, focus, WCAG 2.2 AA, 390 px), D-011 (idempotency keys), ELECTRONICS_LINE §3.4 rule 4 (synthetic labelling)**
 
 ## 1. What changed
 
@@ -80,3 +80,59 @@ None is expected to change: the screenshot spec shoots the project page with the
 ## 8. Migration, RLS, audit, observability
 
 No migration and no new query. createModel and createImageProposal keep their role checks, tenant scope, audit events (`model.create`, `proposal.create`), idempotency and logs; the page only calls them in turn.
+
+## Review round 1
+
+**Date: 2026-10-31 | Status: fixes for an independent review's three findings (two Medium, one Low); agent self-check of the fixes, no second review yet; no live call | Requirements: REQ-023 (keyboard, focus, WCAG 2.2 AA 3.3.1 and 4.1.3, 390 px), REQ-022 (en and zh-Hant)**
+
+### Findings and what changed
+
+| # | Severity | Finding | Fix | Files |
+|---|---|---|---|---|
+| 1 | Medium | The photo field was rendered after the whole template list, so it showed below the Production and logistics and Software delivery groups, not by the option that opens it; at 390 × 844 the option's top was at y = 414 and the field's at y = 1082, below the fold, and it looked like part of the Software delivery group. | The field now sits in the option's own group (the electronics line's), right after its options and before the next group's heading: at 390 px directly under the option. The option keeps its place (the electronics line's second option, so the arrow-key order and the tests that follow it are unchanged), and the group's heading still names its domain. Because the field is now inside the radio group, React Aria's radio-group arrow keys would also fire on the chooser (ArrowDown there chose the next template); the field stops arrow keys from reaching the group, so on the chooser they are the button's, as on any button. The field's 16 px bottom margin became an 8 px top margin (the group's 6 px gap plus 8 px set it apart from the option rows). Found while fixing it: the photo's own refusal (a file over 5 MB) was shown after the name field, which after the move would be two groups below the chooser, the same off-screen problem; it is now in the photo field under its hint, as the model page's photo form shows it, and the API's refusals stay under the name. Not chosen: listing the photo option last as its own group (a second heading for the same domain, or a heading that repeats the option's name) and scrolling the field into view (the field would still read as part of the last group). | `apps/web/features/models/new-model.tsx`, `new-model.module.css` |
+| 2 | Medium | Create model without a photo showed "Choose a photo or floor plan." as a plain paragraph; the focus stayed on Create model and nothing was announced (WCAG 4.1.3, 3.3.1). | A refused Create model moves the focus, once the error is on the page, to the first field it names: the chooser without a photo (its description starts with the error, so the error is read on focus), else the name without a name. The name field had the same weakness before H-062 (a blank name, rare since the name is prefilled); it gets the same rule, through a new optional `inputRef` on the shared `TextField` (`ui/field.tsx`; single-line input only; no other caller changes). | `apps/web/features/models/new-model.tsx`, `apps/web/ui/field.tsx` |
+| 3 | Low | ELECTRONICS_LINE §4.6 said "A smaller IR does not work for the photo path" and the template test's header "Smaller does not work", but their reason covers only removing the process step; the IR without the buffer `q_smt` is smaller and valid. | Both now say what the report's §2 says: a base without a process step cannot work (a new station has no service time to copy); without `q_smt` the IR would be smaller and valid, but it has not been tested live and the demo answer tests `/flows/2/id`, so the template keeps the live-tested bare line, H-062's fallback. The claim was checked before it was written: a throwaway test (deleted, not committed) removed `q_smt`, its flow and its 2D position from the template; `validate.IR` gave valid with no issue and the pack's rules none (`probe-no-buffer-r1.log`). The template itself is unchanged. | `docs/domains/ELECTRONICS_LINE.md`, `internal/domainpack/electronicsline/photo_start_test.go` (comment only) |
+
+The photo prompt, the server's photo rules, the proposal pipeline, `internal/ai/`, `internal/proposals/generator` and `prompts/` are unchanged, as are the contract, the fake API, the template and its run lock. No copy changed: the error, the hint and the labels are the strings of §1.
+
+### Tests written first
+
+| Test | Red before the fix | Green after |
+|---|---|---|
+| `apps/web/tests/photo-start.test.tsx`, new: "puts the photo field right after the option that opens it, in the electronics line's group, and keeps the arrow keys on the chooser": the field's group is headed by the electronics line's name; no heading or radio lies between the option and the field; the next heading after the field is Production and logistics; ArrowDown, ArrowRight, ArrowUp and ArrowLeft on the chooser leave the option chosen and the focus on the chooser; axe | fails: the field is in no domain's group | pass |
+| `apps/web/tests/photo-start.test.tsx`, new, in en and zh-Hant: "moves the focus to the first field a refused Create model names": without a photo the chooser is focused and its description starts with the error, again on a second press; axe; with a photo and a blank name the name is focused, `aria-invalid`, its description names the error; nothing sent | fails: the focus stays where it was | pass |
+| `apps/web/tests/photo-start.test.tsx`, updated: a photo over 5 MB is refused in the photo field, under its hint | fails: the refusal is not in the field (`red-web-unit-2-r1.log`) | pass |
+| `apps/web/tests/new-model.test.tsx`, updated: a template's blank name refused, the focus goes from Create model to the name | fails: the focus stays on Create model | pass |
+| `apps/web-e2e/tests/photo-start.spec.ts`, updated: (1280 px, keyboard) Enter on Create model without a photo focuses the chooser with a visible focus, its description starts with the error, nothing is posted, axe; (390 × 844) once the option is clicked the field is in the viewport, its top 0 to 24 px under the option, the Production and logistics heading below it; Create model without a photo focuses the chooser, in the viewport, with the error shown; a file over 5 MB is refused in the field, in the viewport, and the refusal goes with the demo floor plan | not run red (each run rebuilds the web app; the reviewer's probe at 390 × 844 is the red evidence) | pass |
+
+### Commands and results
+
+Same toolchain as §4 (Go 1.27.3, Node 24.21.0, the repository's `.venv`); `apps/web/node_modules` again a hard-linked copy of the main checkout's (the worktree had a symlink, which Turbopack refuses), not committed. Logs in `checks/evidence/2026-10-31-h062-photo-start/`, names ending `-r1`.
+
+| Command | Result |
+|---|---|
+| `npx vitest run tests/photo-start.test.tsx tests/new-model.test.tsx` before the fix (red) | exit 1: 4 failed (the placement test, the focus test in en and zh-Hant, the template's name focus), 23 passed (`red-web-unit-r1.log`) |
+| `npx vitest run tests/photo-start.test.tsx -t "keeps a name"` before the photo refusal moved (red) | exit 1: 1 failed, "expected '' to contain 'The image is larger than 5 MB…'" (`red-web-unit-2-r1.log`) |
+| `npx vitest run tests/photo-start.test.tsx tests/new-model.test.tsx` after | 27 passed |
+| `make frontend-test` (eslint, tsc, vitest), on the final code | exit 0: eslint clean, tsc clean, 60 files, 1251 tests passed (`frontend-test-r1.log`) |
+| `cd apps/web-e2e && npx playwright test tests/photo-start.spec.ts tests/new-model.spec.ts` (builds the web app), on the final code | exit 0: 13 passed (`e2e-r1.log`); an earlier run before the photo refusal moved also passed, 13 |
+| A throwaway screenshot spec (deleted, not committed) at 1280 × 900 and 390 × 844, the photo option chosen and Create model pressed without a photo | looked at once: at 390 px the field is directly under the option, on screen, before Production and logistics; at 1280 px it is in the electronics group under the row that holds the option (see Risks) |
+| A throwaway Go test (deleted, not committed): `photo_start` without `q_smt`, its flow and its 2D position | `validate.IR` valid, no issue; the pack's rules, no issue (`probe-no-buffer-r1.log`) |
+| `make backend-test` (gofmt, go vet, go test with the full differential; the DB tests skip there) | exit 0: 86 packages ok, 15 without tests (`backend-test-r1.log`) |
+| `PATH=.venv/bin:$PATH make spec-check`, after this section | exit 0, twice (before and after this row was filled in): contracts `PASS_LIMITED_SPEC_CHECKS`; docs PASS, 164 Markdown files, 309 links; TS contracts fresh; the other checks PASS; `checks/contracts-check.json` and `checks/docs-check.json` unchanged (`spec-check-r1.log`) |
+
+### NOT RUN (round 1)
+
+- The browser specs before the fix (red); see the last row of "Tests written first" above.
+- The whole browser suite (`npx playwright test` without a spec): only the touched pages' specs ran (`photo-start.spec.ts`, `new-model.spec.ts`).
+- `make integration-test`: nothing in this round touches the server, the database or a query (the Go change is a comment); the round-0 run (§4) stands.
+- The screenshot spec (`E2E_SCREENSHOTS=1`, CI's pinned container only). Live AI. No second independent review.
+
+### Screenshot baselines
+
+None is expected to change: the screenshot spec shoots the project page with the new-model form closed, so the moved field is not in any baseline (NOT RUN, as in §7).
+
+### Risks
+
+- The field's arrow-key guard stops arrow keys only inside the photo field; the chooser is its one control, so nothing in it uses them. A control later added to the field that needs arrow keys (a list, a slider) would need the guard looked at.
+- On a wide screen the electronics line's two options stand side by side and the field spans the row under both, left-aligned, so it starts under the full template's card rather than under the photo option; it is inside the group, before the next heading, labelled "Photo or floor plan", and shown only while the photo option is chosen.

@@ -57,6 +57,17 @@ test.describe("a new model from a photo or floor plan, signed in, on the fake AP
       await expect(form.getByLabel(t["newModel.name"])).toHaveValue(t["newModel.photo.defaultName"]);
       expect(await violations(page), "the photo option").toEqual([]);
 
+      // Review round 1: Create model without a photo moves the focus to the chooser, which names the error.
+      await form.getByRole("button", { name: t["newModel.create"] }).focus();
+      await page.keyboard.press("Enter");
+      const chooser = field.getByRole("button", { name: t["newModel.photo.choose"] });
+      await expect(chooser).toBeFocused();
+      const describedBy = await chooser.evaluate((b) => (b.getAttribute("aria-describedby") ?? "").split(" ").map((id) => document.getElementById(id)?.textContent ?? ""));
+      expect(describedBy[0], "the chooser's description starts with the error").toBe(t["newModel.photo.required"]);
+      expect(await focusIsVisible(page), "the chooser's focus is visible").toBe(true);
+      expect((await apiCalls(request)).slice(before).filter((c) => c.method === "POST"), "nothing is sent without a photo").toEqual([]);
+      expect(await violations(page), "a photo missing").toEqual([]);
+
       await field.locator("input[type=file]").setInputFiles(DEMO);
       await expect(field.locator("[data-photo-file]")).toHaveText("electronics-line-demo.png");
       await expect(field.getByRole("button", { name: t["newModel.photo.again"] })).toBeVisible();
@@ -131,8 +142,27 @@ test.describe("a new model from a photo or floor plan, signed in, on the fake AP
       await signInAs(page, tenant.editor, project, locale);
       await page.getByRole("button", { name: t["newModel.open"] }).click();
       const form = page.locator("[data-new-model]");
-      await form.locator("[data-template=photo_start]").click();
-      await form.locator("[data-photo-start] input[type=file]").setInputFiles(DEMO);
+      const option = form.locator("[data-template=photo_start]");
+      await option.click();
+      // Review round 1: the field is right under the option that opens it, on screen, before the next group.
+      const field = form.locator("[data-photo-start]");
+      await expect(field).toBeInViewport();
+      const [o, f, next] = await Promise.all([option, field, form.getByRole("heading", { level: 3, name: t["domain.production_logistics.name"] })].map((l) => l.boundingBox()));
+      expect(f!.y - (o!.y + o!.height), "the field's top is just under the option").toBeGreaterThanOrEqual(0);
+      expect(f!.y - (o!.y + o!.height)).toBeLessThanOrEqual(24);
+      expect(next!.y, "the next group starts after the field").toBeGreaterThan(f!.y + f!.height);
+      // Create model without a photo: the focus moves to the chooser, on screen.
+      await form.getByRole("button", { name: t["newModel.create"] }).click();
+      const chooser = field.getByRole("button", { name: t["newModel.photo.choose"] });
+      await expect(chooser).toBeFocused();
+      await expect(chooser).toBeInViewport();
+      await expect(field).toContainText(t["newModel.photo.required"]);
+      // A photo over 5 MB is refused in the field, on screen, not after the name below the other groups.
+      await field.locator("input[type=file]").setInputFiles({ name: "huge.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
+      await expect(field.locator("[data-problem=invalid]")).toContainText(t["photo.problem.tooLarge"]);
+      await expect(field.locator("[data-problem=invalid]")).toBeInViewport();
+      await field.locator("input[type=file]").setInputFiles(DEMO);
+      await expect(field.locator("[data-problem]")).toHaveCount(0);
       await expect(form.locator("[data-photo-file]")).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(0);

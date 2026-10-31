@@ -218,10 +218,13 @@ describe("a new model from a template on the project page (H-045)", () => {
     const f = await open(el);
     const field = nameField(f, en["newModel.name"]);
     await type(field, "   ");
+    button(f, en["newModel.create"])!.focus();
     await submit(f);
     expect(api.creates(), "no request without a name").toHaveLength(0);
     expect(text(f)).toContain(en["newModel.nameRequired"]);
     expect(field.getAttribute("aria-invalid")).toBe("true");
+    // H-062 review round 1: the focus goes to the field the refusal names, so its error is read.
+    expect(document.activeElement).toBe(field);
     await type(field, "  Plant B warehouse ");
     expect(text(f)).not.toContain(en["newModel.nameRequired"]);
     await choose(f, en[templateName("warehouse")]);

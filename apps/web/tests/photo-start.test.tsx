@@ -27,7 +27,7 @@ import type { Locale } from "../lib/i18n/locale";
 import { createTranslator } from "../lib/i18n/translate";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
-import { mount, press, settle, unmountAll, violations } from "./ui-harness";
+import { key, mount, press, settle, unmountAll, violations } from "./ui-harness";
 
 const nav = vi.hoisted(() => ({ pushed: [] as string[] }));
 vi.mock("next/navigation", async (orig) => ({
@@ -208,6 +208,68 @@ describe("a new model from a photo or floor plan on the project page (H-062)", (
     expect(await violations()).toEqual([]);
   });
 
+  it("puts the photo field right after the option that opens it, in the electronics line's group, and keeps the arrow keys on the chooser", async () => {
+    const { el } = await projectPage();
+    const f = await open(el);
+    await choosePhotoStart(f);
+    const field = photoField(f)!;
+    // In the option's own group, before the next group's heading and templates (review round 1: on a phone it was below them).
+    const group = field.parentElement!.closest("[role=group]");
+    expect(group, "the field is in a domain's group").not.toBeNull();
+    expect(text(group!.querySelector("h3"))).toBe(en["domain.electronics_line.name"]);
+    const option = radio(f, "photo_start")!;
+    expect(option.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING, "the field follows the option").toBeTruthy();
+    const between = [...f.querySelectorAll<HTMLElement>('input[type="radio"], h3')].filter(
+      (n) => option.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING && n.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(between, "no heading or option between the option and its field").toEqual([]);
+    const next = text([...f.querySelectorAll("h3")].find((h) => field.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING));
+    expect(next, "the next group starts after the field").toBe(en["domain.production_logistics.name"]);
+    // The arrow keys on the chooser are the button's, not the template list's: the option stays chosen.
+    const choose = button(field, en["newModel.photo.choose"])!;
+    choose.focus();
+    for (const k of ["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"]) {
+      await key(choose, k);
+      await settle();
+      expect(option.checked, k).toBe(true);
+      expect(document.activeElement, k).toBe(choose);
+    }
+    expect(photoField(f)).not.toBeNull();
+    expect(await violations()).toEqual([]);
+  });
+
+  it.each(["en", "zh-Hant"] as const)("moves the focus to the first field a refused Create model names: the chooser without a photo, the name without a name, in %s", async (locale) => {
+    const t = createTranslator(locale);
+    const { el, api } = await projectPage({ locale });
+    const f = await open(el, t);
+    await choosePhotoStart(f);
+    await submit(f, t);
+    expect(api.posts()).toHaveLength(0);
+    const field = photoField(f)!;
+    const choose = button(field, t("newModel.photo.choose"))!;
+    expect(document.activeElement, "the chooser, which names the error").toBe(choose);
+    expect(described(choose)[0]).toBe(t("newModel.photo.required"));
+    expect(await violations()).toEqual([]);
+    // Pressed again, it is still the chooser (the focus moves on every refused press).
+    button(f, t("newModel.create"))!.focus();
+    await submit(f, t);
+    expect(document.activeElement).toBe(choose);
+
+    await pick(fileInput(f), png("line.png"));
+    const name = nameField(f, t("newModel.name"));
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(name, " ");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settle();
+    button(f, t("newModel.create"))!.focus();
+    await submit(f, t);
+    expect(api.posts()).toHaveLength(0);
+    expect(document.activeElement, "the name, which names its error").toBe(name);
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    expect(described(name)).toContain(t("newModel.nameRequired"));
+  });
+
   it.each(["en", "zh-Hant"] as const)("creates the model, then sends the photo on its version 1 with a key of its own, and opens the proposal, in %s", async (locale) => {
     const t = createTranslator(locale);
     const { el, api } = await projectPage({ locale });
@@ -240,6 +302,9 @@ describe("a new model from a photo or floor plan on the project page (H-062)", (
     await pick(fileInput(f), new File([new Uint8Array(MAX_PHOTO_BYTES + 1)], "huge.png", { type: "image/png" }));
     expect(f.querySelector('[role="alert"]')?.getAttribute("data-problem")).toBe("invalid");
     expect(text(f)).toContain(en["photo.problem.tooLarge"]);
+    // Review round 1: in the photo field under its hint, as the model page's photo form has it, not after the name two groups below.
+    expect(text(field.querySelector('[data-problem="invalid"]'))).toContain(en["photo.problem.tooLarge"]);
+    expect(field.querySelector('[data-problem="invalid"]')!.compareDocumentPosition(field.querySelector("p")!) & Node.DOCUMENT_POSITION_PRECEDING, "under the hint").toBeTruthy();
     expect(f.querySelector("[data-photo-file]"), "a refused file is not kept").toBeNull();
     await submit(f);
     expect(api.posts()).toHaveLength(0);

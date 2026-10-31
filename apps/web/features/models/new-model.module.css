@@ -135,16 +135,17 @@
   gap: var(--gm-space-md);
 }
 
-/* H-062: the photo a model made from a photo starts with, under the
-   templates when that option is chosen: its label, the chooser and the
-   file's name on one row (wrapping on a phone), then the limits and the
-   AI notice in a 12 px line, as the model page's photo button has them. */
+/* H-062: the photo a model made from a photo starts with, in the option's
+   own group right under the option once it is chosen (review round 1), a
+   little apart from the option rows: its label, the chooser and the file's
+   name on one row (wrapping on a phone), then the limits and the AI notice
+   in a 12 px line, as the model page's photo button has them. */
 .photo {
   display: flex;
   flex-direction: column;
   gap: var(--gm-space-sm);
   max-width: 720px;
-  margin: 0 0 var(--gm-space-gutter);
+  margin: var(--gm-space-md) 0 0;
 }
 
 .photoRow {

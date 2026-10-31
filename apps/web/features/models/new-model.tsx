@@ -18,7 +18,13 @@
 // "Propose from a photo…" sends it, and the page opens the proposal. When
 // the photo is not sent, the model exists: the page opens it with the
 // refusal (photo-start.ts), and its photo button sends the photo again.
-import { type FormEvent, useId, useRef, useState } from "react";
+// The photo field sits in the option's own group, right after the option
+// that opens it (review round 1: below the other groups it was off screen
+// on a phone); the arrow keys on its chooser stay the button's, not the
+// template list's, and a photo over 5 MB is refused there, under its hint.
+// A refused Create model (no name, no photo) moves the focus to the first
+// field it names, whose description reads the error.
+import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { FileTrigger, Label, Radio, RadioGroup } from "react-aria-components";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
@@ -32,6 +38,11 @@ import { advice, PHOTO_DOMAINS, PHOTO_TYPES, type PhotoRefusal, tooLarge } from 
 import styles from "./new-model.module.css";
 import { notePhotoNotSent } from "./photo-start";
 import { createRequest, domainName, FIRST_TEMPLATE, isPhotoTemplate, isTemplate, type Template, TEMPLATE_GROUPS, templateDescription, templateName } from "./templates";
+
+/** Arrow keys pressed inside the photo field do not reach the radio group around it. */
+const keepArrows = (e: KeyboardEvent) => {
+  if (e.key.startsWith("Arrow")) e.stopPropagation();
+};
 
 /** The groups as the page offers them: a photo template only where the pack reads photos. */
 const GROUPS = TEMPLATE_GROUPS.map((g) => ({ domain: g.domain, options: [...g.templates, ...(g.photo !== undefined && PHOTO_DOMAINS.includes(g.domain) ? [g.photo] : [])] as Template[] }));
@@ -53,8 +64,14 @@ export function NewModelForm({ projectId, onCreated, onProposal, onCancel }: {
   const [missing, setMissing] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoMissing, setPhotoMissing] = useState(false);
+  // The API's refusal, under the name; the photo's own (over 5 MB), in the photo field under its hint.
   const [problem, setProblem] = useState<PhotoRefusal | null>(null);
+  const [photoProblem, setPhotoProblem] = useState<PhotoRefusal | null>(null);
   const [step, setStep] = useState<"creating" | "sending" | null>(null);
+  // A refused Create model: the field the focus goes to, once its error is on the page.
+  const [refused, setRefused] = useState<{ field: "photo" | "name" } | null>(null);
+  const chooserRef = useRef<HTMLButtonElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
   const sent = useRef<{ request: string; key: string } | null>(null);
   const fromPhoto = isPhotoTemplate(template);
@@ -64,11 +81,15 @@ export function NewModelForm({ projectId, onCreated, onProposal, onCancel }: {
     const file = files?.[0];
     if (file === undefined || busy.current) return;
     const big = tooLarge(file);
-    setProblem(big);
+    setPhotoProblem(big);
     if (big !== null) return;
     setPhoto(file);
     setPhotoMissing(false);
   };
+
+  useEffect(() => {
+    if (refused !== null) (refused.field === "photo" ? chooserRef : nameRef).current?.focus();
+  }, [refused]);
 
   const create = async (e: FormEvent) => {
     e.preventDefault();
@@ -77,8 +98,13 @@ export function NewModelForm({ projectId, onCreated, onProposal, onCancel }: {
     const noPhoto = fromPhoto && photo === null;
     setMissing(trimmed === "");
     setPhotoMissing(noPhoto);
-    if (trimmed === "" || noPhoto) return;
+    if (trimmed === "" || noPhoto) {
+      // The first field refused takes the focus: the photo field comes before the name.
+      setRefused({ field: noPhoto ? "photo" : "name" });
+      return;
+    }
     setProblem(null);
+    setPhotoProblem(null);
     const body = createRequest(template, trimmed, locale);
     // The same request again (a retry) takes the same key; another request a new one.
     const request = `${projectId} ${JSON.stringify(body)}`;
@@ -109,9 +135,45 @@ export function NewModelForm({ projectId, onCreated, onProposal, onCancel }: {
   const photoIds = { hint: `${id}-photo-hint`, file: `${id}-photo-file`, error: `${id}-photo-error`, label: `${id}-photo-label` };
   const photoDescribedBy = [photo !== null ? photoIds.file : null, photoMissing ? photoIds.error : null, photoIds.hint].filter(Boolean).join(" ");
   const chooser = (
-    <Button icon={<CameraIcon />} blocked={step !== null} aria-describedby={photoDescribedBy}>
+    <Button ref={chooserRef} icon={<CameraIcon />} blocked={step !== null} aria-describedby={photoDescribedBy}>
       {t(photo === null ? "newModel.photo.choose" : "newModel.photo.again")}
     </Button>
+  );
+
+  // The photo to send once the model exists (H-062): the model page's limit and notice.
+  const photoField = (
+    // The radio group's arrow keys move between the templates; on the chooser they are the button's.
+    <div role="group" aria-labelledby={photoIds.label} className={styles.photo} onKeyDown={keepArrows} data-photo-start>
+      <span id={photoIds.label} className={styles.label}>
+        {t("newModel.photo.label")}
+      </span>
+      <div className={styles.photoRow}>
+        {/* While the model is being created the button opens nothing: no file chooser behind it. */}
+        {step !== null ? (
+          chooser
+        ) : (
+          <FileTrigger acceptedFileTypes={PHOTO_TYPES} onSelect={choose}>
+            {chooser}
+          </FileTrigger>
+        )}
+        {photo !== null && (
+          <span id={photoIds.file} className={styles.file} data-photo-file>
+            <bdi>{photo.name}</bdi>
+          </span>
+        )}
+      </div>
+      <p id={photoIds.hint} className={styles.hint}>
+        {t("photo.hint")}
+        {gap}
+        {t("ask.dataNotice")}
+      </p>
+      {photoMissing && (
+        <p id={photoIds.error} className={styles.error}>
+          {t("newModel.photo.required")}
+        </p>
+      )}
+      {photoProblem && <ProblemView problem={photoProblem.problem} headingLevel={3} guidance={photoProblem.guidance} />}
+    </div>
   );
 
   return (
@@ -157,43 +219,12 @@ export function NewModelForm({ projectId, onCreated, onProposal, onCancel }: {
                   </Radio>
                 ))}
               </div>
+              {fromPhoto && g.options.includes(template) && photoField}
             </div>
           ))}
         </RadioGroup>
-        {fromPhoto && (
-          // The photo to send once the model exists (H-062): the model page's limit and notice.
-          <div role="group" aria-labelledby={photoIds.label} className={styles.photo} data-photo-start>
-            <span id={photoIds.label} className={styles.label}>
-              {t("newModel.photo.label")}
-            </span>
-            <div className={styles.photoRow}>
-              {/* While the model is being created the button opens nothing: no file chooser behind it. */}
-              {step !== null ? (
-                chooser
-              ) : (
-                <FileTrigger acceptedFileTypes={PHOTO_TYPES} onSelect={choose}>
-                  {chooser}
-                </FileTrigger>
-              )}
-              {photo !== null && (
-                <span id={photoIds.file} className={styles.file} data-photo-file>
-                  <bdi>{photo.name}</bdi>
-                </span>
-              )}
-            </div>
-            <p id={photoIds.hint} className={styles.hint}>
-              {t("photo.hint")}
-              {gap}
-              {t("ask.dataNotice")}
-            </p>
-            {photoMissing && (
-              <p id={photoIds.error} className={styles.error}>
-                {t("newModel.photo.required")}
-              </p>
-            )}
-          </div>
-        )}
         <TextField
+          inputRef={nameRef}
           label={t("newModel.name")}
           value={name}
           onChange={(v) => {

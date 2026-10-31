@@ -1,0 +1,19 @@
+
+Running 13 tests using 1 worker
+
+  ✓   1 [chromium] › tests/new-model.spec.ts:49:5 › a new model from a template, signed in, on the fake API › en: creates the shoe factory with the keyboard only and opens its canvas (3.8s)
+  ✓   2 [chromium] › tests/new-model.spec.ts:49:5 › a new model from a template, signed in, on the fake API › zh-Hant: creates the shoe factory with the keyboard only and opens its canvas (3.9s)
+  ✓   3 [chromium] › tests/new-model.spec.ts:121:3 › a new model from a template, signed in, on the fake API › Cancel closes the form and gives the focus back to the action; the list stays (1.2s)
+  ✓   4 [chromium] › tests/new-model.spec.ts:140:5 › a new model from a template, signed in, on the fake API › en: at 390 px the open form fits the width, nothing scrolls sideways (1.9s)
+  ✓   5 [chromium] › tests/new-model.spec.ts:140:5 › a new model from a template, signed in, on the fake API › zh-Hant: at 390 px the open form fits the width, nothing scrolls sideways (2.4s)
+  ✓   6 [chromium] › tests/new-model.spec.ts:161:3 › a new model from a template, signed in, on the fake API › a viewer is not offered a new model (1.0s)
+  ✓   7 [chromium] › tests/photo-start.spec.ts:42:5 › a new model from a photo or floor plan, signed in, on the fake API › en: creates the model, sends the floor plan on its version 1 and opens the proposal with the photo (4.1s)
+  ✓   8 [chromium] › tests/photo-start.spec.ts:42:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: creates the model, sends the floor plan on its version 1 and opens the proposal with the photo (4.6s)
+  ✓   9 [chromium] › tests/photo-start.spec.ts:141:5 › a new model from a photo or floor plan, signed in, on the fake API › en: a photo the API refuses leaves the model, whose page says so and sends the photo again (2.8s)
+  ✓  10 [chromium] › tests/photo-start.spec.ts:141:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: a photo the API refuses leaves the model, whose page says so and sends the photo again (3.2s)
+  ✓  11 [chromium] › tests/photo-start.spec.ts:195:5 › a new model from a photo or floor plan, signed in, on the fake API › en: at 390 px the photo option fits the width, nothing scrolls sideways (3.0s)
+  ✓  12 [chromium] › tests/photo-start.spec.ts:195:5 › a new model from a photo or floor plan, signed in, on the fake API › zh-Hant: at 390 px the photo option fits the width, nothing scrolls sideways (3.3s)
+  ✓  13 [chromium] › tests/photo-start.spec.ts:247:3 › a new model from a photo or floor plan, signed in, on the fake API › a viewer is not offered a new model from a photo (1.0s)
+
+  13 passed (48.8s)
+exit 0

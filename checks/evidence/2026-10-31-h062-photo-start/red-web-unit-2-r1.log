@@ -1,0 +1,33 @@
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/.claude/worktrees/wf_ae206d5f-fa4-1/apps/web
+
+ ❯ tests/photo-start.test.tsx (16 tests | 1 failed | 15 skipped) 390ms
+   ❯ a new model from a photo or floor plan on the project page (H-062) (12)
+     × keeps a name the person typed, and sends nothing without a name or a photo, or with a photo larger than 5 MB 387ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > keeps a name the person typed, and sends nothing without a name or a photo, or with a photo larger than 5 MB
+AssertionError: expected '' to contain 'The image is larger than 5 MB. Choose…'
+
+- Expected
++ Received
+
+- The image is larger than 5 MB. Choose a smaller one.
+
+ ❯ tests/photo-start.test.tsx:306:67
+    304|     expect(text(f)).toContain(en["photo.problem.tooLarge"]);
+    305|     // Review round 1: in the photo field under its hint, as the model…
+    306|     expect(text(field.querySelector('[data-problem="invalid"]'))).toCo…
+       |                                                                   ^
+    307|     expect(field.querySelector('[data-problem="invalid"]')!.compareDoc…
+    308|     expect(f.querySelector("[data-photo-file]"), "a refused file is no…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 skipped (16)
+   Start at  19:19:42
+   Duration  3.26s (import 36%, transform 35%, environment 16%, tests 13%)
+

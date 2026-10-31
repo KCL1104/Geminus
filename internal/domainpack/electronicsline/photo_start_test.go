@@ -26,9 +26,12 @@ import (
 // proposal can build on, and the page then sends the photo as the model's
 // first photo proposal. The template is the bare line the live photo runs
 // passed on (testdata/photos/bare-line.json, H-054 §11): a source, a buffer,
-// one SMT step and the sink. Smaller does not work: a photo proposal may only
-// copy numbers the base already has (review.Photo), so without a process
-// step a new station would have no service time to copy.
+// one SMT step and the sink. A base without a process step cannot work: a
+// photo proposal may only copy numbers the base already has (review.Photo),
+// so a new station would have no service time to copy. Without the buffer
+// q_smt the IR would be smaller and still valid, but it has not been tested
+// live and the demo answer tests /flows/2/id, so the template keeps the
+// live-tested bare line (H-062's fallback).
 
 func photoStart(t *testing.T, name string, locale domainpack.Locale) *model.ModelIR {
 	t.Helper()

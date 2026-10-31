@@ -1,0 +1,279 @@
+
+ RUN  v5.0.4 /home/kuoba123/Geminus/.claude/worktrees/wf_ae206d5f-fa4-1/apps/web
+
+stderr | tests/new-model.test.tsx > a new model from a template on the project page (H-045) > keeps a name the person typed when the template changes, trims it, and refuses an empty one
+An update to ForwardRef(Input) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(Input) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(Button) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to ForwardRef(Button) inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ❯ tests/new-model.test.tsx (11 tests | 1 failed) 1897ms
+   ❯ a new model from a template on the project page (H-045) (9)
+     × keeps a name the person typed when the template changes, trims it, and refuses an empty one 164ms
+ ❯ tests/photo-start.test.tsx (16 tests | 3 failed) 3758ms
+   ❯ a new model from a photo or floor plan on the project page (H-062) (12)
+     × puts the photo field right after the option that opens it, in the electronics line's group, and keeps the arrow keys on the chooser 136ms
+     × moves the focus to the first field a refused Create model names: the chooser without a photo, the name without a name, in en 157ms
+     × moves the focus to the first field a refused Create model names: the chooser without a photo, the name without a name, in zh-Hant 131ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/new-model.test.tsx > a new model from a template on the project page (H-045) > keeps a name the person typed when the template changes, trims it, and refuses an empty one
+AssertionError: expected <button …(9)>…(1)</button> to be <input autocomplete="off" …(11)></input> // Object.is equality
+
+- Expected
++ Received
+
+- <input
+-   aria-describedby="react-aria-_r_3s_"
+-   aria-invalid="true"
+-   aria-labelledby="react-aria-_r_3p_"
+-   autocomplete="off"
+-   class="_input_a7ed2f"
+-   data-invalid="true"
++ <button
++   class="_button_6f39e7"
++   data-focus-visible="true"
++   data-focused="true"
+    data-rac=""
+-   id="react-aria-_r_3o_"
+-   maxlength="200"
++   data-react-aria-pressable="true"
++   data-variant="primary"
++   id="react-aria-_r_3t_"
+    tabindex="0"
+-   type="text"
+-   value="   "
++   type="submit"
++ >
++   <svg
++     aria-hidden="true"
++     focusable="false"
++     height="16"
++     viewBox="0 0 16 16"
++     width="16"
++   >
++     <path
++       d="M8 3v10M3 8h10"
++       fill="none"
++       stroke="currentColor"
++       stroke-linecap="round"
++       stroke-linejoin="round"
++       stroke-width="1.5"
+      />
++   </svg>
++   Create model
++ </button>
+
+ ❯ tests/new-model.test.tsx:227:36
+    225|     expect(field.getAttribute("aria-invalid")).toBe("true");
+    226|     // H-062 review round 1: the focus goes to the field the refusal n…
+    227|     expect(document.activeElement).toBe(field);
+       |                                    ^
+    228|     await type(field, "  Plant B warehouse ");
+    229|     expect(text(f)).not.toContain(en["newModel.nameRequired"]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > puts the photo field right after the option that opens it, in the electronics line's group, and keeps the arrow keys on the chooser
+TypeError: Cannot read properties of null (reading 'querySelector')
+ ❯ tests/photo-start.test.tsx:218:23
+    216|     // In the option's own group, before the next group's heading and …
+    217|     const group = field.parentElement!.closest("[role=group]")!;
+    218|     expect(text(group.querySelector("h3"))).toBe(en["domain.electronic…
+       |                       ^
+    219|     const option = radio(f, "photo_start")!;
+    220|     expect(option.compareDocumentPosition(field) & Node.DOCUMENT_POSIT…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > moves the focus to the first field a refused Create model names: the chooser without a photo, the name without a name, in en
+AssertionError: the chooser, which names the error: expected <input …(8)></input> to be <button …(8)>…(1)</button> // Object.is equality
+
+- Expected
++ Received
+
+- <button
+-   aria-describedby="_r_2j_-photo-error _r_2j_-photo-hint"
+-   class="_button_6f39e7"
+-   data-rac=""
++ <input
++   aria-describedby="_r_2j_-photo_start-description"
++   aria-labelledby="_r_2j_-photo_start-name"
+    data-react-aria-pressable="true"
+-   data-variant="secondary"
+-   id="react-aria-_r_3a_"
++   name="react-aria-_r_2p_"
+    tabindex="0"
+-   type="button"
+- >
+-   <svg
+-     aria-hidden="true"
+-     focusable="false"
+-     height="16"
+-     viewBox="0 0 16 16"
+-     width="16"
+-   >
+-     <rect
+-       fill="none"
+-       height="9"
+-       rx="1.5"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
+-       width="12"
+-       x="2"
+-       y="4.5"
+-     />
+-     <circle
+-       cx="8"
+-       cy="9"
+-       fill="none"
+-       r="2.25"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
+-     />
+-     <path
+-       d="M5.5 4.5l1-2h3l1 2"
+-       fill="none"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
++   title=""
++   type="radio"
++   value="photo_start"
+  />
+-   </svg>
+-   Choose a photo…
+- </button>
+
+ ❯ tests/photo-start.test.tsx:249:74
+    247|     const field = photoField(f)!;
+    248|     const choose = button(field, t("newModel.photo.choose"))!;
+    249|     expect(document.activeElement, "the chooser, which names the error…
+       |                                                                          ^
+    250|     expect(described(choose)[0]).toBe(t("newModel.photo.required"));
+    251|     expect(await violations()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  tests/photo-start.test.tsx > a new model from a photo or floor plan on the project page (H-062) > moves the focus to the first field a refused Create model names: the chooser without a photo, the name without a name, in zh-Hant
+AssertionError: the chooser, which names the error: expected <input …(8)></input> to be <button …(8)>…(1)</button> // Object.is equality
+
+- Expected
++ Received
+
+- <button
+-   aria-describedby="_r_3e_-photo-error _r_3e_-photo-hint"
+-   class="_button_6f39e7"
+-   data-rac=""
++ <input
++   aria-describedby="_r_3e_-photo_start-description"
++   aria-labelledby="_r_3e_-photo_start-name"
+    data-react-aria-pressable="true"
+-   data-variant="secondary"
+-   id="react-aria-_r_45_"
++   name="react-aria-_r_3k_"
+    tabindex="0"
+-   type="button"
+- >
+-   <svg
+-     aria-hidden="true"
+-     focusable="false"
+-     height="16"
+-     viewBox="0 0 16 16"
+-     width="16"
+-   >
+-     <rect
+-       fill="none"
+-       height="9"
+-       rx="1.5"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
+-       width="12"
+-       x="2"
+-       y="4.5"
+-     />
+-     <circle
+-       cx="8"
+-       cy="9"
+-       fill="none"
+-       r="2.25"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
+-     />
+-     <path
+-       d="M5.5 4.5l1-2h3l1 2"
+-       fill="none"
+-       stroke="currentColor"
+-       stroke-linecap="round"
+-       stroke-linejoin="round"
+-       stroke-width="1.5"
++   title=""
++   type="radio"
++   value="photo_start"
+  />
+-   </svg>
+-   選擇照片…
+- </button>
+
+ ❯ tests/photo-start.test.tsx:249:74
+    247|     const field = photoField(f)!;
+    248|     const choose = button(field, t("newModel.photo.choose"))!;
+    249|     expect(document.activeElement, "the chooser, which names the error…
+       |                                                                          ^
+    250|     expect(described(choose)[0]).toBe(t("newModel.photo.required"));
+    251|     expect(await violations()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 23 passed (27)
+   Start at  19:11:43
+   Duration  5.76s (tests 63%, import 21%, environment 9%, transform 6%)
+
