@@ -80,9 +80,25 @@ const photoRules = "- PHOTO_RULES: this proposal is asked for with a photo or fl
 	"- Every number of a new or changed step, flow or resource must be a number the base model already has (copy a station's service time; " +
 	"probability 1 for a single route), except a resource's capacity, which may also count the segments that show its machines (1 to the number of segments). " +
 	"The server refuses any other number. State in assumptions every number you copied and why, and everything you inferred from the photo.\n" +
+	// H-054: live, two testers side by side on the demo floor plan became a
+	// split (ROUTING_INVALID). Domain-neutral here; the template names them.
+	// Review round 1: the count is a new step's capacity only (the server
+	// takes a count on any resource), and the split's reason is that a
+	// photo shows no share (on a base with yield pairs the server takes a
+	// split that reuses one).
+	"- Identical machines side by side doing the same step (such as two testers side by side in the photo) are one process step. " +
+	"When the base model lacks that step, it is one new node that requires one new resource whose capacity is their count, " +
+	"as the domain's templates model several machines of one step; use a count as a capacity only for a new step's new resource. " +
+	"When the base model already has that step, it is that step, not a new one, and it keeps its resource's capacity: " +
+	"a photo may show only part of a line, or draw one box for several machines. When the count differs from that capacity, " +
+	"say so in assumptions or ask with needs_input; never change that capacity for it.\n" +
+	"- Never add a decision node or split the flow between machines side by side, because a photo shows no split share: " +
+	"probability 1 for each route sums to more than 1, which the server refuses, and reusing another of the base model's numbers (such as a yield) " +
+	"as a share is inventing it.\n" +
 	"- Never add or change views: the editor lays out new steps. Never remove or change what the photo does not show.\n" +
 	"- When the photo does not show enough to add a station (no segment shows one, the order cannot be told, the segments fit none of the domain's kinds), " +
-	"answer needs_input with questions; never invent steps.\n"
+	"or the photo shows no station the base model lacks, answer needs_input with questions; never invent steps. " +
+	"A proposed answer has at least one change; its changes are never empty.\n"
 
 // imageView is the IMAGE block.
 type imageView struct {

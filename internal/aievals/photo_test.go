@@ -176,7 +176,7 @@ func TestThePhotoSmokeRunsThePipeline(t *testing.T) {
 			t.Errorf("observations %v", r.Warnings)
 		}
 	}
-	if r.Template != "photo-0.2.0" || !slices.Equal(r.Served, []string{"muse-spark-1.3", "sam-3.1"}) || r.Image.Width != 1200 ||
+	if r.Template != "photo-0.3.0" || !slices.Equal(r.Served, []string{"muse-spark-1.3", "sam-3.1"}) || r.Image.Width != 1200 ||
 		r.Image.StoredSHA256 != d.Segments.StoredDigest || !r.Image.VerifiedAsJob || r.Base.Domain != "electronics_line" {
 		t.Errorf("header %+v", r)
 	}
@@ -467,7 +467,7 @@ func TestThePhotoSmokeFindsTheFloorPlansShapes(t *testing.T) {
 	r, run := photoSmoke(t, j, s, spend.NanoPerUSD)
 	samPrice, _ := spend.ImagePriceOf("sam-3.1")
 	muse, _ := spend.PriceOf("muse-spark-1.3")
-	if r.Status != "ready" || !r.Ok() || r.NewProcessSteps != 4 || r.ConceptsOverridden || r.Template != "photo-0.2.0" {
+	if r.Status != "ready" || !r.Ok() || r.NewProcessSteps != 4 || r.ConceptsOverridden || r.Template != "photo-0.3.0" {
 		t.Fatalf("%+v", r)
 	}
 	if sg := r.Segmenter; sg.Concepts != 8 || sg.Calls != 8 || sg.Boxes != 10 || sg.BoxesByConcept["rectangle"] != 6 || sg.BoxesByConcept["arrow"] != 4 ||

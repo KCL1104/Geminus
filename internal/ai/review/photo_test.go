@@ -1,12 +1,20 @@
 package review
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
 
+	"github.com/kcl1104/geminus/internal/ai/idpool"
+	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/contracttest"
+	"github.com/kcl1104/geminus/internal/domainpack/electronicsline"
 	"github.com/kcl1104/geminus/internal/model"
+	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/model/validate"
 )
 
 // T-056: a proposal asked for with a photo may add only the steps the photo
@@ -275,4 +283,232 @@ func TestSegmentation(t *testing.T) {
 			t.Errorf("%+v", is)
 		}
 	}
+}
+
+// H-054: the demo floor plan draws its two ICT testers side by side. Live,
+// Muse Spark 1.3 on photo-0.2.0 four times out of six modelled them as a
+// split of the flow, refused with ROUTING_INVALID at the node it added
+// (/nodes/45) and, on the electronics template (41 nodes), "no source
+// reaches this step" at /nodes/41 to /nodes/45. A photo shows no split
+// share. Probability 1 a route sums to 2 (ROUTING_INVALID) on any base. On
+// the bare line no split passes: a 0.5 / 0.5 share is no probability of
+// the base, so the photo rule refuses it. That is about splits only: the
+// bare line still takes other shapes, such as two ICT steps in series, so
+// the prompt, not the server, asks for the templates' one step whose
+// resource has the testers' count as its capacity. Review round 1: the
+// split refusal holds on the bare line, not on any base. The template has the yield pairs
+// 0.97 / 0.03, 0.95 / 0.05, 0.9 / 0.1, 0.93 / 0.07 and 0.995 / 0.005, so a
+// split that reuses one of them as its share is a valid model and passes
+// the photo rule: there, photo-0.3.0's words are the only guard against
+// the H-054 shape (a server rule for it is PROPOSED for the owner, H-054
+// report §7).
+func TestSideBySideTestersAreNoSplit(t *testing.T) {
+	pack := electronicsline.Pack{}
+	type found struct{ path, code string }
+	issuesOf := func(o Outcome) []found {
+		var out []found
+		for _, is := range o.Validation.Issues {
+			out = append(out, found{is.Path, is.Code})
+		}
+		return out
+	}
+	errorsOf := func(o Outcome) []found {
+		var out []found
+		for _, is := range o.Validation.Issues {
+			if isError(is) {
+				out = append(out, found{is.Path, is.Code})
+			}
+		}
+		return out
+	}
+	idsOf := func(p idpool.Pool) *strings.Replacer {
+		var pairs []string
+		for _, k := range []struct {
+			kind   idpool.Kind
+			prefix string
+		}{{idpool.Node, "N"}, {idpool.Flow, "F"}, {idpool.Resource, "R"}} {
+			for i, id := range p.IDs(k.kind) {
+				pairs = append(pairs, fmt.Sprintf("$%s%d$", k.prefix, i), id)
+			}
+		}
+		return strings.NewReplacer(pairs...)
+	}
+
+	// The live pattern on the template: "ICT 2" copied from the template's
+	// ICT (its buffer, step, result and failure, every number the
+	// template's), then a split before ICT 1 and ICT 2 with probability 1 a
+	// route, and the flow into ICT left as it was.
+	doc, _ := electronicsBase(t)
+	p := pool(t, doc)
+	live := ops(t, idsOf(p).Replace(`[
+		{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"queue","name":"Conveyor before ICT 2"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"process","name":"ICT 2",
+			"service_time":{"distribution":{"type":"triangular","min":1.4,"mode":1.7,"max":2.3}},
+			"requires":[{"resource_id":"ict_tester","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N2$","type":"decision","name":"ICT 2 result"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N3$","type":"failure","reason":"ICT 2 failed","name":"ICT 2 fail"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N4$","type":"decision","name":"Split to ICT 1 and ICT 2"}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N1$","to":"$N2$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F2$","from":"$N2$","to":"q_fct","routing":{"type":"probability","probability":0.95}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F3$","from":"$N2$","to":"$N3$","routing":{"type":"probability","probability":0.05}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F4$","from":"$N3$","to":"q_ict_debug","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F5$","from":"$N4$","to":"q_ict","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F6$","from":"$N4$","to":"$N0$","routing":{"type":"probability","probability":1}}}]`))
+	o := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: pack, Output: proposed(live, "low")})
+	unreachable := validate.UnreachableNode
+	want := []found{{"/nodes/41", unreachable}, {"/nodes/42", unreachable}, {"/nodes/43", unreachable}, {"/nodes/44", unreachable},
+		{"/nodes/45", validate.RoutingInvalid}, {"/nodes/45", unreachable}}
+	if o.Status != Invalid || !slices.Equal(issuesOf(o), want) || !slices.Equal(errorsOf(o), []found{{"/nodes/45", validate.RoutingInvalid}}) {
+		t.Fatalf("the live pattern: %s %v", o.Status, issuesOf(o))
+	}
+	wantClean(t, o)
+
+	// Review round 1: on the template, a split joined to the line that
+	// reuses one of the template's yield pairs as its share (the flow from
+	// AOI's result into ICT re-pointed to the split; "ICT 2" with ICT's
+	// tester and service time, into ICT's result) is a valid model, and the
+	// photo rule finds no number of its own in it. This pins the server's
+	// behaviour, not a wish: the prompt alone keeps such a split out.
+	_, tmpl := electronicsBase(t)
+	intoICT := -1
+	for i, fl := range tmpl.Flows {
+		if fl.ID == "aoi_result__q_ict" {
+			intoICT = i
+		}
+	}
+	if intoICT < 0 {
+		t.Fatal("the template has no flow aoi_result__q_ict")
+	}
+	ids := idsOf(p)
+	for _, share := range [][2]string{{"0.9", "0.1"}, {"0.95", "0.05"}} {
+		yields := ops(t, ids.Replace(strings.NewReplacer("$I$", strconv.Itoa(intoICT), "$A$", share[0], "$B$", share[1]).Replace(`[
+			{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"decision","name":"Split to ICT 1 and ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"queue","name":"Conveyor before ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N2$","type":"process","name":"ICT 2",
+				"service_time":{"distribution":{"type":"triangular","min":1.4,"mode":1.7,"max":2.3}},
+				"requires":[{"resource_id":"ict_tester","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+			{"op":"test","path":"/flows/$I$/id","value":"aoi_result__q_ict"},
+			{"op":"replace","path":"/flows/$I$/to","value":"$N0$"},
+			{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"q_ict","routing":{"type":"probability","probability":$A$}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":$B$}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F2$","from":"$N1$","to":"$N2$","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F3$","from":"$N2$","to":"ict_result","routing":{"type":"probability","probability":1}}}]`)))
+		taken := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: p, Pack: pack, Output: proposed(yields, "low")})
+		if taken.Status != Ready || len(issuesOf(taken)) != 0 {
+			t.Fatalf("a split %s / %s on the template: %s %v", share[0], share[1], taken.Status, issuesOf(taken))
+		}
+		if issues := Photo(tmpl, taken.Candidate, 10); len(issues) != 0 {
+			t.Errorf("the photo rule on a split %s / %s on the template: %v", share[0], share[1], issues)
+		}
+	}
+
+	// On the bare line, the split joined to the line: ROUTING_INVALID at
+	// the split alone with probability 1 a route; with half and half the
+	// model is valid, and the photo rule refuses both routes' number.
+	bare, err := hashing.Canonical(contracttest.BareLine(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	barePool := pool(t, bare)
+	bareIDs := idsOf(barePool)
+	split := func(probability string) model.Patch {
+		return ops(t, bareIDs.Replace(strings.ReplaceAll(`[
+			{"op":"add","path":"/resources/-","value":{"id":"$R0$","type":"machine","role":"ict_tester","name":"ICT tester 1","capacity":1,"queue_discipline":"fifo"}},
+			{"op":"add","path":"/resources/-","value":{"id":"$R1$","type":"machine","role":"ict_tester","name":"ICT tester 2","capacity":1,"queue_discipline":"fifo"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"decision","name":"Split to ICT 1 and ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"queue","name":"Conveyor before ICT 1"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N2$","type":"process","name":"ICT 1",
+				"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+				"requires":[{"resource_id":"$R0$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N3$","type":"queue","name":"Conveyor before ICT 2"}},
+			{"op":"add","path":"/nodes/-","value":{"id":"$N4$","type":"process","name":"ICT 2",
+				"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+				"requires":[{"resource_id":"$R1$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+			{"op":"test","path":"/flows/2/id","value":"smt__shipped"},
+			{"op":"replace","path":"/flows/2/to","value":"$N0$"},
+			{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":P}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N0$","to":"$N3$","routing":{"type":"probability","probability":P}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F2$","from":"$N1$","to":"$N2$","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F3$","from":"$N3$","to":"$N4$","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F4$","from":"$N2$","to":"shipped","routing":{"type":"probability","probability":1}}},
+			{"op":"add","path":"/flows/-","value":{"id":"$F5$","from":"$N4$","to":"shipped","routing":{"type":"probability","probability":1}}}]`,
+			`"probability":P`, `"probability":`+probability)))
+	}
+	ones := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(split("1"), "low")})
+	if ones.Status != Invalid || !slices.Equal(errorsOf(ones), []found{{"/nodes/4", validate.RoutingInvalid}}) {
+		t.Fatalf("a split with probability 1 a route: %s %v", ones.Status, issuesOf(ones))
+	}
+	wantClean(t, ones)
+	halves := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(split("0.5"), "low")})
+	if halves.Status != Ready {
+		t.Fatalf("a split half and half is a valid model: %s %v", halves.Status, issuesOf(halves))
+	}
+	refused := Photo(bareLine(t), halves.Candidate, 10)
+	if !slices.Equal(at(refused), []string{"/flows/3/routing/probability", "/flows/4/routing/probability"}) {
+		t.Fatalf("the photo rule on a split half and half: %v", refused)
+	}
+	for _, is := range refused {
+		if is.Code != OutputInvalid || is.Message != sentPhotoNumber || Clean(is) != is {
+			t.Errorf("%+v", is)
+		}
+	}
+
+	// The templates' shape: one ICT step, one resource of capacity 2.
+	one := ops(t, bareIDs.Replace(`[
+		{"op":"add","path":"/resources/-","value":{"id":"$R0$","type":"machine","role":"ict_tester","name":"ICT testers","capacity":2,"queue_discipline":"fifo"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N0$","type":"queue","name":"Conveyor before ICT"}},
+		{"op":"add","path":"/nodes/-","value":{"id":"$N1$","type":"process","name":"ICT",
+			"service_time":{"distribution":{"type":"triangular","min":0.9,"mode":1,"max":1.4}},
+			"requires":[{"resource_id":"$R0$","units":1}],"domain_attributes":{"station":"ict","pass":"first"}}},
+		{"op":"test","path":"/flows/2/id","value":"smt__shipped"},
+		{"op":"replace","path":"/flows/2/to","value":"$N0$"},
+		{"op":"add","path":"/flows/-","value":{"id":"$F0$","from":"$N0$","to":"$N1$","routing":{"type":"probability","probability":1}}},
+		{"op":"add","path":"/flows/-","value":{"id":"$F1$","from":"$N1$","to":"shipped","routing":{"type":"probability","probability":1}}}]`))
+	ready := run(t, Input{Mode: provider.ModeEdit, Base: bare, Pool: barePool, Pack: pack, Output: proposed(one, "low")})
+	if ready.Status != Ready {
+		t.Fatalf("one ICT step with two testers: %s %v", ready.Status, issuesOf(ready))
+	}
+	if issues := Photo(bareLine(t), ready.Candidate, 10); len(issues) != 0 {
+		t.Errorf("the photo rule on one ICT step with two testers: %v", issues)
+	}
+}
+
+// Review round 1: review.Photo lets a resource's capacity be any count from
+// 1 to the boxes, also on a resource the base already has, so the server
+// cannot tell a floor plan that draws one box for three FCT testers from a
+// request to cut FCT. photo-0.3.0 says a step the base already has keeps
+// its resource's capacity; this pins what the server alone does on the
+// template with the demo floor plan's 10 boxes, which draw one FCT and one
+// packing box: FCT 3 -> 1 is ready at the server's risk (medium) and
+// passes the photo rule, so a live check must not count such a proposal as
+// a pass (H-054 report §6); packing 2 -> 1 is CALENDAR_INVALID at its
+// shift_capacity (2 units on each shift), one refusal for another.
+func TestTheServerTakesACountOnAStepTheBaseHas(t *testing.T) {
+	doc, tmpl := electronicsBase(t)
+	pack := electronicsline.Pack{}
+	resourceAt := func(id string) string {
+		for i, r := range tmpl.Resources {
+			if r.ID == id {
+				return strconv.Itoa(i)
+			}
+		}
+		t.Fatalf("no resource %s", id)
+		return ""
+	}
+	capacity := func(id string, from, to int) model.Patch {
+		r := resourceAt(id)
+		return ops(t, `[{"op":"test","path":"/resources/`+r+`/id","value":"`+id+`"},`+
+			`{"op":"test","path":"/resources/`+r+`/capacity","value":`+strconv.Itoa(from)+`},`+
+			`{"op":"replace","path":"/resources/`+r+`/capacity","value":`+strconv.Itoa(to)+`}]`)
+	}
+	fct := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: pool(t, doc), Pack: pack, Output: proposed(capacity("fct_tester", 3, 1), "low")})
+	if fct.Status != Ready || fct.ServerRisk != Medium {
+		t.Fatalf("FCT 3 -> 1: status %q, server risk %q (%v)", fct.Status, fct.ServerRisk, codes(fct))
+	}
+	if issues := Photo(tmpl, fct.Candidate, 10); len(issues) != 0 {
+		t.Errorf("the photo rule on FCT 3 -> 1: %v", issues)
+	}
+	pack2 := run(t, Input{Mode: provider.ModeEdit, Base: doc, Pool: pool(t, doc), Pack: pack, Output: proposed(capacity("pack_station", 2, 1), "low")})
+	wantInvalid(t, pack2, validate.CalendarInvalid, "/resources/"+resourceAt("pack_station")+"/shift_capacity")
 }

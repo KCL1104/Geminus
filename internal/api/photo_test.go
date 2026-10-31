@@ -333,7 +333,7 @@ func TestAPhotoProposalEndToEnd(t *testing.T) {
 	}
 	visReqs := e.vision.Requests()
 	if len(visReqs) != 1 || len(visReqs[0].Prompt.Images) != 1 || !bytes.Equal(visReqs[0].Prompt.Images[0].Data, demo.Image) ||
-		!strings.Contains(visReqs[0].Prompt.User(), `"concept":"ict tester"`) || visReqs[0].Prompt.TemplateVersion != "photo-0.2.0" {
+		!strings.Contains(visReqs[0].Prompt.User(), `"concept":"ict tester"`) || visReqs[0].Prompt.TemplateVersion != "photo-0.3.0" {
 		t.Errorf("vision requests %d", len(visReqs))
 	}
 	// Nothing changed in the model yet; a person approves.
@@ -365,7 +365,7 @@ func TestAPhotoProposalEndToEnd(t *testing.T) {
 	}
 	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE target_id=$1 AND action='proposal.generate' AND metadata->>'status'='ready'
 		AND (metadata->>'segmenter_boxes')::int=10 AND (metadata->>'segmenter_concepts')::int=8
-		AND metadata->>'prompt_template_version'='photo-0.2.0'`, id); n != 1 {
+		AND metadata->>'prompt_template_version'='photo-0.3.0'`, id); n != 1 {
 		t.Errorf("%d proposal.generate events", n)
 	}
 }
