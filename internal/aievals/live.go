@@ -573,7 +573,7 @@ var ErrNotALiveReport = errors.New("aievals: a live report is written to a live-
 // ErrReportExists: a report never replaces another (review round 1, H1).
 var ErrReportExists = errors.New("aievals: the report exists; a live report never replaces an earlier one")
 
-var liveName = regexp.MustCompile(`^live-(smoke-(photo-)?)?[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-7][0-9A-HJKMNP-TV-Z]{25}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
+var liveName = regexp.MustCompile(`^live-(smoke-(photo-)?|investigator-)?[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{6}Z-[0-7][0-9A-HJKMNP-TV-Z]{25}-[a-z0-9][a-z0-9.-]{0,127}\.json$`)
 
 // ReportName is a run's report's file name:
 // live-[smoke-]<YYYY-MM-DD>T<hhmmss>Z-<run ID>-<model>.json, the run's UTC
@@ -586,6 +586,8 @@ func ReportName(kind string, start time.Time, runID, model string) string {
 		prefix = "live-smoke-"
 	case PhotoSmokeKind:
 		prefix = "live-smoke-photo-"
+	case InvestigatorKind:
+		prefix = "live-investigator-"
 	}
 	return prefix + start.UTC().Format("2006-01-02T150405Z") + "-" + runID + "-" + model + ".json"
 }

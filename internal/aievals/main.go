@@ -110,6 +110,9 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	locale := fs.String("locale", "en", "the output locale of every case (en or zh-Hant)")
 	concepts := fs.String("concepts", "", "with -smoke-photo: comma-separated concepts SAM is asked for instead of the pack's, to explore their wording (also "+
 		conceptsVar+"); at most 8, each a short lowercase noun phrase")
+	suite := fs.String("suite", "", "investigator: H-061 §14's planner suite (testdata/investigator/cases) instead of the corpus")
+	planner := fs.String("planner", "muse-spark-1.3", "with -suite investigator: the planner model (muse-spark-1.3 or muse-wonder-1.0)")
+	transcript := fs.String("transcript", "digest", "with -suite investigator: the planner's transcript, digest or replay (H-061 §5.4)")
 	if err := fs.Parse(args); err != nil {
 		return ExitRefused
 	}
@@ -125,6 +128,14 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	}
 	if *concepts != "" && !*smokePhoto {
 		return refuse("-concepts is the photo smoke's (-smoke-photo)")
+	}
+	switch {
+	case *suite != "" && *suite != InvestigatorKind:
+		return refuse("-suite is investigator or unset")
+	case *suite == InvestigatorKind && (*smoke || *smokePhoto):
+		return refuse("-suite investigator runs alone, without -smoke or -smoke-photo")
+	case *suite == "" && setFlag(fs, "planner", "transcript"):
+		return refuse("-planner and -transcript are the investigator suite's (-suite investigator)")
 	}
 	ai, err := config.LoadAI(getenv)
 	if err != nil {
@@ -144,6 +155,13 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	}
 	if *smokePhoto {
 		return photoSmoke(ctx, ai, *root, *dir, *locale, *concepts, getenv, stdout, stderr, b.Photo, refuse)
+	}
+	if *suite == InvestigatorKind {
+		var ids []string
+		if *only != "" {
+			ids = strings.Split(*only, ",")
+		}
+		return investigatorLive(ctx, ai, *root, *dir, *locale, *planner, *transcript, ids, getenv, stdout, stderr, b.Text, refuse)
 	}
 	newBackend := b.Text
 	if !ai.LiveEnabled() {
@@ -341,6 +359,17 @@ func begin(out, kind string, capNano int64, ai config.AI, model string) (*starte
 		return nil, why
 	}
 	return &started{rec: rec, recordPath: recordPath, start: start, runID: runID, path: path}, ""
+}
+
+// setFlag reports whether any of names was set on the command line.
+func setFlag(fs *flag.FlagSet, names ...string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) {
+		for _, n := range names {
+			set = set || f.Name == n
+		}
+	})
+	return set
 }
 
 // capOf is the run's cap: def, or AI_EVAL_LIVE_MAX_USD.

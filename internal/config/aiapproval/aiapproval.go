@@ -115,10 +115,21 @@ const (
 // liveRoles are the prompt roles a data policy may let live AI serve
 // (D-112, approved by H-038, 2026-10-28): the proposal roles, whose context
 // is the model and the user's intent, and the analyst (T-030), whose
-// context is the model and the results the simulation computed. The
-// importer sends sample rows of uploaded files, which no recorded policy
-// covers; its job is not built yet (T-027).
-var liveRoles = []string{"modeler", "scenario", "analyst"}
+// context is the model and the results the simulation computed; and since
+// H-060 (confirmed in H-063) the investigator, an AI investigation's
+// planner, whose context is the model, the person's request and the
+// server's digest of what the investigation did (H-061 §9), and which
+// answers with tool calls only (toolRoles). The importer sends sample rows
+// of uploaded files, which no recorded policy covers; its job is not built
+// yet (T-027).
+var liveRoles = []string{"modeler", "scenario", "analyst", "investigator"}
+
+// toolRoles are the prompt roles a data policy may let answer with custom
+// tool calls (H-060, H-061 §9): the investigator only, whose every call the
+// server decodes strictly and the API carries out under the person's scope.
+// The investigator has no other answer, so a policy that serves it names its
+// tool calls.
+var toolRoles = []string{"investigator"}
 
 // researchRoles are the prompt roles a data policy may let use the
 // provider's web search (H-046 (2), 2026-10-29): the proposal roles, whose
@@ -139,6 +150,11 @@ type DataPolicy struct {
 	// description the person typed is used for the provider's web
 	// searches), among researchRoles and Roles; none for no research.
 	ResearchRoles []string
+	// ToolRoles are the prompt roles whose calls may offer the model custom
+	// tools (H-060, H-061 §9), among toolRoles and Roles: exactly the tool
+	// roles Roles names (the investigator answers with nothing else); none
+	// for none.
+	ToolRoles []string
 }
 
 // Confirmation is an owner's statement as recorded: who, when (a calendar
@@ -176,6 +192,14 @@ type Record struct {
 	// proposal on Model). Only a Meta record lists them: the Anthropic
 	// adapter asks its one model.
 	ProposalModels []string
+	// PlannerModels are the exact model IDs an AI investigation's planner
+	// may be asked (H-060, H-061 §9, H-063: the investigator role), each a
+	// Standard one, each once; the record's Model is always allowed besides.
+	// Listing a model lets it be called (Muse Wonder 1.0's planner
+	// evaluation, H-061 §14); offering it to people is gated separately
+	// (INVESTIGATION_PLANNER_MODELS and the web build's flag). Only a Meta
+	// record that serves the investigator lists them.
+	PlannerModels []string
 	// SegmentationModel is the exact model ID of the segmentation model the
 	// approval covers (a Meta record: SAM 3.1 for the photo path, H-033);
 	// empty for none.
@@ -217,6 +241,23 @@ func (p DataPolicy) rolesOK() bool {
 	return len(p.Roles) > 0 && !slices.ContainsFunc(p.Roles, func(role string) bool { return !slices.Contains(liveRoles, role) })
 }
 
+// toolsOK reports whether the data policy's tool roles are exactly the tool
+// roles it serves (toolRoles among Roles), each once: the investigator and
+// its tool calls come together, and no other role makes tool calls.
+func (p DataPolicy) toolsOK() bool {
+	for i, role := range p.ToolRoles {
+		if !slices.Contains(toolRoles, role) || !slices.Contains(p.Roles, role) || slices.Contains(p.ToolRoles[:i], role) {
+			return false
+		}
+	}
+	for _, role := range p.Roles {
+		if slices.Contains(toolRoles, role) && !slices.Contains(p.ToolRoles, role) {
+			return false
+		}
+	}
+	return true
+}
+
 // researchOK reports whether the data policy's research roles are proposal
 // roles it serves, each once (none is fine).
 func (p DataPolicy) researchOK() bool {
@@ -233,11 +274,12 @@ func (p DataPolicy) researchOK() bool {
 // Console spend limits and the retention arrangement confirmed.
 func (r Record) anthropicGap() Reason {
 	switch {
-	case r.ID == "" || r.Model == "" || r.SegmentationModel != "" || len(r.ProposalModels) > 0 || r.ApprovedBy == "" || r.ApprovedAt == "" ||
-		r.Source == "" || !slices.Equal(r.Credentials, []string{"org-a", "org-b"}):
+	case r.ID == "" || r.Model == "" || r.SegmentationModel != "" || len(r.ProposalModels) > 0 || len(r.PlannerModels) > 0 ||
+		r.ApprovedBy == "" || r.ApprovedAt == "" || r.Source == "" || !slices.Equal(r.Credentials, []string{"org-a", "org-b"}):
 		return ReasonIncomplete
 	case r.DataPolicy.Inputs != InputsSyntheticAndUserText || r.DataPolicy.LogsKeepRawText || !r.DataPolicy.rolesOK() ||
-		len(r.DataPolicy.ResearchRoles) > 0: // the Anthropic adapter has no web search (H-046 (2))
+		len(r.DataPolicy.ResearchRoles) > 0 || // the Anthropic adapter has no web search (H-046 (2))
+		len(r.DataPolicy.ToolRoles) > 0 || slices.Contains(r.DataPolicy.Roles, "investigator"): // nor custom tools (H-061 §9)
 		return ReasonPolicyUnsupported
 	case r.MonthlyBudgetUSD <= 0:
 		return ReasonBudgetMissing
@@ -261,12 +303,14 @@ func (r Record) metaGap() Reason {
 	case r.ID == "" || r.Model == "" || r.ApprovedBy == "" || r.ApprovedAt == "" || r.Source == "" || !slices.Equal(r.Credentials, []string{"meta"}):
 		return ReasonIncomplete
 	case !slices.Contains(metaStandardModels, r.Model) || (r.SegmentationModel != "" && !slices.Contains(metaStandardSegmenters, r.SegmentationModel)) ||
-		slices.ContainsFunc(r.ProposalModels, func(m string) bool { return !slices.Contains(metaStandardModels, m) }):
+		slices.ContainsFunc(r.ProposalModels, func(m string) bool { return !slices.Contains(metaStandardModels, m) }) ||
+		slices.ContainsFunc(r.PlannerModels, func(m string) bool { return !slices.Contains(metaStandardModels, m) }):
 		return ReasonModelNotStandard
-	case !r.proposalModelsOK():
+	case !r.proposalModelsOK() || !r.plannerModelsOK():
 		return ReasonIncomplete
 	case (p.Inputs != InputsSyntheticAndUserText && p.Inputs != InputsSyntheticDemoImagesAndUserText) || p.LogsKeepRawText || !p.rolesOK() ||
-		!p.researchOK() || (r.SegmentationModel != "" && p.Inputs != InputsSyntheticDemoImagesAndUserText):
+		!p.researchOK() || !p.toolsOK() || (len(r.PlannerModels) > 0 && !slices.Contains(p.Roles, "investigator")) ||
+		(r.SegmentationModel != "" && p.Inputs != InputsSyntheticDemoImagesAndUserText):
 		return ReasonPolicyUnsupported
 	case r.MonthlyBudgetUSD <= 0:
 		return ReasonBudgetMissing
@@ -290,8 +334,22 @@ func (r Record) proposalModelsOK() bool {
 	return slices.Contains(r.ProposalModels, r.Model)
 }
 
+// plannerModelsOK reports whether a record's planner models (H-061 §9) are
+// none, or each listed once. That a record lists them only when its data
+// policy serves the investigator is the policy's rule (metaGap).
+func (r Record) plannerModelsOK() bool {
+	for i, m := range r.PlannerModels {
+		if slices.Contains(r.PlannerModels[:i], m) {
+			return false
+		}
+	}
+	return true
+}
+
 func (r Record) clone() Record {
 	r.ProposalModels = slices.Clone(r.ProposalModels)
+	r.PlannerModels = slices.Clone(r.PlannerModels)
+	r.DataPolicy.ToolRoles = slices.Clone(r.DataPolicy.ToolRoles)
 	r.DataPolicy.Roles = slices.Clone(r.DataPolicy.Roles)
 	r.DataPolicy.ResearchRoles = slices.Clone(r.DataPolicy.ResearchRoles)
 	r.Credentials = slices.Clone(r.Credentials)
@@ -390,6 +448,21 @@ var h018 = Record{
 // results stay on Muse Spark 1.3. The data policy, roles, budget and caps do
 // not change. Live only on independently reviewed code (H-049: one
 // independent review).
+//
+// Investigator: H-060, 2026-10-31, the owner: 「讓 agent pick，不過還是幫我看看
+// muse wonder 能不能融入到新的 flow」 and 「Approve both」; H-063, 2026-10-31,
+// 「Confirm (Recommended)」 for H-061's approval-record change: an AI
+// investigation's planner (the investigator role, H-061 §9) is served for
+// synthetic data only (the model, the person's request and the server's
+// digest; never an image: the client sends none with a tool turn), answers
+// with custom tool calls only (ToolRoles: the one role that may), never
+// researches, and plans on Muse Spark 1.3 or Muse Wonder 1.0
+// (PlannerModels: Wonder listed so its planner evaluation can call it; it
+// is offered to people only after a recorded pass of H-061 §14's bar, by
+// INVESTIGATION_PLANNER_MODELS and the web build's flag). The data policy's
+// inputs, the budget and the caps do not change; investigations stay behind
+// GEMINUS_INVESTIGATIONS. Live only on independently reviewed code (H-061:
+// each slice's independent review and the closed-loop live checks, A9).
 var h029 = Record{
 	ID:                "H-029",
 	Provider:          "meta",
@@ -397,15 +470,18 @@ var h029 = Record{
 	SegmentationModel: "sam-3.1",
 	DataPolicy: DataPolicy{
 		Inputs:        InputsSyntheticDemoImagesAndUserText,
-		Roles:         []string{"modeler", "scenario", "analyst"},
-		ResearchRoles: []string{"modeler", "scenario"}, // H-046 (2)
+		Roles:         []string{"modeler", "scenario", "analyst", "investigator"}, // investigator: H-060, H-063
+		ResearchRoles: []string{"modeler", "scenario"},                            // H-046 (2)
+		ToolRoles:     []string{"investigator"},                                   // H-060, H-063
 	},
 	ProposalModels:   []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-049
+	PlannerModels:    []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-060, H-061 §9, H-063
 	MonthlyBudgetUSD: 100,
 	Credentials:      []string{"meta"},
 	ApprovedBy:       "KCL1104 (repository owner)",
 	ApprovedAt:       "2026-10-26",
-	Source:           "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md)",
+	Source: "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md); " +
+		"the investigator role, its tool calls and planner models per H-060, confirmed by the owner in H-063",
 	Retention: Retention{Arrangement: RetentionMetaStandard, Confirmation: Confirmation{By: "KCL1104 (repository owner)", At: "2026-10-26",
 		Source: "H-035 (1): the owner accepted the Meta Model API Terms of Service (2026-10-09 version, checked by the coordinator), " +
 			"its retention for safety, abuse and policy review (§4.1, §4.4) included; Standard Services are not trained on (§5.1); " +
@@ -502,13 +578,32 @@ func (a Approval) ProposalModels() []string {
 
 // AllowsModel reports whether a live call of the prompt role may ask model:
 // a role the approval serves, and the approval's model, or for a proposal
-// role (modeler, scenario) a model its choice lists (H-049). Every other
-// role (the analyst) has the approval's model only.
+// role (modeler, scenario) a model its choice lists (H-049), or for the
+// investigator a planner model it lists (H-061 §9). Every other role (the
+// analyst) has the approval's model only.
 func (a Approval) AllowsModel(role, model string) bool {
 	if !a.AllowsRole(role) || model == "" {
 		return false
 	}
-	return model == a.rec.Model || (slices.Contains(researchRoles, role) && slices.Contains(a.rec.ProposalModels, model))
+	return model == a.rec.Model || (slices.Contains(researchRoles, role) && slices.Contains(a.rec.ProposalModels, model)) ||
+		(role == "investigator" && slices.Contains(a.rec.PlannerModels, model))
+}
+
+// AllowsTools reports whether a live call of the prompt role may offer the
+// model custom tools (H-060, H-061 §9): the data policy names tool calls
+// for the role, which it also serves. The investigator only.
+func (a Approval) AllowsTools(role string) bool {
+	return a.AllowsRole(role) && slices.Contains(a.rec.DataPolicy.ToolRoles, role)
+}
+
+// PlannerModels are the models an investigation's planner may be asked
+// (H-061 §9), besides the approval's model; nil for none (and for no
+// approval).
+func (a Approval) PlannerModels() []string {
+	if !a.Valid() || len(a.rec.PlannerModels) == 0 {
+		return nil
+	}
+	return slices.Clone(a.rec.PlannerModels)
 }
 
 // Provider is the provider the approval covers ("anthropic", "meta");

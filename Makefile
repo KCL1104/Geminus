@@ -102,14 +102,18 @@ integration-test:
 # The AI eval corpus through the context builder and the deterministic fake provider: the context-side
 # zero-tolerance gates for every case (T-024, checks/ai-evals/fake-provider.json) and the server's review of
 # hand-written reference and unsafe answers (T-025, checks/ai-evals/fake-review.json); the analyst checks on hand-written
-# grounded and unsafe answers (T-030, checks/ai-evals/fake-analyst.json). Fake results only.
+# grounded and unsafe answers (T-030, checks/ai-evals/fake-analyst.json); the investigation planner's six cases in a
+# simulated tool environment, digest and replay transcripts (H-061 A5, checks/ai-evals/fake-investigator.json). Fake
+# results only.
 ai-eval:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	@mkdir -p checks/ai-evals
 	GEMINUS_AI_EVAL_REPORT=$(CURDIR)/checks/ai-evals/fake-provider.json GEMINUS_AI_EVAL_REVIEW_REPORT=$(CURDIR)/checks/ai-evals/fake-review.json \
 		GEMINUS_AI_EVAL_ANALYST_REPORT=$(CURDIR)/checks/ai-evals/fake-analyst.json \
 		go test -count=1 -run '^(TestFakeProviderEval|TestReviewEval|TestAnalystEval)$$' -v ./internal/ai/corpus/
-	@echo 'ai-eval: fake-provider context, review and analyst-check suites only (the analyst checks on hand-written answers, T-030). Scoring the answers of a real model (golden >=90%, T-038), database effects (T-025 make integration-test, T-026) and the live provider eval (make ai-eval-live) are NOT RUN.' >&2
+	GEMINUS_AI_EVAL_INVESTIGATOR_REPORT=$(CURDIR)/checks/ai-evals/fake-investigator.json \
+		go test -count=1 -run '^TestInvestigatorEval$$' -v ./internal/aievals/
+	@echo 'ai-eval: fake-provider context, review and analyst-check suites, and the investigation planner suite with scripted fake turns (H-061 A5), only (the analyst checks on hand-written answers, T-030). Scoring the answers of a real model (golden >=90%, T-038), a live planner (cmd/ai-eval-live -suite investigator, H-061 A9), database effects (T-025 make integration-test, T-026) and the live provider eval (make ai-eval-live) are NOT RUN.' >&2
 # The independent SimPy reference of finite buffers and blocking (T-047), of resource breakdowns (T-048) and
 # of resource calendars and release schedules (T-049), TEST-034 (SimPy pinned in requirements-spec.txt): the Go
 # engine's per-replication results of the reference cases, then scripts/simpy_reference.py, which checks the
@@ -139,7 +143,11 @@ simulation-reference-test:
 # prompt, answer text or key. The command's own exit code (printed; make itself exits 2 on any failure): 1 a gate
 # failed or the run stopped at its cap, 2 refused before any call, 3 calls were made but the run stopped on an error or
 # the report or the record's close line could not be written (the summary and cost are printed). Commit the record
-# and the report after every run.
+# and the report after every run. H-061 A5: bin/ai-eval-live -suite investigator -planner muse-spark-1.3|muse-wonder-1.0
+# [-transcript digest|replay] [-cases INV-001,...] runs the planner's six cases (testdata/investigator/cases) on the live
+# planner, only its turns paid (the tools' results are the cases' recorded ones), behind the same gate and the approval's
+# investigator role and planner model, capped at USD 1 for Muse Spark and USD 4 for Muse Wonder (AI_EVAL_LIVE_MAX_USD sets
+# another); report checks/ai-evals/live-investigator-<UTC start>-<run ID>-<planner>.json with H-061 §14's pass bar.
 ai-eval-live:
 	@test -f go.mod || { echo 'NOT IMPLEMENTED: Go application is not included.' >&2; exit 2; }
 	go build -o bin/ai-eval-live ./cmd/ai-eval-live

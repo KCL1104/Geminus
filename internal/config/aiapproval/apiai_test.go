@@ -83,6 +83,12 @@ func TestTheAPIsGateIsTheWorkers(t *testing.T) {
 					return ""
 				},
 				"no model choice": func(r *aiapproval.Record) string { r.ProposalModels = nil; return "" },
+				// H-061 §9: every planner model is priced too, or live AI stays
+				// off.
+				"an unpriced planner": func(r *aiapproval.Record) string {
+					r.PlannerModels = []string{"muse-spark-1.3", "muse-spark-1.2"}
+					return ""
+				},
 				"the Contributor model": func(r *aiapproval.Record) string {
 					r.Model = "muse-spark-1.3-contributor"
 					return "muse-spark-1.3-contributor"
@@ -99,6 +105,7 @@ func TestTheAPIsGateIsTheWorkers(t *testing.T) {
 				"the importer's role": "policy_unsupported", "no budget": "budget_missing", "retention unconfirmed": "retention_unconfirmed",
 				"retention undated": "retention_unconfirmed", "spend limits unconfirmed": "", "another provider's record": "provider_mismatch",
 				"an unpriced Standard model": "model_unpriced", "an unpriced Standard model to choose": "model_unpriced", "no model choice": "",
+				"an unpriced planner":   "model_unpriced",
 				"the Contributor model": "model_not_standard", "another segmenter": "model_not_standard",
 				"text only, no segmentation": "", "Anthropic's arrangement": "retention_unconfirmed"},
 		},

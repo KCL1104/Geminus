@@ -451,7 +451,7 @@ func liveGate(getenv func(string) string, p AIProvider, approval, approvalVar, m
 	}
 	model := getenv(modelVar)
 	_, priced := spend.PriceOf(rec.Model)
-	for _, m := range rec.ProposalModels { // H-049: every model a person may choose
+	for _, m := range append(slices.Clone(rec.ProposalModels), rec.PlannerModels...) { // H-049, H-061 §9: every model a call may ask
 		_, ok := spend.PriceOf(m)
 		priced = priced && ok
 	}

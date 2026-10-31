@@ -244,7 +244,7 @@ func (o openLine) check() error {
 	switch {
 	case !runIDShape.MatchString(o.RunID):
 		return errors.New("a run ID is not a ULID")
-	case o.Kind != "eval" && o.Kind != "smoke" && o.Kind != PhotoSmokeKind:
+	case o.Kind != "eval" && o.Kind != "smoke" && o.Kind != PhotoSmokeKind && o.Kind != InvestigatorKind:
 		return errors.New("an unknown kind")
 	case err != nil:
 		return err

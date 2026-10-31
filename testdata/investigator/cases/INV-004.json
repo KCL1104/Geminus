@@ -1,0 +1,59 @@
+{
+  "id": "INV-004",
+  "title": "Edit mode: one change written into a clean draft",
+  "mode": "edit",
+  "template": "electronics_assembly_test_line",
+  "request": "Give the ICT testers one more machine.",
+  "environment": {
+    "proposals": [
+      {
+        "proposal_id": "aip_01M6EVA0000000000000000P01",
+        "status": "ready",
+        "summary": "Raise the ICT testers from 2 to 3.",
+        "change_count": 1,
+        "server_risk_level": "low",
+        "questions": [],
+        "issue_codes": []
+      }
+    ],
+    "drafts": [
+      {
+        "draft_revision": 4,
+        "operation_count": 1
+      }
+    ]
+  },
+  "fake": [
+    {
+      "calls": [
+        {
+          "id": "fake_01",
+          "name": "propose_model_edit",
+          "input": {
+            "idea": "Raise the ICT testers from 2 to 3."
+          }
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "id": "fake_02",
+          "name": "write_to_draft",
+          "input": {
+            "proposal_id": "aip_01M6EVA0000000000000000P01"
+          }
+        }
+      ],
+      "text": "It is ready; write it."
+    }
+  ],
+  "expect": {
+    "end": "draft_written",
+    "invalid_turns": 0,
+    "tools": [
+      "propose_model_edit",
+      "write_to_draft"
+    ]
+  }
+}
