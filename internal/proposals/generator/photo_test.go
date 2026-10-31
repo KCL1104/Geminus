@@ -760,3 +760,31 @@ func TestAMeteredPhotoCall(t *testing.T) {
 		}
 	}
 }
+
+// A call the provider refused with an HTTP status leaves the status and the
+// provider's error type in the log, never its text, so a live refusal can
+// be told apart (a 400 from a 404) without a rebuild.
+func TestARefusedSegmenterCallLogsItsStatus(t *testing.T) {
+	var buf bytes.Buffer
+	r := newPhotoRig(t, "electronics-line-demo", func(c *Config) { c.Log = observability.NewLogger(&buf, "worker") })
+	r.script(-1)
+	refused := provider.NewError(provider.CodeRejected, 400, "meta")
+	refused.ErrorType = "invalid_request_error"
+	r.seg.Fail("smt line", refused)
+	if _, err := r.run(t, context.Background()); err == nil {
+		t.Fatal("a refused segmentation ended without an error")
+	}
+	var warn map[string]any
+	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
+		var m map[string]any
+		if err := json.Unmarshal(line, &m); err != nil {
+			t.Fatalf("%q: %v", line, err)
+		}
+		if m["msg"] == "the ai provider answered the call with an error status" {
+			warn = m
+		}
+	}
+	if warn == nil || warn["provider_status"] != float64(400) || warn["model"] != "fake" || warn["role"] != "modeler" || warn["code"] != "AI_REQUEST_REJECTED" || warn["provider_error_type"] == nil {
+		t.Fatalf("no refusal line with its status: %v", warn)
+	}
+}

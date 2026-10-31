@@ -287,6 +287,14 @@ func (h *Handler) logSegment(ctx context.Context, m provider.SegmentMetadata, se
 	if errors.As(err, &pe) && pe.Code == provider.CodeQuotaExceeded {
 		h.cfg.Log.WarnContext(ctx, "a live AI spend limit refused a call", "role", string(m.Role), "limit", pe.Limit)
 	}
+	// As logCall does for the vision model (T-053 schema follow-up): a
+	// segmentation the provider answered with an error status says which,
+	// by its HTTP status and error type, never the provider's message.
+	if pe != nil && pe.Status != 0 {
+		h.cfg.Log.WarnContext(ctx, "the ai provider answered the call with an error status", "role", string(m.Role),
+			"model", m.Model, "credential_label", m.Credential, "code", code,
+			"provider_status", pe.Status, "provider_error_type", pe.ErrorType)
+	}
 	if m.SpendUnsettled {
 		h.cfg.Log.WarnContext(ctx, "settling a live AI spend reservation failed", "cost_nano_usd", m.CostNanoUSD, "spend_unsettled", true)
 	}
