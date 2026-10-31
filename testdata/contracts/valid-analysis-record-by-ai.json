@@ -1,0 +1,11 @@
+{
+  "id": "ana_01M4YDQK00B8S5WQXJ3TQ7ZK60",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+  "baseline_run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK50",
+  "status": "generating",
+  "analysis": null,
+  "created_at": "2026-11-01T06:00:46Z",
+  "error": null,
+  "investigation_id": "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A"
+}

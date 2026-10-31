@@ -1,0 +1,46 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK50",
+  "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+  "status": "completed",
+  "comparison": {
+    "comparable": true,
+    "incomparable_reasons": [],
+    "objective": {
+      "metric_path": "/metrics/lead_time_minutes/p50",
+      "baseline": 42.5,
+      "scenario": 39.9,
+      "absolute_delta": -2.6000000000000014,
+      "relative_delta": -0.06117647058823533,
+      "status": "available",
+      "reason": null
+    },
+    "metrics": [
+      {
+        "metric_path": "/metrics/lead_time_minutes/p50",
+        "baseline": 42.5,
+        "scenario": 39.9,
+        "absolute_delta": -2.6000000000000014,
+        "relative_delta": -0.06117647058823533,
+        "status": "available",
+        "reason": null
+      },
+      {
+        "metric_path": "/metrics/throughput/mean",
+        "baseline": 120,
+        "scenario": 126,
+        "absolute_delta": 6,
+        "relative_delta": 0.05,
+        "status": "available",
+        "reason": null
+      }
+    ],
+    "warnings": []
+  },
+  "error_code": null,
+  "budget": {
+    "what_ifs_left": 2,
+    "runs_left": 2,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}

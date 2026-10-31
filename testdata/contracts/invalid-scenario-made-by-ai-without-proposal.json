@@ -1,0 +1,31 @@
+{
+  "id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "name": "Add a second ICT tester",
+  "patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "patch_hash": "sha256:9986280e38a861a2ca7eef1a03ca94a02b1ee066019b65d7fb5003b431884205",
+  "source_proposal_id": null,
+  "created_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+  "created_at": "2026-10-15T08:30:00Z",
+  "made_by_ai": {
+    "investigation_id": "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A",
+    "requested_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+    "generated_by": {
+      "provider": "meta",
+      "model": "muse-spark-1.3"
+    }
+  }
+}

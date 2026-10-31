@@ -1,0 +1,13 @@
+{
+  "baseline_run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK50",
+  "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+  "status": "completed",
+  "comparison": null,
+  "error_code": null,
+  "budget": {
+    "what_ifs_left": 2,
+    "runs_left": 4,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}
