@@ -61,6 +61,17 @@ type Proposal struct {
 	RequestedModel string `json:"requested_model,omitzero"`
 }
 
+// MadeByAI is common.schema.json's MadeByAI (H-061, PROPOSED): the label of
+// a scenario or run an AI investigation made for the person who started
+// it, with the planner that chose to make it. Present only on such rows;
+// nothing sets it before the investigation slices land, so every body is
+// byte for byte as before.
+type MadeByAI struct {
+	InvestigationID string      `json:"investigation_id"`
+	RequestedBy     string      `json:"requested_by"`
+	GeneratedBy     GeneratedBy `json:"generated_by"`
+}
+
 // GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
 // and model wrote an AI result and, for a photo, which segmenter read it,
 // how many objects it found and (H-052) their boxes. Only these come from

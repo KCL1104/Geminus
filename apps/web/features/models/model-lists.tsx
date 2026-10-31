@@ -58,6 +58,9 @@ const proposalTone: Readonly<Record<Proposal["status"], string>> = {
   approved: "ok",
   rejected: "neutral",
   conflicted: "warning",
+  // H-061 (PROPOSED): the AI acted on its own ready proposal for the person
+  // who asked (saved it as a scenario or wrote it into the draft).
+  applied: "ok",
 };
 
 // H-052: a proposal the server refused or the AI never finished is folded

@@ -31,6 +31,7 @@ run migrations/0015_scenarios.up.sql
 run migrations/0016_ai_spend.up.sql
 run migrations/0017_proposal_images.up.sql
 run migrations/0018_analysis_jobs.up.sql
+run migrations/0019_investigations.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -45,6 +46,20 @@ run db/tests/scenarios.sql
 run db/tests/ai_spend.sql
 run db/tests/proposal_images.sql
 run db/tests/analysis_jobs.sql
+run db/tests/investigations.sql
+# H-061 A3: 0019's down refuses while an AI investigation exists (its
+# labels and applied proposals cannot be unwritten) and changes nothing;
+# without one it runs.
+run db/tests/investigation_rows.sql
+if out=$(psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/0019_investigations.down.sql 2>&1); then
+  echo 'FAILED: migration 0019 down ran while an investigation existed' >&2; exit 1
+fi
+grep -q 'migration 0019 down refuses' <<<"$out" || { echo "FAILED: migration 0019 down stopped for another reason: $out" >&2; exit 1; }
+state=$(psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT count(*) || ' ' || bool_and(r.relforcerowsecurity)
+  FROM pg_class r WHERE r.oid IN ('twin.investigations'::regclass, 'twin.audit_events'::regclass)")
+[[ "$state" == '2 true' ]] || { echo "FAILED: migration 0019 down changed the schema: $state" >&2; exit 1; }
+psql -X "$DATABASE_URL" -v ON_ERROR_STOP=1 -qc "DELETE FROM twin.jobs WHERE investigation_id IS NOT NULL; DELETE FROM twin.investigations;"
+run migrations/0019_investigations.down.sql
 run migrations/0018_analysis_jobs.down.sql
 run migrations/0017_proposal_images.down.sql
 run migrations/0016_ai_spend.down.sql
@@ -103,6 +118,7 @@ run migrations/0015_scenarios.up.sql
 run migrations/0016_ai_spend.up.sql
 run migrations/0017_proposal_images.up.sql
 run migrations/0018_analysis_jobs.up.sql
+run migrations/0019_investigations.up.sql
 run db/tests/invariants.sql
 run db/tests/constraints.sql
 run db/tests/roles.sql
@@ -117,4 +133,5 @@ run db/tests/scenarios.sql
 run db/tests/ai_spend.sql
 run db/tests/proposal_images.sql
 run db/tests/analysis_jobs.sql
+run db/tests/investigations.sql
 echo 'DB migration smoke up/down/up completed. This does NOT replace real-login/API/concurrency tests.'

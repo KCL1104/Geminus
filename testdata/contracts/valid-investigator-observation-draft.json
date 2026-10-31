@@ -1,0 +1,10 @@
+{
+  "draft_revision": 4,
+  "operation_count": 2,
+  "budget": {
+    "what_ifs_left": 0,
+    "runs_left": 0,
+    "explanations_left": 0,
+    "steps_left": 11
+  }
+}
