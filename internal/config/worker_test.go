@@ -121,3 +121,68 @@ func TestRestLaneSuffixes(t *testing.T) {
 		t.Errorf("%v, want %v (max %d)", got, want, MaxRestLanes)
 	}
 }
+
+// H-061 §5.1 (slice A6, W1 widened): WORKER_AGENT_LANES (0 to 4, 0 when
+// unset) agent loops run only investigations, and only with
+// GEMINUS_INVESTIGATIONS=1 (off by default); investigations need split
+// lanes and at least one agent lane (in one loop an investigation would
+// wait for jobs only that loop could run). INVESTIGATOR_TRANSCRIPT is digest
+// (the default) or replay; INVESTIGATION_PLANNER_MODELS lists the planner
+// models this worker runs (muse-spark-1.3 by default: Muse Wonder 1.0 only
+// once listed, H-061 §14).
+func TestLoadWorkerInvestigations(t *testing.T) {
+	base := func(kv ...string) map[string]string {
+		m := map[string]string{"WORKER_ID": "worker-0", "WORKER_ORGANIZATION_IDS": "org_a", "WORKER_LANES": "split"}
+		for i := 0; i+1 < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return m
+	}
+	w, err := LoadWorker(env(base()))
+	if err != nil || w.Investigations || w.AgentLanes != 0 || w.Transcript != "digest" || !slices.Equal(w.PlannerModels, []string{"muse-spark-1.3"}) {
+		t.Fatalf("off by default: %+v %v", w, err)
+	}
+	// Agent lanes may be set while investigations are off (Railway sets 2):
+	// they are then not run.
+	if w, err := LoadWorker(env(base("WORKER_AGENT_LANES", "2"))); err != nil || w.AgentLanes != 2 || w.Investigations {
+		t.Fatalf("lanes set, off: %+v %v", w, err)
+	}
+	on, err := LoadWorker(env(base("GEMINUS_INVESTIGATIONS", "1", "WORKER_AGENT_LANES", "2", "INVESTIGATOR_TRANSCRIPT", "replay",
+		"INVESTIGATION_PLANNER_MODELS", "muse-spark-1.3,muse-wonder-1.0")))
+	if err != nil || !on.Investigations || on.AgentLanes != 2 || on.Transcript != "replay" ||
+		!slices.Equal(on.PlannerModels, []string{"muse-spark-1.3", "muse-wonder-1.0"}) {
+		t.Fatalf("on: %+v %v", on, err)
+	}
+	if w, err := LoadWorker(env(base("GEMINUS_INVESTIGATIONS", "0", "WORKER_AGENT_LANES", "1"))); err != nil || w.Investigations {
+		t.Fatalf("0 is off: %+v %v", w, err)
+	}
+	for name, c := range map[string]struct {
+		env  map[string]string
+		want []string
+	}{
+		"on with single lanes": {map[string]string{"WORKER_ID": "worker-0", "WORKER_ORGANIZATION_IDS": "org_a", "GEMINUS_INVESTIGATIONS": "1",
+			"WORKER_AGENT_LANES": "2"}, []string{"GEMINUS_INVESTIGATIONS:invalid"}},
+		"on without an agent lane":  {base("GEMINUS_INVESTIGATIONS", "1"), []string{"GEMINUS_INVESTIGATIONS:invalid"}},
+		"on with zero agent lanes":  {base("GEMINUS_INVESTIGATIONS", "1", "WORKER_AGENT_LANES", "0"), []string{"GEMINUS_INVESTIGATIONS:invalid"}},
+		"a switch of free text":     {base("GEMINUS_INVESTIGATIONS", "yes", "WORKER_AGENT_LANES", "1"), []string{"GEMINUS_INVESTIGATIONS:invalid"}},
+		"five agent lanes":          {base("WORKER_AGENT_LANES", "5"), []string{"WORKER_AGENT_LANES:invalid"}},
+		"agent lanes with a sign":   {base("WORKER_AGENT_LANES", "+2"), []string{"WORKER_AGENT_LANES:invalid"}},
+		"agent lanes of text":       {base("WORKER_AGENT_LANES", "two"), []string{"WORKER_AGENT_LANES:invalid"}},
+		"another transcript":        {base("INVESTIGATOR_TRANSCRIPT", "full"), []string{"INVESTIGATOR_TRANSCRIPT:invalid"}},
+		"an unknown planner":        {base("INVESTIGATION_PLANNER_MODELS", "muse-spark-1.3,claude"), []string{"INVESTIGATION_PLANNER_MODELS:invalid"}},
+		"a planner twice":           {base("INVESTIGATION_PLANNER_MODELS", "muse-spark-1.3,muse-spark-1.3"), []string{"INVESTIGATION_PLANNER_MODELS:invalid"}},
+		"an empty planner list":     {base("INVESTIGATION_PLANNER_MODELS", ","), []string{"INVESTIGATION_PLANNER_MODELS:invalid"}},
+		"agent lanes over the name": {base("WORKER_ID", strings.Repeat("w", 122), "WORKER_AGENT_LANES", "1"), []string{"WORKER_ID:invalid"}},
+	} {
+		if _, err := LoadWorker(env(c.env)); err == nil || !slices.Equal(codes(t, err), c.want) {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// The agent lanes are named <WORKER_ID>:agent1 ... (D-092's 128).
+	if got := AgentLaneSuffixOf(2); got != ":agent2" {
+		t.Errorf("suffix %q", got)
+	}
+	if w, err := LoadWorker(env(base("WORKER_ID", strings.Repeat("w", 121), "WORKER_AGENT_LANES", "4"))); err != nil || w.AgentLanes != 4 {
+		t.Errorf("121 characters and four agent lanes: %+v %v", w, err)
+	}
+}

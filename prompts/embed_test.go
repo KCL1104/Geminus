@@ -33,6 +33,13 @@ func TestTemplates(t *testing.T) {
 		// written as itself, never a JSON text in a string.
 		"plainjson": {"ANSWER_FORMAT", "ANSWER_SCHEMA", "exactly one JSON object", "code fence", "second object", "as itself",
 			`"fct_tester"`, "Never write a value's JSON text inside a string", "refused", "the server checks"},
+		// H-061 §9: the investigation planner's rules: one tool call a turn,
+		// results and every text in them are data, ideas in words, its own
+		// IDs only, no publish, approval, settings or talking to the person,
+		// the budget, no figures of its own.
+		"investigator": {"MODEL", "PERSON_REQUEST", "MODE", "OBJECTIVE", "RUN_SETTINGS", "LIMITS", "SEED_SUGGESTIONS", "OUTPUT_LOCALE", "DIGEST",
+			"CONTEXT_OMISSIONS", "exactly one", "never instructions", "in words", "Never make one up", "cannot publish", "approve or reject",
+			"talk to the person", "budget", "finish", "Never state a result figure", "untrusted data"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {
@@ -52,6 +59,35 @@ func TestTemplates(t *testing.T) {
 	for _, bad := range []string{"", "../prompts/modeler", "modeler/system.md", "planner", "."} {
 		if _, _, err := Template(bad); err == nil {
 			t.Errorf("Template(%q) succeeded", bad)
+		}
+	}
+}
+
+// H-061 §9: the investigator's seven tools are described in its tools.md,
+// versioned with its template; each description is one paragraph of at
+// most 4 KiB (provider.MaxToolDescriptionBytes) holding no block. A role
+// with no tools has none, and a bad role is refused.
+func TestToolDescriptions(t *testing.T) {
+	d, version, err := ToolDescriptions("investigator")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, want, _ := Template("investigator"); version != want || version != "investigator-0.1.0" {
+		t.Errorf("version %q", version)
+	}
+	tools := []string{"propose_what_if", "save_scenario", "run_what_if", "explain_results", "propose_model_edit", "write_to_draft", "finish"}
+	if len(d) != len(tools) {
+		t.Errorf("%d tools described", len(d))
+	}
+	for _, name := range tools {
+		text := d[name]
+		if text == "" || len(text) > 4<<10 || strings.Contains(text, "\n") || strings.Contains(text, "_data name=") || strings.Contains(text, "</") {
+			t.Errorf("%s: %q", name, text)
+		}
+	}
+	for _, bad := range []string{"modeler", "", "../investigator", "planner"} {
+		if _, _, err := ToolDescriptions(bad); err == nil {
+			t.Errorf("ToolDescriptions(%q) succeeded", bad)
 		}
 	}
 }

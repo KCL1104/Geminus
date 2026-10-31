@@ -164,6 +164,20 @@ func serverRules(role provider.Role, mode string, loc locale.Locale) string {
 	return b.String()
 }
 
+// The investigation-rules-1 line (H-061 §9, reworded from H-056 §10 for an
+// AI planner acting for the person): one more server rule on the proposal
+// and analyst calls of rows an AI investigation asked for, versioned on its
+// own and English-first. Every other call's system text is unchanged.
+const (
+	investigationRulesVersion = "investigation-rules-1"
+	investigationProposalRule = "In this request an AI acting for the person who asked may save a ready what-if as a scenario and run it, or write a ready edit into a clean draft; the server validates every change and sets the risk, and only a person publishes."
+	investigationAnalystRule  = "An AI acting for the person may turn your suggested experiments into what-ifs; each is reviewed like any proposal."
+)
+
+func investigationRules(rule string) string {
+	return "\n## Investigation rules (" + investigationRulesVersion + ")\n\n- " + rule + "\n"
+}
+
 func domainRules(d domainpack.PromptContext) string {
 	var b strings.Builder
 	b.WriteString("\n## DOMAIN_CONTEXT (static, from the domain pack)\n\n")

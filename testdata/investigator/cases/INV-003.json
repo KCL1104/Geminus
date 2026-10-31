@@ -1,0 +1,155 @@
+{
+  "id": "INV-003",
+  "title": "Entry B: the analysis's suggestions seed the investigation, its baseline reused",
+  "mode": "scenario",
+  "template": "electronics_assembly_test_line",
+  "request": "",
+  "seeds": [
+    {
+      "analysis_id": "ana_01M6EVA0000000000000000A00",
+      "index": 0,
+      "name": "A third ICT tester",
+      "hypothesis": "Boards wait longest before ICT."
+    },
+    {
+      "analysis_id": "ana_01M6EVA0000000000000000A00",
+      "index": 1,
+      "name": "A shorter FCT cycle",
+      "hypothesis": "FCT is the next station boards wait for."
+    }
+  ],
+  "baseline_reused": true,
+  "objective": {
+    "metric_path": "/metrics/lead_time_minutes/p50",
+    "better": "lower"
+  },
+  "run_settings": {
+    "horizon": {
+      "value": 7,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 0,
+      "unit": "day"
+    },
+    "replications": 5,
+    "seed": 1,
+    "trace_level": "sampled"
+  },
+  "environment": {
+    "proposals": [
+      {
+        "proposal_id": "aip_01M6EVA0000000000000000P01",
+        "status": "ready",
+        "summary": "Add a third ICT tester.",
+        "change_count": 1,
+        "server_risk_level": "low",
+        "questions": [],
+        "issue_codes": []
+      }
+    ],
+    "scenarios": [
+      {
+        "scenario_id": "scn_01M6EVA0000000000000000S01",
+        "name": "A third ICT tester"
+      }
+    ],
+    "runs": [
+      {
+        "baseline_run_id": "sim_01M6EVA0000000000000000B01",
+        "run_id": "sim_01M6EVA0000000000000000R01",
+        "status": "completed",
+        "error_code": null,
+        "comparison": {
+          "comparable": true,
+          "incomparable_reasons": [],
+          "objective": {
+            "metric_path": "/metrics/lead_time_minutes/p50",
+            "baseline": 42.5,
+            "scenario": 37.1,
+            "absolute_delta": -5.4,
+            "relative_delta": -0.127059,
+            "status": "available",
+            "reason": null
+          },
+          "metrics": [
+            {
+              "metric_path": "/metrics/lead_time_minutes/p50",
+              "baseline": 42.5,
+              "scenario": 37.1,
+              "absolute_delta": -5.4,
+              "relative_delta": -0.127059,
+              "status": "available",
+              "reason": null
+            }
+          ],
+          "warnings": []
+        }
+      }
+    ],
+    "explanations": []
+  },
+  "fake": [
+    {
+      "calls": [
+        {
+          "id": "fake_01",
+          "name": "propose_what_if",
+          "input": {
+            "idea": "Test the first suggested experiment.",
+            "from_suggestion": {
+              "analysis_id": "ana_01M6EVA0000000000000000A00",
+              "index": 0
+            }
+          }
+        }
+      ],
+      "text": "Start with the first suggestion."
+    },
+    {
+      "calls": [
+        {
+          "id": "fake_02",
+          "name": "save_scenario",
+          "input": {
+            "proposal_id": "aip_01M6EVA0000000000000000P01"
+          }
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "id": "fake_03",
+          "name": "run_what_if",
+          "input": {
+            "scenario_id": "scn_01M6EVA0000000000000000S01"
+          }
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "id": "fake_04",
+          "name": "finish",
+          "input": {
+            "outcome": "improvement_found",
+            "best_scenario_id": "scn_01M6EVA0000000000000000S01"
+          }
+        }
+      ]
+    }
+  ],
+  "expect": {
+    "end": "finished_by_ai",
+    "outcome": "improvement_found",
+    "invalid_turns": 0,
+    "tools": [
+      "propose_what_if",
+      "save_scenario",
+      "run_what_if",
+      "finish"
+    ]
+  }
+}

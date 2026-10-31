@@ -29,8 +29,17 @@
 // under the request's key, the n-th answer for the turn after n steps of
 // transcript; unscripted, it answers safely in text, with no tool call. Its
 // calls are what the script says, unchecked: the client checks them as it
-// checks a live model's. A request that offers no tool is answered as
+// checks it checks a live model's. A request that offers no tool is answered as
 // before and never with a tool call.
+//
+// Planner turns (H-061 §9, slice A5): the fake answers the investigator's
+// turns (provider.Client.PlanTurn) for the two planner models, keyed by the
+// person's request (RequestBlock), the n-th answer for an investigation
+// with n recorded steps: the entries of its digest (DigestBlock) and the
+// steps the turn replays, so a digest transcript and a replayed one read the
+// same script. Its answer's content (a fake reasoning block, the text and the
+// calls) comes back as the replay a live model's would. It runs no model:
+// its answer's model is "fake".
 package fake
 
 import (
@@ -50,7 +59,16 @@ const (
 	IntentBlock   = "USER_INTENT"
 	QuestionBlock = "QUESTION"
 	ColumnsBlock  = "COLUMN_NAMES"
+	// RequestBlock is an investigation's request in the person's words
+	// (internal/ai/aicontext.Investigation; H-061 §9); DigestBlock its
+	// server-written digest, a JSON array of the steps recorded so far.
+	RequestBlock = "PERSON_REQUEST"
+	DigestBlock  = "DIGEST"
 )
+
+// plannerModels are the models the fake takes a planner turn for
+// (common.schema.json PlannerModel).
+var plannerModels = []string{"muse-spark-1.3", "muse-wonder-1.0"}
 
 // Answer is a scripted reply: exact answer text, or an error.
 type Answer struct {
@@ -107,9 +125,10 @@ func (b *Backend) ScriptTools(role provider.Role, key string, answers ...ToolAns
 	b.turns[role][key] = out
 }
 
-// AcceptsTools: the fake takes tool turns of every role (H-060); no request
-// of a role but one that offers tools gets a tool call from it.
-func (b *Backend) AcceptsTools(role provider.Role) bool { return role.OutputSchema() != "" }
+// AcceptsTools: the fake takes tool turns of every role (H-060), the
+// investigator's among them (H-061); no request of a role but one that
+// offers tools gets a tool call from it.
+func (b *Backend) AcceptsTools(role provider.Role) bool { return role.Known() }
 
 // Turn answers a tool turn (H-060) from ScriptTools' script, or safely in
 // text when unscripted.
@@ -131,7 +150,16 @@ func (b *Backend) Turn(ctx context.Context, req provider.Request) (provider.Resp
 	script := b.turns[req.Prompt.Role][key]
 	b.mu.Unlock()
 	resp := provider.Response{Model: "fake"}
-	if n := len(req.Steps); n < len(script) {
+	n := len(req.Steps)
+	if req.Prompt.Role == provider.RoleInvestigator {
+		// A planner turn: the steps its digest holds count too (H-061 §5.4).
+		d, err := digestSteps(req.Prompt)
+		if err != nil {
+			return provider.Response{}, provider.NewError(provider.CodeRejected, 400, "")
+		}
+		n += d
+	}
+	if n < len(script) {
 		a := script[n]
 		if a.Err != nil {
 			return resp, a.Err
@@ -139,6 +167,9 @@ func (b *Backend) Turn(ctx context.Context, req provider.Request) (provider.Resp
 		resp.Text = []byte(a.Text)
 		for _, c := range a.Calls {
 			resp.ToolCalls = append(resp.ToolCalls, provider.ToolCall{ID: c.ID, Name: c.Name, Input: slices.Clone(c.Input)})
+		}
+		if req.OneCall {
+			resp.Replay = replayOf(a)
 		}
 		return resp, nil
 	}
@@ -148,6 +179,46 @@ func (b *Backend) Turn(ctx context.Context, req provider.Request) (provider.Resp
 	}
 	resp.Text = []byte(text)
 	return resp, nil
+}
+
+// digestSteps counts the entries of a planner prompt's digest (0 without
+// one).
+func digestSteps(p provider.Prompt) (int, error) {
+	_, blocks, err := keyOf(p)
+	if err != nil {
+		return 0, err
+	}
+	v, ok := blocks[DigestBlock]
+	if !ok {
+		return 0, nil
+	}
+	var steps []jsontext.Value
+	if err := json.Unmarshal(v, &steps); err != nil {
+		return 0, err
+	}
+	return len(steps), nil
+}
+
+// fakeReasoning is the opaque reasoning block of the fake's replay: what a
+// live model's redacted_thinking stands for, never sent anywhere but back to
+// the fake.
+const fakeReasoning = "fake-reasoning-not-a-model"
+
+// replayOf is a scripted planner answer's content as a live model would
+// return it: a reasoning block, the text and the calls.
+func replayOf(a ToolAnswer) []byte {
+	blocks := []any{map[string]any{"type": "redacted_thinking", "data": fakeReasoning}}
+	if a.Text != "" {
+		blocks = append(blocks, map[string]any{"type": "text", "text": a.Text})
+	}
+	for _, c := range a.Calls {
+		blocks = append(blocks, map[string]any{"type": "tool_use", "id": c.ID, "name": c.Name, "input": c.Input})
+	}
+	out, err := json.Marshal(blocks, json.Deterministic(true))
+	if err != nil {
+		return nil
+	}
+	return out
 }
 
 // ScriptRevision makes role answer text to the repair (H-057: a prompt with
@@ -197,10 +268,14 @@ func ResearchSteps() provider.Research {
 func (b *Backend) AcceptsResearch(role provider.Role) bool { return role.Researches() }
 
 // AcceptsModel: the fake takes a proposal request that names a model
-// (H-049) and answers as itself (its answer's model is "fake": it runs no
-// model and never claims to be the one chosen); Requests shows the model
-// asked for. The other roles take none.
+// (H-049), and a planner turn of a planner model (H-061), and answers as
+// itself (its answer's model is "fake": it runs no model and never claims
+// to be the one chosen); Requests shows the model asked for. The other
+// roles take none.
 func (b *Backend) AcceptsModel(role provider.Role, model string) bool {
+	if role == provider.RoleInvestigator {
+		return slices.Contains(plannerModels, model)
+	}
 	return role.Researches() && model != ""
 }
 
@@ -254,7 +329,7 @@ func keyOf(p provider.Prompt) (string, map[string]jsontext.Value, error) {
 	for _, blk := range blocks {
 		byName[blk.Name] = blk.Content
 	}
-	for _, name := range []string{IntentBlock, QuestionBlock} {
+	for _, name := range []string{IntentBlock, QuestionBlock, RequestBlock} {
 		if v, ok := byName[name]; ok {
 			var s string
 			if err := json.Unmarshal(v, &s); err != nil {

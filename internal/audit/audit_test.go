@@ -120,6 +120,9 @@ func valid() []audit.Event {
 		u("simulation.cancel", "simulation", sim, map[string]any{"effect": "cancellation_requested"}),
 		w("simulation.complete", "simulation", sim, map[string]any{"attempt": 1, "result_digest": hash("5"), "events": int64(123456)}),
 		w("simulation.cancelled", "simulation", sim, map[string]any{"attempt": 2}),
+		// H-061 A6: an investigation's end, by the worker.
+		w("investigation.end", "investigation", inv, map[string]any{"reason": "finished_by_ai", "steps": 5, "planner_turns": 6, "attempt": 1}),
+		w("investigation.end", "investigation", inv, map[string]any{"reason": "stopped_by_person", "steps": 0, "planner_turns": 0, "attempt": 2}),
 		{ActorType: audit.System, ActorID: "provision-tenant", Action: "organization.provision", TargetType: "organization", TargetID: org,
 			RequestID: req, Metadata: map[string]any{"owner_user_id": user}},
 		// T-057: an organization created with one more member (the judge's
@@ -661,6 +664,32 @@ func TestTheCatalogueMatchesTheCode(t *testing.T) {
 	for _, a := range audit.Actions() {
 		if len(found[a]) == 0 {
 			t.Errorf("%s is in the catalogue but no production file writes it", a)
+		}
+	}
+}
+
+// H-061 A6: investigation.end holds the reason, counts and the attempt
+// only, and only the worker writes it.
+func TestInvestigationEndRefused(t *testing.T) {
+	base := audit.Event{ActorType: audit.Worker, ActorID: worker, Action: "investigation.end", TargetType: "investigation", TargetID: inv,
+		RequestID: req, Metadata: map[string]any{"reason": "draft_written", "steps": 2, "planner_turns": 2, "attempt": 1}}
+	if err := audit.Check(base); err != nil {
+		t.Fatal(err)
+	}
+	for name, edit := range map[string]func(*audit.Event){
+		"a reason of free text":  func(e *audit.Event) { e.Metadata = with(e.Metadata, "reason", "the AI said it was done") },
+		"a reason not an end":    func(e *audit.Event) { e.Metadata = with(e.Metadata, "reason", "decided_by_person") },
+		"the AI's note":          func(e *audit.Event) { e.Metadata = with(e.Metadata, "note", "I think we are done") },
+		"the AI's claim as text": func(e *audit.Event) { e.Metadata = with(e.Metadata, "ai_outcome", "improvement_found") },
+		"steps as text":          func(e *audit.Event) { e.Metadata = with(e.Metadata, "steps", "5") },
+		"a person writes it":     func(e *audit.Event) { e.ActorType, e.ActorID = audit.User, user },
+		"on a proposal":          func(e *audit.Event) { e.TargetType, e.TargetID = "ai_proposal", aip },
+	} {
+		e := base
+		e.Metadata = with(base.Metadata)
+		edit(&e)
+		if err := audit.Check(e); err == nil {
+			t.Errorf("%s: accepted", name)
 		}
 	}
 }

@@ -173,7 +173,7 @@ func direct(t *testing.T, c *provider.Client, in analysis.Input) (provider.Analy
 	ai := aicontext.AnalysisInput{Scope: aicontext.Scope{OrganizationID: org, ModelID: in.Scenario.ModelID},
 		Version: aicontext.Version{OrganizationID: org, ModelID: in.Version.ModelID, VersionID: in.Version.ID, IR: &ir}, Domain: pack.PromptContext(),
 		Scenario: aicontext.RunResult{OrganizationID: org, ModelID: in.Scenario.ModelID, RunID: in.Scenario.ID, Result: scen}, ScenarioPatch: patch,
-		Config: in.Config, Question: in.Question, OutputLocale: in.OutputLocale, Budget: provider.DefaultBudget()}
+		Config: in.Config, Question: in.Question, OutputLocale: in.OutputLocale, Budget: provider.DefaultBudget(), Investigation: in.Investigation}
 	var base *simulation.Result
 	var cmp *compare.Comparison
 	if in.Baseline != nil {
@@ -235,6 +235,30 @@ func TestTheGraphIsTheSteps(t *testing.T) {
 				t.Errorf("observed %+v", seen)
 			}
 		})
+	}
+}
+
+// H-061 §9 (slice A6, on the graph): an analysis an AI investigation asked
+// for (Input.Investigation, its row's label) carries the
+// investigation-rules-1 line in its call's system text, and its request is
+// the direct steps' with the same labelled context; a person's carries none.
+func TestAnInvestigationsAnalysisCarriesItsRule(t *testing.T) {
+	const rule = "\n## Investigation rules (investigation-rules-1)\n\n"
+	for _, labelled := range []bool{false, true} {
+		in := input(t)
+		in.Investigation = labelled
+		fg, fd := fake.New(), fake.New()
+		if _, err := graph(t, client(t, fg), packs(t), provider.DefaultBudget(), nil).Run(context.Background(), in); err != nil {
+			t.Fatal(err)
+		}
+		direct(t, client(t, fd), in)
+		gr, dr := fg.Requests(), fd.Requests()
+		if len(gr) != 1 || !reflect.DeepEqual(gr, dr) {
+			t.Fatalf("labelled %v: the graph's request differs from the direct steps'", labelled)
+		}
+		if n := strings.Count(gr[0].Prompt.System, rule); n != map[bool]int{false: 0, true: 1}[labelled] {
+			t.Errorf("labelled %v: the call carries the rule %d times", labelled, n)
+		}
 	}
 }
 

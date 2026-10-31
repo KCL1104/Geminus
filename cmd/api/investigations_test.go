@@ -16,8 +16,9 @@ const servedOrg = "org_01M4YDQK00Y5H2929M9WWZWTVH"
 
 // H-061 A7: what the investigation routes are given. With the fake, the
 // investigator role and every offered planner; with a live provider that
-// is on, only what its recorded approval lists for the investigator role,
-// which neither H-029 nor H-018 does yet (A5 adds it), so a live API refuses
+// is on, only what its recorded approval lists for the investigator role:
+// H-029 lists it since A5, with Muse Spark 1.3 and Muse Wonder 1.0 as its
+// planners (H-060, H-063), and H-018 does not, so a live Claude API refuses
 // every investigation with 503 AI_POLICY_NOT_APPROVED; with AI off,
 // nothing.
 func TestInvestigationOptions(t *testing.T) {
@@ -30,7 +31,7 @@ func TestInvestigationOptions(t *testing.T) {
 		model    string
 	}{
 		{"fake", []string{"AI_PROVIDER", "fake", "APP_ENV", "test"}, true, []string{"muse-spark-1.3", "muse-wonder-1.0"}, "muse-spark-1.3"},
-		{"meta live, H-029 without the investigator role", apiMeta, false, nil, "muse-spark-1.3"},
+		{"meta live, H-029 with the investigator role (A5)", apiMeta, true, []string{"muse-spark-1.3", "muse-wonder-1.0"}, "muse-spark-1.3"},
 		{"claude live", apiClaude, false, nil, "claude-opus-5-5"},
 		{"meta, the switch off", []string{"AI_PROVIDER", "meta", "AI_POLICY_APPROVAL", "H-029", "AI_MODEL", "muse-spark-1.3"}, false, nil, ""},
 		{"disabled", nil, false, nil, ""},

@@ -129,6 +129,10 @@ type Request struct {
 	OutputLocale string
 	Research     bool
 	Model        string
+	// Investigation: an AI investigation asked for the proposal (its row
+	// carries the label, H-061): the context gains investigation-rules-1,
+	// and so does its repair's, which follows the first context.
+	Investigation bool
 	// Attribution is what the spend ledger charges each call to (T-053).
 	Attribution provider.Attribution
 	// Repair: an answer the server refuses for what it says gets one repair
@@ -531,6 +535,7 @@ func (g *Graph) buildContext(_ context.Context, f *flow) {
 		OutputLocale:      r.OutputLocale,
 		Budget:            g.cfg.Budget,
 		Research:          r.Research,
+		Investigation:     r.Investigation,
 	})
 	if err != nil {
 		f.err = &ContextError{Code: aicontext.CodeOf(err), Err: err}

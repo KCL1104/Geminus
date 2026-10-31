@@ -51,7 +51,7 @@
         ]
       },
       "worker": {
-        "variables": 27,
+        "variables": 28,
         "secrets": [
           "GEMINUS_ANTHROPIC_API_KEY_A",
           "GEMINUS_ANTHROPIC_API_KEY_B",
@@ -101,7 +101,7 @@
     "binary_sha256": "2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c"
   },
   "runbook": {
-    "variables_named": 73
+    "variables_named": 75
   },
   "code_variables": [
     "AI_API_KEY",
@@ -153,6 +153,7 @@
     "GEMINUS_UI_GALLERY",
     "INVESTIGATION_ORGANIZATION_IDS",
     "INVESTIGATION_PLANNER_MODELS",
+    "INVESTIGATOR_TRANSCRIPT",
     "MODEL_API_KEY",
     "OBJECT_STORAGE_PROVIDER",
     "OBJECT_STORAGE_ROOT",
@@ -173,6 +174,7 @@
     "OTEL_SDK_DISABLED",
     "OTEL_TRACES_EXPORTER",
     "SESSION_KEYS",
+    "WORKER_AGENT_LANES",
     "WORKER_ID",
     "WORKER_LANES",
     "WORKER_ORGANIZATION_IDS",

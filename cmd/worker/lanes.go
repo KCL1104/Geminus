@@ -31,8 +31,12 @@ import (
 // across processes (ADR-024): rest lanes claiming the same types are as
 // safe as several workers. The handlers are built once and shared: one AI
 // client, one spend meter, and the handlers' own audit events keep
-// WORKER_ID as their actor. H-061's agent lanes (WORKER_AGENT_LANES, not
-// built) would be further lanes of plan with their own types.
+// WORKER_ID as their actor. H-061's agent lanes (WORKER_AGENT_LANES, slice
+// A6) follow, <WORKER_ID>:agent1 ..., each claiming investigations only,
+// with GEMINUS_INVESTIGATIONS=1: an investigation's agent waits up to 20
+// minutes for the simulations, proposals and analyses it asked for, which
+// the sim and rest lanes run, so it never runs in a lane that could run
+// them, and the investigation handler is in no other lane.
 
 // lane is one loop's plan: the ID it holds leases and writes the loop's
 // audit events under, and the handlers of the types it claims.
@@ -45,6 +49,14 @@ type lane struct {
 // under WORKER_ID, with every handler; with split the sim lane, then the
 // rest lanes in order, each with its own map of the same handlers.
 func plan(w config.Worker, hs map[jobs.Type]handler.Handler) ([]lane, error) {
+	agentH, investigations := hs[jobs.Investigation]
+	if investigations && (!w.Investigations || w.Lanes != config.LanesSplit || w.AgentLanes < 1 || w.AgentLanes > config.MaxAgentLanes) {
+		return nil, errors.New("GEMINUS_INVESTIGATIONS=1 needs WORKER_LANES=split and WORKER_AGENT_LANES of 1 to 4: the investigation handler runs on agent lanes only (H-061 §5.1)")
+	}
+	if investigations {
+		hs = maps.Clone(hs)
+		delete(hs, jobs.Investigation)
+	}
 	if w.Lanes != config.LanesSplit {
 		return []lane{{id: w.ID, handlers: hs}}, nil
 	}
@@ -65,6 +77,11 @@ func plan(w config.Worker, hs map[jobs.Type]handler.Handler) ([]lane, error) {
 	lanes := []lane{{id: w.ID + config.SimLaneSuffix, handlers: sim}}
 	for i := 1; i <= w.RestLanes; i++ {
 		lanes = append(lanes, lane{id: w.ID + config.RestLaneSuffixOf(i), handlers: maps.Clone(rest)})
+	}
+	if investigations {
+		for i := 1; i <= w.AgentLanes; i++ {
+			lanes = append(lanes, lane{id: w.ID + config.AgentLaneSuffixOf(i), handlers: map[jobs.Type]handler.Handler{jobs.Investigation: agentH}})
+		}
 	}
 	return lanes, nil
 }

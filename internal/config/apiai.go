@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
 )
@@ -54,6 +55,44 @@ type APIAI struct {
 // LiveEnabled reports whether the API accepts proposals for the live
 // provider: a live provider with a valid approval of its own.
 func (a APIAI) LiveEnabled() bool { return liveFor(a.Provider, a.Approval, false) }
+
+// investigatorRole is the planner's prompt role (provider.RoleInvestigator).
+const investigatorRole = "investigator"
+
+// fakePlannerModels are the planner models the fake answers for (the
+// PlannerModel enum of schemas/common.schema.json): it runs no model.
+var fakePlannerModels = []string{"muse-spark-1.3", "muse-wonder-1.0"}
+
+// InvestigatorApproved reports whether the worker would serve an
+// investigation's planner (H-061 §9): the fake (development and tests), or
+// a live provider whose approval serves the investigator role and takes its
+// tool calls, with the switch on. Claude's H-018 serves none, so a Claude
+// deployment answers createInvestigation with 503 AI_POLICY_NOT_APPROVED.
+func (a APIAI) InvestigatorApproved() bool {
+	switch {
+	case a.Provider == AIProviderFake:
+		return true
+	case !a.LiveEnabled():
+		return false
+	}
+	return a.Approval.AllowsRole(investigatorRole) && a.Approval.AllowsTools(investigatorRole)
+}
+
+// PlannerApproved reports whether the worker may ask model as an
+// investigation's planner (H-061 §9): InvestigatorApproved, and the model
+// one the approval allows for the role (its model or a planner model it
+// lists; the fake's two). That a deployment offers the model to people is
+// a separate gate (INVESTIGATION_PLANNER_MODELS; Muse Wonder 1.0 only after
+// its evaluation, H-061 §14).
+func (a APIAI) PlannerApproved(model string) bool {
+	switch {
+	case model == "" || !a.InvestigatorApproved():
+		return false
+	case a.Provider == AIProviderFake:
+		return slices.Contains(fakePlannerModels, model)
+	}
+	return a.Approval.AllowsModel(investigatorRole, model)
+}
 
 // APIVision is what the API knows of the photo path (the T-056 follow-up,
 // D-124): AIVision without credentials. The API takes a photo when the

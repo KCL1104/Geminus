@@ -168,7 +168,12 @@ func (w *Worker) Pass(ctx context.Context) bool {
 	return worked
 }
 
-// attempt is handler.Run for one claimed job.
+// attempt is handler.Run (and handler.Ender) for one claimed job.
+var (
+	_ handler.Run   = (*attempt)(nil)
+	_ handler.Ender = (*attempt)(nil)
+)
+
 type attempt struct {
 	w     *Worker
 	job   jobs.Job
@@ -194,8 +199,8 @@ func (a *attempt) stopped() error {
 	return handler.ErrStopped
 }
 
-// locked runs fn, then end (if any), in one transaction after locking the
-// job under the lease. Nothing starts once the attempt has stopped, and the
+// locked runs fn, then end (if any), then after (if any; H-061 A6's
+// FinishThen), in one transaction after locking the job under the lease. Nothing starts once the attempt has stopped, and the
 // transaction ends with the attempt as well as with ctx: a handler's own
 // context (even a detached one) cannot carry a write past the deadline.
 //
@@ -207,7 +212,8 @@ func (a *attempt) stopped() error {
 //     was sent and its answer did not come, so it may have committed;
 //   - the stop (ErrStopped or jobs.ErrLeaseLost), wrapping the cause, when
 //     the attempt stopped before the transaction committed.
-func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, tx tenant.Tx) error) error {
+func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, tx tenant.Tx) error,
+	after ...func(ctx context.Context, tx tenant.Tx) error) error {
 	if a.alive.Err() != nil {
 		return a.stopped()
 	}
@@ -230,7 +236,16 @@ func (a *attempt) locked(ctx context.Context, fn, end func(ctx context.Context, 
 		if end == nil {
 			return nil
 		}
-		return end(ctx, tx)
+		if err := end(ctx, tx); err != nil {
+			return err
+		}
+		for _, f := range after {
+			if err := f(ctx, tx); err != nil {
+				failed = true
+				return readable(err)
+			}
+		}
+		return nil
 	})
 	switch {
 	case err == nil:
@@ -256,6 +271,12 @@ func (a *attempt) Checkpoint(ctx context.Context, fn func(ctx context.Context, t
 }
 
 func (a *attempt) Finish(ctx context.Context, end jobs.Status, fn func(ctx context.Context, tx tenant.Tx) error) error {
+	return a.FinishThen(ctx, end, fn, nil)
+}
+
+// FinishThen is Finish with after run once the job has ended, in the same
+// transaction (handler.Ender).
+func (a *attempt) FinishThen(ctx context.Context, end jobs.Status, fn, after func(ctx context.Context, tx tenant.Tx) error) error {
 	var ends func(context.Context, tenant.Tx, jobs.Lease) error
 	switch end {
 	case jobs.Completed:
@@ -265,7 +286,11 @@ func (a *attempt) Finish(ctx context.Context, end jobs.Status, fn func(ctx conte
 	default:
 		return handler.ErrInvalidEnd
 	}
-	err := a.locked(ctx, fn, func(ctx context.Context, tx tenant.Tx) error { return ends(ctx, tx, a.lease) })
+	var afters []func(ctx context.Context, tx tenant.Tx) error
+	if after != nil {
+		afters = append(afters, after)
+	}
+	err := a.locked(ctx, fn, func(ctx context.Context, tx tenant.Tx) error { return ends(ctx, tx, a.lease) }, afters...)
 	if err == nil {
 		a.mu.Lock()
 		a.finished, a.ended = true, end

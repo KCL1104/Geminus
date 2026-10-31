@@ -32,15 +32,18 @@ func TestTheH029Record(t *testing.T) {
 		SegmentationModel: "sam-3.1",
 		DataPolicy: aiapproval.DataPolicy{
 			Inputs:        aiapproval.InputsSyntheticDemoImagesAndUserText,
-			Roles:         []string{"modeler", "scenario", "analyst"}, // H-038
-			ResearchRoles: []string{"modeler", "scenario"},            // H-046 (2)
+			Roles:         []string{"modeler", "scenario", "analyst", "investigator"}, // H-038; H-060, H-063
+			ResearchRoles: []string{"modeler", "scenario"},                            // H-046 (2)
+			ToolRoles:     []string{"investigator"},                                   // H-060, H-063
 		},
 		ProposalModels:   []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-049
+		PlannerModels:    []string{"muse-spark-1.3", "muse-wonder-1.0"}, // H-060, H-061 §9, H-063
 		MonthlyBudgetUSD: 100,
 		Credentials:      []string{"meta"},
 		ApprovedBy:       "KCL1104 (repository owner)",
 		ApprovedAt:       "2026-10-26",
-		Source:           "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md)",
+		Source: "H-029 (1), amended by H-033 (planning/decisions.json human_decisions; planning/HACKATHON_PLAN.md); " +
+			"the investigator role, its tool calls and planner models per H-060, confirmed by the owner in H-063",
 		// The owner accepted Meta's retention terms in H-035 (1); H-029 (1)
 		// is the Standard-mode choice, not that acceptance (D-122 (b); T-055
 		// review round 1, L4).
@@ -135,6 +138,61 @@ func TestH049ModelChoice(t *testing.T) {
 	}
 }
 
+// H-060, H-061 §9 (confirmed by the owner in H-063): the investigator role,
+// for synthetic data only, answers with tool calls (the only role the record
+// names them for), plans on Muse Spark 1.3 (the record's model) or Muse
+// Wonder 1.0 (listed so its evaluation can call it; offering it is gated
+// separately, H-061 §14), and never researches. H-018 serves no investigator:
+// a Claude deployment answers createInvestigation with 503.
+func TestH061Planner(t *testing.T) {
+	a, ok := aiapproval.Recorded("H-029")
+	if !ok {
+		t.Fatal("no H-029 approval")
+	}
+	if !a.AllowsRole("investigator") || !a.AllowsTools("investigator") || a.AllowsResearch("investigator") {
+		t.Error("the investigator role")
+	}
+	for _, role := range []string{"modeler", "scenario", "analyst", "importer", "", "Investigator"} {
+		if a.AllowsTools(role) {
+			t.Errorf("tool calls for %q", role)
+		}
+	}
+	if got := a.PlannerModels(); !slices.Equal(got, []string{"muse-spark-1.3", "muse-wonder-1.0"}) {
+		t.Fatalf("planner models %q", got)
+	}
+	got := a.PlannerModels()
+	got[0] = "changed"
+	if a.PlannerModels()[0] != "muse-spark-1.3" {
+		t.Fatal("PlannerModels hands out the record's own list")
+	}
+	for _, c := range []struct {
+		model string
+		want  bool
+	}{
+		{"muse-spark-1.3", true}, {"muse-wonder-1.0", true}, {"muse-spark-1.3-contributor", false}, {"muse-spark-1.2", false},
+		{"Muse-Wonder-1.0", false}, {"claude-opus-5-5", false}, {"sam-3.1", false}, {"", false},
+	} {
+		if got := a.AllowsModel("investigator", c.model); got != c.want {
+			t.Errorf("the planner %q: %v, want %v", c.model, got, c.want)
+		}
+	}
+	// The planner list widens no other role: the analyst stays on Muse Spark.
+	if a.AllowsModel("analyst", "muse-wonder-1.0") {
+		t.Error("the planner list widened the analyst")
+	}
+	h018, ok := aiapproval.Recorded("H-018")
+	if !ok {
+		t.Fatal("no H-018 approval")
+	}
+	if h018.AllowsRole("investigator") || h018.AllowsTools("investigator") || h018.PlannerModels() != nil || h018.AllowsModel("investigator", "claude-opus-5-5") {
+		t.Error("H-018 serves the investigator")
+	}
+	var zero aiapproval.Approval
+	if zero.AllowsTools("investigator") || zero.PlannerModels() != nil || zero.AllowsModel("investigator", "muse-spark-1.3") {
+		t.Error("the zero Approval serves the investigator")
+	}
+}
+
 func h029(t *testing.T) aiapproval.Record {
 	t.Helper()
 	r, ok := aiapproval.Lookup("H-029")
@@ -205,7 +263,34 @@ func TestMetaGapReasons(t *testing.T) {
 		"Muse Wonder as the default": {func(r *aiapproval.Record) {
 			r.Model, r.ProposalModels = "muse-wonder-1.0", []string{"muse-wonder-1.0", "muse-spark-1.3"}
 		}, ""},
-		"no role":                  {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
+		"no role": {func(r *aiapproval.Record) { r.DataPolicy.Roles = nil }, aiapproval.ReasonPolicyUnsupported},
+		// H-060, H-061 §9: the investigator answers with tool calls only, so
+		// the role and its tool calls come together; tool calls for no other
+		// role; the planner models each a Standard one, each once, and only
+		// with the role. Research never.
+		"no investigator": {func(r *aiapproval.Record) {
+			r.DataPolicy.Roles, r.DataPolicy.ToolRoles, r.PlannerModels = []string{"modeler", "scenario", "analyst"}, nil, nil
+		}, ""},
+		"the investigator without tool calls": {func(r *aiapproval.Record) { r.DataPolicy.ToolRoles = nil }, aiapproval.ReasonPolicyUnsupported},
+		"tool calls without the role": {func(r *aiapproval.Record) {
+			r.DataPolicy.Roles = []string{"modeler", "scenario", "analyst"}
+		}, aiapproval.ReasonPolicyUnsupported},
+		"tool calls for a proposal role": {func(r *aiapproval.Record) { r.DataPolicy.ToolRoles = []string{"investigator", "scenario"} },
+			aiapproval.ReasonPolicyUnsupported},
+		"tool calls named twice": {func(r *aiapproval.Record) { r.DataPolicy.ToolRoles = []string{"investigator", "investigator"} },
+			aiapproval.ReasonPolicyUnsupported},
+		"investigator research": {func(r *aiapproval.Record) { r.DataPolicy.ResearchRoles = []string{"modeler", "investigator"} },
+			aiapproval.ReasonPolicyUnsupported},
+		"no planner choice":   {func(r *aiapproval.Record) { r.PlannerModels = nil }, ""},
+		"Muse Spark planning": {func(r *aiapproval.Record) { r.PlannerModels = []string{"muse-spark-1.3"} }, ""},
+		"a planner named twice": {func(r *aiapproval.Record) { r.PlannerModels = []string{"muse-spark-1.3", "muse-spark-1.3"} },
+			aiapproval.ReasonIncomplete},
+		"a Contributor planner": {func(r *aiapproval.Record) { r.PlannerModels = []string{"muse-spark-1.3", "muse-spark-1.3-contributor"} },
+			aiapproval.ReasonModelNotStandard},
+		"an empty planner": {func(r *aiapproval.Record) { r.PlannerModels = []string{""} }, aiapproval.ReasonModelNotStandard},
+		"planners without the investigator": {func(r *aiapproval.Record) {
+			r.DataPolicy.Roles, r.DataPolicy.ToolRoles = []string{"modeler", "scenario", "analyst"}, nil
+		}, aiapproval.ReasonPolicyUnsupported},
 		"no budget":                {func(r *aiapproval.Record) { r.MonthlyBudgetUSD = 0 }, aiapproval.ReasonBudgetMissing},
 		"retention not confirmed":  {func(r *aiapproval.Record) { r.Retention = aiapproval.Retention{} }, aiapproval.ReasonRetentionUnconfirmed},
 		"Anthropic's arrangement":  {func(r *aiapproval.Record) { r.Retention.Arrangement = aiapproval.RetentionStandard }, aiapproval.ReasonRetentionUnconfirmed},
@@ -234,6 +319,13 @@ func TestMetaGapReasons(t *testing.T) {
 		// H-049: the Anthropic adapter asks its one model; no Anthropic
 		// record lists a choice.
 		"a model choice": {func(r *aiapproval.Record) { r.ProposalModels = []string{"claude-opus-5-5"} }, aiapproval.ReasonIncomplete},
+		// H-061 §9: the Claude adapter sends no tools, so no Anthropic record
+		// serves the investigator (a Claude deployment has no investigation).
+		"the investigator": {func(r *aiapproval.Record) {
+			r.DataPolicy.Roles, r.DataPolicy.ToolRoles = []string{"modeler", "scenario", "investigator"}, []string{"investigator"}
+		}, aiapproval.ReasonPolicyUnsupported},
+		"tool calls":       {func(r *aiapproval.Record) { r.DataPolicy.ToolRoles = []string{"investigator"} }, aiapproval.ReasonPolicyUnsupported},
+		"a planner choice": {func(r *aiapproval.Record) { r.PlannerModels = []string{"claude-opus-5-5"} }, aiapproval.ReasonIncomplete},
 	} {
 		r := complete(t)
 		c.mutate(&r)

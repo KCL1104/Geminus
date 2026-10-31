@@ -43,6 +43,19 @@ func SetTools(b *Backend, roles ...string) {
 	b.tools = func(role string) bool { return slices.Contains(roles, role) }
 }
 
+// SetPlannerModels makes the backend ask models for the investigator, as an
+// approval's planner models would (H-061 §9); the proposal roles' choice is
+// kept.
+func SetPlannerModels(b *Backend, models ...string) {
+	prev := b.chooses
+	b.chooses = func(role, model string) bool {
+		if role == "investigator" {
+			return slices.Contains(models, model)
+		}
+		return prev != nil && prev(role, model)
+	}
+}
+
 // NewSegmenterForTest points the SAM backend at a local test server.
 func NewSegmenterForTest(cfg Config, baseURL string, client *http.Client) (*Segmenter, error) {
 	return newSegmenter(cfg, baseURL, client, func(string) bool { return true }, true)

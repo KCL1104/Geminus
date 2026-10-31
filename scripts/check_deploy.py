@@ -290,6 +290,18 @@ def railway(known: set) -> dict:
     other = sorted(n for n in api["variables"] if re.match(r"(GEMINUS_)?AI_", n) and n not in API_AI_SETTINGS)
     if other:
         fail(f"variables.json: the API reads no other AI setting (T-053 I5): {other}")
+    # H-061 (slice A6): AI investigations stay off on live until every slice is
+    # reviewed and A9's closed-loop live checks pass; the coordinator turns
+    # them on, never this file. The agent lanes they would run on need split
+    # lanes, and Muse Wonder 1.0 is a planner only after its recorded
+    # evaluation (H-061 section 14), which this file never names.
+    wv = {n: e.get("value") for n, e in worker["variables"].items()}
+    for name in ("GEMINUS_INVESTIGATIONS", "INVESTIGATION_PLANNER_MODELS", "INVESTIGATOR_TRANSCRIPT"):
+        if wv.get(name) is not None:
+            fail(f"variables.json: worker: {name} is not set here (H-061: investigations stay off until A9; the coordinator sets it)")
+    if wv.get("WORKER_AGENT_LANES") is not None:
+        if wv["WORKER_AGENT_LANES"] not in ("0", "1", "2", "3", "4") or wv.get("WORKER_LANES") != "split":
+            fail("variables.json: worker: WORKER_AGENT_LANES is 0 to 4, and only with WORKER_LANES=split (H-061 section 5.1)")
     # Exposure (review round 1, L5): a public domain only where a server answers on
     # PORT, Railway's healthcheck where the image serves HTTP, none elsewhere.
     public = sorted(s for s, spec in v["services"].items() if "public_domain" in spec)

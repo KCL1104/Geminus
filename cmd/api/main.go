@@ -210,8 +210,8 @@ func handlerOptions(ai config.APIAI, store objects.Store) []api.Option {
 // tests) the investigator role and every offered planner; with a live
 // provider that is on, the investigator role only when its approval lists
 // it and the offered planners it allows for that role
-// (aiapproval.Approval.AllowsRole, AllowsModel; none before the H-061 A5
-// record lists the role); nothing otherwise. The proposal model a request
+// (aiapproval.Approval.AllowsRole, AllowsModel; H-029 lists the role since
+// H-061 A5, H-018 does not); nothing otherwise. The proposal model a request
 // that names none gets is the deployment's (Muse Spark 1.3 with the fake).
 func investigationOptions(ai config.APIAI, inv config.Investigations) api.Investigations {
 	out := api.Investigations{On: inv.Enabled, Organizations: slices.Clone(inv.Organizations), PlannerModels: slices.Clone(inv.PlannerModels)}

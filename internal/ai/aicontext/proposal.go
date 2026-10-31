@@ -51,6 +51,11 @@ type ProposalInput struct {
 	// Research, so the client hands it only to a backend that may search.
 	// Without it the prompt is exactly what it was before research existed.
 	Research bool
+	// Investigation: an AI investigation asked for the proposal (its row
+	// carries the investigation's label, H-061 §9): the system text gains
+	// the investigation-rules-1 line. Without it the prompt is exactly what
+	// it was before investigations existed.
+	Investigation bool
 }
 
 // markers are the request's own identifiers a research call's steps and
@@ -377,6 +382,9 @@ func Proposal(in ProposalInput) (provider.ProposalContext, error) {
 	}
 	modeText := " in mode " + string(in.Mode)
 	system := text + serverRules(role, modeText, loc) + modeRules(in.Mode) + indexRule + domainRules(in.Domain)
+	if in.Investigation {
+		system += investigationRules(investigationProposalRule)
+	}
 	if in.Research {
 		research, rversion, err := template("research")
 		if err != nil {

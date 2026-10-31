@@ -37,10 +37,23 @@ import (
 // back (H-061's probe P1 is whether the API takes a replay without them).
 //
 // It is sent only for a role the approval's data policy names tool calls for
-// (AcceptsTools); this build records no such approval, so a live backend
-// refuses every turn before any I/O (policy_not_approved) until H-061's
-// investigator role is approved (its slice A5). A request with images, web
-// research or a repair is never a turn. Every tool's input schema is checked
+// (AcceptsTools): since H-061's slice A5 the H-029 record names them for the
+// investigator role only (H-060, confirmed in H-063), so a live backend
+// refuses every other role's turn before any I/O (policy_not_approved).
+//
+// A planner turn (provider.Client.PlanTurn, Request.OneCall; H-061 §9) adds
+// tool_choice {"type":"any","disable_parallel_tool_use":true} (H-061's probe
+// P2, NOT RUN live: Meta's Messages page lists any), and its answer's
+// content array as returned (reasoning blocks, text and tool_use) comes back
+// as Response.Replay, for the next turn of the same run to send as the
+// assistant message in its place (Meta's schema: redacted_thinking is
+// "replayed as returned"; the multi-turn shape is H-061's probe P1, NOT RUN
+// live). Without a replay a step is sent as below. A planner's tool input
+// schemas are the registry's closed projections
+// (internal/ai/investigator.ProviderTools), so they pass SchemaViolations;
+// the client and the registry's decoder check the full schema.
+//
+// A request with images, web research or a repair is never a turn. Every tool's input schema is checked
 // against the same documented limits as an output schema (SchemaViolations)
 // and one outside them is never sent. The answer must be a complete message
 // from the model asked for: stop_reason tool_use with at least one tool_use
@@ -56,11 +69,18 @@ func (b *Backend) AcceptsTools(role provider.Role) bool {
 
 // turnRequest is a tool turn's Messages request.
 type turnRequest struct {
-	Model     string         `json:"model"`
-	MaxTokens int64          `json:"max_tokens"`
-	System    []textBlock    `json:"system"`
-	Messages  []userMessage  `json:"messages"`
-	Tools     []functionTool `json:"tools"`
+	Model      string         `json:"model"`
+	MaxTokens  int64          `json:"max_tokens"`
+	System     []textBlock    `json:"system"`
+	Messages   []userMessage  `json:"messages"`
+	Tools      []functionTool `json:"tools"`
+	ToolChoice *toolChoice    `json:"tool_choice,omitzero"`
+}
+
+// toolChoice is a planner turn's: exactly one call (H-061 §9, probe P2).
+type toolChoice struct {
+	Type                   string `json:"type"`
+	DisableParallelToolUse bool   `json:"disable_parallel_tool_use"`
 }
 
 // functionTool is a custom tool of the request.
@@ -101,12 +121,28 @@ func turnBody(modelID string, req provider.Request) ([]byte, error) {
 		}
 		m.Tools = append(m.Tools, functionTool{Name: t.Name, Description: t.Description, InputSchema: t.InputSchema})
 	}
+	if req.OneCall {
+		m.ToolChoice = &toolChoice{Type: "any", DisableParallelToolUse: true}
+	}
 	for _, s := range req.Steps {
 		var calls []any
-		if s.Text != "" {
+		if s.Replay.Present() {
+			// A planner turn's assistant content, as the model returned it.
+			var blocks []jsontext.Value
+			if err := json.Unmarshal(s.Replay.Bytes(), &blocks); err != nil || len(blocks) == 0 {
+				return nil, errToolSchema
+			}
+			for _, blk := range blocks {
+				calls = append(calls, blk)
+			}
+		}
+		if s.Text != "" && !s.Replay.Present() {
 			calls = append(calls, textBlock{Type: "text", Text: s.Text})
 		}
 		for _, c := range s.Calls {
+			if s.Replay.Present() {
+				break
+			}
 			calls = append(calls, toolUseBlock{Type: "tool_use", ID: c.ID, Name: c.Name, Input: c.Input})
 		}
 		var results []any
@@ -167,6 +203,16 @@ func (b *Backend) Turn(ctx context.Context, req provider.Request) (provider.Resp
 	}
 	out, err := b.turnAnswer(msg, resp)
 	out.UnknownAttempts, out.Undecoded = t.unknown, t.undecoded
+	if err == nil && req.OneCall {
+		// A planner turn's content as returned, for its replay (opaque: the
+		// client keeps it in a provider.TurnReplay only).
+		var raw struct {
+			Content jsontext.Value `json:"content"`
+		}
+		if json.Unmarshal(ex.body, &raw) == nil && raw.Content.Kind() == '[' {
+			out.Replay = []byte(raw.Content)
+		}
+	}
 	return out, err
 }
 

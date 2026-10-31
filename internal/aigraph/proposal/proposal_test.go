@@ -503,6 +503,43 @@ func TestTheRequestIsTheDirectCalls(t *testing.T) {
 	}
 }
 
+// H-061 §9 (slice A6, on the graph): a proposal an AI investigation asked
+// for (Request.Investigation, its row's label) carries the
+// investigation-rules-1 line in its first call's system text and in its
+// repair's, which follows the first context, and its first request is the
+// direct call's with the same labelled context; a person's carries neither.
+func TestAnInvestigationsProposalCarriesItsRule(t *testing.T) {
+	const rule = "\n## Investigation rules (investigation-rules-1)\n\n"
+	ctx := context.Background()
+	intent := "Let more CI runs pass."
+	for _, labelled := range []bool{false, true} {
+		f := fake.New()
+		f.Script(provider.RoleModeler, intent, proposed(broken))
+		f.ScriptRevision(provider.RoleModeler, intent, proposed(fixed))
+		req := request(t, "edit", intent)
+		req.Investigation = labelled
+		h := &hooks{f: f}
+		res, err := graphOf(t, client(t, f)).Run(ctx, req, h.Hooks())
+		reqs := f.Requests()
+		if err != nil || res.Repair == nil || len(reqs) != 2 || reqs[1].Prompt.Revision == nil {
+			t.Fatalf("labelled %v: %+v %v, %d requests", labelled, res.Repair, err, len(reqs))
+		}
+		for i, r := range reqs {
+			if n := strings.Count(r.Prompt.System, rule); n != map[bool]int{false: 0, true: 1}[labelled] {
+				t.Errorf("labelled %v: call %d carries the rule %d times", labelled, i+1, n)
+			}
+		}
+		// The first request is the direct call's with the same context.
+		g := fake.New()
+		g.Script(provider.RoleModeler, intent, proposed(broken))
+		g.ScriptRevision(provider.RoleModeler, intent, proposed(fixed))
+		_, first, _ := direct(t, client(t, g), req)
+		if first.InputHash != res.Call.InputHash || !reflect.DeepEqual(g.Requests()[0], reqs[0]) {
+			t.Errorf("labelled %v: the graph's first request differs from the direct call's", labelled)
+		}
+	}
+}
+
 // Cancellation reaches every node, and each step sees it itself, as the
 // handler's own pipeline did before the graph (review round 1, finding 1):
 // an attempt cancelled before the graph runs asks nothing (its snapshots'

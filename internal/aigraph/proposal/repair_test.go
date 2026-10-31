@@ -275,7 +275,7 @@ func direct(t *testing.T, c *provider.Client, req Request) (review.Outcome, prov
 	pc, err := aicontext.Proposal(aicontext.ProposalInput{Scope: req.Scope, Mode: req.Mode,
 		Base:   aicontext.Version{OrganizationID: req.Base.OrganizationID, ModelID: req.Base.ModelID, VersionID: req.Base.VersionID, IR: &ir},
 		Domain: pack.PromptContext(), Intent: req.Intent, Pool: aicontext.Pool{OrganizationID: req.Scope.OrganizationID, ProposalID: req.ProposalID, IDs: pool},
-		OutputLocale: req.OutputLocale, Budget: provider.DefaultBudget(), Research: req.Research})
+		OutputLocale: req.OutputLocale, Budget: provider.DefaultBudget(), Research: req.Research, Investigation: req.Investigation})
 	if err != nil {
 		t.Fatal(err)
 	}

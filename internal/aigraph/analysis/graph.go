@@ -128,6 +128,9 @@ type Input struct {
 	OutputLocale string
 	// Attribution is what the spend ledger charges the call to.
 	Attribution provider.Attribution
+	// Investigation: an AI investigation asked for the analysis (its row
+	// carries the label, H-061): the context gains investigation-rules-1.
+	Investigation bool
 }
 
 // Output is the checked analysis and its call's metadata.
@@ -358,6 +361,7 @@ func (n *nodes) buildContext(_ context.Context, c *compared) (*prompted, error) 
 		Question:      in.Question,
 		OutputLocale:  in.OutputLocale,
 		Budget:        n.budget,
+		Investigation: in.Investigation,
 	}
 	if c.base != nil {
 		ai.Comparison = c.comparisonJSON

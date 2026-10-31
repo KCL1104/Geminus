@@ -10,8 +10,8 @@ import "testing"
 // (internal/proposals/effect) are linked only by the API; the worker's
 // investigation handler (internal/investigator) only by the worker. Each
 // probe adds the package it names through a go build overlay, beside the
-// real one where it exists (A3: actingfor; A4: effect; A7: the service and
-// the executor).
+// real one where it exists (A3: actingfor; A4: effect; A6: the handler; A7:
+// the service and the executor).
 func TestInvestigationPlacement(t *testing.T) {
 	m := func(p string) string { return module + "/" + p }
 	service := blankImports("investigations")
@@ -80,13 +80,17 @@ func TestInvestigationPlacement(t *testing.T) {
 			"internal/investigator/a.go":   handler,
 			"internal/investigations/a.go": blankImports("investigations", m("internal/investigator")),
 		}, "job-handlers-only-in-the-worker", "./internal/investigations", "./internal/investigator", ""},
-		{"the context builder links the investigation handler", map[string]string{
-			"internal/investigator/a.go":        handler,
-			"internal/ai/aicontext/zz_probe.go": blankImports("aicontext", m("internal/investigator")),
-		}, "ai-suggests-only", "./internal/ai/aicontext", "./internal/investigator", ""},
-		{"the investigator agent links its handler", map[string]string{
-			"internal/investigator/a.go":                handler,
-			"internal/aigraph/investigator/zz_probe.go": blankImports("investigator", m("internal/investigator")),
-		}, "aigraph-has-no-storage", "./internal/aigraph/investigator", "./internal/investigator", ""},
+		// H-061 A6: the handler now exists and links the context builder and
+		// the investigator agent (the planner's context, its ADK run), so
+		// neither can link it (an import cycle the compiler refuses); an AI
+		// package and a role graph it does not link probe the same rules.
+		{"the analyst's checks link the investigation handler", map[string]string{
+			"internal/investigator/a.go":      handler,
+			"internal/ai/analyst/zz_probe.go": blankImports("analyst", m("internal/investigator")),
+		}, "ai-suggests-only", "./internal/ai/analyst", "./internal/investigator", ""},
+		{"a role graph links the investigation handler", map[string]string{
+			"internal/investigator/a.go":            handler,
+			"internal/aigraph/analysis/zz_probe.go": blankImports("analysis", m("internal/investigator")),
+		}, "aigraph-has-no-storage", "./internal/aigraph/analysis", "./internal/investigator", ""},
 	})
 }
