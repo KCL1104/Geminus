@@ -271,14 +271,22 @@ func (o otherModel) Quote(_ context.Context, req provider.Request) (provider.Quo
 }
 
 // A repair call that fails leaves the first outcome, not revised; the
-// stored metadata and the audit say the repair failed and why.
+// stored metadata and the audit say the repair failed and why. So does one
+// the client refused without handing back an answer (H-057 review round 1:
+// invalid_output with no answer, e.g. Meta's refusal of a Contributor
+// model's answer, with its own issue): no second answer was reviewed.
 func TestAFailedRepairCall(t *testing.T) {
-	for _, c := range []provider.Code{provider.CodeTimeout, provider.CodeTruncated, provider.CodeQuotaExceeded, provider.CodeUnavailable} {
+	noAnswer := provider.NewError(provider.CodeInvalidOutput, 0, "meta")
+	noAnswer.Issues = []model.ValidationIssue{model.NewIssue(review.OutputInvalid, "", "the answer is not from the Standard-mode model the request named", model.SeverityError)}
+	for _, e := range []*provider.Error{provider.NewError(provider.CodeTimeout, 0, "meta"), provider.NewError(provider.CodeTruncated, 0, "meta"),
+		provider.NewError(provider.CodeQuotaExceeded, 0, "meta"), provider.NewError(provider.CodeUnavailable, 0, "meta"), noAnswer} {
+		c := e.Code
 		f := scripted(t, repairIntent, reference(brokenRouting))
-		f.FailRevision(provider.RoleModeler, repairIntent, provider.NewError(c, 0, "meta"))
+		f.FailRevision(provider.RoleModeler, repairIntent, e)
 		st := stored(t, "edit", repairIntent)
 		gen, err := repairHandler(t, f, nil).generate(context.Background(), st.proposal.OrganizationID, st, testAttribution)
-		if err != nil || gen.outcome.Status != review.Invalid || !slices.Contains(issuesAt(gen.outcome)["/nodes/3"], "ROUTING_INVALID") {
+		if err != nil || gen.outcome.Status != review.Invalid || !slices.Contains(issuesAt(gen.outcome)["/nodes/3"], "ROUTING_INVALID") ||
+			slices.Contains(issuesAt(gen.outcome)[""], review.OutputInvalid) {
 			t.Fatalf("%s: %+v %v", c, gen.outcome.Validation, err)
 		}
 		code := "AI_" + strings.ToUpper(string(c))
@@ -304,6 +312,65 @@ func TestAFailedRepairCall(t *testing.T) {
 			t.Errorf("%s: the audit %v", c, m)
 		}
 	}
+}
+
+// H-057 review round 1: the repair answered by another model than the one
+// the person chose, through a metered client: the client refuses it and
+// hands nothing back, so the repair failed (AI_INVALID_OUTPUT); the first
+// answer's ROUTING_INVALID stays and the proposal is not shown as revised.
+// Both calls are metered.
+func TestARepairAnsweredByAnotherModel(t *testing.T) {
+	st := stored(t, "edit", repairIntent)
+	f := scripted(t, repairIntent, reference(brokenRouting))
+	f.ScriptRevision(provider.RoleModeler, repairIntent, answer(t, reference(fixedRouting)))
+	b := &otherOnRepair{otherModel{&billedFake{Backend: f, usage: provider.Usage{InputTokens: 10, OutputTokens: 5}}}}
+	m := &chargeLog{ids: "asr_01M4YDQK00TA%014d"}
+	c, err := provider.NewMetered(b, provider.DefaultBudget(), m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h, err := New(Config{Provider: c, Packs: packs(t), Actor: "worker-1", Log: discard()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gen, err := h.generateAsked(context.Background(), st.proposal.OrganizationID, st, testAttribution, false, "muse-spark-1.3")
+	if err != nil || gen.outcome.Status != review.Invalid || !slices.Contains(issuesAt(gen.outcome)["/nodes/3"], "ROUTING_INVALID") ||
+		slices.Contains(issuesAt(gen.outcome)[""], review.OutputInvalid) {
+		t.Fatalf("the outcome %+v %v", gen.outcome.Validation, err)
+	}
+	if gen.repair == nil || gen.repair.Outcome != repair.Failed || gen.repair.Code != "AI_INVALID_OUTPUT" || gen.repair.Revised() ||
+		b.calls.Load() != 2 || len(m.charges) != 2 {
+		t.Errorf("record %+v, %d calls, %d reservations", gen.repair, b.calls.Load(), len(m.charges))
+	}
+	g, p := row(t, st, gen)
+	if p.GeneratedBy == nil || p.GeneratedBy.RevisedAfterCheck {
+		t.Errorf("shown as revised: %+v", p.GeneratedBy)
+	}
+	var stored struct {
+		Repair *struct {
+			Outcome string `json:"outcome"`
+			Code    string `json:"code"`
+		} `json:"repair"`
+	}
+	if err := json.Unmarshal(g.ProviderMetadata, &stored); err != nil || stored.Repair == nil || stored.Repair.Outcome != "failed" ||
+		stored.Repair.Code != "AI_INVALID_OUTPUT" {
+		t.Errorf("the stored metadata %s", g.ProviderMetadata)
+	}
+	if e := eventOf(t, st, gen); e["repair"] != "failed" || e["repair_code"] != "AI_INVALID_OUTPUT" {
+		t.Errorf("the audit %v", e)
+	}
+}
+
+// otherOnRepair answers a first call as the model asked for and a repair
+// (a prompt with a Revision) as otherModel does: as claude-opus-5-5.
+type otherOnRepair struct{ otherModel }
+
+func (o *otherOnRepair) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	resp, err := o.otherModel.Complete(ctx, req)
+	if req.Prompt.Revision == nil {
+		resp.Model = req.Model
+	}
+	return resp, err
 }
 
 // Spend: the repair call is metered as the first: its own reservation

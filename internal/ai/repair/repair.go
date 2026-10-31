@@ -21,8 +21,11 @@
 //     the first: checked, metered (its own reservation), never researched.
 //   - Its answer goes through exactly the same checks (Check: the review,
 //     and the photo rules and the dataset binding stage where the caller
-//     runs them); their outcome is the proposal's, whatever it is. A second
-//     call that fails leaves the first outcome, and the Record says so.
+//     runs them); their outcome is the proposal's, whatever it is. So is the
+//     client's refusal of the second answer for what it says (invalid_output
+//     with the answer handed back, as for a first call). A second call that
+//     fails otherwise, invalid_output with no answer handed back included,
+//     leaves the first outcome, and the Record says so (Failed).
 //   - At most one: Once never asks a third time.
 //
 // The answers stay in memory: the Record holds the second call's metadata
@@ -105,7 +108,9 @@ func Issues(o review.Outcome) ([]model.ValidationIssue, int) {
 // end (the worker's log line). The error is the attempt's when ctx ended
 // (the record says what the call spent), check's, or the follow-up's that
 // could not be built (an *aicontext.Error: the server's own fault); a
-// second call that fails otherwise is no error.
+// second call that fails otherwise is no error. Only a second answer the
+// client handed back is reviewed (Record.Revised): an invalid_output with
+// none is a failed call.
 func Once(ctx context.Context, client provider.LLMProvider, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome,
 	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
 	issues, notListed := Issues(refused)
@@ -132,12 +137,20 @@ func Once(ctx context.Context, client provider.LLMProvider, first provider.Propo
 			return refused, rec, err
 		}
 		var pe *provider.Error
-		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput {
-			// The second answer refused for what it says: its own issues,
-			// cleaned like every other, and nothing of it.
+		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput && res.Prior.Present() {
+			// The second answer refused for what it says (the client handed
+			// it back, as it does only then): its own issues, cleaned like
+			// every other, and nothing of it.
 			rec.Outcome = Invalid
 			return review.InvalidOutput(pe.Issues), rec, nil
 		}
+		// Every other failure, and invalid_output with no answer handed back
+		// (no text block, a stop reason this build does not know, another
+		// model's answer, an empty or oversized one, a web search it was not
+		// offered: H-057 review round 1): no second answer the server
+		// reviewed, as the same refusal of a first call is not repaired. The
+		// first outcome stays; AI_INVALID_OUTPUT here is what shows an
+		// endpoint that does not take the repair's turns.
 		rec.Outcome, rec.Code = Failed, codeOf(err)
 		return refused, rec, nil
 	}

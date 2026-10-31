@@ -115,16 +115,16 @@ func TestARefusedAnswerIsRepairedOnce(t *testing.T) {
 	}
 }
 
-// The second answer refused by the client (invalid_output) is the outcome,
-// its issues cleaned; a second call that fails otherwise leaves the first
-// outcome, and the record says the repair failed and why, with the call's
-// metadata (what it cost).
+// The second answer refused by the client for what it says (invalid_output,
+// the answer handed back) is the outcome, its issues cleaned; a second call
+// that fails otherwise leaves the first outcome, and the record says the
+// repair failed and why, with the call's metadata (what it cost).
 func TestAFailedRepairKeepsTheFirstOutcome(t *testing.T) {
 	refused := refusedBy(routing("/nodes/45"))
 	r := newRig(t)
 	r.f.ScriptRevision(provider.RoleModeler, intent, []byte(`{"status":"proposed"}`))
 	out, rec, err := r.once(context.Background(), refused, r.check(review.Outcome{}))
-	if err != nil || out.Status != review.Invalid || rec.Outcome != repair.Invalid || len(r.checks) != 0 ||
+	if err != nil || out.Status != review.Invalid || rec.Outcome != repair.Invalid || !rec.Revised() || rec.Code != "" || len(r.checks) != 0 ||
 		out.Validation.Issues[0].Code != review.OutputInvalid {
 		t.Errorf("a schema-invalid repair: %+v %+v %v", out.Validation, rec, err)
 	}
@@ -143,6 +143,90 @@ func TestAFailedRepairKeepsTheFirstOutcome(t *testing.T) {
 	if _, rec, err := r.once(context.Background(), refused, func(provider.ProposalOutput) (review.Outcome, error) { return review.Outcome{}, bad }); !errors.Is(err, bad) || rec == nil {
 		t.Errorf("a failed check: %v", err)
 	}
+}
+
+// H-057 review round 1: a second call the client refused without handing
+// back an answer (no text block, a stop reason this build does not know,
+// another model's answer, an empty or oversized one, a web search it was
+// not offered) is a failed repair, as the same refusal of a first call is
+// not repaired: there is no second answer the server reviewed. The first
+// outcome stays, with its issues; the record says failed, AI_INVALID_OUTPUT
+// (the code that shows an endpoint that does not take the repair's turns),
+// and the proposal is not revised.
+func TestASecondCallRefusedWithoutAnAnswerIsAFailedRepair(t *testing.T) {
+	refused := refusedBy(routing("/nodes/45"))
+	failed := func(name string, out review.Outcome, rec *repair.Record, err error) {
+		t.Helper()
+		if err != nil || out.Status != review.Invalid || out.Validation == nil || len(out.Validation.Issues) != 1 ||
+			out.Validation.Issues[0].Code != "ROUTING_INVALID" || out.Validation.Issues[0].Path != "/nodes/45" {
+			t.Errorf("%s: the outcome %+v %v", name, out.Validation, err)
+		}
+		if rec == nil || rec.Outcome != repair.Failed || rec.Code != "AI_INVALID_OUTPUT" || rec.Revised() || rec.Call == nil || rec.Issues != 1 {
+			t.Errorf("%s: record %+v", name, rec)
+		}
+	}
+	// The backend's refusal, with an issue of its own (Meta's, for a
+	// Contributor model): never the outcome.
+	r := newRig(t)
+	e := provider.NewError(provider.CodeInvalidOutput, 0, "")
+	e.Issues = []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not from the Standard-mode model the request named", model.SeverityError)}
+	r.f.FailRevision(provider.RoleModeler, intent, e)
+	out, rec, err := r.once(context.Background(), refused, r.check(review.Outcome{}))
+	failed("no answer handed back", out, rec, err)
+	if len(r.checks) != 0 || len(r.calls) != 1 || provider.CodeOf(r.calls[0]) != provider.CodeInvalidOutput || len(r.f.Requests()) != 2 {
+		t.Errorf("no answer handed back: %d checks, calls %v, %d requests", len(r.checks), r.calls, len(r.f.Requests()))
+	}
+
+	// Another model's answer to the repair, through a metered client that
+	// asked for one model: the client refuses it and hands nothing back.
+	f := fake.New()
+	f.Script(provider.RoleModeler, intent, []byte(first))
+	f.ScriptRevision(provider.RoleModeler, intent, []byte(second))
+	b := &otherOnRepair{Backend: f}
+	c, err := provider.NewMetered(b, provider.DefaultBudget(), provider.NewMemoryMeter(1<<50))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pc := firstContext(t)
+	pc.Model = askedModel
+	pc.Attribution = provider.Attribution{TargetType: "ai_proposal", TargetID: "aip_01M4YDQK00TA00000000000001", RequestID: "req_01M4YDQK00TA00000000000001"}
+	res, err := c.GenerateModelProposal(context.Background(), pc)
+	if err != nil || !res.Prior.Present() || res.Metadata.Model != askedModel {
+		t.Fatalf("the first call: %v, model %q", err, res.Metadata.Model)
+	}
+	var checks int
+	out, rec, err = repair.Once(context.Background(), c, pc, res.Prior, refused, func(provider.ProposalOutput) (review.Outcome, error) {
+		checks++
+		return review.Outcome{Status: review.Ready}, nil
+	}, nil)
+	failed("another model's answer", out, rec, err)
+	if reqs := f.Requests(); checks != 0 || len(reqs) != 2 || reqs[1].Model != askedModel || reqs[1].Prompt.Revision == nil || rec.Call.SpendReservation == "" {
+		t.Errorf("another model's answer: %d checks, %d requests, record call %+v", checks, len(reqs), rec.Call)
+	}
+}
+
+// askedModel is the model a metered repair test asks for.
+const askedModel = "muse-spark-1.3"
+
+// otherOnRepair is a billable fake that answers a first call as the model
+// asked for and a repair (a prompt with a Revision) as another model.
+type otherOnRepair struct{ *fake.Backend }
+
+func (o *otherOnRepair) Quote(_ context.Context, req provider.Request) (provider.Quote, error) {
+	n := int64(len(req.Prompt.System) + len(req.Prompt.User()))
+	if r := req.Prompt.Revision; r != nil {
+		n += int64(r.Prior.Len() + len(r.User()))
+	}
+	return provider.Quote{Model: req.Model, MaxInputTokens: n}, nil
+}
+
+func (o *otherOnRepair) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
+	resp, err := o.Backend.Complete(ctx, req)
+	resp.Model = req.Model
+	if req.Prompt.Revision != nil {
+		resp.Model = "claude-opus-5-5"
+	}
+	return resp, err
 }
 
 // No repair without a refusal it can follow: an outcome that is not invalid,
