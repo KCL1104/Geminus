@@ -640,10 +640,32 @@ func (p panicked) Error() string {
 func (w *Worker) handle(ctx context.Context, a *attempt) (err error) {
 	defer func() {
 		if v := recover(); v != nil {
-			err = panicked{value: v, stack: string(debug.Stack())}
+			err = recovered(v, string(debug.Stack()))
 		}
 	}()
 	return w.cfg.Handlers[a.job.Type].Handle(ctx, a)
+}
+
+// recovered is the handler's panic v, recovered where the worker's stack
+// is stack. A handler.Reraised is the value and the stack it carries, where
+// the code panicked (checks/E2_VALIDATION.md, review round 1); one whose
+// methods panic, or that carries no value or no stack, is v with the
+// worker's stack, as any other value.
+func recovered(v any, stack string) (p panicked) {
+	p = panicked{value: v, stack: stack}
+	r, ok := v.(handler.Reraised)
+	if !ok {
+		return p
+	}
+	defer func() {
+		if recover() != nil {
+			p = panicked{value: v, stack: stack}
+		}
+	}()
+	if value, origin := r.PanicValue(), r.PanicStack(); value != nil && origin != "" {
+		return panicked{value: value, stack: origin}
+	}
+	return p
 }
 
 // heartbeat renews the lease every Heartbeat until ctx ends, and stops the

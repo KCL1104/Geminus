@@ -91,8 +91,29 @@ var (
 // which ends the process if they were called from a goroutine the handler
 // started. ctx ends when the attempt stops; the handler then returns
 // promptly.
+//
+// A handler's panic is recorded as INTERNAL, not retried, and logged with
+// the stack where the worker recovered it and, of its value, only a Go
+// runtime error's message (the value may hold the data the handler worked
+// on). A panic that something between the handler and the code that
+// panicked recovered and raised again is raised as a Reraised.
 type Handler interface {
 	Handle(ctx context.Context, run Run) error
+}
+
+// Reraised is a panic raised again after code between the handler and the
+// frame that panicked recovered it, unwinding that frame: the analyst's
+// graph raises a node's panic, which Eino recovers, as one
+// (internal/aigraph/analysis.Panic). The worker records it with the value
+// and the stack it carries, as it records a panic that reached it
+// directly; one whose methods panic, or that carries no value or no
+// stack, is recorded as any other value.
+type Reraised interface {
+	// PanicValue is the value the code panicked with.
+	PanicValue() any
+	// PanicStack is the panicking goroutine's stack where it was
+	// recovered, as runtime/debug.Stack formats it.
+	PanicStack() string
 }
 
 // Func is a function as a Handler.
