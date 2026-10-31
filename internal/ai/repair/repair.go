@@ -111,22 +111,46 @@ func Issues(o review.Outcome) ([]model.ValidationIssue, int) {
 // second call that fails otherwise is no error. Only a second answer the
 // client handed back is reviewed (Record.Revised): an invalid_output with
 // none is a failed call.
+//
+// Once is Prepare, the client's call and Settle; a role graph that makes
+// the second call through its own model node (the photo graph, H-059)
+// runs the same three steps.
 func Once(ctx context.Context, client provider.LLMProvider, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome,
 	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
+	rc, rec, err := Prepare(ctx, first, prior, refused)
+	if rec == nil {
+		return refused, nil, err
+	}
+	res, err := client.GenerateModelProposal(ctx, rc)
+	return Settle(ctx, rec, refused, res, err, check, answered)
+}
+
+// Prepare is the repair's request: the follow-up of refused (Once's
+// second call) and the record Settle completes. It returns no record when
+// there is no second call: nothing to repair (no error), the follow-up
+// could not be built (an *aicontext.Error), or ctx ended (the client's
+// cancelled error); the outcome then stays refused.
+func Prepare(ctx context.Context, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome) (provider.ProposalContext, *Record, error) {
 	issues, notListed := Issues(refused)
 	if len(issues) == 0 || !prior.Present() {
-		return refused, nil, nil
+		return provider.ProposalContext{}, nil, nil
 	}
 	rc, err := aicontext.Revise(first, prior, issues, notListed)
 	if err != nil {
-		return refused, nil, err
+		return provider.ProposalContext{}, nil, err
 	}
 	if err := ctx.Err(); err != nil {
 		// Stopping between the two calls: no second call.
-		return refused, nil, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
+		return provider.ProposalContext{}, nil, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
 	}
-	rec := &Record{Issues: len(issues), NotListed: notListed}
-	res, err := client.GenerateModelProposal(ctx, rc)
+	return rc, &Record{Issues: len(issues), NotListed: notListed}, nil
+}
+
+// Settle is the repair's outcome from the second call's result res and
+// error err, as the client returned them for Prepare's request (Once's
+// rules: see Once), with rec, Prepare's record, completed.
+func Settle(ctx context.Context, rec *Record, refused review.Outcome, res provider.ProposalResult, err error,
+	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
 	meta := res.Metadata
 	rec.Call = &meta
 	if answered != nil {
