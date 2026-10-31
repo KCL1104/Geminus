@@ -150,7 +150,7 @@ T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and 
 
 ## Go modules brought by Eino (H-058, H-059; slice E0)
 
-E0 pins the Eino framework for the AI role graphs ([ADR-031](adr/ADR-031-eino.md), **PROPOSED**). No package imports it yet; when one does, only `internal/aigraph/...` and `internal/investigations/loop/...` may (architecture rule `eino-fenced`), never the kernel, a domain pack or the HTTP transport (`no-eino-in-kernel-packs-transport`), and eino-ext is not used (`no-eino-ext`). Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-31 (ADR-031 lists the dates); each module's own license file (and yaml.v3's `NOTICE`) ships in its module and applies to it. No module is copyleft. No code from these modules is copied into this repository.
+E0 pins the Eino framework for the AI role graphs ([ADR-031](adr/ADR-031-eino.md), **PROPOSED**). No package imports it yet; when one does, only `internal/aigraph/...` may (architecture rule `eino-fenced`, narrowed by H-061, approved by the owner in H-063), and only the worker and the live eval link it: never the API (`no-eino-in-the-api`), the kernel, a domain pack or the HTTP transport (`no-eino-in-kernel-packs-transport`), and eino-ext is not used (`no-eino-ext`). Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-31 (ADR-031 lists the dates); each module's own license file (and yaml.v3's `NOTICE`) ships in its module and applies to it. No module is copyleft. No code from these modules is copied into this repository.
 
 | Module | Version | License | Linked because |
 |---|---|---|---|

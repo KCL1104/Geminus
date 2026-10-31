@@ -46,7 +46,8 @@ var appLayers = []string{
 	"./internal/config/...",
 	"./internal/httpapi/...",        // HTTP transport (T-009, ADR-019)
 	"./internal/api/...",            // route assembly
-	"./internal/investigations/...", // AI investigations (H-056, H-060; ADR-031): a service, wherever it runs
+	"./internal/investigations/...", // AI investigations, the API's side: the service and its executor (H-056, H-060, H-061)
+	"./internal/investigator/...",   // AI investigations, the worker's side: the job handler (H-061)
 }
 
 // Standard-library packages that mean network, database, process or
@@ -121,10 +122,17 @@ var otelAPI = []string{
 
 // Eino (H-058, H-059; ADR-031) orchestrates the AI roles. einoUsers are the
 // only packages that import it (docs/design/H-056_INVESTIGATIONS_ON_EINO.md
-// §6.2): the metered ChatModel adapter and the role graphs, and the
-// investigation loop. None of them exists yet (E0 adds the rules).
+// §6.2, narrowed by H-061, which the owner approved in H-063: "eino-fenced
+// becomes ./internal/aigraph/... only"): the metered ChatModel adapters, the
+// role graphs and the investigator agent. H-056's investigation loop is
+// gone. None of them exists yet (E0 adds the rules).
 var eino = []string{"github.com/cloudwego/eino/..."}
-var einoUsers = []string{"./internal/aigraph/...", "./internal/investigations/loop/..."}
+var einoUsers = []string{"./internal/aigraph/..."}
+
+// einoFreeAPI is the API binary, its route assembly and the investigation
+// packages only it links (H-061: "cmd/api links no Eino and no live
+// adapter"; the executor "holds no Eino and no provider").
+var einoFreeAPI = []string{"./cmd/api/...", "./internal/api/...", "./internal/investigations/..."}
 
 // eino-ext's components call providers with their own SDKs and clients,
 // around the metered client (ADR-031). eino-contrib/jsonschema, which Eino
@@ -416,12 +424,14 @@ var rules = []rule{
 		// A job handler runs a claimed job under the worker's lease; the
 		// worker binary registers it (ADR-024). The API and the services it
 		// shares never link one, so no request can run the engine or write
-		// as the worker (T-023).
+		// as the worker (T-023). H-061: the investigation handler is one.
 		name:    "job-handlers-only-in-the-worker",
 		why:     "job handlers run claimed jobs under the worker's lease: only the worker binary registers them, never the API or a service it shares (ADR-024)",
 		applies: []string{"./..."},
-		except:  []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/..."},
-		forbid:  []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/..."}, // T-023, T-016, T-017, T-025, T-030
+		except: []string{"./cmd/worker/...", "./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/...",
+			"./internal/investigator/..."},
+		forbid: []string{"./internal/runs/runner/...", "./internal/import/profiler/...", "./internal/import/validator/...", "./internal/proposals/generator/...", "./internal/analyses/analyzer/...",
+			"./internal/investigator/..."}, // T-023, T-016, T-017, T-025, T-030, H-061
 	},
 	{
 		// T-026: a person decides a proposal, through the API's routes and
@@ -446,6 +456,45 @@ var rules = []rule{
 		applies: []string{"./..."},
 		except:  []string{"./cmd/api/...", "./internal/api/...", "./internal/scenarios/..."},
 		forbid:  []string{"./internal/scenarios/..."},
+	},
+	{
+		// H-061 (approved by the owner in H-063; H-056 design §6.2): a person
+		// creates, lists and stops their investigations through the API, and
+		// the API's background executor carries out each tool call the
+		// worker's agent recorded, as twin_api under the stored scope. Only
+		// the API links them, so the worker, its handlers (the investigation
+		// handler included) and the other services never carry out an
+		// effect in a person's name.
+		name:    "investigations-only-in-the-api",
+		why:     "the investigation service and its executor act for the requester: only the API links internal/investigations, never the worker, a job handler, another service or internal/ai (H-061, H-063)",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/api/...", "./internal/api/...", "./internal/investigations/..."},
+		forbid:  []string{"./internal/investigations/..."},
+	},
+	{
+		// H-061: internal/tenant/actingfor is the API's one organization-only
+		// scope (two fixed statements, no user): discovery of recorded tool
+		// calls and the end of an investigation whose requester lost their
+		// role. Only the executor and the binary that starts it link it
+		// (ADR-019 R3b's exception, D-008 amended in H-063).
+		name:    "acting-for-only-in-the-executor",
+		why:     "the acting-for scope runs without a user: only internal/investigations/executor and cmd/api link internal/tenant/actingfor (H-061, H-063)",
+		applies: []string{"./..."},
+		except:  []string{"./internal/tenant/actingfor/...", "./internal/investigations/executor/...", "./cmd/api/..."},
+		forbid:  []string{"./internal/tenant/actingfor/..."},
+	},
+	{
+		// H-056 design §6.2, kept by H-061: internal/proposals/effect holds
+		// the canonical effects a person's approval and the AI's
+		// investigation share (SaveScenario, WriteDraft). Only the API, the
+		// approval service and the investigation packages link it, so the
+		// worker and its handlers never write a scenario or a draft.
+		name:    "proposal-effects-only-in-the-api",
+		why:     "the shared effects write scenarios and drafts in a person's name: only the API, internal/proposals/approval and internal/investigations link internal/proposals/effect, never the worker, a job handler or internal/ai (H-056 §6.2, H-061, H-063)",
+		applies: []string{"./..."},
+		except: []string{"./cmd/api/...", "./internal/api/...", "./internal/proposals/approval/...", "./internal/investigations/...",
+			"./internal/proposals/effect/..."},
+		forbid: []string{"./internal/proposals/effect/..."},
 	},
 	{
 		// The parser and the report writer read and write bytes: the
@@ -593,13 +642,13 @@ var rules = []rule{
 	},
 	{
 		// H-058, H-059 (ADR-031): Eino orchestrates the AI roles and reaches a
-		// model only through the metered ChatModel adapter in
+		// model only through the metered ChatModel adapters in
 		// internal/aigraph. Every other package links it only through
-		// internal/aigraph or the investigation loop, so no service, handler,
-		// adapter or binary builds a graph, a model or a tool of its own
-		// around the reviewed path.
+		// internal/aigraph (H-061, H-063: the only gateway), so no service,
+		// handler, adapter or binary builds a graph, an agent, a model or a
+		// tool of its own around the reviewed path.
 		name:    "eino-fenced",
-		why:     "only internal/aigraph (the role graphs and the metered ChatModel adapter) and internal/investigations/loop import Eino; everything else reaches it through them (H-058, H-059, ADR-031)",
+		why:     "only internal/aigraph (the metered ChatModel adapters, the role graphs and the investigator agent) imports Eino; everything else reaches it through it (H-058, H-059, H-061, ADR-031)",
 		applies: []string{"./..."},
 		except:  einoUsers,
 		forbid:  eino,
@@ -631,6 +680,31 @@ var rules = []rule{
 		name:    "no-eino-in-kernel-packs-transport-tests",
 		why:     "the tests of the engine, the IR, results, the DomainPack interface, the packs and the HTTP transport never link Eino either (H-058, ADR-031)",
 		applies: cat(genericKernel, []string{"./internal/domainpack/...", "./internal/httpapi/..."}),
+		forbid:  cat(eino, einoExt),
+		tests:   true,
+	},
+	{
+		// H-061 (approved by the owner in H-063): every model call is the
+		// worker's, and the API carries out the investigation's tool calls
+		// as plain Go over the existing services. So the API links no Eino,
+		// with no gateway: not through internal/aigraph, the photo pipeline
+		// or any package (aigraph-only-in-the-worker says the same of the
+		// role graphs; this holds even if that rule gains an exception), and
+		// sonic's stderr line (ADR-031) never appears in the API process.
+		name:    "no-eino-in-the-api",
+		why:     "the API binary, its route assembly and the investigation packages only it links never link Eino or eino-ext, directly or through any package (H-061, H-063, ADR-031)",
+		applies: einoFreeAPI,
+		forbid:  cat(eino, einoExt),
+	},
+	{
+		// The API binary's own tests only. internal/api's tests run the
+		// closed loop in process with the worker's handlers (the proposal
+		// generator, the analyzer, the runner), which link Eino once H-059
+		// moves them onto the role graphs; the investigation packages'
+		// closed-loop tests will run the investigation handler the same way.
+		name:    "no-eino-in-the-api-tests",
+		why:     "the API binary's tests never link Eino either; the route assembly's and the investigation packages' closed-loop tests may, through the worker's handlers (H-061, H-063, ADR-031)",
+		applies: []string{"./cmd/api/..."},
 		forbid:  cat(eino, einoExt),
 		tests:   true,
 	},
@@ -670,14 +744,15 @@ var rules = []rule{
 	{
 		// Design §6.2: the role graphs call models, so like the live
 		// adapters (live-ai-only-in-the-worker) only the worker's side links
-		// them: the worker binary, its proposal and analysis handlers, the
-		// photo pipeline they use (a facade over the photo graph, §6.4) and
-		// the live eval. Never the API or a service it shares.
+		// them: the worker binary, its proposal, analysis and (H-061)
+		// investigation handlers, the photo pipeline they use (a facade over
+		// the photo graph, §6.4) and the live eval. Never the API or a
+		// service it shares.
 		name:    "aigraph-only-in-the-worker",
-		why:     "the role graphs call models through the metered adapter: only the worker, its AI job handlers, the photo pipeline and the live eval link internal/aigraph, never the API or a service it shares (H-059, ADR-031)",
+		why:     "the role graphs and the investigator agent call models through the metered adapters: only the worker, its AI job handlers, the photo pipeline and the live eval link internal/aigraph, never the API or a service it shares (H-059, H-061, ADR-031)",
 		applies: []string{"./..."},
 		except: []string{"./internal/aigraph/...", "./cmd/worker/...", "./cmd/ai-eval-live/...", "./internal/proposals/generator/...",
-			"./internal/analyses/analyzer/...", "./internal/aievals/...", "./internal/ai/photopipeline"},
+			"./internal/analyses/analyzer/...", "./internal/investigator/...", "./internal/aievals/...", "./internal/ai/photopipeline"},
 		forbid: []string{"./internal/aigraph/..."},
 	},
 }

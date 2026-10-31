@@ -374,9 +374,9 @@ func TestProbesAreCaught(t *testing.T) {
 			"./cmd/worker", "./internal/storage/migrations", false},
 		{"storage-links-the-migrations", "internal/storage/jobs/zz_probe.go", module + "/internal/storage/migrations", "migrations-only-in-their-command",
 			"./internal/storage/jobs", "./internal/storage/migrations", false},
-		// ADR-031 (H-058, H-059): only internal/aigraph and the investigation
-		// loop import Eino; the kernel, the packs and the HTTP transport never
-		// link it, their tests included; sonic stays on its compat path.
+		// ADR-031 (H-058, H-059; H-061): only internal/aigraph imports Eino;
+		// the kernel, the packs and the HTTP transport never link it, their
+		// tests included; sonic stays on its compat path.
 		{"the-engine-imports-eino", "internal/simulation/engine/zz_probe.go", "github.com/cloudwego/eino/compose", "no-eino-in-kernel-packs-transport",
 			"./internal/simulation/engine", "github.com/cloudwego/eino/compose", false},
 		{"the-engine-imports-eino-outside-the-fence", "internal/simulation/engine/zz_probe.go", "github.com/cloudwego/eino/compose", "eino-fenced",
@@ -401,6 +401,24 @@ func TestProbesAreCaught(t *testing.T) {
 			"./cmd/api", "github.com/cloudwego/eino/compose", false},
 		{"the-route-assembly-imports-eino", "internal/api/zz_probe.go", "github.com/cloudwego/eino/compose", "eino-fenced",
 			"./internal/api", "github.com/cloudwego/eino/compose", false},
+		// H-061 (approved in H-063): no Eino in the API, with no gateway, the
+		// binary's tests included; the investigation loop is gone, so it is
+		// no gateway; the executor and the worker's handler stay outside the
+		// fence too.
+		{"the-api-imports-eino-with-no-gateway", "cmd/api/zz_probe.go", "github.com/cloudwego/eino/compose", "no-eino-in-the-api",
+			"./cmd/api", "github.com/cloudwego/eino/compose", false},
+		{"the-route-assembly-imports-eino-with-no-gateway", "internal/api/zz_probe.go", "github.com/cloudwego/eino/schema", "no-eino-in-the-api",
+			"./internal/api", "github.com/cloudwego/eino/schema", false},
+		{"an-api-test-imports-eino", "cmd/api/zz_probe_test.go", "github.com/cloudwego/eino/adk", "no-eino-in-the-api-tests",
+			"./cmd/api", "github.com/cloudwego/eino/adk", true},
+		{"the-investigation-loop-imports-eino", "internal/investigations/loop/zz_probe.go", "github.com/cloudwego/eino/compose", "eino-fenced",
+			"./internal/investigations/loop", "github.com/cloudwego/eino/compose", false},
+		{"the-executor-imports-eino", "internal/investigations/executor/zz_probe.go", "github.com/cloudwego/eino/adk", "eino-fenced",
+			"./internal/investigations/executor", "github.com/cloudwego/eino/adk", false},
+		{"the-executor-imports-eino-in-the-api", "internal/investigations/executor/zz_probe.go", "github.com/cloudwego/eino/adk", "no-eino-in-the-api",
+			"./internal/investigations/executor", "github.com/cloudwego/eino/adk", false},
+		{"the-investigation-handler-imports-eino-itself", "internal/investigator/zz_probe.go", "github.com/cloudwego/eino/adk", "eino-fenced",
+			"./internal/investigator", "github.com/cloudwego/eino/adk", false},
 		{"the-worker-imports-eino-itself", "cmd/worker/zz_probe.go", "github.com/cloudwego/eino/compose", "eino-fenced",
 			"./cmd/worker", "github.com/cloudwego/eino/compose", false},
 		{"a-handler-imports-eino-itself", "internal/proposals/generator/zz_probe.go", "github.com/cloudwego/eino/compose", "eino-fenced",
@@ -1066,7 +1084,7 @@ func TestPolicy(t *testing.T) {
 	kernel := []string{m("internal/model"), m("internal/model/validate"), m("internal/simulation/engine"), m("internal/results/metrics"), m("internal/domainpack"), m("schemas")}
 	pack := m("internal/domainpack/softwaredelivery")
 	appLayer := []string{m("cmd/api"), m("internal/auth"), m("internal/tenant"), m("internal/project"), m("internal/storage/postgres"), m("internal/import"), m("internal/ai"), m("internal/audit"), m("internal/config"),
-		m("internal/httpapi"), m("internal/api"), m("internal/investigations"), m("internal/investigations/loop")}
+		m("internal/httpapi"), m("internal/api"), m("internal/investigations"), m("internal/investigations/executor"), m("internal/investigator")}
 	io := []string{"net", "net/http", "net/http/httptest", "net/rpc", "net/smtp", "net/mail", "database/sql", "database/sql/driver", "os/exec", "plugin", "crypto/tls"}
 	db := []string{"github.com/jackc/pgx/v5", "github.com/lib/pq", "github.com/go-sql-driver/mysql", "gorm.io/gorm", "github.com/jmoiron/sqlx"}
 	llm := []string{"github.com/anthropics/anthropic-sdk-go", "github.com/openai/openai-go", "github.com/sashabaranov/go-openai", "google.golang.org/genai", "github.com/google/generative-ai-go/genai", "cloud.google.com/go/vertexai/genai", "github.com/tmc/langchaingo/llms"}
@@ -1139,18 +1157,32 @@ func TestPolicy(t *testing.T) {
 	jit := []string{"github.com/bytedance/sonic/loader", "github.com/bytedance/sonic/loader/internal/iasm/x86_64", "github.com/bytedance/sonic/internal/jit",
 		"github.com/bytedance/sonic/internal/decoder/jitdec", "github.com/bytedance/sonic/internal/encoder/x86", "github.com/bytedance/sonic/internal/native",
 		"github.com/bytedance/sonic/internal/native/avx2", "github.com/bytedance/sonic/internal/native/neon", "github.com/twitchyliquid64/golang-asm/obj", "github.com/cloudwego/base64x"}
-	graphs := []string{m("internal/aigraph/einomodel"), m("internal/aigraph/proposal"), m("internal/aigraph/photo"), m("internal/aigraph/analysis")}
+	graphs := []string{m("internal/aigraph/einomodel"), m("internal/aigraph/proposal"), m("internal/aigraph/photo"), m("internal/aigraph/analysis"),
+		m("internal/aigraph/investigator")}
+	// H-061 (H-063): eino-fenced is internal/aigraph only; the investigation
+	// loop is gone, and the investigation packages, the acting-for scope and
+	// the shared effects are outside the fence.
 	for _, r := range []string{m("internal/ai/provider"), m("internal/ai/provider/meta"), m("internal/ai/photopipeline"), m("internal/ai/aicontext"),
 		m("internal/proposals/generator"), m("internal/analyses/analyzer"), m("internal/aievals"), m("internal/proposals"), m("internal/runs"),
-		m("cmd/api"), m("cmd/worker"), m("cmd/ai-eval-live"), m("internal/api"), m("internal/investigations"), m("pkg/anything")} {
+		m("cmd/api"), m("cmd/worker"), m("cmd/ai-eval-live"), m("internal/api"), m("internal/investigations"), m("pkg/anything"),
+		m("internal/investigations/loop"), m("internal/investigations/executor"), m("internal/investigator"), m("internal/tenant/actingfor"),
+		m("internal/proposals/effect")} {
 		wants = append(wants, want{"eino-fenced", r, einoPkgs, false, false})
 	}
+	// H-061 (H-063): cmd/api links no Eino, through any package, and
+	// neither do the route assembly and the investigation packages only the
+	// API links; the binary's own tests do not either.
+	for _, r := range []string{m("cmd/api"), m("internal/api"), m("internal/investigations"), m("internal/investigations/executor")} {
+		wants = append(wants, want{"no-eino-in-the-api", r, slices.Concat(einoPkgs, einoExt), false, false})
+	}
+	wants = append(wants, want{"no-eino-in-the-api-tests", m("cmd/api"), slices.Concat(einoPkgs, einoExt), false, true})
 	for _, r := range slices.Concat(kernel, []string{pack, m("internal/domainpack/conformance"), m("internal/httpapi")}) {
 		wants = append(wants,
 			want{"no-eino-in-kernel-packs-transport", r, slices.Concat(einoPkgs, einoExt), false, false},
 			want{"no-eino-in-kernel-packs-transport-tests", r, slices.Concat(einoPkgs, einoExt), false, true})
 	}
-	for _, r := range slices.Concat(graphs, []string{m("internal/investigations/loop"), m("cmd/worker"), m("internal/proposals/generator"), m("pkg/anything")}) {
+	for _, r := range slices.Concat(graphs, []string{m("internal/investigator"), m("internal/investigations/executor"), m("cmd/worker"), m("internal/proposals/generator"),
+		m("pkg/anything")}) {
 		wants = append(wants,
 			want{"no-eino-ext", r, einoExt, false, false},
 			want{"no-eino-ext-in-tests", r, einoExt, false, true},
@@ -1163,7 +1195,8 @@ func TestPolicy(t *testing.T) {
 				m("internal/proposals/generator"), m("internal/proposals/approval"), m("internal/scenarios"), m("internal/comparisons"), m("internal/analyses"),
 				m("internal/worker"), m("internal/httpapi"), m("internal/api"), m("internal/auth"), m("internal/config"), m("internal/config/aiapproval"),
 				m("internal/packs"), m("internal/project"), m("internal/observability"), m("internal/observability/telemetry"), m("internal/audit"),
-				m("internal/aievals"), m("internal/import"), m("internal/investigations"), m("internal/investigations/loop"), m("internal/secret"),
+				m("internal/aievals"), m("internal/import"), m("internal/investigations"), m("internal/investigations/executor"), m("internal/secret"),
+				m("internal/investigator"), m("internal/tenant/actingfor"), m("internal/proposals/effect"), m("internal/storage/investigations"),
 				m("cmd/worker"), m("cmd/api"), m("internal/ai/provider/meta"), m("internal/ai/provider/anthropic"),
 				"net", "net/http", "net/http/httptest", "net/rpc", "net/smtp", "net/mail", "os/exec", "database/sql", "database/sql/driver", "crypto/tls", "plugin", "testing"},
 				db, llm, einoExt, jit, infra, outside), false, false},
@@ -1172,8 +1205,31 @@ func TestPolicy(t *testing.T) {
 	}
 	for _, r := range []string{m("cmd/api"), m("cmd/migrate"), m("cmd/provision-tenant"), m("internal/api"), m("internal/httpapi"), m("internal/proposals"),
 		m("internal/proposals/approval"), m("internal/runs"), m("internal/runs/runner"), m("internal/models"), m("internal/scenarios"), m("internal/analyses"),
-		m("internal/ai/aicontext"), m("internal/ai/provider"), m("internal/ai/provider/meta"), m("internal/storage/proposals"), m("internal/worker"), m("pkg/anything")} {
+		m("internal/ai/aicontext"), m("internal/ai/provider"), m("internal/ai/provider/meta"), m("internal/storage/proposals"), m("internal/worker"), m("pkg/anything"),
+		m("internal/investigations"), m("internal/investigations/executor"), m("internal/tenant/actingfor"), m("internal/proposals/effect")} {
 		wants = append(wants, want{"aigraph-only-in-the-worker", r, graphs, false, false})
+	}
+	// H-061 (H-063, slice A1's rules, folded into E0): the investigation
+	// service and its executor only in the API; the acting-for scope only in
+	// the executor and cmd/api; the shared effects only in the API and
+	// approval; the worker's investigation handler only in the worker.
+	for _, r := range []string{m("cmd/worker"), m("cmd/ai-eval-live"), m("cmd/migrate"), m("internal/investigator"), m("internal/worker"),
+		m("internal/proposals/generator"), m("internal/analyses/analyzer"), m("internal/runs"), m("internal/proposals"), m("internal/httpapi"),
+		m("internal/ai/aicontext"), m("internal/aigraph/investigator"), m("internal/storage/investigations"), m("pkg/anything")} {
+		wants = append(wants, want{"investigations-only-in-the-api", r, []string{m("internal/investigations"), m("internal/investigations/executor")}, false, false})
+	}
+	for _, r := range []string{m("cmd/worker"), m("internal/investigator"), m("internal/investigations"), m("internal/api"), m("internal/httpapi"),
+		m("internal/proposals/effect"), m("internal/proposals/approval"), m("internal/runs"), m("internal/tenant"), m("internal/worker"),
+		m("internal/storage/investigations"), m("pkg/anything")} {
+		wants = append(wants, want{"acting-for-only-in-the-executor", r, []string{m("internal/tenant/actingfor")}, false, false})
+	}
+	for _, r := range []string{m("cmd/worker"), m("internal/investigator"), m("internal/proposals/generator"), m("internal/analyses/analyzer"),
+		m("internal/proposals"), m("internal/runs"), m("internal/aigraph/investigator"), m("internal/ai/aicontext"), m("internal/worker"), m("pkg/anything")} {
+		wants = append(wants, want{"proposal-effects-only-in-the-api", r, []string{m("internal/proposals/effect")}, false, false})
+	}
+	for _, r := range []string{m("cmd/api"), m("internal/api"), m("internal/investigations"), m("internal/investigations/executor"),
+		m("internal/proposals/approval"), m("internal/runs"), m("pkg/anything")} {
+		wants = append(wants, want{"job-handlers-only-in-the-worker", r, []string{m("internal/investigator")}, false, false})
 	}
 	wants = append(wants,
 		want{"photopipeline-is-pure-but-its-graph", m("internal/ai/photopipeline"), slices.Concat(io, llm, []string{"example.com/x", "golang.org/x/sync/errgroup",

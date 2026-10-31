@@ -33,57 +33,20 @@ func blankImports(pkg string, imports ...string) string {
 	return b.String()
 }
 
-// ADR-031 (H-058, H-059): the role graphs and their ChatModel adapter
-// (internal/aigraph) and the investigation loop are the only packages that
-// import Eino; the worker's binary and handlers reach it through them; the
-// API never links a role graph; the kernel, the packs and the HTTP transport
-// never link Eino at all, not even through a gateway. None of these packages
-// exists yet (E0 adds the rules only), so each probe adds them through a go
-// build overlay.
-func TestEinoPlacement(t *testing.T) {
+// placement is a probe tree, added through a go build overlay, and the one
+// violation it must produce: rule on pkg, whose chain ends at dep (when
+// set) and passes through via (when set).
+type placement struct {
+	name                string
+	files               map[string]string
+	rule, pkg, dep, via string
+}
+
+// assertPlacements loads each probe tree on the host and requires its
+// violation.
+func assertPlacements(t *testing.T, cases []placement) {
+	t.Helper()
 	root := repoRoot(t)
-	m := func(p string) string { return module + "/" + p }
-	graph := blankImports("proposal", "github.com/cloudwego/eino/compose")
-	photo := blankImports("photo", "github.com/cloudwego/eino/compose")
-	cases := []struct {
-		name  string
-		files map[string]string
-		// rule, pkg and dep: the violation that must be reported (dep is the
-		// last element of its chain, through the gateway named in via).
-		rule, pkg, dep, via string
-	}{
-		{"the API links a role graph", map[string]string{
-			"internal/aigraph/proposal/zz_probe.go": graph,
-			"cmd/api/zz_probe.go":                   blankImports("main", m("internal/aigraph/proposal")),
-		}, "aigraph-only-in-the-worker", "./cmd/api", "./internal/aigraph/proposal", ""},
-		{"the route assembly links the ChatModel adapter", map[string]string{
-			"internal/aigraph/einomodel/zz_probe.go": blankImports("einomodel", "github.com/cloudwego/eino/components/model"),
-			"internal/api/zz_probe.go":               blankImports("api", m("internal/aigraph/einomodel")),
-		}, "aigraph-only-in-the-worker", "./internal/api", "./internal/aigraph/einomodel", ""},
-		{"a service the API shares links a role graph", map[string]string{
-			"internal/aigraph/proposal/zz_probe.go": graph,
-			"internal/runs/zz_probe.go":             blankImports("runs", m("internal/aigraph/proposal")),
-		}, "aigraph-only-in-the-worker", "./internal/runs", "./internal/aigraph/proposal", ""},
-		{"the engine links Eino through a role graph", map[string]string{
-			"internal/aigraph/proposal/zz_probe.go":  graph,
-			"internal/simulation/engine/zz_probe.go": blankImports("engine", m("internal/aigraph/proposal")),
-		}, "no-eino-in-kernel-packs-transport", "./internal/simulation/engine", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
-		{"a pack links Eino through a role graph", map[string]string{
-			"internal/aigraph/proposal/zz_probe.go":           graph,
-			"internal/domainpack/electronicsline/zz_probe.go": blankImports("electronicsline", m("internal/aigraph/proposal")),
-		}, "no-eino-in-kernel-packs-transport", "./internal/domainpack/electronicsline", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
-		{"the HTTP transport links Eino through the investigation loop", map[string]string{
-			"internal/investigations/loop/zz_probe.go": blankImports("loop", "github.com/cloudwego/eino/compose"),
-			"internal/httpapi/zz_probe.go":             blankImports("httpapi", m("internal/investigations/loop")),
-		}, "no-eino-in-kernel-packs-transport", "./internal/httpapi", "github.com/cloudwego/eino/compose", "./internal/investigations/loop"},
-		// Only the photo pipeline may front a role graph among the AI
-		// packages: the context builder reaching Eino's closure through the
-		// photo graph is I/O underneath (Eino links net, os and syscall).
-		{"the context builder links the photo graph", map[string]string{
-			"internal/aigraph/photo/zz_probe.go": photo,
-			"internal/ai/aicontext/zz_probe.go":  blankImports("aicontext", m("internal/aigraph/photo")),
-		}, "ai-is-pure-but-the-adapter", "./internal/ai/aicontext", "", "./internal/aigraph/photo"},
-	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -114,15 +77,108 @@ func TestEinoPlacement(t *testing.T) {
 	}
 }
 
-// The placements the design agrees on break no rule at all: the adapter and
-// a role graph importing the Eino packages and the pure AI packages they
-// wrap, the worker, its proposal and analysis handlers, the live eval and
-// the photo pipeline linking the graphs (the photo pipeline only through
-// the photo graph, its one gateway), and the investigation loop importing
-// Eino. Where the loop runs, and with which database role, is the
-// architecture delta's (H-060, H-061 pending); this checks the Eino fence
-// only. The whole matrix is read, so every platform's closure of Eino must
-// be on aigraph-has-no-storage's allowlist and none may link sonic's JIT.
+// ADR-031 (H-058, H-059; H-061, approved by the owner in H-063): only
+// internal/aigraph (the metered ChatModel adapters, the role graphs and the
+// investigator agent) imports Eino; the worker's binary and handlers reach
+// it through it; the API (cmd/api, internal/api and the investigation
+// packages it alone links) never links Eino, through any package; the
+// kernel, the packs and the HTTP transport never link it either. None of
+// these packages exists yet (E0 adds the rules only), so each probe adds
+// them through a go build overlay.
+func TestEinoPlacement(t *testing.T) {
+	m := func(p string) string { return module + "/" + p }
+	graph := blankImports("proposal", "github.com/cloudwego/eino/compose")
+	photo := blankImports("photo", "github.com/cloudwego/eino/compose")
+	agent := blankImports("investigator", "github.com/cloudwego/eino/adk")
+	// The tree a review of E0 built: H-056's investigation loop, which H-061
+	// removes, importing Eino, and the API linking it.
+	loop := map[string]string{
+		"internal/investigations/loop/zz_probe.go": blankImports("loop", "github.com/cloudwego/eino/compose"),
+		"cmd/api/zz_probe.go":                      blankImports("main", m("internal/investigations/loop")),
+	}
+	assertPlacements(t, []placement{
+		{"the API links a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go": graph,
+			"cmd/api/zz_probe.go":                   blankImports("main", m("internal/aigraph/proposal")),
+		}, "aigraph-only-in-the-worker", "./cmd/api", "./internal/aigraph/proposal", ""},
+		{"the route assembly links the ChatModel adapter", map[string]string{
+			"internal/aigraph/einomodel/zz_probe.go": blankImports("einomodel", "github.com/cloudwego/eino/components/model"),
+			"internal/api/zz_probe.go":               blankImports("api", m("internal/aigraph/einomodel")),
+		}, "aigraph-only-in-the-worker", "./internal/api", "./internal/aigraph/einomodel", ""},
+		{"a service the API shares links a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go": graph,
+			"internal/runs/zz_probe.go":             blankImports("runs", m("internal/aigraph/proposal")),
+		}, "aigraph-only-in-the-worker", "./internal/runs", "./internal/aigraph/proposal", ""},
+		{"the engine links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go":  graph,
+			"internal/simulation/engine/zz_probe.go": blankImports("engine", m("internal/aigraph/proposal")),
+		}, "no-eino-in-kernel-packs-transport", "./internal/simulation/engine", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
+		{"a pack links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go":           graph,
+			"internal/domainpack/electronicsline/zz_probe.go": blankImports("electronicsline", m("internal/aigraph/proposal")),
+		}, "no-eino-in-kernel-packs-transport", "./internal/domainpack/electronicsline", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
+		{"the HTTP transport links Eino through the investigator agent", map[string]string{
+			"internal/aigraph/investigator/zz_probe.go": agent,
+			"internal/httpapi/zz_probe.go":              blankImports("httpapi", m("internal/aigraph/investigator")),
+		}, "no-eino-in-kernel-packs-transport", "./internal/httpapi", "github.com/cloudwego/eino/adk", "./internal/aigraph/investigator"},
+		// Only the photo pipeline may front a role graph among the AI
+		// packages: the context builder reaching Eino's closure through the
+		// photo graph is I/O underneath (Eino links net, os and syscall).
+		{"the context builder links the photo graph", map[string]string{
+			"internal/aigraph/photo/zz_probe.go": photo,
+			"internal/ai/aicontext/zz_probe.go":  blankImports("aicontext", m("internal/aigraph/photo")),
+		}, "ai-is-pure-but-the-adapter", "./internal/ai/aicontext", "", "./internal/aigraph/photo"},
+		// H-061 (H-063): no Eino in the API. The loop is no gateway any more,
+		// so the loop itself and the API through it are refused, and
+		// no-eino-in-the-api refuses the API's Eino through any package,
+		// even through the fence's own gateway.
+		{"the investigation loop imports Eino", loop,
+			"eino-fenced", "./internal/investigations/loop", "github.com/cloudwego/eino/compose", ""},
+		{"the API links Eino through the investigation loop", loop,
+			"no-eino-in-the-api", "./cmd/api", "github.com/cloudwego/eino/compose", "./internal/investigations/loop"},
+		{"the API links Eino outside the fence", loop,
+			"eino-fenced", "./cmd/api", "github.com/cloudwego/eino/compose", "./internal/investigations/loop"},
+		{"the API links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go": graph,
+			"cmd/api/zz_probe.go":                   blankImports("main", m("internal/aigraph/proposal")),
+		}, "no-eino-in-the-api", "./cmd/api", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
+		{"the API links Eino through the photo pipeline", map[string]string{
+			"internal/aigraph/photo/zz_probe.go":    photo,
+			"internal/ai/photopipeline/zz_probe.go": blankImports("photopipeline", m("internal/aigraph/photo")),
+			"cmd/api/zz_probe.go":                   blankImports("main", m("internal/ai/photopipeline")),
+		}, "no-eino-in-the-api", "./cmd/api", "github.com/cloudwego/eino/compose", "./internal/ai/photopipeline"},
+		{"the API links the photo graph through the photo pipeline", map[string]string{
+			"internal/aigraph/photo/zz_probe.go":    photo,
+			"internal/ai/photopipeline/zz_probe.go": blankImports("photopipeline", m("internal/aigraph/photo")),
+			"cmd/api/zz_probe.go":                   blankImports("main", m("internal/ai/photopipeline")),
+		}, "aigraph-only-in-the-worker", "./cmd/api", "./internal/aigraph/photo", "./internal/ai/photopipeline"},
+		{"the route assembly links Eino through the executor", map[string]string{
+			"internal/aigraph/investigator/zz_probe.go":    agent,
+			"internal/investigations/executor/zz_probe.go": blankImports("executor", m("internal/aigraph/investigator")),
+			"internal/api/zz_probe.go":                     blankImports("api", m("internal/investigations/executor")),
+		}, "no-eino-in-the-api", "./internal/api", "github.com/cloudwego/eino/adk", "./internal/investigations/executor"},
+		{"the executor links the investigator agent", map[string]string{
+			"internal/aigraph/investigator/zz_probe.go":    agent,
+			"internal/investigations/executor/zz_probe.go": blankImports("executor", m("internal/aigraph/investigator")),
+		}, "aigraph-only-in-the-worker", "./internal/investigations/executor", "./internal/aigraph/investigator", ""},
+		{"the investigation service links Eino through a role graph", map[string]string{
+			"internal/aigraph/proposal/zz_probe.go": graph,
+			"internal/investigations/zz_probe.go":   blankImports("investigations", m("internal/aigraph/proposal")),
+		}, "no-eino-in-the-api", "./internal/investigations", "github.com/cloudwego/eino/compose", "./internal/aigraph/proposal"},
+	})
+}
+
+// The placements the designs agree on break no rule at all: the adapter, a
+// role graph and the investigator agent importing the Eino packages and the
+// pure AI packages they wrap; the worker, its proposal, analysis and
+// investigation handlers, the live eval and the photo pipeline linking them
+// (the photo pipeline only through the photo graph, its one gateway); and
+// H-061's API side (approved by the owner in H-063), with no Eino: the
+// investigation service, the background executor over the acting-for scope
+// and the shared effects, the approval service sharing those effects, the
+// route assembly and the API binary. The whole matrix is read, so every
+// platform's closure of Eino must be on aigraph-has-no-storage's allowlist
+// and none may link sonic's JIT.
 func TestEinoAgreedPlacementsConform(t *testing.T) {
 	root := repoRoot(t)
 	m := func(p string) string { return module + "/" + p }
@@ -132,26 +188,50 @@ func TestEinoAgreedPlacementsConform(t *testing.T) {
 			m("internal/ai/aicontext"), m("internal/ai/review"), m("internal/model"), m("internal/domainpack"), m("internal/ids"), m("prompts")),
 		"internal/aigraph/analysis/a.go": blankImports("analysis", "github.com/cloudwego/eino/compose", m("internal/aigraph/einomodel"),
 			m("internal/ai/analyst"), m("internal/results/compare")),
-		"internal/aigraph/photo/a.go":              blankImports("photo", "github.com/cloudwego/eino/compose", m("internal/aigraph/einomodel")),
+		"internal/aigraph/photo/a.go": blankImports("photo", "github.com/cloudwego/eino/compose", m("internal/aigraph/einomodel")),
+		"internal/aigraph/investigator/a.go": blankImports("investigator", "github.com/cloudwego/eino/adk", "github.com/cloudwego/eino/components/tool",
+			"github.com/cloudwego/eino/components/tool/utils", "github.com/cloudwego/eino/schema", m("internal/aigraph/einomodel"), m("schemas")),
 		"internal/ai/photopipeline/zz_probe.go":    blankImports("photopipeline", m("internal/aigraph/photo")),
 		"internal/proposals/generator/zz_probe.go": blankImports("generator", m("internal/aigraph/proposal")),
 		"internal/analyses/analyzer/zz_probe.go":   blankImports("analyzer", m("internal/aigraph/analysis")),
 		"internal/aievals/zz_probe.go":             blankImports("aievals", m("internal/aigraph/proposal")),
-		"cmd/worker/zz_probe.go":                   blankImports("main", m("internal/aigraph/proposal")),
-		"cmd/ai-eval-live/zz_probe.go":             blankImports("main", m("internal/aigraph/proposal")),
-		"internal/investigations/loop/a.go":        blankImports("loop", "github.com/cloudwego/eino/compose", "github.com/cloudwego/eino/components/tool/utils", "github.com/cloudwego/eino/schema"),
+		"internal/investigator/a.go": blankImports("investigator", m("internal/aigraph/investigator"), m("internal/worker/handler"),
+			m("internal/storage/jobs"), m("internal/tenant"), m("internal/comparisons"), m("internal/results/compare")),
+		"cmd/worker/zz_probe.go":       blankImports("main", m("internal/aigraph/proposal"), m("internal/investigator")),
+		"cmd/ai-eval-live/zz_probe.go": blankImports("main", m("internal/aigraph/proposal")),
+		// H-061's API side: no Eino, no role graph, no job handler.
+		"internal/tenant/actingfor/a.go":          blankImports("actingfor", m("internal/tenant")),
+		"internal/proposals/effect/a.go":          blankImports("effect", m("internal/storage/scenarios"), m("internal/models")),
+		"internal/proposals/approval/zz_probe.go": blankImports("approval", m("internal/proposals/effect")),
+		"internal/investigations/a.go":            blankImports("investigations", m("internal/proposals/effect")),
+		"internal/investigations/executor/a.go": blankImports("executor", m("internal/tenant/actingfor"), m("internal/proposals/effect"),
+			m("internal/runs"), m("internal/analyses"), m("internal/proposals"), m("internal/models")),
+		"internal/api/zz_probe.go": blankImports("api", m("internal/investigations")),
+		"cmd/api/zz_probe.go":      blankImports("main", m("internal/investigations"), m("internal/investigations/executor")),
 	})
 	g, err := load(root, []string{"-overlay=" + overlay(t, root, files)}, matrix, defaultPatterns...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{m("internal/aigraph/einomodel"), m("internal/aigraph/photo"), m("internal/investigations/loop")} {
+	for _, want := range []string{m("internal/aigraph/einomodel"), m("internal/aigraph/photo"), m("internal/aigraph/investigator"), m("internal/investigator"),
+		m("internal/investigations"), m("internal/investigations/executor"), m("internal/tenant/actingfor"), m("internal/proposals/effect")} {
 		if !slices.Contains(g.roots, want) {
 			t.Fatalf("%s is not in the graph: the test would be vacuous", rel(want))
 		}
 	}
 	if !slices.ContainsFunc(g.pkgs[m("internal/aigraph/einomodel")].Imports, func(p string) bool { return p == "github.com/cloudwego/eino/adk" }) {
 		t.Fatal("the adapter probe does not import Eino: the test would be vacuous")
+	}
+	if !reaches(g, m("cmd/worker"), "github.com/cloudwego/eino/adk") || !reaches(g, m("cmd/api"), m("internal/tenant/actingfor")) {
+		t.Fatal("the worker probe links no investigator agent, or the API probe no executor: the test would be vacuous")
+	}
+	// internal/api's closed-loop tests run the proposal generator in
+	// process, which links Eino here: no-eino-in-the-api-tests must leave
+	// them alone (it holds the API binary's own tests only).
+	api := g.pkgs[m("internal/api")]
+	if !slices.Contains(slices.Concat(api.TestImports, api.XTestImports), m("internal/proposals/generator")) ||
+		!reaches(g, m("internal/proposals/generator"), "github.com/cloudwego/eino/compose") {
+		t.Fatal("internal/api's tests do not link Eino through the generator: the test would not show the closed-loop tests stay allowed")
 	}
 	violations, errs := check(g, rules)
 	for _, e := range errs {

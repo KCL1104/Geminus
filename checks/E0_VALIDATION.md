@@ -84,3 +84,102 @@ Toolchain: go1.27.3 linux/amd64 (`PATH=~/go/pkg/mod/golang.org/toolchain@v0.0.1-
 - `einoClosure` and `einoBrings` are exact: an Eino package outside the seven, or an Eino or sonic upgrade, can bring a module or an I/O edge that the rules refuse; that is a reviewed change to rules.go and ADR-031, and `TestEinoAgreedPlacementsConform` shows it.
 - `scripts/check-architecture`'s test time grows (about 45 overlay loads and one matrix load more); the known overlay flake of its probes (checks/H-045_H-048_LIVE_VALIDATION.md §2) applies to the new probes too.
 - H-061 may move the investigation loop; the fence then changes with it.
+
+## Review round 1
+
+One finding (no High, 1 Medium, no Low). Fixed. Part of the suggested tests variant is narrowed, and the reason is given below.
+
+- Decisions: H-061 (the background investigator's architecture, `docs/design/H-061_BACKGROUND_INVESTIGATOR.md`), approved by the owner in H-063. Both are on the main branch, not on this branch, so they are cited by ID and path, not linked. H-061 §2: "Eino in the API: none; eino-fenced becomes ./internal/aigraph/... only", and `internal/investigations/loop` is removed. §1 and §15.1: "cmd/api links neither Eino nor a live adapter". §4: the executor "holds no Eino and no provider". Slice A1: "If E0 has not merged, the rule changes fold into E0."
+- Product behaviour: unchanged. Only `scripts/check-architecture` and documents changed. No binary links Eino (see the results table).
+
+### M1: the Eino fence was wider than H-061 allows
+
+**Finding.** `einoUsers` still let `./internal/investigations/loop/...` import Eino. ADR-031, THIRD_PARTY_NOTICES and ARCHITECTURE still said "H-061 pending". The reviewer built an overlay in which the loop imports `eino/compose` and `cmd/api` imports the loop, and that tree passed.
+
+**Fix (rules.go, 35 → 40 rules).**
+- `eino-fenced`: `einoUsers` is now `./internal/aigraph/...` only.
+- New `no-eino-in-the-api`. It applies to `einoFreeAPI` (`cmd/api`, `internal/api`, `internal/investigations/...`) and refuses Eino and eino-ext through any package. It has no gateway, so it also covers `internal/aigraph` and the photo pipeline.
+- New `no-eino-in-the-api-tests`. It applies to `cmd/api` only (see the note on the tests variant below).
+- `aigraph-only-in-the-worker` now excepts `internal/investigator/...`, H-061's investigation job handler in the worker. Without this, H-061's own placement fails.
+- `appLayers` gains `./internal/investigator/...`.
+- H-061's slice A1 lists four more rules. They are not about Eino. The approved design folds them into E0 while E0 is unmerged, and E0's first round had held two of them back until H-061 decided (finding 5). All four are now added. Their packages do not exist yet, and every rule applies to `./...`, so none needs `future`:
+  - `investigations-only-in-the-api`;
+  - `acting-for-only-in-the-executor` (only `internal/investigations/executor` and `cmd/api` may link `internal/tenant/actingfor`);
+  - `proposal-effects-only-in-the-api` (only `cmd/api`, `internal/api`, `internal/proposals/approval` and `internal/investigations/...` may link `internal/proposals/effect`);
+  - `internal/investigator` joins `job-handlers-only-in-the-worker`.
+
+**Tests, written first.**
+- `TestEinoPlacement`:
+  - It now uses a shared runner, `assertPlacements`.
+  - The loop case is replaced by "the HTTP transport links Eino through the investigator agent".
+  - 8 new cases: the reviewer's tree, three ways (the loop is refused, the API through the loop is refused by `no-eino-in-the-api`, and by `eino-fenced`); the API through a role graph; the API through the photo pipeline (`no-eino-in-the-api` and `aigraph-only-in-the-worker`); the route assembly through the executor; the executor linking the investigator agent; the investigation service through a role graph.
+- New `TestInvestigationPlacement` (`investigations_test.go`): 15 overlay probes of the four A1 rules, plus "the context builder links the investigation handler" (`ai-suggests-only`) and "the investigator agent links its handler" (`aigraph-has-no-storage`).
+- `TestEinoAgreedPlacementsConform`, over the 16-configuration matrix:
+  - The loop is removed.
+  - H-061's planned packages are added: the investigator agent, the worker's handler and `cmd/worker` linking it, the acting-for scope, the shared effects, approval using them, the investigation service and its executor, `internal/api` and `cmd/api`.
+  - New vacuity guards: the worker reaches Eino's `adk`; the API reaches the acting-for scope; `internal/api`'s tests link the generator, which links Eino.
+  - It still requires no violation at all.
+- `TestProbesAreCaught`, 7 new probes:
+  - `cmd/api` and `internal/api` import Eino → `no-eino-in-the-api`;
+  - a `cmd/api` test imports Eino → `no-eino-in-the-api-tests`;
+  - the loop imports Eino → `eino-fenced`;
+  - the executor imports Eino → `eino-fenced` and `no-eino-in-the-api`;
+  - the investigation handler imports Eino itself → `eino-fenced`.
+- `TestPolicy`:
+  - `eino-fenced` now also applies to the loop, the executor, the handler, the acting-for scope and the effects.
+  - New wants for `no-eino-in-the-api` (4 roots) and its tests variant (`cmd/api`), and for the four A1 rules.
+  - `internal/aigraph/investigator` joins the graphs.
+  - The app-layer list replaces the loop with the executor (same `./internal/investigations/...` pattern) and adds `internal/investigator`.
+  - No existing assertion was removed or loosened. The only entries taken out name the loop, which H-061 removes, and the same pattern still covers them.
+
+**Not done as suggested: the tests variant on `internal/api`.** The first run of `TestEinoAgreedPlacementsConform` with `no-eino-in-the-api-tests` on all of `einoFreeAPI` reported `[no-eino-in-the-api-tests] ./internal/api tests depend on github.com/cloudwego/eino/...` (7 packages).
+- `internal/api`'s existing closed-loop tests link `internal/proposals/generator`, `internal/analyses/analyzer` and `internal/runs/runner` in process (`go list` of its test imports). H-059 (E2, E3) moves those handlers onto the role graphs, so those tests will link Eino.
+- H-061 plans the same kind of test in `internal/investigations` (A9's loop integration test, running the worker's handler).
+- So the tests variant holds only the API binary's own tests (`cmd/api`). Production `internal/api` and the investigation packages are held by `no-eino-in-the-api`. The vacuity guard above shows that `internal/api`'s closed-loop tests are still allowed.
+
+**Documents.**
+- ADR-031: the status line cites H-061 and H-063. "What may import Eino" is rewritten:
+  - `eino-fenced` covers `internal/aigraph` only, including `einomodel.Planner` and `internal/aigraph/investigator`;
+  - new rows for `no-eino-in-the-api` and its tests variant;
+  - `internal/investigator` is now on the worker's side;
+  - the four A1 rules are named and left to H-061 and ADR-032.
+- ADR-031's stderr paragraph: the sonic line appears only in `cmd/worker` and `cmd/ai-eval-live`, never in the API. The native-path alternative now maps executable memory "in the worker". The adapter contract notes that `Metered` keeps refusing tools and that tool calling is `Planner`'s (H-061, A6).
+- `docs/THIRD_PARTY_NOTICES.md` (the Eino section) and `docs/ARCHITECTURE.md` §2 (the E0 paragraph) match.
+- `checks/README.md`: the E0 row.
+
+### Commands and results (round 1)
+
+Same toolchain and `.venv` as above. No live AI call, no `.env` read, no database used.
+
+| Command | Exit | Result |
+|---|---|---|
+| Tests first: `go test -count=1 -run 'TestPolicy\|TestEveryRuleEntryIsEnforced' ./scripts/check-architecture/` before the rules | 1 | FAIL as intended, 59 lines: 44 "rule … is gone" (`no-eino-in-the-api`, its tests variant, the three A1 rules); 7 `job-handlers-only-in-the-worker: … importing ./internal/investigator is not a violation`; 6 `generic-kernel-tests` and 1 `conformance-is-generic` for `internal/investigator` (not yet an app layer); `eino-fenced does not apply to ./internal/investigations/loop` |
+| Tests first: `TestEinoPlacement`, `TestInvestigationPlacement` and the 8 new probes (then 8; one was dropped later, see the tests variant note), before the rules | 1 | Each failure is "no … violation", none is a load error. `TestEinoPlacement`: 7 of 15 FAIL, including the reviewer's tree on all three assertions. `TestInvestigationPlacement`: 14 of 15 FAIL; "the investigator agent links its handler" already passed through `aigraph-has-no-storage`'s module allowlist. Probes: 6 of 8 FAIL; the executor and the handler importing Eino were already refused by `eino-fenced` |
+| `go test -count=1 -run TestEinoAgreedPlacementsConform -v` before the rules | 1 | One violation: `[aigraph-only-in-the-worker] ./internal/investigator depends on ./internal/aigraph/investigator` |
+| The same three runs after the rules | 0, after two fixes | First run: the `internal/api` tests-variant conflict described above. Second: a vacuity guard that read `TestImports` only (`internal/api`'s tests are external, `XTestImports`), fixed. Then `TestEinoAgreedPlacementsConform` PASS (23.9 s), all 15 + 15 placements and the 7 probes PASS |
+| `go test -count=1 -run 'TestPolicy\|TestEveryRuleEntryIsEnforced\|TestSyntheticGraph\|TestPatterns\|TestEinoBringsOnlyTheirImports\|TestPhotopipelineRuleKeepsTheAIPackagesLists\|TestTheUUIDGatewayBringsOnlyTheDriver' -v` | 0 | all 7 PASS |
+| Mutation: `einoUsers` back to include the loop and `einoFreeAPI` reduced to `./internal/httpapi/...`, then `TestPolicy` and the reviewer's three placements; restored from a saved copy | 1 | `eino-fenced does not apply to ./internal/investigations/loop`; 4 × `no-eino-in-the-api does not apply to …`; the three placements fail. `rules.go` restored (`git diff` shows only the intended change) |
+| `make architecture-check` | 0 | `PASS architecture: 101 packages, 40 rules, 16 build configurations` (35 before) |
+| `make backend-test` (started after the last Go change) | 0 | gofmt clean, `go vet` clean, `GEMINUS_FULL_DIFFERENTIAL=1 go test`: 86 packages `ok` (the packages round 1 did not touch from the cache), 15 without test files, none failed; `scripts/check-architecture` re-run, `ok … 589.000s`; wall time 9 m 54 s |
+| `PATH=.venv/bin:$PATH make spec-check` | 0 | every check PASS; `checks/docs-check.json` unchanged (165 Markdown files, 314 relative links: no link added) |
+| `make ai-eval` | 0 | `ok internal/ai/corpus`; the three fake-provider reports rewritten byte-identical (no `git diff` in `checks/`) |
+| `make backend-build`; `go version -m` of `bin/api`, `bin/worker`, `bin/ai-eval-live`, `bin/migrate`, `bin/provision-tenant` | 0 | 0 modules matching cloudwego, bytedance, gonja, logrus or eino-contrib in each (no binary links Eino) |
+| `gofmt -l scripts/check-architecture/`; `go vet ./scripts/check-architecture/` | 0 | clean |
+
+### NOT RUN (round 1)
+
+Unchanged from §4: govulncheck, `make backend-race`, `make integration-test`, `make db-test`, `make frontend-test`, `make e2e-test`, `make ai-eval-live` or any live call, `make build-containers`, `make staging-smoke`. Round 1 changed no Go code outside `scripts/check-architecture` and no SQL, web, prompt or contract file.
+
+### Superseded by this round, and PROPOSED
+
+- Superseded: finding 5 and the matching PROPOSED item ("left for H-061"). H-061 decided, and the rules are added. The risk "H-061 may move the investigation loop": it removed the loop, and the fence follows.
+- PROPOSED (nothing here is approved):
+  - ADR-031 as rewritten;
+  - `no-eino-in-the-api` and its tests variant scoped to `cmd/api`;
+  - the four A1 rules as worded here. A4 and A7 may need to adjust the import edges they allow, for example if a shared service other than approval comes to use `internal/proposals/effect`. That would be a reviewed change to the rule and to H-061.
+- Not done here (A1's documents): the H-056 design's header and §6.2 still name `internal/investigations/loop` and "H-061 pending". H-061's A1 points that header at H-061. ADR-032, the D-008 amendment text and the addenda to ADR-019, ADR-024, ADR-027 and ADR-030 are A1's.
+
+### Risks (round 1)
+
+- This branch is based on `e5ce6ee` and does not contain H-061 or H-063. At merge, `checks/docs-check.json` and `checks/README.md` will need the usual reconciliation with main (H-061 added one Markdown file there).
+- Until A1 writes ADR-032, the acting-for and effects rules rest on H-061's design text only.
