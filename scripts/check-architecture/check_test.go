@@ -1030,6 +1030,12 @@ func TestPolicy(t *testing.T) {
 		want{"live-adapters-apart-anthropic", m("internal/ai/provider/anthropic"), []string{m("internal/ai/provider/meta")}, false, false},
 		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), slices.Concat(io, llm), false, false},
 		want{"ai-is-pure-but-the-adapter", m("internal/ai/provider/structured"), direct, true, false},
+		// H-061 A2: the investigator's decoder may link Unicode
+		// normalization, not the rest of golang.org/x/text, and does no I/O.
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/investigator"), slices.Concat(io, llm, []string{"golang.org/x/text/unicode/cldr", "golang.org/x/text/encoding/charmap"}), false, false},
+		want{"ai-is-pure-but-the-adapter", m("internal/ai/investigator"), direct, true, false},
+		want{"ai-suggests-only", m("internal/ai/investigator"), slices.Concat([]string{m("internal/storage/postgres"), m("internal/tenant"), m("internal/proposals"),
+			m("internal/runs"), m("internal/worker"), m("cmd/api"), "os/exec", "database/sql"}, db), false, false},
 	)
 	byName := map[string]rule{}
 	for _, r := range rules {

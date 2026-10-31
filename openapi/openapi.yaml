@@ -18,6 +18,7 @@ tags:
 - name: Imports
 - name: Simulations
 - name: Analyses
+- name: Investigations
 - name: Audit
 - name: Memberships
 paths:
@@ -3907,6 +3908,1149 @@ paths:
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
+  /models/{id}/investigations:
+    post:
+      operationId: createInvestigation
+      summary: Start an AI investigation that keeps going in the background
+      description: 'H-061 (PROPOSED, pending the owner''s confirmation of the D-008 amendment, ADR-032, the worker grants,
+        the approval-record change and the background clock copy). Behind GEMINUS_INVESTIGATIONS, off by default: while it
+        is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. An
+        owner or editor asks the AI to test ideas on base_version_id, a version of this model (another organization''s, or
+        no such version or model, is 404; another model''s version is 422 at /base_version_id) and its latest (409 MODEL_VERSION_CONFLICT
+        otherwise). Entry A names the mode (scenario: what-ifs saved and run against a baseline with the frozen run_config,
+        which scenario mode requires and edit mode refuses; edit: one change written into a draft with none of a person''s
+        changes), the person''s intent (untrusted, never in audit) and the objective; entry B (from_analysis_id) starts from
+        a completed analysis of one of this model''s runs, reuses its baseline when the baseline''s patch is [] and its settings
+        fit the caps (422 at /from_analysis_id otherwise) and seeds the AI with its suggestions. model is the proposal model
+        (H-049); planner_model the model that picks the tools: muse-spark-1.3 (the default) or muse-wonder-1.0, taken only
+        when the deployment lists it in INVESTIGATION_PLANNER_MODELS (422 REQUEST_VALIDATION_FAILED at /planner_model, details[0].code
+        INVESTIGATION_PLANNER_NOT_OFFERED, otherwise). research is for the first what-if only, and is 422 at /research (details[0].code
+        INVESTIGATION_RESEARCH_OVER_CEILING) when that proposal''s research reservation cannot fit the investigation''s USD
+        2.50 (Muse Wonder research reserves USD 4.994304). A caller with a running investigation in this organization gets
+        409 LIFECYCLE_CONFLICT (an expired one is first stopped with time_limit in the same transaction); the 11th investigation
+        of the organization''s UTC day gets 429 RATE_LIMITED with Retry-After. The organization must be in INVESTIGATION_ORGANIZATION_IDS
+        and the recorded approval must list the investigator role and the planner model (503 otherwise; a Claude deployment,
+        H-018, answers AI_POLICY_NOT_APPROVED). Otherwise the investigation (the stored acting-for scope: organization, requester,
+        base, mode, frozen run settings and caps, deadline_at 20 minutes after creation), its one investigation job (max_attempts
+        5), the investigation.create audit event (IDs, counts, flags and model names, never the intent) and the idempotency
+        response commit together, then 202; nothing is proposed yet: the AI''s first call does that. The Idempotency-Key fingerprint
+        is the model ID and the canonical body. From then on the worker''s agent asks the planner for one of the seven tools
+        of schemas/investigator.schema.json at each step and records the call; the API carries it out in the requester''s
+        name, re-reading their role every time, labelled as the AI''s, until the AI finishes, a cap or the 20 minutes is reached,
+        the requester loses owner or editor, or a person stops it. The AI never publishes, approves, rejects, changes memberships,
+        settings or limits, or reaches another organization.'
+      tags:
+      - Investigations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ModelID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202':
+          description: 'Accepted: stored with its one investigation job.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigation.schema.json#/$defs/InvestigationAccepted
+              examples:
+                accepted:
+                  summary: Stored and queued for the agent
+                  value:
+                    investigation_id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
+                    status: running
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          description: 'A base that is not the latest (MODEL_VERSION_CONFLICT at /base_version_id), a running investigation
+            of the caller in this organization (LIFECYCLE_CONFLICT; the body links nothing else), or a key reused with another
+            body (IDEMPOTENCY_KEY_CONFLICT). Nothing was stored. Codes: MODEL_VERSION_CONFLICT, LIFECYCLE_CONFLICT, IDEMPOTENCY_KEY_CONFLICT.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                already_running:
+                  summary: The caller already has a running investigation here
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: you already have an AI investigation running; stop it or wait for it to end
+                      details:
+                      - path: ''
+                        reason: one running investigation per person per organization
+                        code: INVESTIGATION_RUNNING
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                base_moved:
+                  summary: The base is no longer the model's latest version
+                  value:
+                    error:
+                      code: MODEL_VERSION_CONFLICT
+                      message: the model has a newer version; start from the latest
+                      details:
+                      - path: /base_version_id
+                        reason: not the model's latest version
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+        '413':
+          $ref: '#/components/responses/Error413'
+        '415':
+          $ref: '#/components/responses/Error415'
+        '422':
+          description: 'The body does not fit the contract (REQUEST_VALIDATION_FAILED at the member: run settings over the
+            caps, a scenario without run_config, an edit with one, an unknown member), or names a planner this deployment
+            does not offer (/planner_model, INVESTIGATION_PLANNER_NOT_OFFERED), research that cannot fit the investigation''s
+            USD 2.50 (/research, INVESTIGATION_RESEARCH_OVER_CEILING), a warmup not shorter than the horizon (/run_config/warmup)
+            or an analysis whose baseline cannot be reused (/from_analysis_id). Nothing was stored. Codes: REQUEST_VALIDATION_FAILED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                planner_not_offered:
+                  summary: Muse Wonder 1.0 as planner before its evaluation passed
+                  value:
+                    error:
+                      code: REQUEST_VALIDATION_FAILED
+                      message: this planner is not offered in this deployment
+                      details:
+                      - path: /planner_model
+                        reason: not in this deployment's planner models
+                        code: INVESTIGATION_PLANNER_NOT_OFFERED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                research_over_ceiling:
+                  summary: Research on Muse Wonder 1.0 reserves more than the investigation may spend
+                  value:
+                    error:
+                      code: REQUEST_VALIDATION_FAILED
+                      message: research with this model cannot fit the investigation's spending limit
+                      details:
+                      - path: /research
+                        reason: the research reservation exceeds USD 2.50
+                        code: INVESTIGATION_RESEARCH_OVER_CEILING
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                too_many_replications:
+                  summary: Run settings over the caps
+                  value:
+                    error:
+                      code: REQUEST_VALIDATION_FAILED
+                      message: the request does not match the contract
+                      details:
+                      - path: /run_config/replications
+                        reason: at most 10
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+        '429':
+          description: 'The organization started 10 investigations this UTC day; Retry-After says when the next may start.
+            Nothing was stored. Codes: RATE_LIMITED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            Retry-After:
+              description: Seconds until the next UTC day.
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                daily_cap:
+                  summary: The 11th investigation of the day
+                  value:
+                    error:
+                      code: RATE_LIMITED
+                      message: this organization has started 10 AI investigations today; try again tomorrow (UTC)
+                      details:
+                      - path: ''
+                        reason: at most 10 per organization per UTC day
+                        code: INVESTIGATION_DAILY_LIMIT
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          description: 'Nothing was stored. Investigations are off in this deployment or not for this organization (SERVICE_UNAVAILABLE,
+            details[0].code INVESTIGATIONS_OFF); AI is off (AI_PROVIDER_NOT_CONFIGURED); or the recorded approval does not
+            list the investigator role or the planner model (AI_POLICY_NOT_APPROVED, details[0].code AI_ROLE_NOT_APPROVED
+            or AI_MODEL_NOT_APPROVED at /planner_model). Codes: SERVICE_UNAVAILABLE, AI_PROVIDER_NOT_CONFIGURED, AI_POLICY_NOT_APPROVED.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                'off':
+                  summary: GEMINUS_INVESTIGATIONS is off, or the organization is not listed
+                  value:
+                    error:
+                      code: SERVICE_UNAVAILABLE
+                      message: AI investigations are not available here
+                      details:
+                      - path: ''
+                        reason: investigations are off in this deployment
+                        code: INVESTIGATIONS_OFF
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+                role_not_approved:
+                  summary: The approval record lacks the investigator role (the H-018 Claude deployment)
+                  value:
+                    error:
+                      code: AI_POLICY_NOT_APPROVED
+                      message: AI investigations are not approved in this deployment
+                      details:
+                      - path: ''
+                        reason: this deployment's approval does not list the investigator role
+                        code: AI_ROLE_NOT_APPROVED
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/investigation.schema.json#/$defs/InvestigationRequest
+            examples:
+              what_ifs:
+                summary: 'Entry A: what-ifs against a baseline, with the default planner'
+                value:
+                  base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                  mode: scenario
+                  intent: Find a change that lowers the median lead time without a new line.
+                  output_locale: en
+                  research: false
+                  model: muse-spark-1.3
+                  planner_model: muse-spark-1.3
+                  run_config:
+                    horizon:
+                      value: 7
+                      unit: day
+                    warmup:
+                      value: 0
+                      unit: day
+                    replications: 5
+                    seed: 1
+                    trace_level: sampled
+                  baseline_name: Baseline for the AI
+                  objective:
+                    metric_path: /metrics/lead_time_minutes/p50
+              edit:
+                summary: 'Entry A: one change written into a clean draft'
+                value:
+                  base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                  mode: edit
+                  intent: Model the two ICT testers as one step with capacity 2.
+                  output_locale: en
+              from_analysis:
+                summary: 'Entry B: test an analysis''s suggestions, reusing its baseline'
+                value:
+                  from_analysis_id: ana_01M4YDQK00B8S5WQXJ3TQ7ZK61
+                  output_locale: zh-Hant
+                  planner_model: muse-spark-1.3
+    get:
+      operationId: listInvestigations
+      summary: List a model's AI investigations
+      description: 'H-061 (PROPOSED, pending the owner''s confirmation of the D-008 amendment, ADR-032, the worker grants,
+        the approval-record change and the background clock copy). Behind GEMINUS_INVESTIGATIONS, off by default: while it
+        is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. Any
+        member; the model''s investigations newest first (created_at, then ID), each as getInvestigation shows it; the cursor
+        is bound to the organization, the model and this list.'
+      tags:
+      - Investigations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ModelID
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigation.schema.json#/$defs/Investigations
+              examples:
+                page:
+                  summary: One finished investigation
+                  value:
+                    items:
+                    - id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      mode: scenario
+                      source: request
+                      source_analysis_id: null
+                      objective:
+                        metric_path: /metrics/lead_time_minutes/p50
+                        better: lower
+                      output_locale: en
+                      research: false
+                      proposal_model: muse-spark-1.3
+                      planner:
+                        provider: meta
+                        model: muse-spark-1.3
+                        prompt_template_version: investigator-0.1.0
+                      status: finished
+                      reason: finished_by_ai
+                      activity:
+                        state: ended
+                      caps:
+                        what_ifs: 3
+                        runs: 4
+                        explanations: 4
+                        steps: 14
+                        minutes: 20
+                      used:
+                        what_ifs: 1
+                        runs: 2
+                        explanations: 1
+                        steps: 5
+                      run_config:
+                        horizon:
+                          value: 7
+                          unit: day
+                        warmup:
+                          value: 0
+                          unit: day
+                        replications: 5
+                        seed: 1
+                        trace_level: sampled
+                      baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                      steps:
+                      - seq: 1
+                        tool: propose_what_if
+                        arguments:
+                          idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                          from_suggestion: null
+                        status: done
+                        effect:
+                          proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                        error: null
+                        note: The ICT step has the longest queue, so I start there.
+                        requested_at: '2026-11-01T06:00:05Z'
+                        resolved_at: '2026-11-01T06:00:06Z'
+                        observed_at: '2026-11-01T06:00:21Z'
+                      - seq: 2
+                        tool: save_scenario
+                        arguments:
+                          proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                        status: done
+                        effect:
+                          scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                        error: null
+                        note: null
+                        requested_at: '2026-11-01T06:00:25Z'
+                        resolved_at: '2026-11-01T06:00:26Z'
+                        observed_at: '2026-11-01T06:00:26Z'
+                      - seq: 3
+                        tool: run_what_if
+                        arguments:
+                          scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                        status: done
+                        effect:
+                          baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                          run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                        error: null
+                        note: null
+                        requested_at: '2026-11-01T06:00:30Z'
+                        resolved_at: '2026-11-01T06:00:31Z'
+                        observed_at: '2026-11-01T06:00:44Z'
+                      - seq: 4
+                        tool: explain_results
+                        arguments:
+                          run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                          question: null
+                        status: done
+                        effect:
+                          analysis_id: ana_01M4YDQK00B8S5WQXJ3TQ7ZK60
+                        error: null
+                        note: null
+                        requested_at: '2026-11-01T06:00:45Z'
+                        resolved_at: '2026-11-01T06:00:46Z'
+                        observed_at: '2026-11-01T06:01:40Z'
+                      - seq: 5
+                        tool: finish
+                        arguments:
+                          outcome: improvement_found
+                          best_scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                        status: done
+                        effect: null
+                        error: null
+                        note: The second tester helps; I stop here.
+                        requested_at: '2026-11-01T06:01:50Z'
+                        resolved_at: '2026-11-01T06:01:50Z'
+                        observed_at: '2026-11-01T06:01:50Z'
+                      candidates:
+                      - index: 1
+                        source: idea
+                        idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                        proposal_status: applied
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                        analysis_ids:
+                        - ana_01M4YDQK00B8S5WQXJ3TQ7ZK60
+                        applied_draft_revision: null
+                        comparison:
+                          comparable: true
+                          incomparable_reasons: []
+                          objective:
+                            metric_path: /metrics/lead_time_minutes/p50
+                            baseline: 42.5
+                            scenario: 39.9
+                            absolute_delta: -2.6000000000000014
+                            relative_delta: -0.06117647058823533
+                            status: available
+                            reason: null
+                          metrics:
+                          - metric_path: /metrics/lead_time_minutes/p50
+                            baseline: 42.5
+                            scenario: 39.9
+                            absolute_delta: -2.6000000000000014
+                            relative_delta: -0.06117647058823533
+                            status: available
+                            reason: null
+                          - metric_path: /metrics/throughput/mean
+                            baseline: 120
+                            scenario: 126
+                            absolute_delta: 6
+                            relative_delta: 0.05
+                            status: available
+                            reason: null
+                          warnings: []
+                      best:
+                        index: 1
+                        objective:
+                          metric_path: /metrics/lead_time_minutes/p50
+                          baseline: 42.5
+                          scenario: 39.9
+                          absolute_delta: -2.6000000000000014
+                          relative_delta: -0.06117647058823533
+                          status: available
+                          reason: null
+                      ai_outcome: improvement_found
+                      closing_line:
+                        key: improved
+                        candidate_index: 1
+                        metric_path: /metrics/lead_time_minutes/p50
+                        absolute_delta: -2.6000000000000014
+                        relative_delta: -0.06117647058823533
+                        compared: 1
+                        draft_revision: null
+                      stop: null
+                      deadline_at: '2026-11-01T06:20:00Z'
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                      created_at: '2026-11-01T06:00:00Z'
+                      finished_at: '2026-11-01T06:01:50Z'
+                    next_cursor: null
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /investigations/{id}:
+    get:
+      operationId: getInvestigation
+      summary: 'Read an AI investigation: its steps, candidates and outcome'
+      description: 'H-061 (PROPOSED, pending the owner''s confirmation of the D-008 amendment, ADR-032, the worker grants,
+        the approval-record change and the background clock copy). Behind GEMINUS_INVESTIGATIONS, off by default: while it
+        is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. Any
+        member (viewers and other editors watch it read-only); another organization''s ID is 404. The page polls it every
+        2 s while it runs; the page drives nothing. steps are the ledger''s rows in order (a step still pending when the investigation
+        ended was not carried out); candidates carry the API''s own comparison of each what-if run against the baseline (the
+        figures the AI was shown); best and closing_line are the server''s ranking and words, ai_outcome only the AI''s claim.
+        With no worker alive past deadline_at, activity still says what was last recorded and the next createInvestigation
+        by the requester ends it with time_limit.'
+      tags:
+      - Investigations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/InvestigationID
+      responses:
+        '200':
+          description: Success.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigation.schema.json#/$defs/Investigation
+              examples:
+                running:
+                  summary: Waiting for the runs of its first what-if; its explanation is asked for
+                  value:
+                    id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    source: request
+                    source_analysis_id: null
+                    objective:
+                      metric_path: /metrics/lead_time_minutes/p50
+                      better: lower
+                    output_locale: en
+                    research: false
+                    proposal_model: muse-spark-1.3
+                    planner:
+                      provider: meta
+                      model: muse-spark-1.3
+                      prompt_template_version: investigator-0.1.0
+                    status: running
+                    reason: null
+                    activity:
+                      state: waiting
+                    caps:
+                      what_ifs: 3
+                      runs: 4
+                      explanations: 4
+                      steps: 14
+                      minutes: 20
+                    used:
+                      what_ifs: 1
+                      runs: 2
+                      explanations: 0
+                      steps: 4
+                    run_config:
+                      horizon:
+                        value: 7
+                        unit: day
+                      warmup:
+                        value: 0
+                        unit: day
+                      replications: 5
+                      seed: 1
+                      trace_level: sampled
+                    baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                    steps:
+                    - seq: 1
+                      tool: propose_what_if
+                      arguments:
+                        idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                        from_suggestion: null
+                      status: done
+                      effect:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      error: null
+                      note: The ICT step has the longest queue, so I start there.
+                      requested_at: '2026-11-01T06:00:05Z'
+                      resolved_at: '2026-11-01T06:00:06Z'
+                      observed_at: '2026-11-01T06:00:21Z'
+                    - seq: 2
+                      tool: save_scenario
+                      arguments:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      status: done
+                      effect:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:25Z'
+                      resolved_at: '2026-11-01T06:00:26Z'
+                      observed_at: '2026-11-01T06:00:26Z'
+                    - seq: 3
+                      tool: run_what_if
+                      arguments:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      status: done
+                      effect:
+                        baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:30Z'
+                      resolved_at: '2026-11-01T06:00:31Z'
+                      observed_at: null
+                    - seq: 4
+                      tool: explain_results
+                      arguments:
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                        question: null
+                      status: pending
+                      effect: null
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:45Z'
+                      resolved_at: null
+                      observed_at: null
+                    candidates:
+                    - index: 1
+                      source: idea
+                      idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                      proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      proposal_status: applied
+                      scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      analysis_ids: []
+                      applied_draft_revision: null
+                      comparison: null
+                    best: null
+                    ai_outcome: null
+                    closing_line: null
+                    stop: null
+                    deadline_at: '2026-11-01T06:20:00Z'
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-11-01T06:00:00Z'
+                    finished_at: null
+                finished:
+                  summary: Finished by the AI with an improvement, next to the server's closing line
+                  value:
+                    id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    source: request
+                    source_analysis_id: null
+                    objective:
+                      metric_path: /metrics/lead_time_minutes/p50
+                      better: lower
+                    output_locale: en
+                    research: false
+                    proposal_model: muse-spark-1.3
+                    planner:
+                      provider: meta
+                      model: muse-spark-1.3
+                      prompt_template_version: investigator-0.1.0
+                    status: finished
+                    reason: finished_by_ai
+                    activity:
+                      state: ended
+                    caps:
+                      what_ifs: 3
+                      runs: 4
+                      explanations: 4
+                      steps: 14
+                      minutes: 20
+                    used:
+                      what_ifs: 1
+                      runs: 2
+                      explanations: 1
+                      steps: 5
+                    run_config:
+                      horizon:
+                        value: 7
+                        unit: day
+                      warmup:
+                        value: 0
+                        unit: day
+                      replications: 5
+                      seed: 1
+                      trace_level: sampled
+                    baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                    steps:
+                    - seq: 1
+                      tool: propose_what_if
+                      arguments:
+                        idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                        from_suggestion: null
+                      status: done
+                      effect:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      error: null
+                      note: The ICT step has the longest queue, so I start there.
+                      requested_at: '2026-11-01T06:00:05Z'
+                      resolved_at: '2026-11-01T06:00:06Z'
+                      observed_at: '2026-11-01T06:00:21Z'
+                    - seq: 2
+                      tool: save_scenario
+                      arguments:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      status: done
+                      effect:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:25Z'
+                      resolved_at: '2026-11-01T06:00:26Z'
+                      observed_at: '2026-11-01T06:00:26Z'
+                    - seq: 3
+                      tool: run_what_if
+                      arguments:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      status: done
+                      effect:
+                        baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:30Z'
+                      resolved_at: '2026-11-01T06:00:31Z'
+                      observed_at: '2026-11-01T06:00:44Z'
+                    - seq: 4
+                      tool: explain_results
+                      arguments:
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                        question: null
+                      status: done
+                      effect:
+                        analysis_id: ana_01M4YDQK00B8S5WQXJ3TQ7ZK60
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:45Z'
+                      resolved_at: '2026-11-01T06:00:46Z'
+                      observed_at: '2026-11-01T06:01:40Z'
+                    - seq: 5
+                      tool: finish
+                      arguments:
+                        outcome: improvement_found
+                        best_scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      status: done
+                      effect: null
+                      error: null
+                      note: The second tester helps; I stop here.
+                      requested_at: '2026-11-01T06:01:50Z'
+                      resolved_at: '2026-11-01T06:01:50Z'
+                      observed_at: '2026-11-01T06:01:50Z'
+                    candidates:
+                    - index: 1
+                      source: idea
+                      idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                      proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      proposal_status: applied
+                      scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      analysis_ids:
+                      - ana_01M4YDQK00B8S5WQXJ3TQ7ZK60
+                      applied_draft_revision: null
+                      comparison:
+                        comparable: true
+                        incomparable_reasons: []
+                        objective:
+                          metric_path: /metrics/lead_time_minutes/p50
+                          baseline: 42.5
+                          scenario: 39.9
+                          absolute_delta: -2.6000000000000014
+                          relative_delta: -0.06117647058823533
+                          status: available
+                          reason: null
+                        metrics:
+                        - metric_path: /metrics/lead_time_minutes/p50
+                          baseline: 42.5
+                          scenario: 39.9
+                          absolute_delta: -2.6000000000000014
+                          relative_delta: -0.06117647058823533
+                          status: available
+                          reason: null
+                        - metric_path: /metrics/throughput/mean
+                          baseline: 120
+                          scenario: 126
+                          absolute_delta: 6
+                          relative_delta: 0.05
+                          status: available
+                          reason: null
+                        warnings: []
+                    best:
+                      index: 1
+                      objective:
+                        metric_path: /metrics/lead_time_minutes/p50
+                        baseline: 42.5
+                        scenario: 39.9
+                        absolute_delta: -2.6000000000000014
+                        relative_delta: -0.06117647058823533
+                        status: available
+                        reason: null
+                    ai_outcome: improvement_found
+                    closing_line:
+                      key: improved
+                      candidate_index: 1
+                      metric_path: /metrics/lead_time_minutes/p50
+                      absolute_delta: -2.6000000000000014
+                      relative_delta: -0.06117647058823533
+                      compared: 1
+                      draft_revision: null
+                    stop: null
+                    deadline_at: '2026-11-01T06:20:00Z'
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-11-01T06:00:00Z'
+                    finished_at: '2026-11-01T06:01:50Z'
+                edit_written:
+                  summary: 'Edit mode: the change is in the draft for a person to publish'
+                  value:
+                    id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2B
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: edit
+                    source: request
+                    source_analysis_id: null
+                    objective: null
+                    output_locale: en
+                    research: false
+                    proposal_model: muse-spark-1.3
+                    planner:
+                      provider: meta
+                      model: muse-spark-1.3
+                      prompt_template_version: investigator-0.1.0
+                    status: finished
+                    reason: draft_written
+                    activity:
+                      state: ended
+                    caps:
+                      what_ifs: 1
+                      runs: 0
+                      explanations: 0
+                      steps: 14
+                      minutes: 20
+                    used:
+                      what_ifs: 1
+                      runs: 0
+                      explanations: 0
+                      steps: 2
+                    run_config: null
+                    baseline_run_id: null
+                    steps:
+                    - seq: 1
+                      tool: propose_model_edit
+                      arguments:
+                        idea: Model the two ICT testers as one step with capacity 2.
+                      status: done
+                      effect:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK32
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T07:00:05Z'
+                      resolved_at: '2026-11-01T07:00:06Z'
+                      observed_at: '2026-11-01T07:00:30Z'
+                    - seq: 2
+                      tool: write_to_draft
+                      arguments:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK32
+                      status: done
+                      effect:
+                        draft_revision: 4
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T07:00:35Z'
+                      resolved_at: '2026-11-01T07:00:36Z'
+                      observed_at: '2026-11-01T07:00:36Z'
+                    candidates:
+                    - index: 1
+                      source: idea
+                      idea: Model the two ICT testers as one step with capacity 2.
+                      proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK32
+                      proposal_status: applied
+                      scenario_id: null
+                      run_id: null
+                      analysis_ids: []
+                      applied_draft_revision: 4
+                      comparison: null
+                    best: null
+                    ai_outcome: null
+                    closing_line:
+                      key: draft_written
+                      candidate_index: null
+                      metric_path: null
+                      absolute_delta: null
+                      relative_delta: null
+                      compared: 0
+                      draft_revision: 4
+                    stop: null
+                    deadline_at: '2026-11-01T07:20:00Z'
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-11-01T07:00:00Z'
+                    finished_at: '2026-11-01T07:00:36Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /investigations/{id}/stop:
+    post:
+      operationId: stopInvestigation
+      summary: Stop an AI investigation
+      description: 'H-061 (PROPOSED, pending the owner''s confirmation of the D-008 amendment, ADR-032, the worker grants,
+        the approval-record change and the background clock copy). Behind GEMINUS_INVESTIGATIONS, off by default: while it
+        is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. The
+        requester, or an owner of the organization (another editor is 403). In one transaction: the investigation''s queued
+        job is cancelled, the investigation becomes stopped with stopped_by_person (stop.by is the caller), its queued and
+        running runs are asked to cancel, its queued proposal and analysis jobs are cancelled, and the investigation.stop
+        audit event and the idempotency response are written; then 200 with the investigation. After it commits the database
+        refuses every further AI write and ledger row of the investigation; what the AI already made stays, labelled. An investigation
+        that already ended is 409 LIFECYCLE_CONFLICT.'
+      tags:
+      - Investigations
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/InvestigationID
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Stopped.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigation.schema.json#/$defs/Investigation
+              examples:
+                stopped:
+                  summary: Stopped by an owner while its first explanation was pending
+                  value:
+                    id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
+                    organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                    model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                    base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                    mode: scenario
+                    source: request
+                    source_analysis_id: null
+                    objective:
+                      metric_path: /metrics/lead_time_minutes/p50
+                      better: lower
+                    output_locale: en
+                    research: false
+                    proposal_model: muse-spark-1.3
+                    planner:
+                      provider: meta
+                      model: muse-spark-1.3
+                      prompt_template_version: investigator-0.1.0
+                    status: stopped
+                    reason: stopped_by_person
+                    activity:
+                      state: ended
+                    caps:
+                      what_ifs: 3
+                      runs: 4
+                      explanations: 4
+                      steps: 14
+                      minutes: 20
+                    used:
+                      what_ifs: 1
+                      runs: 2
+                      explanations: 0
+                      steps: 4
+                    run_config:
+                      horizon:
+                        value: 7
+                        unit: day
+                      warmup:
+                        value: 0
+                        unit: day
+                      replications: 5
+                      seed: 1
+                      trace_level: sampled
+                    baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                    steps:
+                    - seq: 1
+                      tool: propose_what_if
+                      arguments:
+                        idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                        from_suggestion: null
+                      status: done
+                      effect:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      error: null
+                      note: The ICT step has the longest queue, so I start there.
+                      requested_at: '2026-11-01T06:00:05Z'
+                      resolved_at: '2026-11-01T06:00:06Z'
+                      observed_at: '2026-11-01T06:00:21Z'
+                    - seq: 2
+                      tool: save_scenario
+                      arguments:
+                        proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      status: done
+                      effect:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:25Z'
+                      resolved_at: '2026-11-01T06:00:26Z'
+                      observed_at: '2026-11-01T06:00:26Z'
+                    - seq: 3
+                      tool: run_what_if
+                      arguments:
+                        scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      status: done
+                      effect:
+                        baseline_run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK50
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:30Z'
+                      resolved_at: '2026-11-01T06:00:31Z'
+                      observed_at: null
+                    - seq: 4
+                      tool: explain_results
+                      arguments:
+                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                        question: null
+                      status: pending
+                      effect: null
+                      error: null
+                      note: null
+                      requested_at: '2026-11-01T06:00:45Z'
+                      resolved_at: null
+                      observed_at: null
+                    candidates:
+                    - index: 1
+                      source: idea
+                      idea: Add a second ICT tester beside the first, so boards stop waiting for the one tester.
+                      proposal_id: aip_01M4YDQK00B8S5WQXJ3TQ7ZK30
+                      proposal_status: applied
+                      scenario_id: scn_01M4YDQK00B8S5WQXJ3TQ7ZK40
+                      run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
+                      analysis_ids: []
+                      applied_draft_revision: null
+                      comparison: null
+                    best: null
+                    ai_outcome: null
+                    closing_line:
+                      key: not_compared
+                      candidate_index: null
+                      metric_path: /metrics/lead_time_minutes/p50
+                      absolute_delta: null
+                      relative_delta: null
+                      compared: 0
+                      draft_revision: null
+                    stop:
+                      by: usr_01M4YDQK0016KTK4JM6KAHZ6BS
+                      at: '2026-11-01T06:00:50Z'
+                    deadline_at: '2026-11-01T06:20:00Z'
+                    created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                    created_at: '2026-11-01T06:00:00Z'
+                    finished_at: '2026-11-01T06:00:50Z'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          description: 'The caller is a viewer, or an editor who did not start it. Codes: FORBIDDEN.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                not_the_requester:
+                  summary: Another editor
+                  value:
+                    error:
+                      code: FORBIDDEN
+                      message: only the person who started it, or an owner, can stop it
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          description: 'The investigation already ended, or the key was reused with another body. Codes: LIFECYCLE_CONFLICT,
+            IDEMPOTENCY_KEY_CONFLICT.'
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Error
+              examples:
+                already_ended:
+                  summary: It already finished or was stopped
+                  value:
+                    error:
+                      code: LIFECYCLE_CONFLICT
+                      message: this investigation has already ended; nothing was changed
+                      request_id: req_01M4YDQK00V6H8S0ST4F7510KR
+        '413':
+          $ref: '#/components/responses/Error413'
+        '415':
+          $ref: '#/components/responses/Error415'
+        '422':
+          $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/investigation.schema.json#/$defs/StopInvestigation
+            examples:
+              empty:
+                summary: A stop takes no option
+                value: {}
   /audit-events:
     get:
       operationId: listAuditEvents

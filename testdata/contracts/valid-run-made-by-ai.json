@@ -1,0 +1,65 @@
+{
+  "id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
+  "organization_id": "org_01M4YDQK00Y5H2929M9WWZWTVH",
+  "model_id": "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+  "model_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "name": "Add a second ICT tester",
+  "scenario_patch": [
+    {
+      "op": "test",
+      "path": "/resources/1/id",
+      "value": "ci_runner"
+    },
+    {
+      "op": "replace",
+      "path": "/resources/1/capacity",
+      "value": 6
+    }
+  ],
+  "scenario_id": "scn_01M4YDQK00B8S5WQXJ3TQ7ZK40",
+  "config": {
+    "horizon": {
+      "value": 7,
+      "unit": "day"
+    },
+    "warmup": {
+      "value": 0,
+      "unit": "day"
+    },
+    "replications": 5,
+    "seed": 1,
+    "trace_level": "sampled"
+  },
+  "config_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "effective_model_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "engine_version": "des-go-0.1.0",
+  "dataset_bindings": [],
+  "execution_limits": {
+    "wall_timeout_seconds": 300,
+    "max_events": 10000000,
+    "max_active_entities": 100000,
+    "max_entity_visits": 10000,
+    "max_trace_events": 100000
+  },
+  "status": "queued",
+  "progress": {
+    "completed_replications": 0,
+    "total_replications": 5,
+    "events_processed": 0,
+    "revision": 0
+  },
+  "cancellation_requested": false,
+  "created_at": "2026-10-19T08:00:00Z",
+  "started_at": null,
+  "finished_at": null,
+  "error": null,
+  "made_by_ai": {
+    "investigation_id": "inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A",
+    "requested_by": "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+    "generated_by": {
+      "provider": "meta",
+      "model": "muse-spark-1.3"
+    }
+  }
+}

@@ -1,0 +1,2045 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/investigation.schema.json",
+  "title": "investigation",
+  "$comment": "H-056, H-060, H-061 (PROPOSED, pending the owner's confirmation of the D-008 amendment, ADR-032, the worker grants, the approval-record change and the background clock copy; behind GEMINUS_INVESTIGATIONS, off by default): an AI investigation. A person (owner or editor) starts it; its planner (Muse Spark 1.3) picks one of the seven tools of investigator.schema.json at each step, the API carries each call out in the person's name under a stored acting-for scope, re-reading their role every time, and every row it makes is labelled as the AI's. It keeps going after the page closes until it finishes, is stopped or reaches 20 minutes; a person publishes. Caps (H-060): 3 what-ifs, 4 runs, 4 explanations, 14 steps, 20 minutes, runs of at most 10 replications and 28 days, 1 running per person, 10 per organization per UTC day, USD 2.50.",
+  "$defs": {
+    "InvestigationObjectiveMetric": {
+      "type": "string",
+      "enum": [
+        "/metrics/lead_time_minutes/p50",
+        "/metrics/lead_time_minutes/mean",
+        "/metrics/lead_time_minutes/p95",
+        "/metrics/throughput/mean"
+      ],
+      "description": "The metrics an investigation may aim at. Lower is better for lead time, higher for throughput (fixed by the server)."
+    },
+    "InvestigationObjectiveChoice": {
+      "type": "object",
+      "description": "The metric a person asks the investigation to improve.",
+      "properties": {
+        "metric_path": {
+          "$ref": "#/$defs/InvestigationObjectiveMetric"
+        }
+      },
+      "required": [
+        "metric_path"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationObjective": {
+      "type": "object",
+      "description": "What the investigation aims at, with the direction the server fixes for the metric.",
+      "properties": {
+        "metric_path": {
+          "$ref": "#/$defs/InvestigationObjectiveMetric"
+        },
+        "better": {
+          "type": "string",
+          "enum": [
+            "lower",
+            "higher"
+          ]
+        }
+      },
+      "required": [
+        "metric_path",
+        "better"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "metric_path": {
+                "const": "/metrics/throughput/mean"
+              }
+            },
+            "required": [
+              "metric_path"
+            ]
+          },
+          "then": {
+            "properties": {
+              "better": {
+                "const": "higher"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "better": {
+                "const": "lower"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "InvestigationHorizon": {
+      "description": "At most 28 days in any unit (H-060).",
+      "allOf": [
+        {
+          "$ref": "common.schema.json#/$defs/Duration"
+        },
+        {
+          "not": {
+            "anyOf": [
+              {
+                "properties": {
+                  "unit": {
+                    "const": "day"
+                  },
+                  "value": {
+                    "exclusiveMinimum": 28
+                  }
+                },
+                "required": [
+                  "unit",
+                  "value"
+                ]
+              },
+              {
+                "properties": {
+                  "unit": {
+                    "const": "hour"
+                  },
+                  "value": {
+                    "exclusiveMinimum": 672
+                  }
+                },
+                "required": [
+                  "unit",
+                  "value"
+                ]
+              },
+              {
+                "properties": {
+                  "unit": {
+                    "const": "minute"
+                  },
+                  "value": {
+                    "exclusiveMinimum": 40320
+                  }
+                },
+                "required": [
+                  "unit",
+                  "value"
+                ]
+              },
+              {
+                "properties": {
+                  "unit": {
+                    "const": "second"
+                  },
+                  "value": {
+                    "exclusiveMinimum": 2419200
+                  }
+                },
+                "required": [
+                  "unit",
+                  "value"
+                ]
+              },
+              {
+                "properties": {
+                  "unit": {
+                    "const": "millisecond"
+                  },
+                  "value": {
+                    "exclusiveMinimum": 2419200000
+                  }
+                },
+                "required": [
+                  "unit",
+                  "value"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "InvestigationRunConfig": {
+      "type": "object",
+      "description": "The run settings of every run the investigation starts (simulation.schema.json RunConfig's members, within H-060's caps: at most 10 replications and 28 days). Frozen at creation; no tool takes settings.",
+      "properties": {
+        "horizon": {
+          "$ref": "#/$defs/InvestigationHorizon"
+        },
+        "warmup": {
+          "$ref": "common.schema.json#/$defs/Duration",
+          "description": "Shorter than the horizon (checked by the server: 422 at /run_config/warmup)."
+        },
+        "replications": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "trace_level": {
+          "type": "string",
+          "enum": [
+            "none",
+            "sampled"
+          ]
+        }
+      },
+      "required": [
+        "horizon",
+        "warmup",
+        "replications",
+        "seed",
+        "trace_level"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationFromRequest": {
+      "type": "object",
+      "description": "Entry A: an investigation asked for in words on the model page.",
+      "properties": {
+        "base_version_id": {
+          "$ref": "common.schema.json#/$defs/ModelVersionID",
+          "description": "The model's latest version (409 MODEL_VERSION_CONFLICT otherwise). Every proposal, scenario and run of the investigation is on it."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "scenario",
+            "edit"
+          ],
+          "description": "scenario: what-ifs, saved and run against a baseline; edit: one change written into a clean draft."
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000,
+          "description": "What the person wants, in their words (untrusted; never in audit). Only white space is 422 at /intent."
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "selected_entity_ids": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[A-Za-z][A-Za-z0-9_.:-]{0,127}$"
+              },
+              "minItems": 0,
+              "maxItems": 500
+            }
+          },
+          "required": [],
+          "additionalProperties": false,
+          "description": "As ProposalRequest.context."
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale",
+          "description": "Language of the AI's prose; en when absent."
+        },
+        "research": {
+          "type": "boolean",
+          "description": "H-046 (2): web research before the first proposal only; false when absent. 422 at /research when that proposal's research reservation cannot fit the investigation's USD 2.50."
+        },
+        "model": {
+          "$ref": "common.schema.json#/$defs/ProposalModel",
+          "description": "H-049: the proposal model; absent is the deployment's model."
+        },
+        "planner_model": {
+          "$ref": "common.schema.json#/$defs/PlannerModel",
+          "description": "The planner; muse-spark-1.3 when absent. 422 at /planner_model when this deployment does not offer it."
+        },
+        "run_config": {
+          "$ref": "#/$defs/InvestigationRunConfig",
+          "description": "Required in scenario mode, refused in edit mode."
+        },
+        "baseline_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "The baseline run's name; required with run_config."
+        },
+        "objective": {
+          "$ref": "#/$defs/InvestigationObjectiveChoice",
+          "description": "Scenario mode only; the median lead time when absent."
+        }
+      },
+      "required": [
+        "base_version_id",
+        "mode",
+        "intent"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "scenario"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "run_config",
+              "baseline_name"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "edit"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "run_config"
+                  ]
+                },
+                {
+                  "required": [
+                    "baseline_name"
+                  ]
+                },
+                {
+                  "required": [
+                    "objective"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "InvestigationFromAnalysis": {
+      "type": "object",
+      "description": "Entry B: \"Let the AI test these\" under a finished analysis (H-052's page), in scenario mode.",
+      "properties": {
+        "from_analysis_id": {
+          "$ref": "common.schema.json#/$defs/AnalysisID",
+          "description": "A completed analysis of one of this model's runs against a baseline whose patch is [] and whose settings fit the caps; its baseline is reused and its suggestions seed the investigation."
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale"
+        },
+        "model": {
+          "$ref": "common.schema.json#/$defs/ProposalModel"
+        },
+        "planner_model": {
+          "$ref": "common.schema.json#/$defs/PlannerModel"
+        },
+        "objective": {
+          "$ref": "#/$defs/InvestigationObjectiveChoice"
+        }
+      },
+      "required": [
+        "from_analysis_id",
+        "output_locale"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationRequest": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/InvestigationFromRequest"
+        },
+        {
+          "$ref": "#/$defs/InvestigationFromAnalysis"
+        }
+      ],
+      "description": "createInvestigation's body: from a request (entry A) or from an analysis (entry B). No member names caps, limits, steps or a user."
+    },
+    "InvestigationAccepted": {
+      "type": "object",
+      "description": "createInvestigation's 202: stored with its one investigation job; nothing is proposed yet (the AI's first call does that).",
+      "properties": {
+        "investigation_id": {
+          "$ref": "common.schema.json#/$defs/InvestigationID"
+        },
+        "status": {
+          "const": "running"
+        }
+      },
+      "required": [
+        "investigation_id",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "StopInvestigation": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "stopInvestigation's body: a closed empty object (a stop takes no option)."
+    },
+    "InvestigationPlanner": {
+      "type": "object",
+      "description": "The planner that picks the steps: \"Done by Muse Spark 1.3 (Meta) for you\".",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_-]{0,31}$"
+        },
+        "model": {
+          "$ref": "common.schema.json#/$defs/PlannerModel"
+        },
+        "prompt_template_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,127}$"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "prompt_template_version"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationCaps": {
+      "type": "object",
+      "description": "H-060's caps, frozen at creation (runs is 3 when a person's baseline is reused; edit mode: 1, 0, 0).",
+      "properties": {
+        "what_ifs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "explanations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "steps": {
+          "const": 14
+        },
+        "minutes": {
+          "const": 20
+        }
+      },
+      "required": [
+        "what_ifs",
+        "runs",
+        "explanations",
+        "steps",
+        "minutes"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationUsed": {
+      "type": "object",
+      "description": "What the investigation used, counted from its rows.",
+      "properties": {
+        "what_ifs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "runs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "explanations": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 14
+        }
+      },
+      "required": [
+        "what_ifs",
+        "runs",
+        "explanations",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationActivity": {
+      "type": "object",
+      "description": "What it is doing now: queued (no worker has it yet), planning (the AI is choosing), carrying_out (a call waits for the API), waiting (for a proposal, runs or an explanation), ended.",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "planning",
+            "carrying_out",
+            "waiting",
+            "ended"
+          ]
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationStepTool": {
+      "anyOf": [
+        {
+          "$ref": "investigator.schema.json#/$defs/InvestigatorTool"
+        },
+        {
+          "const": "invalid_call"
+        }
+      ],
+      "description": "The step's tool, or invalid_call for model output that named no offered tool or did not decode."
+    },
+    "InvestigationStepEffect": {
+      "type": "object",
+      "description": "What a carried-out call made (references only).",
+      "properties": {
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        },
+        "scenario_id": {
+          "$ref": "common.schema.json#/$defs/ScenarioID"
+        },
+        "baseline_run_id": {
+          "$ref": "common.schema.json#/$defs/RunID"
+        },
+        "run_id": {
+          "$ref": "common.schema.json#/$defs/RunID"
+        },
+        "analysis_id": {
+          "$ref": "common.schema.json#/$defs/AnalysisID"
+        },
+        "draft_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "InvestigationStep": {
+      "type": "object",
+      "description": "One AI step: a row of the tool-call ledger (H-061 §5, §11).",
+      "properties": {
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 14
+        },
+        "tool": {
+          "$ref": "#/$defs/InvestigationStepTool"
+        },
+        "arguments": {
+          "anyOf": [
+            {
+              "$ref": "investigator.schema.json#/$defs/ProposeWhatIfArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/SaveScenarioArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/RunWhatIfArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/ExplainResultsArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/ProposeModelEditArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/WriteToDraftArguments"
+            },
+            {
+              "$ref": "investigator.schema.json#/$defs/FinishArguments"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The call's arguments as the server decoded and stored them (canonical); null for invalid_call. idea and question are AI text."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "done",
+            "refused",
+            "failed"
+          ],
+          "description": "pending: asked, not yet carried out (still pending when the investigation ended: not carried out); done: carried out; refused or failed: with error."
+        },
+        "effect": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationStepEffect"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "investigator.schema.json#/$defs/ToolError"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "The AI's note on why it made the call: AI text, sanitized, shown labelled, never fed back to it."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolved_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "description": "When the worker recorded what the AI was shown; null while it waits for the proposal, the runs or the explanation."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "seq",
+        "tool",
+        "arguments",
+        "status",
+        "effect",
+        "error",
+        "note",
+        "requested_at",
+        "resolved_at",
+        "observed_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "propose_what_if"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/ProposeWhatIfArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "save_scenario"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/SaveScenarioArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "run_what_if"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/RunWhatIfArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "explain_results"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/ExplainResultsArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "propose_model_edit"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/ProposeModelEditArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "write_to_draft"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/WriteToDraftArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "finish"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "$ref": "investigator.schema.json#/$defs/FinishArguments"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "propose_what_if"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "proposal_id"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "proposal_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "propose_model_edit"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "proposal_id"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "proposal_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "save_scenario"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "scenario_id"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "scenario_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "run_what_if"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "baseline_run_id",
+                  "run_id"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "baseline_run_id",
+                    "run_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "explain_results"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "analysis_id"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "analysis_id"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "write_to_draft"
+              },
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "tool",
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "object",
+                "required": [
+                  "draft_revision"
+                ],
+                "propertyNames": {
+                  "enum": [
+                    "draft_revision"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "$comment": "invalid_call records model output that did not decode: refused, no arguments stored.",
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "invalid_call"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "arguments": {
+                "type": "null"
+              },
+              "status": {
+                "const": "refused"
+              },
+              "error": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "UNKNOWN_TOOL",
+                      "INVALID_ARGUMENTS"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "arguments": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool": {
+                "const": "finish"
+              }
+            },
+            "required": [
+              "tool"
+            ]
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "done"
+              },
+              "effect": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "pending"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "effect": {
+                "type": "null"
+              },
+              "error": {
+                "type": "null"
+              },
+              "resolved_at": {
+                "type": "null"
+              },
+              "observed_at": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "done"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "type": "null"
+              },
+              "resolved_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "refused",
+                  "failed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "error": {
+                "$ref": "investigator.schema.json#/$defs/ToolError"
+              },
+              "effect": {
+                "type": "null"
+              },
+              "resolved_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "InvestigationCandidate": {
+      "type": "object",
+      "description": "One what-if (or the one edit) of the investigation, with the API's own comparison of its run against the baseline (the same figures the AI was shown).",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "idea",
+            "suggestion"
+          ],
+          "description": "idea: the AI's own words; suggestion: one of an analysis's suggested experiments (from_suggestion)."
+        },
+        "idea": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The idea argument of the call (AI text)."
+        },
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        },
+        "proposal_status": {
+          "type": "string",
+          "enum": [
+            "generating",
+            "needs_input",
+            "ready",
+            "invalid",
+            "failed",
+            "approved",
+            "rejected",
+            "conflicted",
+            "applied"
+          ],
+          "description": "The proposal's status (proposal.schema.json's list)."
+        },
+        "scenario_id": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/ScenarioID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_id": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/RunID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "analysis_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/AnalysisID"
+          },
+          "minItems": 0,
+          "maxItems": 4
+        },
+        "applied_draft_revision": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "comparison": {
+          "anyOf": [
+            {
+              "$ref": "investigator.schema.json#/$defs/RunComparison"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "index",
+        "source",
+        "idea",
+        "proposal_id",
+        "proposal_status",
+        "scenario_id",
+        "run_id",
+        "analysis_ids",
+        "applied_draft_revision",
+        "comparison"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationBest": {
+      "type": "object",
+      "description": "The server's best comparable what-if: by the objective's relative change in its fixed direction, then fewer operations, then index.",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "objective": {
+          "$ref": "http.schema.json#/$defs/ComparisonMetric"
+        }
+      },
+      "required": [
+        "index",
+        "objective"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationStop": {
+      "type": "object",
+      "description": "Who stopped it (the requester or an owner), and when.",
+      "properties": {
+        "by": {
+          "$ref": "common.schema.json#/$defs/UserID"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "by",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "InvestigationClosingLine": {
+      "type": "object",
+      "description": "The server's closing line: a catalog key and server figures only (the ranking of internal/investigations over the stored comparisons). P0 tests no significance, and the UI says so.",
+      "properties": {
+        "key": {
+          "type": "string",
+          "enum": [
+            "improved",
+            "no_improvement",
+            "not_compared",
+            "draft_written",
+            "draft_not_written"
+          ],
+          "description": "The catalog template the UI words in the output locale: improved (the best comparable what-if moved the objective the right way), no_improvement (none of the compared did), not_compared (no pair could be compared), draft_written / draft_not_written (edit mode)."
+        },
+        "candidate_index": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationObjectiveMetric"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "absolute_delta": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1000000000000000.0,
+              "maximum": 1000000000000000.0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relative_delta": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": -1000000000000000.0,
+              "maximum": 1000000000000000.0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "compared": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3,
+          "description": "How many what-ifs had a comparable pair."
+        },
+        "draft_revision": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "candidate_index",
+        "metric_path",
+        "absolute_delta",
+        "relative_delta",
+        "compared",
+        "draft_revision"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "const": "improved"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidate_index": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "metric_path": {
+                "$ref": "#/$defs/InvestigationObjectiveMetric"
+              },
+              "absolute_delta": {
+                "type": "number"
+              },
+              "compared": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "draft_revision": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "const": "no_improvement"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidate_index": {
+                "type": "null"
+              },
+              "metric_path": {
+                "$ref": "#/$defs/InvestigationObjectiveMetric"
+              },
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "compared": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3
+              },
+              "draft_revision": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "const": "not_compared"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidate_index": {
+                "type": "null"
+              },
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "compared": {
+                "const": 0
+              },
+              "draft_revision": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "const": "draft_written"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidate_index": {
+                "type": "null"
+              },
+              "metric_path": {
+                "type": "null"
+              },
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "compared": {
+                "const": 0
+              },
+              "draft_revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "key": {
+                "const": "draft_not_written"
+              }
+            },
+            "required": [
+              "key"
+            ]
+          },
+          "then": {
+            "properties": {
+              "candidate_index": {
+                "type": "null"
+              },
+              "metric_path": {
+                "type": "null"
+              },
+              "absolute_delta": {
+                "type": "null"
+              },
+              "relative_delta": {
+                "type": "null"
+              },
+              "compared": {
+                "const": 0
+              },
+              "draft_revision": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Investigation": {
+      "type": "object",
+      "description": "getInvestigation, listInvestigations' items and stopInvestigation's 200. No step counter or next action: the steps are the ledger's rows.",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/InvestigationID"
+        },
+        "organization_id": {
+          "$ref": "common.schema.json#/$defs/OrganizationID"
+        },
+        "model_id": {
+          "$ref": "common.schema.json#/$defs/ModelID"
+        },
+        "base_version_id": {
+          "$ref": "common.schema.json#/$defs/ModelVersionID"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "scenario",
+            "edit"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "request",
+            "analysis"
+          ]
+        },
+        "source_analysis_id": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/AnalysisID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationObjective"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale"
+        },
+        "research": {
+          "type": "boolean"
+        },
+        "proposal_model": {
+          "$ref": "common.schema.json#/$defs/ProposalModel"
+        },
+        "planner": {
+          "$ref": "#/$defs/InvestigationPlanner"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "running",
+            "finished",
+            "stopped"
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/InvestigationReason"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "activity": {
+          "$ref": "#/$defs/InvestigationActivity"
+        },
+        "caps": {
+          "$ref": "#/$defs/InvestigationCaps"
+        },
+        "used": {
+          "$ref": "#/$defs/InvestigationUsed"
+        },
+        "run_config": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationRunConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "baseline_run_id": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/RunID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InvestigationStep"
+          },
+          "minItems": 0,
+          "maxItems": 14
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InvestigationCandidate"
+          },
+          "minItems": 0,
+          "maxItems": 3
+        },
+        "best": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationBest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ai_outcome": {
+          "anyOf": [
+            {
+              "$ref": "investigator.schema.json#/$defs/AiOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "closing_line": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationClosingLine"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InvestigationStop"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "deadline_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "20 minutes after created_at, queue time included."
+        },
+        "created_by": {
+          "$ref": "common.schema.json#/$defs/UserID"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "organization_id",
+        "model_id",
+        "base_version_id",
+        "mode",
+        "source",
+        "source_analysis_id",
+        "objective",
+        "output_locale",
+        "research",
+        "proposal_model",
+        "planner",
+        "status",
+        "reason",
+        "activity",
+        "caps",
+        "used",
+        "run_config",
+        "baseline_run_id",
+        "steps",
+        "candidates",
+        "best",
+        "ai_outcome",
+        "closing_line",
+        "stop",
+        "deadline_at",
+        "created_by",
+        "created_at",
+        "finished_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "running"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "type": "null"
+              },
+              "finished_at": {
+                "type": "null"
+              },
+              "ai_outcome": {
+                "type": "null"
+              },
+              "closing_line": {
+                "type": "null"
+              },
+              "stop": {
+                "type": "null"
+              },
+              "activity": {
+                "properties": {
+                  "state": {
+                    "enum": [
+                      "queued",
+                      "planning",
+                      "carrying_out",
+                      "waiting"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "finished_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "closing_line": {
+                "$ref": "#/$defs/InvestigationClosingLine"
+              },
+              "activity": {
+                "properties": {
+                  "state": {
+                    "const": "ended"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "finished"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "enum": [
+                  "finished_by_ai",
+                  "draft_written",
+                  "limit_reached"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "stopped"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "enum": [
+                  "time_limit",
+                  "spend_cap",
+                  "invalid_answer",
+                  "ai_failed",
+                  "role_lost",
+                  "stopped_by_person"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "$comment": "The AI's claimed outcome exists exactly when it called finish.",
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "finished_by_ai"
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "ai_outcome": {
+                "$ref": "investigator.schema.json#/$defs/AiOutcome"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "ai_outcome": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "stopped_by_person"
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "properties": {
+              "stop": {
+                "$ref": "#/$defs/InvestigationStop"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "stop": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "edit"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "objective": {
+                "type": "null"
+              },
+              "run_config": {
+                "type": "null"
+              },
+              "baseline_run_id": {
+                "type": "null"
+              },
+              "source": {
+                "const": "request"
+              },
+              "candidates": {
+                "maxItems": 1
+              },
+              "caps": {
+                "properties": {
+                  "what_ifs": {
+                    "const": 1
+                  },
+                  "runs": {
+                    "const": 0
+                  },
+                  "explanations": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "objective": {
+                "$ref": "#/$defs/InvestigationObjective"
+              },
+              "run_config": {
+                "$ref": "#/$defs/InvestigationRunConfig"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "const": "analysis"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source_analysis_id": {
+                "$ref": "common.schema.json#/$defs/AnalysisID"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source_analysis_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Investigations": {
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Investigation"
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
