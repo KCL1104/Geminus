@@ -1193,7 +1193,10 @@ paths:
         keep what the provider wrote (needs_input, ready, approved, rejected, conflicted), sources: the pages the AI
         said it relied on that the call itself asked its search tool to open (https only, at most 20, titles cleaned; that
         a page loaded is not known), untrusted text that
-        the server checks nothing of; never for an invalid or a failed proposal.'
+        the server checks nothing of; never for an invalid or a failed proposal. H-052: a proposal asked for with a photo
+        has generated_by.segmenter.boxes once it is answered (each object the segmenter found: its concept, its box in
+        the photo''s pixels and its confidence), when the stored boxes pass the server''s checks again; the photo itself
+        is getProposalImage.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1329,6 +1332,32 @@ paths:
                       height: 520
                       size_bytes: 21843
                       content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+                    generated_by:
+                      provider: meta
+                      model: muse-spark-1.3
+                      segmenter:
+                        provider: meta
+                        model: sam-3.1
+                        objects: 3
+                        boxes:
+                        - concept: smt line
+                          x1: 40
+                          y1: 190
+                          x2: 229
+                          y2: 309
+                          confidence: 0.93
+                        - concept: aoi machine
+                          x1: 330
+                          y1: 200
+                          x2: 449
+                          y2: 299
+                          confidence: 0.93
+                        - concept: conveyor belt
+                          x1: 230
+                          y1: 242
+                          x2: 329
+                          y2: 257
+                          confidence: 0.81
                     summary: Add the AOI station the photo shows after the SMT line, with its buffer.
                     assumptions:
                     - The photo shows one AOI machine after the SMT line; its service time is the SMT line's until a person sets it.
@@ -1507,6 +1536,73 @@ paths:
           $ref: '#/components/responses/Error409'
         '422':
           $ref: '#/components/responses/Error422'
+        '429':
+          $ref: '#/components/responses/Error429'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /ai-proposals/{id}/image:
+    get:
+      operationId: getProposalImage
+      summary: Get the photo a proposal was asked for with
+      description: 'H-052 (T-056, D-044): any member reads the photo or floor plan a proposal was asked for with, so the
+        proposal page can draw the segmenter''s boxes (getProposal generated_by.segmenter.boxes) over it. The API
+        authorizes the caller against the proposal and its image record (twin.ai_proposal_images) in one transaction,
+        then reads the stored object and serves it only when it is the one the record names (SHA-256, size, media type
+        and size in pixels; source_image); no signed URL, and the client names only the proposal, never an object key.
+        The bytes are the server''s re-encoding of the upload (pixels only, no metadata), as image/png or image/jpeg,
+        in every status of the proposal. 404 NOT_FOUND for a proposal that does not exist, is another organization''s
+        or was asked for in words; 500 INTERNAL_ERROR, with no byte of the image, when the stored object is missing or
+        does not match its record; 503 SERVICE_UNAVAILABLE when this deployment has no object storage.'
+      tags:
+      - Proposals
+      x-origin: PROPOSED
+      x-required-roles:
+      - owner
+      - editor
+      - viewer
+      parameters:
+      - $ref: '#/components/parameters/OrganizationContext'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/ProposalID
+      responses:
+        '200':
+          description: The stored photo, as its media type; never sniffed, never cached.
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestID'
+            Cache-Control:
+              description: Always no-store; the photo is the organization's.
+              schema:
+                type: string
+                const: no-store
+            X-Content-Type-Options:
+              schema:
+                type: string
+                const: nosniff
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+                maxLength: 5242880
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+                maxLength: 5242880
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
         '429':
           $ref: '#/components/responses/Error429'
         '500':

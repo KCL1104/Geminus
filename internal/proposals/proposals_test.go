@@ -57,7 +57,7 @@ func TestRoutesMatchContract(t *testing.T) {
 			t.Errorf("%s: route %s %s %v, contract %s %s %v", r.OperationID, r.Method, r.Path, roles, o.Method, o.Path, o.Roles)
 		}
 	}
-	if want := []string{"createProposal", "listProposals", "getProposal", "createImageProposal"}; !slices.Equal(got, want) {
+	if want := []string{"createProposal", "listProposals", "getProposal", "createImageProposal", "getProposalImage"}; !slices.Equal(got, want) {
 		t.Errorf("routes %v, want %v", got, want)
 	}
 }

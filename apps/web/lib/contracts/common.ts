@@ -123,7 +123,7 @@ export type IdAllocationPool = {
 /** The issue codes the generic validator (TWIN_IR_SPEC §4, D-023), the patch policy (D-014, D-020), the domain packs and the server's review of an AI proposal (T-025: ID_POOL_VIOLATION for a new entity ID outside the proposal's D-046 pool, AI_OUTPUT_INVALID for a provider answer that is not an acceptable proposal; D-061 PROPOSED) emit; Go tests keep this list equal to their constants. ValidationIssue.code stays open: a later pack may add a code; the UI then shows the issue's own message as English text (ADR-020). T-046 phase 2 (ADR-026, D-050 A): BLOCKING_CYCLE, CALENDAR_INVALID, RELEASE_SCHEDULE_INVALID, BATCH_INVALID, SETUP_INVALID and STALL_RISK (an error) are the line-flow rules (TWIN_IR_SPEC §4); PRIMITIVE_NOT_SUPPORTED refuses a line-flow member this build does not implement yet (D-063 PROPOSED). DOMAIN_MISMATCH is every pack's; the electronics line pack (ELECTRONICS_LINE §3.4, T-051, D-117 PROPOSED) adds STATION_RESOURCE_INVALID (an error: a station process without exactly one resource of its station's role), RETEST_RESOURCE_MISMATCH (an error: a retest without its first test's primary resource), TEST_RESULT_NOT_IDENTIFIED (a warning: a test result decision without exactly one flow to a failure node, so the station's first-pass yield is unavailable) and DOMAIN_ATTRIBUTES_INVALID (a warning: a station, pass or result_of attribute the pack cannot use). */
 export type ValidationCode = "JSON_INVALID" | "IR_SCHEMA_INVALID" | "LIMIT_EXCEEDED" | "DUPLICATE_ID" | "UNKNOWN_REFERENCE" | "VIEW_REFERENCE_INVALID" | "ROUTING_INVALID" | "NO_REACHABLE_SINK" | "ZERO_TIME_CYCLE" | "UNREACHABLE_NODE" | "RESOURCE_REQUIREMENT_INVALID" | "DISTRIBUTION_INVALID" | "CONSTRAINT_FAILED" | "DATASET_BINDING_INVALID" | "DOMAIN_MISMATCH" | "PATCH_SCHEMA_INVALID" | "PATCH_PATH_INVALID" | "PATCH_PATH_FORBIDDEN" | "PATCH_TEST_REQUIRED" | "PATCH_TARGET_MISSING" | "PATCH_TEST_FAILED" | "ID_POOL_VIOLATION" | "AI_OUTPUT_INVALID" | "BLOCKING_CYCLE" | "CALENDAR_INVALID" | "RELEASE_SCHEDULE_INVALID" | "BATCH_INVALID" | "SETUP_INVALID" | "STALL_RISK" | "PRIMITIVE_NOT_SUPPORTED" | "STATION_RESOURCE_INVALID" | "RETEST_RESOURCE_MISMATCH" | "TEST_RESULT_NOT_IDENTIFIED" | "DOMAIN_ATTRIBUTES_INVALID";
 
-/** H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash or latency. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own. */
+/** H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. H-052: for a photo proposal, also the boxes of those objects (segmenter.boxes). Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash, latency or object ID. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own. */
 export type GeneratedBy = {
   /** The provider that answered, as configured (e.g. meta, anthropic, fake). */
   provider: string;
@@ -133,12 +133,24 @@ export type GeneratedBy = {
     provider: string;
     model?: string;
     objects: number;
+    /** H-052: the objects themselves, for the proposal page to draw over the photo (getProposalImage): as many as objects, in the segmenter's order (the request's concepts, then by object). Absent when the segmenter found nothing, for a proposal stored before the boxes were kept, and whenever the stored boxes do not all pass the server's checks again (the count, each concept, each box inside the source image, each confidence): then only objects is shown, never part of the boxes. */
+    boxes?: SegmentBox[];
   };
   /** H-046 (2): present only when the call ran with research on. queries is how many web searches the call made (0 when the model made none; asking to open a page or to find text in one is not counted), sources_dropped how many sources the answer named that the server did not keep: not asked for by this call, not an https URL the server accepts, carrying one of the request's identifiers in its query string, a repeat, or past the first 20. */
   web_search?: {
     queries: number;
     sources_dropped: number;
   };
+};
+
+/** H-052: one object a segmenter found in a photo proposal's image (SAM 3.1 in the hackathon deployment): the concept the server asked it to find (one of the domain pack's short noun phrases, which is what was looked for, not the kind of station the AI then proposed), its box's corners in the source image's pixels (x1, y1 top left and x2, y2 bottom right, inclusive; origin top left, x right, y down; inside source_image's width and height) and the segmenter's own confidence from 0 to 1. The segmenter's guess, untrusted: the server's validation and risk do not rest on it. */
+export type SegmentBox = {
+  concept: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  confidence: number;
 };
 
 /** H-046 (2): a web page the AI asked its provider's web search tool to open while it researched a proposal (an open_page or find_in_page step). The provider returns no tool result, so that the page loaded, or what it held, is not known: this is where the model asked to go, not proof that it read the page. The server keeps a source only when the call itself asked to open that URL, only an https URL of a public-looking DNS name (no IP address, single-label or private host) of printable ASCII without user info, at most 2048 characters, with its fragment removed, and never one whose query string carries one of the request's own identifiers; the title is the AI's own words for the page, with control, format and bidirectional characters removed, white space collapsed and at most 200 characters. Untrusted text for people to follow up: the server checks nothing the page or the title says, and neither changes the proposal's validation or risk. */

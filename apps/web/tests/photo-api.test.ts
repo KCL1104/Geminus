@@ -6,6 +6,7 @@
 // fixed name (never the person's), and no Content-Type of its own (the
 // browser writes the boundary). It refuses what the contract would refuse
 // before sending anything, and hands the server's refusals over as given.
+// H-052: getProposalImage, the stored photo back as a PNG or JPEG Blob.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createApiClient } from "../lib/api/client";
@@ -100,6 +101,49 @@ describe("createImageProposal (T-056) through the client", () => {
       ["MODEL_VERSION_CONFLICT", null, REQ],
       ["AI_PROVIDER_NOT_CONFIGURED", null, REQ],
     ]);
+  });
+
+  it("reads a proposal's photo (H-052) at the contract's method and path, with the tenant selector, as a PNG or JPEG Blob", async () => {
+    const PROPOSAL = "aip_01M4YDQK00ADN261CME3WV5HZB";
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7]);
+    const image = (type: string) => new Response(bytes, { status: 200, headers: { "Content-Type": type, "X-Request-ID": REQ } });
+    const f = fakeFetch(image("image/png"), image("image/jpeg"));
+    const client = api(f);
+    const png = await client.getProposalImage(PROPOSAL);
+    const jpeg = await client.getProposalImage(PROPOSAL);
+    expect(png.ok && [png.data.type, png.data.size, png.requestId]).toEqual(["image/png", bytes.length, REQ]);
+    expect(png.ok && new Uint8Array(await png.data.arrayBuffer())).toEqual(bytes);
+    expect(jpeg.ok && jpeg.data.type).toBe("image/jpeg");
+    const op = operations.find((o) => o.operation_id === "getProposalImage");
+    const c = f.calls[0]!;
+    const template = c.url.pathname.slice("/api".length).replace(/\/aip_[0-9A-Z]{26}/, "/{id}");
+    expect([c.init.method, template, op?.roles]).toEqual([op?.method, op?.path, ["owner", "editor", "viewer"]]);
+    expect([headers(c)["X-Organization-ID"], headers(c)["Accept"], c.init.cache, c.init.credentials]).toEqual([ORG, "image/png, image/jpeg", "no-store", "same-origin"]);
+  });
+
+  it("refuses a photo of another type, and hands the server's refusals over as given", async () => {
+    const PROPOSAL = "aip_01M4YDQK00ADN261CME3WV5HZB";
+    const err = (code: string) => ({ error: { code, message: "x", request_id: REQ } });
+    const f = fakeFetch(
+      new Response("<svg xmlns='http://www.w3.org/2000/svg'/>", { status: 200, headers: { "Content-Type": "image/svg+xml" } }),
+      new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } }),
+      json(404, err("NOT_FOUND")),
+      json(500, err("INTERNAL_ERROR")),
+    );
+    const client = api(f);
+    const out = [];
+    for (let i = 0; i < 4; i++) out.push(await client.getProposalImage(PROPOSAL));
+    expect(out.map((r) => !r.ok && [r.problem.kind, r.problem.code])).toEqual([
+      ["protocol", null],
+      ["protocol", null],
+      ["not_found", "NOT_FOUND"],
+      ["internal", "INTERNAL_ERROR"],
+    ]);
+    // A bad ID, or no session: nothing is sent.
+    const none = fakeFetch();
+    expect((await api(none).getProposalImage("aip_x/../../models")).ok).toBe(false);
+    expect((await createApiClient({ session: () => null, fetch: none.fetch }).getProposalImage(PROPOSAL)).ok).toBe(false);
+    expect(none.calls).toHaveLength(0);
   });
 
   it("the form's bounds are the contract's", () => {

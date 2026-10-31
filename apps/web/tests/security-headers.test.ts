@@ -73,7 +73,9 @@ describe("the Content-Security-Policy", () => {
     // Only for browsers without the two above: there a nonce would turn
     // 'unsafe-inline' off for the attributes too.
     expect(p.get("style-src")).toEqual(["'self'", "'unsafe-inline'"]);
-    expect(p.get("img-src")).toEqual(["'self'"]);
+    // blob: only for images (H-052): the proposal's photo, fetched with the
+    // tenant selector and shown as an object URL this origin made.
+    expect(p.get("img-src")).toEqual(["'self'", "blob:"]);
     expect(p.get("font-src")).toEqual(["'self'"]);
     expect(p.get("connect-src")).toEqual(["'self'"]);
     expect(p.get("object-src")).toEqual(["'none'"]);
@@ -85,8 +87,10 @@ describe("the Content-Security-Policy", () => {
   it("never allows eval, inline script, a wildcard or a scheme in production", () => {
     for (const https of [false, true]) {
       const policy = contentSecurityPolicy({ nonce: NONCE, https, development: false });
-      expect(policy).not.toMatch(/unsafe-eval|wasm-unsafe-eval|unsafe-hashes|\*|data:|blob:|https?:|ws:|report-/);
+      expect(policy).not.toMatch(/unsafe-eval|wasm-unsafe-eval|unsafe-hashes|\*|data:|https?:|ws:|report-/);
       const p = directives(policy);
+      // The one scheme source: blob: for images (H-052), in no other directive.
+      expect([...p].filter(([, s]) => s.some((x) => /^[a-z][a-z0-9+.-]*:$/i.test(x))).map(([n, s]) => [n, s.filter((x) => x.endsWith(":"))])).toEqual([["img-src", ["blob:"]]]);
       for (const [name, sources] of p) {
         if (name.startsWith("script-src")) expect(sources, name).not.toContain("'unsafe-inline'");
       }

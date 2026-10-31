@@ -20,6 +20,7 @@
 import type { JsonPatch, Proposal } from "../../../lib/contracts";
 import type { Role } from "../../../lib/auth/session";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
+import { samplePhotoBoxes } from "./sample-photo";
 
 export const states = ["ready", "scenario", "new-steps", "photo", "generating", "needs_input", "invalid", "failed", "conflict", "stale", "approved", "rejected", "conflicted", "hostile", "viewer"] as const;
 export type SampleState = (typeof states)[number];
@@ -193,10 +194,11 @@ export const samplePhoto = {
   content_hash: "sha256:6b284ed7efc0b15140808f1cf8922e91f7d9ef0276f6d0f16640f3725cbba605",
 };
 
-/** The X-ray step proposed from a photo (T-056), for the review page and for a photo sent from the model page. */
+/** The X-ray step proposed from a photo (T-056), for the review page and for a photo sent from the model page; read by SAM 3.1 with the demo's boxes (H-052). */
 export function readyFromPhoto(id: string, photo: Proposal["source_image"] = samplePhoto): Proposal {
   return {
     ...server(id, "edit"), status: "ready", source_image: photo,
+    generated_by: { provider: "meta", model: "muse-spark-1.3", segmenter: { provider: "meta", model: "sam-3.1", objects: samplePhotoBoxes.length, boxes: samplePhotoBoxes } },
     summary: "Add the X-ray inspection the floor plan shows after AOI, with a buffer before it and one X-ray machine.",
     assumptions: [
       "The floor plan shows an X-ray machine on the conveyor after AOI, before the AOI result.",

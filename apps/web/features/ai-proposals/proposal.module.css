@@ -203,6 +203,81 @@ ul.words {
   white-space: nowrap;
 }
 
+/* H-052: the photo a proposal was asked for with, at most its own size and
+   never wider than the card, on the Well while it loads. The segmenter's
+   boxes lie over it in the photo's pixels, in Accent Fill (the AI's mark;
+   the same in both themes, since the photo does not change with the
+   theme), each with its number and, where there is room, its concept; the
+   same objects follow as a numbered list. Nothing spills sideways at 390 px. */
+.photoFrame {
+  position: relative;
+  width: 100%;
+  margin: 0 0 var(--gm-space-lg);
+  overflow: hidden;
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-well);
+}
+
+.photoFrame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.boxes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.boxes svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.boxes rect {
+  fill: none;
+  stroke: var(--gm-color-accent-fill);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.boxLabel {
+  position: absolute;
+  padding: 0 var(--gm-space-xs);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-accent-fill);
+  color: var(--gm-color-on-accent);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-label);
+  white-space: nowrap;
+}
+
+/* Above its box's top left corner, unless the box starts at the photo's top. */
+.boxLabel[data-place="above"] {
+  transform: translateY(-100%);
+}
+
+/* On a narrow screen the boxes keep their numbers; the list says what each is. */
+@media (max-width: 720px) {
+  .boxConcept {
+    display: none;
+  }
+}
+
+.objects {
+  margin: 0;
+  padding-inline-start: var(--gm-space-section);
+  column-width: 14em;
+  column-gap: var(--gm-space-xl);
+}
+
+.objects > li {
+  break-inside: avoid;
+}
+
 /* Added: a Graphite Ink tag; removed: Error Red on the default chrome (DESIGN.md Chips). */
 .tag {
   padding: 0 var(--gm-space-sm);

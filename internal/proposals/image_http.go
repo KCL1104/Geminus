@@ -192,6 +192,9 @@ func refusedImage(err error) error {
 		return file(httpapi.RequestValidationFailed, "the photo is not acceptable", "the file is empty or does not decode as its format", CodeImageInvalid)
 	case errors.Is(err, photo.ErrPixels):
 		return file(httpapi.RequestValidationFailed, "the photo is not acceptable", "the image is less than 32 or more than 4096 pixels wide or high", CodeImagePixels)
+	case errors.Is(err, ErrNoImage):
+		// getProposalImage (H-052): a proposal asked for in words.
+		return httpapi.Errorf(httpapi.NotFound, "the proposal was not asked for with a photo")
 	case errors.Is(err, ErrStorageUnavailable):
 		return httpapi.Errorf(httpapi.ServiceUnavailable, "object storage is not configured for this deployment")
 	case errors.Is(err, ErrRetry):
