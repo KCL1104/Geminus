@@ -193,6 +193,10 @@ type Backend struct {
 	// chooses: the approval lists the model for the role (H-049,
 	// aiapproval.Approval.AllowsModel); nil for the backend's own model only.
 	chooses func(role, model string) bool
+	// tools: the approval's data policy names tool calls for the role
+	// (H-060, turn.go); nil for none, which is every approval this build
+	// records (H-061's investigator role arrives with its own approval).
+	tools func(role string) bool
 
 	// project is structured.Project; only the tests change it
 	// (export_test.go), to send a schema the projection never makes.
@@ -205,6 +209,7 @@ var (
 	_ provider.ImageInput   = (*Backend)(nil)
 	_ provider.Researcher   = (*Backend)(nil)
 	_ provider.ModelChooser = (*Backend)(nil)
+	_ provider.ToolTurner   = (*Backend)(nil)
 )
 
 // New returns the Muse Spark backend for an approved configuration:
@@ -319,6 +324,10 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 	if !ok {
 		return provider.Quote{}, modelNotApproved()
 	}
+	if len(req.Tools) > 0 {
+		// A tool turn (H-060, turn.go): it sends no output schema.
+		return b.quoteTurn(asked, req)
+	}
 	proj, err := b.projection(req.OutputSchema)
 	if err != nil {
 		return provider.Quote{}, err
@@ -427,7 +436,8 @@ func decodeCount(body []byte) (int64, bool) {
 // does not name, images it does not name and a model it does not list for
 // the role (H-049).
 func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
-	if req.Reservation == "" {
+	if req.Reservation == "" || len(req.Tools) > 0 || len(req.Steps) > 0 {
+		// H-060: tools go through Turn only; Complete never sends one.
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
 	asked, ok := b.modelOf(req)
@@ -608,6 +618,10 @@ type message struct {
 type contentBlock struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
+	// ID is a tool_use block's call ID (a tool turn's, H-060), as written:
+	// any JSON value reads, as before it was read, so no other answer
+	// decodes differently; a turn takes only a string of a token's shape.
+	ID jsontext.Value `json:"id"`
 	// Name and Input are a server_tool_use block's (a research call's web
 	// search step, H-046 (2)); untrusted, never logged.
 	Name  string         `json:"name"`

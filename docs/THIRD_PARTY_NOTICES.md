@@ -1,6 +1,6 @@
 # Third-party notices
 
-Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, the Go modules the live AI adapter links (T-024), the Go modules OpenTelemetry links (T-035), the fonts the web app serves (T-045), the browser packages of the 2D editor's canvas (T-015), the SigV4 test vectors and the container base images (last two sections, T-039).
+Source code adapted from third parties, with the notices their licenses require. Dependencies pulled in as modules or packages are listed with their licenses in [ADR-011](adr/ADR-011-toolchain-bootstrap.md) and their lockfiles; this file covers code copied into this repository, the Go modules the live AI adapter links (T-024), the Go modules OpenTelemetry links (T-035), the Go modules Eino brings (H-058, H-059; ADR-031), the fonts the web app serves (T-045), the browser packages of the 2D editor's canvas (T-015), the SigV4 test vectors and the container base images (last two sections, T-039).
 
 ## Go `math.log` (pinned logarithm)
 
@@ -147,6 +147,35 @@ T-035 adds the OpenTelemetry Go API, SDK and OTLP/HTTP exporters for traces and 
 | `github.com/google/uuid` | v1.6.0 | BSD-3-Clause, Copyright (c) 2009,2014 Google Inc. | the SDK's resource |
 | `golang.org/x/net` | v0.60.0 | BSD-3-Clause, Copyright 2009 The Go Authors | gRPC (v0.60.0, not the v0.59.0 OpenTelemetry asks for, which `govulncheck` flags) |
 | `golang.org/x/sys` | v0.48.0 | BSD-3-Clause, Copyright 2009 The Go Authors | x/net and gRPC |
+
+## Go modules brought by Eino (H-058, H-059; slice E0)
+
+E0 pins the Eino framework for the AI role graphs ([ADR-031](adr/ADR-031-eino.md), **PROPOSED**). No package imports it yet; when one does, only `internal/aigraph/...` may (architecture rule `eino-fenced`, narrowed by H-061, approved by the owner in H-063), and only the worker and the live eval link it: never the API (`no-eino-in-the-api`), the kernel, a domain pack or the HTTP transport (`no-eino-in-kernel-packs-transport`), and eino-ext is not used (`no-eino-ext`). Versions are pinned in `go.mod` and `go.sum`, each published at least two weeks before 2026-10-31 (ADR-031 lists the dates); each module's own license file (and yaml.v3's `NOTICE`) ships in its module and applies to it. No module is copyleft. No code from these modules is copied into this repository.
+
+| Module | Version | License | Linked because |
+|---|---|---|---|
+| `github.com/cloudwego/eino` | v0.9.21 | Apache-2.0 (`LICENSE-APACHE`), CloudWeGo Authors | the framework |
+| `github.com/bytedance/sonic` | v1.15.0 | Apache-2.0, Copyright ByteDance Inc.; its `licenses/` directory adds the notices of the code it derives from: Boost Software License 1.0 (Drachennest; eisel_lemire, Copyright (c) Daniel Lemire), BSD-3-Clause (Go and golang-asm, Copyright (c) 2009 The Go Authors), Apache-2.0 (simdjson), MIT (yyjson, Copyright (c) 2020 YaoYuan) | Eino's JSON; the compat path (`encoding/json`) only, rule `json-without-jit` |
+| `github.com/bytedance/gopkg` | v0.1.3 | Apache-2.0 | sonic |
+| `github.com/eino-contrib/jsonschema` | v1.0.3 | MIT, Copyright (C) 2014 Alec Thomas | tool parameter schemas |
+| `github.com/nikolalohinski/gonja` | v1.5.3 | MIT, Copyright (c) 2013-2014 Florian Schlachter | Eino's Jinja2 message templates (not used by the design) |
+| `github.com/dustin/go-humanize` | v1.0.1 | MIT, Copyright (c) 2005-2008 Dustin Sallings | gonja |
+| `github.com/goph/emperror` | v0.17.2 | MIT, Copyright (c) 2017 Márk Sági-Kazár | gonja |
+| `github.com/json-iterator/go` | v1.1.12 | MIT, Copyright (c) 2016 json-iterator | gonja |
+| `github.com/modern-go/concurrent` | v0.0.0-20180306012644-bacd9c7ef1dd | Apache-2.0 | json-iterator |
+| `github.com/modern-go/reflect2` | v1.0.2 | Apache-2.0 | json-iterator |
+| `github.com/mailru/easyjson` | v0.7.7 | MIT, Copyright (c) 2016 Mail.Ru Group | ordered maps |
+| `github.com/pelletier/go-toml/v2` | v2.0.9 | MIT, Copyright (c) 2013 - 2022 Thomas Pelletier, Eric Anderton | gonja |
+| `github.com/pkg/errors` | v0.9.1 | BSD-2-Clause, Copyright (c) 2015, Dave Cheney | gonja, emperror |
+| `github.com/sirupsen/logrus` | v1.9.3 | MIT, Copyright (c) 2014 Simon Eskildsen | gonja |
+| `github.com/slongfield/pyfmt` | v0.0.0-20220222012616-ea85ff4c361f | BSD-3-Clause, Copyright (c) 2018, Stephen Longfield, Jr. | Eino's Python-style message templates |
+| `github.com/wk8/go-ordered-map/v2` | v2.1.8 | Apache-2.0 | Eino's `schema` and jsonschema |
+| `github.com/yargevad/filepathx` | v1.0.0 | MIT, Copyright 2016 The filepathx Authors | gonja |
+| `golang.org/x/exp` | v0.0.0-20230713183714-613f0c0eb8a1 | BSD-3-Clause, Copyright (c) 2009 The Go Authors | gonja |
+| `gopkg.in/yaml.v3` | v3.0.1 | MIT and Apache-2.0 (its `NOTICE`: Copyright 2011-2016 Canonical Ltd.) | ordered maps, gonja |
+| `github.com/bahlo/generic-list-go`, `github.com/buger/jsonparser`, `github.com/google/uuid`, `golang.org/x/sys` | v0.2.0, v1.1.2, v1.6.0, v0.48.0 (already required) | BSD-3-Clause, MIT, BSD-3-Clause, BSD-3-Clause | ordered maps; Eino's IDs; logrus |
+
+Also in `go.mod` and `go.sum`, downloaded by `go mod download` but linked on no platform this repository builds for (sonic's native path, which go1.27 excludes): `github.com/bytedance/sonic/loader` v0.5.0 (Apache-2.0), `github.com/cloudwego/base64x` v0.1.6 (Apache-2.0), `github.com/klauspost/cpuid/v2` v2.2.9 (MIT, Copyright (c) 2015 Klaus Post), `github.com/twitchyliquid64/golang-asm` v0.15.1 (BSD-3-Clause, Copyright (c) 2009 The Go Authors), `golang.org/x/arch` v0.11.0 (BSD-3-Clause, Copyright 2015 The Go Authors).
 
 ## Fonts served by the web app (T-045)
 

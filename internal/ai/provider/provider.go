@@ -179,6 +179,12 @@ type Request struct {
 	// Model is the model the call asks for (H-049, ProposalContext.Model);
 	// "" for the backend's own. Only a ModelChooser is sent one.
 	Model string
+	// Tools and Steps are a tool turn's (H-060, Client.Turn, tools.go): the
+	// tools it offers and its transcript after the user message, checked.
+	// Empty for every other request; only a ToolTurner's Turn is handed a
+	// request that has them, never Complete.
+	Tools []Tool
+	Steps []ToolStep
 }
 
 // Response is a Backend's answer: untrusted text and accounting.
@@ -214,6 +220,11 @@ type Response struct {
 	// H-046 (2)); zero for a call without research. Its tool calls are
 	// billed (meter.go) even when the answer is refused.
 	Research Research
+	// ToolCalls are a tool turn's calls as the answer made them (H-060,
+	// ToolTurner.Turn), untrusted until the client checks them; Text is then
+	// the answer's text (a plain answer, or what it wrote before its calls),
+	// possibly empty. None for any other request.
+	ToolCalls []ToolCall
 }
 
 // Backend is one provider mode. Complete returns *Error for every failure
@@ -302,8 +313,11 @@ func invalidRequest() *Error { return NewError(CodeInvalidRequest, 0, "") }
 
 // call runs one checked request and returns the schema-valid answer and,
 // for a research call, what its web search did. A metered client also
-// reserves before the call and settles after it (meter.go).
-func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, chosen string, out any) (called, error) {
+// reserves before the call and settles after it (meter.go). A tool turn
+// (tt, H-060; nil for every other call) is checked and metered the same way,
+// sent through its backend's Turn, and its answer is checked against the
+// tools it offered instead of an output schema (tools.go).
+func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr Attribution, markers []string, chosen string, out any, tt *toolTurn) (called, error) {
 	if err := ctx.Err(); err != nil {
 		return called{}, NewError(CodeCancelled, 0, "").WithCause(err)
 	}
@@ -315,6 +329,21 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	}
 	if c.meter != nil && !attr.complete() {
 		return called{}, invalidRequest()
+	}
+	if tt != nil {
+		// A tool turn (H-060) goes only to a backend that sends tools and may
+		// for the role; no other backend ever sees it. It has no web search,
+		// image or repair.
+		t, ok := c.backend.(ToolTurner)
+		if !ok {
+			return called{}, NewError(CodeToolsUnsupported, 0, "")
+		}
+		if !t.AcceptsTools(role) {
+			return called{}, NewError(CodePolicyNotApproved, 0, "")
+		}
+		if p.Research || len(p.Images) > 0 || p.Revision != nil {
+			return called{}, invalidRequest()
+		}
 	}
 	if len(p.Images) > 0 {
 		// Images go only to a backend that sends them under its approval's
@@ -339,7 +368,12 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// never asked of another model instead.
 		return called{}, NewError(CodeModelNotApproved, 0, "")
 	}
-	if len(p.System)+len(p.User()) > c.budget.MaxPromptBytes {
+	// A tool turn's tools and transcript count towards the prompt (H-060).
+	toolBytes, schema := 0, role.OutputSchema()
+	if tt != nil {
+		toolBytes, schema = tt.size, ""
+	}
+	if len(p.System)+len(p.User())+toolBytes > c.budget.MaxPromptBytes {
 		return called{}, NewError(CodeContextTooLarge, 0, "")
 	}
 	// H-057: a repair's second turn is bounded too: the prior answer by the
@@ -353,10 +387,14 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	}
 	defer c.release(org)
 
-	meta := Metadata{Provider: c.backend.Name(), Role: role, TemplateVersion: p.TemplateVersion, OutputSchema: role.OutputSchema(),
+	meta := Metadata{Provider: c.backend.Name(), Role: role, TemplateVersion: p.TemplateVersion, OutputSchema: schema,
 		Locale: string(p.Locale), InputHash: p.InputHash, Context: p.Disclosure}
-	req := Request{Prompt: p, OutputSchema: role.OutputSchema(), Model: chosen,
+	req := Request{Prompt: p, OutputSchema: schema, Model: chosen,
 		MaxOutputTokens: c.budget.MaxOutputTokens, AttemptTimeout: c.budget.AttemptTimeout, MaxRetries: c.budget.MaxRetries}
+	if tt != nil {
+		// A tool turn's input hash covers its tools and transcript too.
+		meta.InputHash, req.Tools, req.Steps = tt.hash, tt.tools, tt.steps
+	}
 	timeout := c.budget.Timeout
 	if SlowModel(chosen) {
 		// A slow model (H-049): a research call's timeouts, at most D-007's
@@ -389,7 +427,13 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		req.Reservation = m.res.ID
 	}
 	start := time.Now()
-	resp, err := c.backend.Complete(callCtx, req)
+	var resp Response
+	var err error
+	if tt != nil {
+		resp, err = c.backend.(ToolTurner).Turn(callCtx, req)
+	} else {
+		resp, err = c.backend.Complete(callCtx, req)
+	}
 	meta.LatencyMillis = time.Since(start).Milliseconds()
 	if m != nil {
 		c.settle(ctx, m, m.settlement(resp), &meta)
@@ -405,7 +449,7 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	// the output budget. It goes with a schema-valid answer and with one
 	// refused for what it says, never with any other failure.
 	var prior PriorAnswer
-	if len(resp.Answer) > 0 && len(resp.Answer) <= c.budget.MaxOutputBytes && (p.Research || resp.Research.None()) &&
+	if tt == nil && len(resp.Answer) > 0 && len(resp.Answer) <= c.budget.MaxOutputBytes && (p.Research || resp.Research.None()) &&
 		(req.Model == "" || c.meter == nil || resp.Model == req.Model) {
 		prior = PriorAnswer{text: bytes.Clone(resp.Answer)}
 	}
@@ -448,6 +492,24 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// (H-049): never taken in its place (its usage is settled above).
 		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer is not from the model the request asked for", model.SeverityError))
 	}
+	if tt != nil {
+		// A tool turn's answer (H-060): text, calls of the tools it offered,
+		// or both, each call checked against its tool (tools.go).
+		text, calls, issues := tt.answer(resp, c.budget)
+		if len(issues) > 0 {
+			return invalid(false, issues...)
+		}
+		r := called{meta: meta, turnText: text, turnCalls: calls}
+		if h, err := turnOutputHash(text, calls); err == nil {
+			r.meta.OutputHash = h
+		}
+		return r, nil
+	}
+	if len(resp.ToolCalls) > 0 {
+		// A tool call in the answer of a request that offered no tool: not an
+		// answer this request may take (H-060).
+		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer calls a tool, which the request did not offer", model.SeverityError))
+	}
 	if len(resp.Text) == 0 || len(resp.Text) > c.budget.MaxOutputBytes {
 		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer is empty or larger than the output budget", model.SeverityError))
 	}
@@ -482,6 +544,9 @@ type called struct {
 	meta     Metadata
 	research Research
 	prior    PriorAnswer
+	// turnText and turnCalls are a tool turn's checked answer (H-060).
+	turnText  string
+	turnCalls []ToolCall
 }
 
 // GenerateModelProposal asks for an edit or scenario proposal. For a
@@ -491,7 +556,7 @@ type called struct {
 // with an invalid_output error too.
 func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) (ProposalResult, error) {
 	var out ProposalOutput
-	r, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, in.Model, &out)
+	r, err := c.call(ctx, in.OrganizationID, in.Mode.Role(), in.Prompt, in.Attribution, in.Markers, in.Model, &out, nil)
 	meta := r.meta
 	if err != nil {
 		return ProposalResult{Metadata: meta, Prior: r.prior}, err
@@ -509,7 +574,7 @@ func (c *Client) GenerateModelProposal(ctx context.Context, in ProposalContext) 
 // ProposeImportMapping asks for column mapping suggestions.
 func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (MappingResult, error) {
 	var out MappingOutput
-	r, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, "", &out)
+	r, err := c.call(ctx, in.OrganizationID, RoleImporter, in.Prompt, in.Attribution, nil, "", &out, nil)
 	if err != nil {
 		return MappingResult{Metadata: r.meta}, err
 	}
@@ -519,7 +584,7 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 // AnalyzeSimulation asks for an analysis of supplied results.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
-	r, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out)
+	r, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out, nil)
 	if err != nil {
 		return AnalysisResult{Metadata: r.meta}, err
 	}
