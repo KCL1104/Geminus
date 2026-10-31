@@ -1,7 +1,10 @@
 // Command ai-eval-live runs the AI eval corpus against the live provider
 // (make ai-eval-live; with -smoke, the one synthetic case of make
 // ai-smoke-live; with -smoke-photo, the photo pipeline once on the demo
-// image, make ai-smoke-photo-live). It is a composition root only:
+// image, make ai-smoke-photo-live; with -suite investigator -planner
+// <model>, H-061 §14's six planner cases on the live planner, only its
+// turns paid, behind the approval's investigator role and planner model,
+// report checks/ai-evals/live-investigator-*.json). It is a composition root only:
 // internal/aievals.MainWith refuses, before building any backend, unless
 // the configuration turns live AI on exactly as the worker's does (the
 // owner's complete recorded approval, AI_MODEL equal to its model, the

@@ -88,7 +88,7 @@ const (
 // Attribution names what a call is for, for the spend ledger and its
 // audit: the resource a job works on and the request that queued it.
 type Attribution struct {
-	TargetType string // "ai_proposal", "ai_analysis", "import"
+	TargetType string // "ai_proposal", "ai_analysis", "import", "investigation" (a planner turn, H-061)
 	TargetID   string
 	RequestID  string
 }

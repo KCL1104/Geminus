@@ -185,6 +185,11 @@ type Request struct {
 	// request that has them, never Complete.
 	Tools []Tool
 	Steps []ToolStep
+	// OneCall: a planner turn (H-061 §9, Client.PlanTurn) asks for exactly
+	// one tool call (Meta: tool_choice any with disable_parallel_tool_use),
+	// and its backend returns the answer's content as Response.Replay. False
+	// for every other request.
+	OneCall bool
 }
 
 // Response is a Backend's answer: untrusted text and accounting.
@@ -225,6 +230,12 @@ type Response struct {
 	// the answer's text (a plain answer, or what it wrote before its calls),
 	// possibly empty. None for any other request.
 	ToolCalls []ToolCall
+	// Replay is a planner turn's answer content as the backend took it (its
+	// reasoning blocks, text and tool_use, as returned; H-061 §5.4), for the
+	// next turn of the same run to send back as the model's own: set only
+	// for a OneCall request. Untrusted and opaque: the client keeps it only
+	// in a TurnReplay, never logged or stored.
+	Replay []byte
 }
 
 // Backend is one provider mode. Complete returns *Error for every failure
@@ -415,6 +426,13 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	if p.Research {
 		req.MaxRetries = ResearchMaxRetries
 	}
+	if tt != nil && tt.plan != nil {
+		// A planner turn (H-061 §9, turn.go): one attempt per reservation,
+		// one call asked for, the default budget's max_tokens and at most
+		// PlannerTurnTimeout, a slow model's turn included.
+		req.MaxOutputTokens, req.MaxRetries, req.OneCall = PlannerMaxOutputTokens, 0, true
+		req.AttemptTimeout, timeout = planTimeouts(c.budget, chosen)
+	}
 	// One deadline for the whole call: a billable backend's quote (which may
 	// ask the provider, H-037) and the call itself.
 	callCtx, cancel := context.WithTimeout(ctx, timeout)
@@ -462,6 +480,16 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 	case err != nil:
 		var pe *Error
 		if errors.As(err, &pe) {
+			if tt != nil && tt.plan != nil {
+				// A planner turn's answer the backend refused (H-061 §7, §13):
+				// an invalid turn the ledger does not record.
+				switch pe.Code {
+				case CodeTruncated:
+					return called{meta: meta, plan: &planned{invalid: &InvalidTurn{Kind: InvalidTruncated}}}, pe
+				case CodeInvalidOutput, CodeRefused:
+					return called{meta: meta, plan: &planned{invalid: &InvalidTurn{Kind: InvalidNoCall}}}, pe
+				}
+			}
 			if pe.Code == CodeInvalidOutput {
 				// The backend took the answer's text and refused what it says
 				// (an encoded place that does not decode): prior holds the text
@@ -481,7 +509,11 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		if !content {
 			prior = PriorAnswer{}
 		}
-		return called{meta: meta, prior: prior}, e
+		r := called{meta: meta, prior: prior}
+		if tt != nil && tt.plan != nil {
+			r.plan = &planned{invalid: &InvalidTurn{Kind: InvalidNoCall}}
+		}
+		return r, e
 	}
 	if !p.Research && !resp.Research.None() {
 		// A backend that searched for a call that did not ask: not an
@@ -492,6 +524,11 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		// A live answer from another model than the one the person chose
 		// (H-049): never taken in its place (its usage is settled above).
 		return invalid(false, model.NewIssue(OutputInvalid, "", "the answer is not from the model the request asked for", model.SeverityError))
+	}
+	if tt != nil && tt.plan != nil {
+		// A planner turn's answer (H-061 §7): exactly one call, decoded
+		// strictly (turn.go).
+		return tt.planAnswer(resp, c.budget, meta)
 	}
 	if tt != nil {
 		// A tool turn's answer (H-060): text, calls of the tools it offered,
@@ -548,6 +585,8 @@ type called struct {
 	// turnText and turnCalls are a tool turn's checked answer (H-060).
 	turnText  string
 	turnCalls []ToolCall
+	// plan is a planner turn's answer or what was wrong with it (turn.go).
+	plan *planned
 }
 
 // GenerateModelProposal asks for an edit or scenario proposal. For a

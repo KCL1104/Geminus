@@ -1,0 +1,57 @@
+{
+  "id": "INV-005",
+  "title": "needs_input: an edit only a person can make precise",
+  "mode": "edit",
+  "template": "electronics_assembly_test_line",
+  "request": "Make the testers faster.",
+  "environment": {
+    "proposals": [
+      {
+        "proposal_id": "aip_01M6EVA0000000000000000P01",
+        "status": "needs_input",
+        "summary": "The request does not say which tester or by how much.",
+        "change_count": 0,
+        "server_risk_level": null,
+        "questions": [
+          "Which tester should be faster, and by how much?"
+        ],
+        "issue_codes": []
+      }
+    ]
+  },
+  "fake": [
+    {
+      "calls": [
+        {
+          "id": "fake_01",
+          "name": "propose_model_edit",
+          "input": {
+            "idea": "Make the testers faster."
+          }
+        }
+      ]
+    },
+    {
+      "calls": [
+        {
+          "id": "fake_02",
+          "name": "finish",
+          "input": {
+            "outcome": "needs_person",
+            "best_scenario_id": null
+          }
+        }
+      ],
+      "text": "Only the person can say which tester."
+    }
+  ],
+  "expect": {
+    "end": "finished_by_ai",
+    "outcome": "needs_person",
+    "invalid_turns": 0,
+    "tools": [
+      "propose_model_edit",
+      "finish"
+    ]
+  }
+}

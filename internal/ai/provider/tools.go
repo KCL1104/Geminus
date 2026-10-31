@@ -122,6 +122,11 @@ type ToolStep struct {
 	Text    string
 	Calls   []ToolCall
 	Results []ToolResult
+	// Replay is a planner turn's assistant content as its backend returned
+	// it (H-061 §5.4, turn.go), sent back in its place: only a planner turn's
+	// step has one (Client.PlanTurn), bound to the step's one call. Opaque;
+	// never stored or logged.
+	Replay TurnReplay
 }
 
 // TurnContext is a tool turn's request (H-060): a sealed prompt of a role the
@@ -171,7 +176,12 @@ func (c *Client) AcceptsTools(role Role) bool {
 // both. It is checked, metered and bounded as every call is (call), and its
 // calls are checked against the tools offered (toolTurn.answer).
 func (c *Client) Turn(ctx context.Context, in TurnContext) (TurnResult, error) {
-	tt, err := checkTurn(in, c.budget)
+	if in.Prompt.Role == RoleInvestigator {
+		// The planner's turns go through PlanTurn only (H-061 §9): one call,
+		// one attempt, the strict decoder.
+		return TurnResult{}, invalidRequest()
+	}
+	tt, err := checkTurn(in, c.budget, false)
 	if err != nil {
 		return TurnResult{}, err
 	}
@@ -198,6 +208,7 @@ func (r Request) ToolBytes() int {
 		for _, res := range s.Results {
 			n += len(res.CallID) + len(res.Content)
 		}
+		n += s.Replay.Len()
 	}
 	return n
 }
@@ -218,12 +229,17 @@ type toolTurn struct {
 	ids     map[string]bool // every call ID of the transcript
 	size    int
 	hash    string
+	// plan is a planner turn's policy (PlanTurn, turn.go); nil for every
+	// other turn.
+	plan *planPolicy
 }
 
 // checkTurn checks a turn's tools and transcript (the prompt is checked by
 // call, as for every call). A turn that breaks a rule is a request the
-// client refuses (invalid_request); one too large is context_too_large.
-func checkTurn(in TurnContext, budget Budget) (*toolTurn, error) {
+// client refuses (invalid_request); one too large is context_too_large. A
+// step's replay is a planner turn's only (plan), and must be the one made
+// with the step's call.
+func checkTurn(in TurnContext, budget Budget, plan bool) (*toolTurn, error) {
 	if len(in.Steps) > MaxToolSteps {
 		return nil, invalidRequest()
 	}
@@ -254,13 +270,22 @@ func checkTurn(in TurnContext, budget Budget) (*toolTurn, error) {
 			}
 			step.Results = append(step.Results, ToolResult{CallID: res.CallID, Content: content, IsError: res.IsError})
 		}
+		if s.Replay.Present() {
+			if !plan || len(step.Calls) != 1 {
+				return nil, invalidRequest()
+			}
+			if d, err := callDigest(step.Calls[0]); err != nil || d != s.Replay.call {
+				return nil, invalidRequest()
+			}
+			step.Replay = TurnReplay{content: bytes.Clone(s.Replay.content), call: s.Replay.call}
+		}
 		tt.steps = append(tt.steps, step)
 	}
 	tt.size = Request{Tools: tt.tools, Steps: tt.steps}.ToolBytes()
 	if !in.Prompt.sealed() {
 		return nil, invalidRequest()
 	}
-	h, err := turnHash(in.Prompt.InputHash, tt.tools, tt.steps)
+	h, err := turnHash(in.Prompt.InputHash, tt.tools, tt.steps, plan)
 	if err != nil {
 		return nil, invalidRequest()
 	}
@@ -411,8 +436,10 @@ func turnOutputHash(text string, calls []ToolCall) (string, error) {
 }
 
 // turnHash is a tool turn's input hash: the sealed prompt's, the tools and
-// the transcript, canonical.
-func turnHash(prompt string, tools []Tool, steps []ToolStep) (string, error) {
+// the transcript, canonical; a planner turn's (oneCall) also says that it
+// asks for one call, and each replay by its digest, never its content. A
+// turn without either hashes as before (H-061).
+func turnHash(prompt string, tools []Tool, steps []ToolStep, oneCall bool) (string, error) {
 	type callRef struct {
 		ID    string         `json:"id"`
 		Name  string         `json:"name"`
@@ -427,6 +454,7 @@ func turnHash(prompt string, tools []Tool, steps []ToolStep) (string, error) {
 		Text    string      `json:"text,omitzero"`
 		Calls   []callRef   `json:"calls"`
 		Results []resultRef `json:"results"`
+		Replay  string      `json:"replay_digest,omitzero"`
 	}
 	type toolRef struct {
 		Name        string         `json:"name"`
@@ -434,15 +462,16 @@ func turnHash(prompt string, tools []Tool, steps []ToolStep) (string, error) {
 		InputSchema jsontext.Value `json:"input_schema"`
 	}
 	doc := struct {
-		Prompt string    `json:"prompt_input_hash"`
-		Tools  []toolRef `json:"tools"`
-		Steps  []stepRef `json:"steps,omitzero"`
-	}{Prompt: prompt}
+		Prompt  string    `json:"prompt_input_hash"`
+		Tools   []toolRef `json:"tools"`
+		Steps   []stepRef `json:"steps,omitzero"`
+		OneCall bool      `json:"one_call,omitzero"`
+	}{Prompt: prompt, OneCall: oneCall}
 	for _, t := range tools {
 		doc.Tools = append(doc.Tools, toolRef{t.Name, t.Description, t.InputSchema})
 	}
 	for _, s := range steps {
-		ref := stepRef{Text: s.Text}
+		ref := stepRef{Text: s.Text, Replay: s.Replay.digest()}
 		for _, c := range s.Calls {
 			ref.Calls = append(ref.Calls, callRef{c.ID, c.Name, c.Input})
 		}

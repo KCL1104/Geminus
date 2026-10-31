@@ -1,0 +1,271 @@
+{
+	"suite": "investigator",
+	"kind": "fake",
+	"planner_model": "muse-spark-1.3",
+	"transcript": "digest",
+	"prompt_template_version": "investigator-0.1.0",
+	"cases_run": 6,
+	"cases_passed": 6,
+	"gate_failures": {
+		"expectations": 0,
+		"forbidden_calls": 0,
+		"garbled_texts": 0,
+		"truncated_turns": 0
+	},
+	"complete": true,
+	"cases": [
+		{
+			"id": "INV-001",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "improvement_found",
+			"steps": 8,
+			"planner_turns": 8,
+			"valid_calls": 8,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "explain_results",
+					"status": "done"
+				},
+				{
+					"seq": 5,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 6,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 7,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 8,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		},
+		{
+			"id": "INV-002",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "no_improvement",
+			"steps": 5,
+			"planner_turns": 5,
+			"valid_calls": 5,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 5,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		},
+		{
+			"id": "INV-003",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "improvement_found",
+			"steps": 4,
+			"planner_turns": 4,
+			"valid_calls": 4,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		},
+		{
+			"id": "INV-004",
+			"mode": "edit",
+			"end": "draft_written",
+			"steps": 2,
+			"planner_turns": 2,
+			"valid_calls": 2,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_model_edit",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "write_to_draft",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		},
+		{
+			"id": "INV-005",
+			"mode": "edit",
+			"end": "finished_by_ai",
+			"ai_outcome": "needs_person",
+			"steps": 2,
+			"planner_turns": 2,
+			"valid_calls": 2,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_model_edit",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		},
+		{
+			"id": "INV-006",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "no_improvement",
+			"steps": 7,
+			"planner_turns": 7,
+			"valid_calls": 4,
+			"invalid_turns": 3,
+			"invalid_kinds": {
+				"invalid_arguments": 1,
+				"unknown_tool": 2
+			},
+			"refused_steps": 3,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "invalid_call",
+					"status": "refused",
+					"code": "UNKNOWN_TOOL"
+				},
+				{
+					"seq": 2,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "invalid_call",
+					"status": "refused",
+					"code": "UNKNOWN_TOOL"
+				},
+				{
+					"seq": 4,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 5,
+					"tool": "invalid_call",
+					"status": "refused",
+					"code": "INVALID_ARGUMENTS"
+				},
+				{
+					"seq": 6,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 7,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true
+		}
+	]
+}

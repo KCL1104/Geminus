@@ -21,10 +21,20 @@ const (
 	RoleScenario Role = "scenario" // proposal, mode scenario
 	RoleAnalyst  Role = "analyst"
 	RoleImporter Role = "importer"
+	// RoleInvestigator is an AI investigation's planner (H-060, H-061 §9,
+	// approved in H-063; behind GEMINUS_INVESTIGATIONS): it answers with one
+	// tool call a turn (Client.PlanTurn, turn.go), never a document, so it
+	// has no output schema and is not in Roles.
+	RoleInvestigator Role = "investigator"
 )
 
-// Roles lists the roles a prompt may have.
+// Roles lists the roles whose answer is one document under an output
+// schema (OutputSchema). RoleInvestigator answers with tool calls only.
 var Roles = []Role{RoleModeler, RoleScenario, RoleAnalyst, RoleImporter}
+
+// Known reports whether r is a prompt role this build has: one of Roles,
+// or the investigator (H-061).
+func (r Role) Known() bool { return r.OutputSchema() != "" || r == RoleInvestigator }
 
 // OutputSchema is the canonical schema (schemas/) of the role's output.
 func (r Role) OutputSchema() string {
@@ -135,7 +145,7 @@ func Seal(p Prompt) (Prompt, error) {
 	if !organizationID.MatchString(p.OrganizationID) {
 		return fail("an organization ID is required")
 	}
-	if p.Role.OutputSchema() == "" {
+	if !p.Role.Known() {
 		return fail("unknown role")
 	}
 	if p.TemplateVersion == "" || strings.ContainsAny(p.TemplateVersion, "\n<>") {

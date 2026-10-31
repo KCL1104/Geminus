@@ -194,8 +194,8 @@ type Backend struct {
 	// aiapproval.Approval.AllowsModel); nil for the backend's own model only.
 	chooses func(role, model string) bool
 	// tools: the approval's data policy names tool calls for the role
-	// (H-060, turn.go); nil for none, which is every approval this build
-	// records (H-061's investigator role arrives with its own approval).
+	// (H-060, turn.go; aiapproval.Approval.AllowsTools: the investigator
+	// only, H-061 §9).
 	tools func(role string) bool
 
 	// project is structured.Project; only the tests change it
@@ -228,6 +228,7 @@ func New(cfg Config) (*Backend, error) {
 	}
 	b.research = cfg.Approval.AllowsResearch
 	b.chooses = cfg.Approval.AllowsModel
+	b.tools = cfg.Approval.AllowsTools // H-061 §9: the investigator only
 	return b, nil
 }
 
