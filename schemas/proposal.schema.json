@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/proposal.schema.json",
   "title": "proposal",
-  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body. D-027: risk_level = max(server_risk_level, provider_risk_claim). T-026 (D-068 APPROVED): a decided proposal carries decided_by, decided_at and an optional decision_comment. T-056 (H-033): a proposal asked for with a photo carries source_image and is an edit. H-046 (2): a proposal asked for with research on carries generated_by.web_search, and sources when the AI named pages the call asked to open. H-065: a proposal whose request named a model carries requested_model.",
+  "$comment": "SOURCE pp. 24–25,32–33. PROPOSED D-001,D-002,D-004 states and mode-dependent effect. This is a server response, not a client write body. D-027: risk_level = max(server_risk_level, provider_risk_claim). T-026 (D-068 APPROVED): a decided proposal carries decided_by, decided_at and an optional decision_comment. T-056 (H-033): a proposal asked for with a photo carries source_image and is an edit. H-046 (2): a proposal asked for with research on carries generated_by.web_search, and sources when the AI named pages the call asked to open. H-061 (PROPOSED): a proposal an AI investigation asked for carries investigation, and the AI's action on its ready proposal is the status applied (never approved). H-065: a proposal whose request named a model carries requested_model.",
   "type": "object",
   "properties": {
     "proposal_id": {
@@ -34,7 +34,8 @@
         "failed",
         "approved",
         "rejected",
-        "conflicted"
+        "conflicted",
+        "applied"
       ]
     },
     "created_by": {
@@ -190,12 +191,38 @@
     },
     "sources": {
       "type": "array",
-      "description": "H-046 (2): the web pages the AI said it relied on, kept by the server only when this call asked its search tool to open them (common.schema.json#/$defs/WebSource: that a page loaded is not known), in the answer's order, at most 20. Present only with generated_by.web_search, and only in the states that keep what the provider wrote (needs_input, ready, approved, rejected, conflicted): never while generating, for an invalid or a failed proposal.",
+      "description": "H-046 (2): the web pages the AI said it relied on, kept by the server only when this call asked its search tool to open them (common.schema.json#/$defs/WebSource: that a page loaded is not known), in the answer's order, at most 20. Present only with generated_by.web_search, and only in the states that keep what the provider wrote (needs_input, ready, approved, rejected, conflicted, applied): never while generating, for an invalid or a failed proposal.",
       "items": {
         "$ref": "common.schema.json#/$defs/WebSource"
       },
       "minItems": 1,
       "maxItems": 20
+    },
+    "investigation": {
+      "type": "object",
+      "description": "H-061 (PROPOSED): present only on a proposal an AI investigation asked for, for the person who started it; absent on every other proposal. A person may still approve or reject it while it is ready.",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/InvestigationID"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "The what-if's place in the investigation (1 for its one edit)."
+        }
+      },
+      "required": [
+        "id",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "applied_draft_revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "description": "H-061 (PROPOSED): the draft revision an applied edit was written into (status applied, mode edit only)."
     }
   },
   "required": [
@@ -217,7 +244,8 @@
           "status": {
             "enum": [
               "ready",
-              "approved"
+              "approved",
+              "applied"
             ]
           }
         },
@@ -826,6 +854,121 @@
         "not": {
           "required": [
             "sources"
+          ]
+        }
+      }
+    },
+    {
+      "$comment": "H-061 (PROPOSED): applied is the AI's action on its own ready proposal, for the person who started the investigation: never approved, no decider; its effect is a scenario of the investigation (scenario mode) or the draft revision it was written into (edit mode). A person's approval stays approved.",
+      "if": {
+        "properties": {
+          "status": {
+            "const": "applied"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "investigation"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "decided_by"
+              ]
+            },
+            {
+              "required": [
+                "decided_at"
+              ]
+            },
+            {
+              "required": [
+                "decision_comment"
+              ]
+            },
+            {
+              "required": [
+                "new_version_id"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "applied"
+          },
+          "mode": {
+            "const": "scenario"
+          }
+        },
+        "required": [
+          "status",
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "scenario_id"
+        ],
+        "not": {
+          "required": [
+            "applied_draft_revision"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "applied"
+          },
+          "mode": {
+            "const": "edit"
+          }
+        },
+        "required": [
+          "status",
+          "mode"
+        ]
+      },
+      "then": {
+        "required": [
+          "applied_draft_revision"
+        ],
+        "not": {
+          "required": [
+            "scenario_id"
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "status": {
+              "const": "applied"
+            }
+          },
+          "required": [
+            "status"
+          ]
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "applied_draft_revision"
           ]
         }
       }

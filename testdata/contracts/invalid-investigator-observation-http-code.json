@@ -1,0 +1,13 @@
+{
+  "is_error": true,
+  "error": {
+    "code": "LIFECYCLE_CONFLICT",
+    "path": ""
+  },
+  "budget": {
+    "what_ifs_left": 2,
+    "runs_left": 4,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}

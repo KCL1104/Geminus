@@ -30,7 +30,8 @@ import (
 // fn gets the locked owners' user IDs, so it can refuse to leave the
 // organization without one; m.Role is always Owner.
 func (d *DB) RunOwners(ctx context.Context, s Scope, fn func(ctx context.Context, tx pgx.Tx, m Membership, owners []string) error) error {
-	if !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) {
+	// A membership change is a person's own, never an AI investigation's.
+	if !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) || s.ActingFor != "" {
 		return ErrInvalidScope
 	}
 	return d.db.Tx(ctx, pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {

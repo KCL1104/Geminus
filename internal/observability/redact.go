@@ -79,6 +79,7 @@ var fields = map[string]Kind{
 	"proposal_id":      KindID,
 	"import_id":        KindID,
 	"analysis_id":      KindID,
+	"investigation_id": KindID, // H-061: an AI investigation (its job, its calls)
 	"model_id":         KindID,
 	"model_version_id": KindID,
 	"scenario_id":      KindID,
