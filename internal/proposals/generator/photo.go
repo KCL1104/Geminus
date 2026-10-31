@@ -84,6 +84,37 @@ type photoCall struct {
 	// many objects its checked answer has.
 	segmenter *provider.SegmentMetadata
 	segments  int
+	// boxes are those objects (keptBoxes), for the proposal page (H-052).
+	boxes []photoBox
+}
+
+// photoBox is one object the segmenter found, as the stored metadata keeps
+// it for the proposal page to draw over the photo (H-052): the concept that
+// found it, its box's corners in the image's pixels (inclusive) and the
+// segmenter's own confidence. Not its object ID, and nothing else of the
+// provider's answer.
+type photoBox struct {
+	Concept    string  `json:"concept"`
+	X1         int     `json:"x1"`
+	Y1         int     `json:"y1"`
+	X2         int     `json:"x2"`
+	Y2         int     `json:"y2"`
+	Confidence float64 `json:"confidence"`
+}
+
+// keptBoxes are the boxes of seg, the segmenter client's checked answer,
+// when the photo path takes it as it is: at least one object, at most
+// review.MaxPhotoSegments, in the image's own frame. Otherwise nil: the
+// server refused the segmentation (or found nothing), and no box is kept.
+func keptBoxes(seg *provider.Segmentation, im store.Image) []photoBox {
+	if seg == nil || len(seg.Segments) == 0 || len(seg.Segments) > review.MaxPhotoSegments || seg.Width != im.Width || seg.Height != im.Height {
+		return nil
+	}
+	out := make([]photoBox, len(seg.Segments))
+	for i, s := range seg.Segments {
+		out[i] = photoBox{Concept: s.Concept, X1: s.Box.X1, Y1: s.Box.Y1, X2: s.Box.X2, Y2: s.Box.Y2, Confidence: s.Confidence}
+	}
+	return out
 }
 
 // readImage reads the proposal's stored image, checks it against its
@@ -191,6 +222,7 @@ func (h *Handler) generatePhoto(ctx context.Context, org string, st started, att
 		Answered:  func(m provider.Metadata, err error) { h.logCall(ctx, m, err) },
 	})
 	pc.segmenter, pc.segments = res.Segmenter, res.Segments
+	pc.boxes = keptBoxes(res.Segmentation, pc.image)
 	if err != nil {
 		if ctx.Err() != nil {
 			return generation{}, err
@@ -262,10 +294,12 @@ type photoImage struct {
 }
 
 // photoSegmenter is what the stored metadata says of the segmentation:
-// T-055's metadata and how many objects the checked answer has.
+// T-055's metadata, how many objects the checked answer has and, when the
+// photo path took that answer, their boxes (H-052).
 type photoSegmenter struct {
 	provider.SegmentMetadata
-	Segments int `json:"segments"`
+	Segments int        `json:"segments"`
+	Boxes    []photoBox `json:"boxes,omitzero"`
 }
 
 // photoMetadata is a photo proposal's provider metadata: the vision model's
@@ -286,7 +320,7 @@ func photoMetadata(base []byte, g generation) ([]byte, error) {
 	}
 	doc["image"] = image
 	if g.photo.segmenter != nil {
-		seg, err := json.Marshal(photoSegmenter{SegmentMetadata: *g.photo.segmenter, Segments: g.photo.segments})
+		seg, err := json.Marshal(photoSegmenter{SegmentMetadata: *g.photo.segmenter, Segments: g.photo.segments, Boxes: g.photo.boxes})
 		if err != nil {
 			return nil, err
 		}

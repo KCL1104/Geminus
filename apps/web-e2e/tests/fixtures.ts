@@ -20,7 +20,7 @@ const APP = "http://127.0.0.1:3100";
 export const expectedHeaders: Record<string, string | RegExp> = {
   "content-security-policy": new RegExp(
     "^default-src 'none'; script-src 'self' 'nonce-([A-Za-z0-9+/]{22}==)' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; " +
-      "style-src-elem 'self' 'nonce-\\1'; style-src-attr 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; " +
+      "style-src-elem 'self' 'nonce-\\1'; style-src-attr 'unsafe-inline'; img-src 'self' blob:; font-src 'self'; connect-src 'self'; " +
       "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'$",
   ),
   "x-content-type-options": "nosniff",

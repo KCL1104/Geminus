@@ -49,7 +49,10 @@ export function contentSecurityPolicy({ nonce, https, development }: PolicyOptio
     // would turn 'unsafe-inline' off); a build never has them.
     ["style-src-elem", "'self'", ...(development ? ["'unsafe-inline'"] : [n])],
     ["style-src-attr", "'unsafe-inline'"],
-    ["img-src", "'self'"],
+    // blob: (H-052): the proposal page shows the stored photo it fetched with
+    // the tenant selector, which an img src cannot send, as an object URL.
+    // Only this origin's own scripts can make one; nothing remote loads.
+    ["img-src", "'self'", "blob:"],
     ["font-src", "'self'"],
     ["connect-src", "'self'"],
     ["object-src", "'none'"],

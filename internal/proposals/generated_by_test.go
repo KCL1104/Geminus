@@ -2,6 +2,7 @@ package proposals
 
 import (
 	"encoding/json/v2"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -17,7 +18,7 @@ func TestGeneratedByShowsOnlyTheProviderModelAndSegmenter(t *testing.T) {
 		"images_billed":8,"cost_nano_usd":20000000,"latency_ms":40,"provider_request_ids":["r1"],"segments":12}}`
 	got := FromMetadata([]byte(photo))
 	want := GeneratedBy{Provider: "meta", Model: "muse-spark-1.3", Segmenter: &GeneratedSegmenter{Provider: "meta", Model: "sam-3.1", Objects: 12}}
-	if got == nil || got.Provider != want.Provider || got.Model != want.Model || got.Segmenter == nil || *got.Segmenter != *want.Segmenter {
+	if got == nil || got.Provider != want.Provider || got.Model != want.Model || got.Segmenter == nil || !reflect.DeepEqual(*got.Segmenter, *want.Segmenter) {
 		t.Fatalf("got %+v", got)
 	}
 	out, err := json.Marshal(got)

@@ -170,6 +170,17 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/v1/ai-proposals/{id}/image",
+      "operation_id": "getProposalImage",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
       "method": "POST",
       "path": "/v1/ai-proposals/{id}/approve",
       "operation_id": "approveProposal",

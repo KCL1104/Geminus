@@ -9,6 +9,7 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/proposals/photo"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 )
@@ -57,9 +58,10 @@ type Proposal struct {
 }
 
 // GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
-// and model wrote an AI result and, for a photo, which segmenter read it and
-// how many objects it found. Only these come from the stored metadata:
-// never a credential label, cost, reservation, request ID, hash or latency.
+// and model wrote an AI result and, for a photo, which segmenter read it,
+// how many objects it found and (H-052) their boxes. Only these come from
+// the stored metadata: never a credential label, cost, reservation, request
+// ID, hash, latency or object ID.
 type GeneratedBy struct {
 	Provider  string              `json:"provider"`
 	Model     string              `json:"model,omitzero"`
@@ -80,6 +82,56 @@ type GeneratedSegmenter struct {
 	Provider string `json:"provider"`
 	Model    string `json:"model,omitzero"`
 	Objects  int    `json:"objects"`
+	// Boxes are the objects themselves (H-052), when the stored ones pass
+	// boxesOf's checks; nil otherwise.
+	Boxes []SegmentBox `json:"boxes,omitzero"`
+}
+
+// SegmentBox is common.schema.json's SegmentBox (H-052): one object the
+// segmenter found, by the concept that found it, its box's corners in the
+// source image's pixels (inclusive) and the segmenter's confidence.
+type SegmentBox struct {
+	Concept    string  `json:"concept"`
+	X1         int     `json:"x1"`
+	Y1         int     `json:"y1"`
+	X2         int     `json:"x2"`
+	Y2         int     `json:"y2"`
+	Confidence float64 `json:"confidence"`
+}
+
+// boxesOf are a photo proposal's stored boxes (H-052: the generator's
+// segmenter.boxes) when there are as many as objects and every one passes
+// the contract's checks again: a concept as the segmenter client takes one
+// (provider.CheckConcepts), corners in order inside the stored image's
+// frame (image.width and image.height, MinSide to MaxSide), a confidence
+// from 0 to 1; and the frame is the size of rec, the proposal's own image
+// record (review round 1, L6: the boxes are drawn on that photo). Otherwise
+// nil, so that part of the boxes is never shown: a proposal stored before
+// the boxes were kept shows its object count only, and so does a row
+// without a record (an analysis).
+func boxesOf(raw, image jsontext.Value, objects int, rec *store.Image) []SegmentBox {
+	if len(raw) == 0 || objects < 1 || objects > maxSegments || rec == nil {
+		return nil
+	}
+	var frame struct {
+		Width  int `json:"width"`
+		Height int `json:"height"`
+	}
+	if json.Unmarshal(image, &frame) != nil || frame.Width < photo.MinSide || frame.Width > photo.MaxSide ||
+		frame.Height < photo.MinSide || frame.Height > photo.MaxSide || frame.Width != rec.Width || frame.Height != rec.Height {
+		return nil
+	}
+	var boxes []SegmentBox
+	if json.Unmarshal(raw, &boxes) != nil || len(boxes) != objects {
+		return nil
+	}
+	for _, b := range boxes {
+		if provider.CheckConcepts([]string{b.Concept}) != nil || b.X1 < 0 || b.Y1 < 0 || b.X1 > b.X2 || b.Y1 > b.Y2 ||
+			b.X2 >= frame.Width || b.Y2 >= frame.Height || !(b.Confidence >= 0 && b.Confidence <= 1) {
+			return nil
+		}
+	}
+	return boxes
 }
 
 var (
@@ -97,15 +149,26 @@ const maxQueries = 10000
 // FromMetadata is the GeneratedBy of a row's provider metadata (a proposal's
 // or an analysis's), or nil when it names no provider the contract can show
 // (a generating row's {} included). A model or segmenter outside the
-// contract's patterns is left out rather than shown.
+// contract's patterns is left out rather than shown. It never shows boxes:
+// they are a proposal's, drawn on its own photo (generatedBy).
 func FromMetadata(metadata []byte) *GeneratedBy {
+	return generatedBy(metadata, nil)
+}
+
+// generatedBy is FromMetadata for a row whose image record is rec (nil for
+// none): a photo proposal's shows its boxes too (boxesOf).
+func generatedBy(metadata []byte, rec *store.Image) *GeneratedBy {
 	var m struct {
-		Provider  string `json:"provider"`
-		Model     string `json:"model"`
+		Provider string `json:"provider"`
+		Model    string `json:"model"`
+		// Image and Segmenter.Boxes are read only by boxesOf, so boxes it
+		// refuses never hide the rest.
+		Image     jsontext.Value `json:"image"`
 		Segmenter *struct {
-			Provider string `json:"provider"`
-			Model    string `json:"model"`
-			Segments int    `json:"segments"`
+			Provider string         `json:"provider"`
+			Model    string         `json:"model"`
+			Segments int            `json:"segments"`
+			Boxes    jsontext.Value `json:"boxes"`
 		} `json:"segmenter"`
 		WebSearch *provider.WebSearch `json:"web_search"`
 	}
@@ -117,7 +180,7 @@ func FromMetadata(metadata []byte) *GeneratedBy {
 		out.Model = m.Model
 	}
 	if s := m.Segmenter; s != nil && providerName.MatchString(s.Provider) && s.Segments >= 0 && s.Segments <= maxSegments {
-		out.Segmenter = &GeneratedSegmenter{Provider: s.Provider, Objects: s.Segments}
+		out.Segmenter = &GeneratedSegmenter{Provider: s.Provider, Objects: s.Segments, Boxes: boxesOf(s.Boxes, m.Image, s.Segments, rec)}
 		if modelName.MatchString(s.Model) {
 			out.Segmenter.Model = s.Model
 		}
@@ -189,7 +252,7 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 	// Which model answered, once there is an answer: not while generating,
 	// and not for a failure, whose resource holds only its error (AI_SPEC §4).
 	if p.Status != store.Generating && p.Status != store.Failed {
-		out.GeneratedBy = FromMetadata(p.ProviderMetadata)
+		out.GeneratedBy = generatedBy(p.ProviderMetadata, p.Image)
 	}
 	needsInput := func() {
 		out.Summary, out.Assumptions, out.Questions = p.Summary, nonNil(p.Assumptions), p.Questions
@@ -281,6 +344,19 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		return Proposal{}, fmt.Errorf("proposal %s: unknown status %q", p.ID, p.Status)
 	}
 	return out, nil
+}
+
+// listed is p as listProposals shows it (H-052 review round 1, L7): without
+// the photo's boxes, which only the proposal's own page draws (getProposal);
+// the segmenter's provider, model and object count stay.
+func listed(p Proposal) Proposal {
+	if g := p.GeneratedBy; g != nil && g.Segmenter != nil && g.Segmenter.Boxes != nil {
+		gb, s := *g, *g.Segmenter
+		s.Boxes = nil
+		gb.Segmenter = &s
+		p.GeneratedBy = &gb
+	}
+	return p
 }
 
 // ErrorEnvelope is common.schema.json#/$defs/Error.

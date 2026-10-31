@@ -2377,6 +2377,43 @@
       ]
     },
     {
+      "id": "valid-ready-proposal-from-image-with-boxes",
+      "instance": "testdata/contracts/valid-ready-proposal-from-image-with-boxes.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-box-confidence",
+      "instance": "testdata/contracts/invalid-proposal-box-confidence.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by/segmenter/boxes/0/confidence"
+      ]
+    },
+    {
+      "id": "invalid-proposal-box-object-id",
+      "instance": "testdata/contracts/invalid-proposal-box-object-id.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by/segmenter/boxes/0"
+      ]
+    },
+    {
+      "id": "invalid-proposal-box-concept",
+      "instance": "testdata/contracts/invalid-proposal-box-concept.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/generated_by/segmenter/boxes/1/concept"
+      ]
+    },
+    {
       "id": "valid-ready-proposal-researched",
       "instance": "testdata/contracts/valid-ready-proposal-researched.json",
       "schema": "schemas/proposal.schema.json",

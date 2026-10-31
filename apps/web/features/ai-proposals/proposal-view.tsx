@@ -26,6 +26,8 @@
 // (H-046 (2), sources.tsx): pages the server kept because the call opened
 // them, each an https link to a new tab with no referrer or opener, its
 // title text, and the Written-by line says how many searches the call made.
+// A proposal asked for with a photo shows the photo and the boxes the
+// segmenter found in it (H-052, proposal-photo.tsx).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ProblemView, validationKey } from "../../app/_components/problem-view";
@@ -47,6 +49,7 @@ import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { ChangeList } from "./change-list";
 import { loadProposalPage, type ProposalPage } from "./load";
+import { ProposalPhoto } from "./proposal-photo";
 import { Sources } from "./sources";
 import { visible } from "./shown";
 import { data, useRich, Words } from "./words";
@@ -276,6 +279,9 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           <p>{t("proposal.askAgain")}</p>
         </>
       )}
+
+      {/* H-052: the photo it was asked for with, and the boxes SAM 3.1 found in it. */}
+      {p.source_image && <ProposalPhoto proposalId={id} image={p.source_image} generatedBy={p.generated_by} />}
 
       {p.summary !== undefined && (
         <section className={styles.section} data-section="summary" aria-labelledby={`${id}-summary`}>

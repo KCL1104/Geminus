@@ -29,6 +29,8 @@ var Routes = []Route{
 	{"GET", "/v1/ai-proposals/{id}", "getProposal", readRoles},
 	// T-056: an edit proposal asked for with a photo (image_http.go).
 	{"POST", "/v1/models/{id}/ai-proposals/image", "createImageProposal", writeRoles},
+	// H-052: the photo itself, for the proposal page (image_read.go).
+	{"GET", "/v1/ai-proposals/{id}/image", "getProposalImage", readRoles},
 }
 
 // Register adds the proposal routes to mux.
@@ -45,6 +47,8 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 			f = h.get
 		case "createImageProposal":
 			f = h.createImage
+		case "getProposalImage":
+			f = h.image
 		}
 		mux.Handle(r.Method+" "+r.Path, httpapi.Handler(log, httpapi.Scoped(v, users, f)))
 	}

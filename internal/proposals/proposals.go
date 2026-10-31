@@ -461,7 +461,7 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, modelID,
 			if err != nil {
 				return err
 			}
-			page.Items = append(page.Items, p)
+			page.Items = append(page.Items, listed(p))
 		}
 		return nil
 	})

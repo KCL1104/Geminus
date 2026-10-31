@@ -9,6 +9,7 @@
 // researched answer, H-046 (2)); createImageProposal (T-056) likewise, with the photo sample's
 // answer, after the checks a client can meet (a multipart form whose last
 // part is the file, a PNG or JPEG by its first bytes, at most 5 MiB);
+// getProposalImage (H-052) with the file sent, or the sample's floor plan;
 // approveProposal as T-026 does (decided: PROPOSAL_ALREADY_DECIDED;
 // not ready: LIFECYCLE_CONFLICT; a base that is no longer the latest makes
 // the proposal conflicted and answers 409 MODEL_VERSION_CONFLICT; an edit
@@ -25,6 +26,7 @@ import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { applyPatch } from "../../../features/model-editor/patch";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
+import { samplePhotoBytes } from "./sample-photo";
 import { ORG, otherChange, proposalId, readyEdit, readyFromPhoto, readyScenario, REQUEST, researched, type SampleState, samplePhoto, sampleFor, scenarioId, USER, versionId } from "./samples";
 
 const PROJECT = "prj_01M4YDQK00E1ECTR0N1C500000";
@@ -106,6 +108,8 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
   const versions: ModelVersion[] = [];
   const scenarios: Scenario[] = [];
   const proposals = new Map<string, Stored>();
+  /** The bytes of each photo sent from the model page (H-052: getProposalImage serves them back). */
+  const photos = new Map<string, Uint8Array<ArrayBuffer>>();
   const answers = new Map<string, { fingerprint: string; status: number; body: unknown }>();
   let refusal = opts.refuseNext;
   let held: (() => void)[] = [];
@@ -239,7 +243,19 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const answer = readyFromPhoto(id, photo);
         if (typeof chosen === "string") answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: chosen };
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: base }, polls: opts.generatingPolls ?? 2 });
+        photos.set(id, bytes);
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
+      });
+    }
+    // H-052: the photo a proposal was asked for with, as stored: the file sent from the model page, else the sample's floor plan.
+    const image = path.match(/^\/api\/v1\/ai-proposals\/([^/]+)\/image$/);
+    if (method === "GET" && image) {
+      const s = opts.missing ? undefined : proposals.get(image[1]!);
+      const kept = s?.proposal.source_image;
+      if (kept === undefined) return error(404, "NOT_FOUND", "not found");
+      return new Response(photos.get(image[1]!) ?? samplePhotoBytes(), {
+        status: 200,
+        headers: { "Content-Type": kept.media_type, "X-Request-ID": REQUEST, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" },
       });
     }
     const p = path.match(/^\/api\/v1\/ai-proposals\/([^/]+)(\/approve|\/reject)?$/);

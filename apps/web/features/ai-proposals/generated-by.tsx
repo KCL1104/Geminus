@@ -41,6 +41,13 @@ export function useWriterWithSearch(g: GeneratedBy | undefined): string | null {
   return search.queries === 0 ? t("ai.webSearch.none", { writer }) : t("ai.webSearch", { writer, count: search.queries });
 }
 
+/** "SAM 3.1": the segmenter that read the photo, or null when the answer names none (H-052). */
+export function useSegmenterName(g: GeneratedBy | undefined): string | null {
+  const names = useNames();
+  const s = g?.segmenter;
+  return s === undefined ? null : names.model(s.model, s.provider);
+}
+
 /** "SAM 3.1 · 12 objects": what read the photo, or null for a proposal asked for in words. */
 export function useReader(g: GeneratedBy | undefined): string | null {
   const { t } = useI18n();

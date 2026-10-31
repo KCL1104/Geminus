@@ -1,7 +1,7 @@
 // A real screen of the product on the landing (H-048): the picture the
 // capture script made (apps/web-e2e/scripts/landing-shots.mjs), one per
 // theme where both exist, served from the app's own origin (the CSP allows
-// img-src 'self' only). Each is WebP at its width on screen and at twice
+// img-src 'self', and blob: for H-052's photo). Each is WebP at its width on screen and at twice
 // that; the browser picks one by the space it gets. Both themes' pictures
 // are in the page and CSS shows the one the tokens show (landing.module.css),
 // so a theme chosen in the menu applies at once. Every picture loads lazily,

@@ -164,6 +164,42 @@ export function createApiClient(cfg: ClientConfig) {
     return { ok: true, data: body as T, requestId, etag: res.headers.get("ETag") };
   }
 
+  /**
+   * A GET whose success is a photo (getProposalImage, H-052): the body as a
+   * PNG or JPEG Blob of the type the API named; any other type is a
+   * protocol problem, a failure the API's error as for call.
+   */
+  async function photo(path: string, signal?: AbortSignal): Promise<Result<Blob>> {
+    const session = cfg.session();
+    if (session === null) return { ok: false, problem: unauthenticatedProblem() };
+    const headers = { Accept: "image/png, image/jpeg", "X-Geminus-Request": "1", "X-Organization-ID": session.organizationId };
+    let res: Response;
+    try {
+      res = await doFetch(API_PREFIX + path, { method: "GET", headers, signal, credentials: "same-origin", cache: "no-store", redirect: "error" });
+    } catch {
+      return { ok: false, problem: networkProblem(signal?.aborted ? "Request aborted." : "The API could not be reached.") };
+    }
+    const requestId = requestIdFrom(res.headers);
+    if (!res.ok) {
+      let body: unknown;
+      try {
+        body = JSON.parse(await res.text());
+      } catch {
+        body = undefined;
+      }
+      return { ok: false, problem: problemFromResponse(res.status, res.headers, body) };
+    }
+    const type = (res.headers.get("Content-Type") ?? "").split(";")[0]!.trim().toLowerCase();
+    if (type !== "image/png" && type !== "image/jpeg") return { ok: false, problem: protocolProblem(res.status, "The API returned a photo that is not a PNG or JPEG.", requestId) };
+    let bytes: ArrayBuffer;
+    try {
+      bytes = await res.arrayBuffer();
+    } catch {
+      return { ok: false, problem: networkProblem(signal?.aborted ? "Request aborted." : "The API response was cut off.") };
+    }
+    return { ok: true, data: new Blob([bytes], { type }), requestId, etag: null };
+  }
+
   /** Draft responses must carry an ETag that names the body's revision. */
   function checkDraft(r: Result<Draft>): Result<Draft> {
     if (!r.ok) return r;
@@ -341,6 +377,11 @@ export function createApiClient(cfg: ClientConfig) {
     async getProposal(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {
       if (!isID("aip", proposalId)) return notFound("The proposal");
       return call<Proposal>({ method: "GET", path: `/ai-proposals/${proposalId}`, signal: opts.signal });
+    },
+    /** The photo a proposal was asked for with (H-052), as the server stored it; 404 for a proposal asked for in words. */
+    async getProposalImage(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Blob>> {
+      if (!isID("aip", proposalId)) return notFound("The proposal");
+      return photo(`/ai-proposals/${proposalId}/image`, opts.signal);
     },
     /**
      * A person approves a ready proposal on the base they reviewed (T-026):

@@ -497,7 +497,7 @@
     },
     "GeneratedBy": {
       "type": "object",
-      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash or latency. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own.",
+      "description": "H-043: which provider and model wrote an AI result (a proposal or an analysis), and for a photo proposal which segmenter read the image and how many objects it found (at most 64, D-131 (c)), taken from the stored provider metadata. H-052: for a photo proposal, also the boxes of those objects (segmenter.boxes). Nothing else of that metadata is shown: no credential label, cost, reservation, request ID, hash, latency or object ID. H-046 (2): web_search says the proposal was asked for with research on, so the model could use its provider's web search (Meta's search grounding) before it answered. A label for people, not a check of anything: the server's validation and risk stand on their own.",
       "properties": {
         "provider": {
           "type": "string",
@@ -524,6 +524,15 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 64
+            },
+            "boxes": {
+              "type": "array",
+              "description": "H-052: the objects themselves, for the proposal page to draw over the photo (getProposalImage): as many as objects, in the segmenter's order (the request's concepts, then by object). Only in getProposal (and the proposal a decision answers with), never in listProposals' items or an analysis. Absent when the segmenter found nothing, for a proposal stored before the boxes were kept, and whenever the stored boxes do not all pass the server's checks again (the count, each concept, each box inside the source image, each confidence, the frame the size of the proposal's own source_image): then only objects is shown, never part of the boxes.",
+              "items": {
+                "$ref": "#/$defs/SegmentBox"
+              },
+              "minItems": 1,
+              "maxItems": 64
             }
           },
           "required": [
@@ -556,6 +565,52 @@
       },
       "required": [
         "provider"
+      ],
+      "additionalProperties": false
+    },
+    "SegmentBox": {
+      "type": "object",
+      "description": "H-052: one object a segmenter found in a photo proposal's image (SAM 3.1 in the hackathon deployment): the concept the server asked it to find (one of the domain pack's short noun phrases, which is what was looked for, not the kind of station the AI then proposed), its box's corners in the source image's pixels (x1, y1 top left and x2, y2 bottom right, inclusive; origin top left, x right, y down; inside source_image's width and height) and the segmenter's own confidence from 0 to 1. The segmenter's guess, untrusted: the server's validation and risk do not rest on it.",
+      "properties": {
+        "concept": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:[ -][a-z0-9]+)*$"
+        },
+        "x1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "y1": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4095
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "concept",
+        "x1",
+        "y1",
+        "x2",
+        "y2",
+        "confidence"
       ],
       "additionalProperties": false
     },
