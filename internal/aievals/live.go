@@ -430,9 +430,9 @@ func runCase(ctx context.Context, cfg Config, graph *proposalgraph.Graph, c Case
 	case errors.As(err, &re):
 		return meta, fmt.Errorf("aievals: %s: the review: %w", c.ID, re.Err)
 	default:
-		// The call failed (proposalgraph.CallError), or the run stopped
-		// before it (the client's cancelled error): the case failed, with
-		// the client's code.
+		// The call failed (proposalgraph.CallError; once the run is
+		// stopped, the client refuses it with its cancelled error, as a
+		// direct call): the case failed, with the client's code.
 		err = proposalgraph.Cause(err)
 		var pe *provider.Error
 		o.Status, o.Code = "failed", "AI_"+strings.ToUpper(string(provider.CodeOf(err)))

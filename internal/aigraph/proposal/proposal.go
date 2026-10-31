@@ -29,6 +29,13 @@
 // errors, so Run returns the step's own error (the client's, a hook's, or a
 // typed error of this package) and the Result as it stood.
 //
+// Each step runs under the attempt's own context (its values, its
+// cancellation and its deadline), and sees the attempt stop itself, as the
+// handler's own pipeline did before the graph: Eino, which would end a run
+// between two nodes once its context ends, runs on one that never does, so
+// a stopped attempt ends with the error of the step that saw it (E3 review
+// round 1).
+//
 // No ChatTemplate, checkpoint store, retry or failover configuration and no
 // global callback is used; a caller's callbacks would see the attempt's
 // state, so none is attached in production. The graph does no I/O of its
@@ -40,6 +47,8 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"runtime"
+	"time"
 
 	"github.com/cloudwego/eino/callbacks"
 	"github.com/cloudwego/eino/components"
@@ -254,6 +263,8 @@ func Cause(err error) error {
 // flow is one attempt's state, handed from node to node. Each node reads
 // what the ones before it set; err ends the attempt.
 type flow struct {
+	// ctx is the attempt's context, which every step runs under (attempt).
+	ctx   context.Context
 	req   Request
 	hooks Hooks
 
@@ -279,18 +290,71 @@ type flow struct {
 	err2     error
 
 	err      error
-	panicked *nodePanic
+	panicked *Panic
 }
 
 func (f *flow) result() Result {
 	return Result{Outcome: f.outcome, Call: f.call, Manifest: f.manifest, Sources: f.res.Sources, Repair: f.rec}
 }
 
-// nodePanic is a node's panic, raised again by Run on the caller's
-// goroutine with its own value.
-type nodePanic struct{ value any }
+// Panic is a node's panic (a hook's included) as Run raises it again on the
+// caller's goroutine, once Eino's task has recovered it and its frames are
+// gone: the value the node panicked with and the goroutine's stack where it
+// did (E3 review round 1). The worker records it as that first panic
+// (internal/worker/handler.Reraised): only a runtime error's message, the
+// stack where it was raised, not retried.
+type Panic struct {
+	value any
+	stack []byte
+}
+
+// PanicValue is what the node panicked with.
+func (p *Panic) PanicValue() any { return p.value }
+
+// PanicStack is the goroutine's stack where the node panicked.
+func (p *Panic) PanicStack() []byte { return p.stack }
+
+// String is what the Go runtime prints of it when nothing recovers it (the
+// live eval): the value, as it would have printed the node's own panic, and
+// the stack where the node panicked; the runtime's own trace, of Run's
+// re-raise, follows.
+func (p *Panic) String() string {
+	return fmt.Sprint(p.value) + " [a node of the proposal graph panicked]\n\n" + string(p.stack)
+}
 
 var errPanicked = errors.New("proposal: a node panicked")
+
+// stack is the calling goroutine's stack, as runtime/debug.Stack (which
+// this package may not import: it links os) returns it.
+func stack() []byte {
+	buf := make([]byte, 4096)
+	for {
+		if n := runtime.Stack(buf, false); n < len(buf) {
+			return buf[:n]
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+}
+
+// attempt is a step's context: the node's (its values: the run's callbacks,
+// and below them the attempt's) with the attempt's cancellation and
+// deadline. A value the node's does not hold is the attempt's: the
+// cancellation's own, which keeps context.Cause and the contexts the step
+// derives tied to the attempt's directly.
+type attempt struct {
+	context.Context // the node's, from Eino: never cancelled
+	of              context.Context
+}
+
+func (c attempt) Deadline() (time.Time, bool) { return c.of.Deadline() }
+func (c attempt) Done() <-chan struct{}       { return c.of.Done() }
+func (c attempt) Err() error                  { return c.of.Err() }
+func (c attempt) Value(key any) any {
+	if v := c.Context.Value(key); v != nil {
+		return v
+	}
+	return c.of.Value(key)
+}
 
 // New compiles the graph.
 func New(cfg Config) (*Graph, error) {
@@ -386,45 +450,45 @@ func onward(next string) func(*flow) string {
 	}
 }
 
-// node is a step as a Lambda node: a panic in it (a hook's included) is
-// kept to be raised again by Run, never handed to Eino, whose own panic
+// node is a step as a Lambda node, run under the attempt's context: a
+// panic in it (a hook's included) is kept with the stack where it was
+// raised, to be raised again by Run, never handed to Eino, whose own panic
 // error prints the value and a stack.
 func node(step func(context.Context, *flow)) *compose.Lambda {
 	return compose.InvokableLambda(func(ctx context.Context, f *flow) (out *flow, err error) {
 		defer func() {
 			if v := recover(); v != nil {
-				f.panicked, out, err = &nodePanic{value: v}, nil, errPanicked
+				f.panicked, out, err = &Panic{value: v, stack: stack()}, nil, errPanicked
 			}
 		}()
-		step(ctx, f)
+		step(attempt{Context: ctx, of: f.ctx}, f)
 		return f, nil
 	})
 }
 
 // Run runs one attempt. The error is what ended it: a hook's own error
 // (Preload, Verify), an *InputError, a *ContextError, a *CallError, a
-// *ReviewError or a *BindError, the repair's (repair.Settle: the attempt's
-// when ctx ended), or, when ctx ended between two nodes, the client's
-// cancelled error (as a call made then would have been); the Result says
-// what was done either way. A node's panic is raised again here, with its
-// own value.
+// *ReviewError or a *BindError, or the repair's (repair.Plan's and
+// repair.Settle's: the attempt's when ctx ended); when ctx ends, the step
+// that sees it ends the attempt with its own error, as before the graph.
+// The Result says what was done either way. A node's panic is raised again
+// here, as a *Panic.
 func (g *Graph) Run(ctx context.Context, req Request, hooks Hooks) (Result, error) {
 	return g.run(ctx, req, hooks)
 }
 
 func (g *Graph) run(ctx context.Context, req Request, hooks Hooks, opts ...compose.Option) (Result, error) {
-	f := &flow{req: req, hooks: hooks}
-	_, err := g.r.Invoke(ctx, f, opts...)
+	f := &flow{ctx: ctx, req: req, hooks: hooks}
+	// Eino ends a run between two nodes once its context ends; the steps see
+	// the attempt's themselves (attempt), so the run's own never ends.
+	_, err := g.r.Invoke(context.WithoutCancel(ctx), f, opts...)
 	if f.panicked != nil {
-		panic(f.panicked.value)
+		panic(f.panicked)
 	}
-	switch {
-	case err == nil:
-		return f.result(), f.err
-	case ctx.Err() != nil:
-		return f.result(), provider.NewError(provider.CodeCancelled, 0, "").WithCause(ctx.Err())
+	if err != nil {
+		return f.result(), fmt.Errorf("proposal: the graph failed: %w", err)
 	}
-	return f.result(), fmt.Errorf("proposal: the graph failed: %w", err)
+	return f.result(), f.err
 }
 
 // decode reads what the server stored: the base's IR, its domain's pack,

@@ -11,8 +11,10 @@ import (
 	"context"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -501,9 +503,15 @@ func TestTheRequestIsTheDirectCalls(t *testing.T) {
 	}
 }
 
-// Cancellation reaches every node: an attempt cancelled before the graph
-// runs asks nothing; one cancelled during the call ends there, with the
-// client's cancelled error, no review and no repair.
+// Cancellation reaches every node, and each step sees it itself, as the
+// handler's own pipeline did before the graph (review round 1, finding 1):
+// an attempt cancelled before the graph runs asks nothing (its snapshots'
+// read runs and the client refuses the call before the backend, with its
+// cancelled error); one cancelled during the call ends there, with the
+// client's cancelled error as Answered was told it, no review and no
+// repair; one cancelled during the repair's call keeps the first outcome,
+// with the repair's answer neither reviewed nor bound (the record says it
+// stopped).
 func TestCancellation(t *testing.T) {
 	intent := "Let more CI runs pass."
 	f := fake.New()
@@ -512,26 +520,30 @@ func TestCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, err := graphOf(t, client(t, f)).Run(ctx, request(t, "edit", intent), h.Hooks())
-	if !errors.Is(err, context.Canceled) || provider.CodeOf(err) != provider.CodeCancelled || len(f.Requests()) != 0 || h.preloaded != nil {
-		t.Errorf("cancelled first: %v, %d requests", err, len(f.Requests()))
+	var ce *CallError
+	if !errors.Is(err, context.Canceled) || provider.CodeOf(err) != provider.CodeCancelled || len(f.Requests()) != 0 ||
+		!slices.Equal(h.preloaded, []int{0}) || !errors.As(err, &ce) || ce.Err != h.answerErrs[0] {
+		t.Errorf("cancelled first: %v, %d requests, preloaded %v", err, len(f.Requests()), h.preloaded)
 	}
 	for _, after := range []int{1, 2} {
 		f := fake.New()
 		f.Script(provider.RoleModeler, intent, proposed(broken))
+		f.ScriptRevision(provider.RoleModeler, intent, proposed(fixed))
 		ctx, cancel := context.WithCancel(context.Background())
 		b := &cancelling{Backend: f, after: after, cancel: cancel}
 		h := &hooks{f: f}
 		tr := &tracer{}
-		_, err := graphOf(t, client(t, b)).run(ctx, request(t, "edit", intent), h.Hooks(), tr.option())
+		res, err := graphOf(t, client(t, b)).run(ctx, request(t, "edit", intent), h.Hooks(), tr.option())
 		cancel()
-		if !errors.Is(err, context.Canceled) || len(f.Requests()) != after {
-			t.Errorf("cancelled after call %d: %v, %d requests", after, err, len(f.Requests()))
+		if !errors.Is(err, context.Canceled) || len(f.Requests()) != after || len(h.answerErrs) != after ||
+			provider.CodeOf(h.answerErrs[after-1]) != provider.CodeCancelled {
+			t.Errorf("cancelled after call %d: %v, %d requests, answered %v", after, err, len(f.Requests()), h.answerErrs)
 		}
-		if after == 1 && (slices.Contains(tr.nodes, NodeReview) || slices.Contains(tr.nodes, NodeRepairGenerate)) {
-			t.Errorf("cancelled during the call: nodes %v", tr.nodes)
+		if after == 1 && (slices.Contains(tr.nodes, NodeReview) || slices.Contains(tr.nodes, NodeRepairGenerate) || !errors.As(err, &ce) || ce.Err != h.answerErrs[0]) {
+			t.Errorf("cancelled during the call: %v, nodes %v", err, tr.nodes)
 		}
-		if after == 2 && slices.Contains(tr.nodes, NodeRepairReview) {
-			t.Errorf("cancelled during the repair: nodes %v", tr.nodes)
+		if after == 2 && (err != h.answerErrs[1] || res.Outcome.Status != review.Invalid || res.Repair == nil || res.Repair.Outcome != "" || h.bound != nil) {
+			t.Errorf("cancelled during the repair: %v, %s %+v, bound %v", err, res.Outcome.Status, res.Repair, h.bound)
 		}
 	}
 }
@@ -552,27 +564,50 @@ func (c *cancelling) Complete(ctx context.Context, req provider.Request) (provid
 }
 
 // A node that panics, a hook's included, panics again on the caller's
-// goroutine with its own value, so the worker's reviewed panic handling
-// applies as before; Eino's own panic error (whose text holds the value and
-// a stack) never comes back as an error.
+// goroutine, as a *Panic that holds the value it panicked with and the stack
+// it panicked on (review round 1, finding 3): the worker records those in
+// its place (handler.Reraised), so its reviewed panic handling applies as
+// before and the stack it logs names the frame that failed, not only Run's;
+// Eino's own panic error (whose text holds the value and a stack) never
+// comes back as an error. A runtime error stays the runtime's, and what the
+// Go runtime prints when nothing recovers the panic (the live eval) is the
+// value and that stack.
 func TestAPanicIsRaisedAgain(t *testing.T) {
-	for name, set := range map[string]func(*hooks){
-		"before the call": func(h *hooks) { h.verifyPanic = true },
-		"after the call":  func(h *hooks) { h.bindPanics = true },
+	for name, c := range map[string]struct {
+		set   func(*hooks)
+		frame string
+	}{
+		"before the call": {func(h *hooks) { h.verifyPanic = true }, "proposal.(*hooks).Hooks.func2"},
+		"after the call":  {func(h *hooks) { h.bindPanics = true }, "proposal.(*hooks).Hooks.func3"},
+		"a runtime error": {nil, "proposal.writesToANilMap"},
 	} {
 		intent := "Six runners."
 		f := fake.New()
 		f.Script(provider.RoleModeler, intent, proposed(raise))
 		h := &hooks{f: f}
-		set(h)
+		hk := h.Hooks()
+		if c.set != nil {
+			c.set(h)
+			hk = h.Hooks()
+		} else {
+			hk.Preload = func(context.Context) error { writesToANilMap(); return nil }
+		}
 		g := graphOf(t, client(t, f))
 		got := func() (v any) {
 			defer func() { v = recover() }()
-			_, err := g.Run(context.Background(), request(t, "edit", intent), h.Hooks())
+			_, err := g.Run(context.Background(), request(t, "edit", intent), hk)
 			t.Errorf("%s: no panic, %v", name, err)
 			return nil
 		}()
-		switch v := got.(type) {
+		p, ok := got.(*Panic)
+		if !ok {
+			t.Fatalf("%s: %#v", name, got)
+		}
+		switch v := p.PanicValue().(type) {
+		case runtime.Error:
+			if name != "a runtime error" || v.Error() != "assignment to entry in nil map" {
+				t.Errorf("%s: %v", name, v)
+			}
 		case string:
 			if v != "verify panicked" {
 				t.Errorf("%s: %q", name, v)
@@ -582,9 +617,22 @@ func TestAPanicIsRaisedAgain(t *testing.T) {
 				t.Errorf("%s: %v", name, v)
 			}
 		default:
-			t.Errorf("%s: %#v", name, got)
+			t.Errorf("%s: %#v", name, p.PanicValue())
+		}
+		stack := string(p.PanicStack())
+		if !strings.HasPrefix(stack, "goroutine ") || !strings.Contains(stack, c.frame) || !strings.Contains(stack, "proposal.(*Graph).Run") {
+			t.Errorf("%s: the stack does not name the frame that failed (%s):\n%s", name, c.frame, stack)
+		}
+		if s := p.String(); !strings.Contains(s, fmt.Sprint(p.PanicValue())) || !strings.HasSuffix(s, stack) {
+			t.Errorf("%s: printed as %q", name, s)
 		}
 	}
+}
+
+// writesToANilMap panics with a runtime error, in a frame of its own.
+func writesToANilMap() {
+	var m map[string]int
+	m["x"] = 1
 }
 
 // Graph-level callbacks see the run's state, so none is attached by the

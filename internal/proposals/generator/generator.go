@@ -482,8 +482,10 @@ var inputMessages = map[proposalgraph.Input]string{
 // (gen: the first outcome, the call, the manifest, the sources and the
 // repair's record) once the repair was asked for. A stopping attempt keeps
 // nothing and returns its error as it is (the worker records it, or
-// nothing), but for a review that could not run, which is the server's own
-// failure whatever the context.
+// nothing), but for what the server stored that cannot be read, a request
+// the context builder refuses and a review that could not run, which are
+// failures whatever the context: each step runs and sees the attempt stop
+// itself, as before the graph (E3 review round 1).
 func (h *Handler) ended(ctx context.Context, org, id string, res proposalgraph.Result, gen generation, err error) (generation, error) {
 	called := generation{meta: res.Call}
 	var (

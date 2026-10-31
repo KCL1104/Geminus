@@ -99,3 +99,17 @@ type Handler interface {
 type Func func(ctx context.Context, run Run) error
 
 func (f Func) Handle(ctx context.Context, run Run) error { return f(ctx, run) }
+
+// Reraised is a panic a handler recovered and raised again on another frame
+// (the proposal role graph raises a node's panic again on the handler's
+// goroutine once Eino's task has recovered it, H-059): PanicValue is what
+// the code first panicked with and PanicStack the goroutine's stack where it
+// did. The worker records the panic as that first one, as it records a
+// panic of the handler's own code: its message only when the Go runtime
+// raised it, the stack where it was raised, not retried. One whose methods
+// panic, or that carries no value, is recorded as the value it is; one that
+// carries no stack, with the worker's own.
+type Reraised interface {
+	PanicValue() any
+	PanicStack() []byte
+}
