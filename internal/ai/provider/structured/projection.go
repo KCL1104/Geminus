@@ -44,8 +44,19 @@ import (
 // the way apart (status, op), never by what a string looks like. An open
 // value whose place no const member tells apart, and a schema left with no
 // constraint the subset takes, are refused, never sent as an empty schema.
+//
+// Native (H-068) is the same projection but at the encoded places, where it
+// asks for the value itself, any JSON value, instead of a JSON text in a
+// string: the schema a provider is told in its prompt when the request
+// sends no structured output format (the Meta adapter's Muse Wonder 1.0,
+// whose JSON texts under the strict format were garbled live). It comes from
+// the same pass over the same canonical schema (project), so the two cannot
+// drift, and DecodeNative reads an answer written to it.
 type Projection struct {
 	Schema map[string]any
+	// Native is Schema with each encoded place asking for the value itself
+	// (NativeDescription); equal to Schema when nothing is encoded.
+	Native map[string]any
 	// Dropped lists the removed keywords as "file#/pointer", sorted.
 	Dropped []string
 	// Encoded lists the places in an answer where the projection asks for
@@ -106,6 +117,15 @@ const EncodedDescription = `This value as a JSON text (RFC 8259), which the serv
 	`a string with its quotes, e.g. "\"ICT tester\"" for the string ICT tester; a number as its digits, e.g. "6"; ` +
 	`true, false, null, an array or an object as their JSON, e.g. "{\"id\":\"node_1\"}". One JSON value, nothing after it.`
 
+// NativeDescription is the description of a value the native schema asks
+// for itself (Projection.Native, H-068): what the model reads about it.
+const NativeDescription = `Any JSON value, written as itself in plain JSON: a string in its quotes, e.g. "ICT tester"; a number as its digits, ` +
+	`e.g. 6; true, false or null; an array or an object as JSON, e.g. {"id":"node_1"}. Never a JSON text inside a string.`
+
+// nativeTypes is the type list of a native value: every JSON type, so the
+// schema says what the value is (sub) while it accepts any JSON value.
+var nativeTypes = []any{"string", "number", "boolean", "null", "object", "array"}
+
 // dropped are constraints the subset does not take; the canonical
 // validator enforces them.
 var dropped = map[string]bool{
@@ -155,6 +175,8 @@ type projector struct {
 	docs    map[string]any
 	dropped map[string]bool
 	encoded map[string]Location
+	// native: an encoded place asks for the value itself (Projection.Native).
+	native bool
 }
 
 // place is where in an answer the schema being projected applies: the
@@ -185,8 +207,29 @@ func (pl place) alternative(c *Cond) place {
 	return out
 }
 
+// project is the projection of file and its native form (H-068): two passes
+// of the same projector over the same schema, which differ only in what
+// encode returns, so their removals and encoded places are the same (and
+// are checked to be).
 func project(docs map[string]any, file string) (Projection, error) {
-	p := &projector{docs: docs, dropped: map[string]bool{}, encoded: map[string]Location{}}
+	out, err := projectAs(docs, file, false)
+	if err != nil {
+		return Projection{}, err
+	}
+	native, err := projectAs(docs, file, true)
+	if err != nil {
+		return Projection{}, err
+	}
+	same := slices.Equal(out.Dropped, native.Dropped) && slices.EqualFunc(out.Encoded, native.Encoded, func(a, b Location) bool { return a.String() == b.String() })
+	if !same {
+		return Projection{}, fmt.Errorf("projection: %s: the native schema does not have the projection's places", file)
+	}
+	out.Native = native.Schema
+	return out, nil
+}
+
+func projectAs(docs map[string]any, file string, native bool) (Projection, error) {
+	p := &projector{docs: docs, dropped: map[string]bool{}, encoded: map[string]Location{}, native: native}
 	root, ok := docs[file]
 	if !ok {
 		return Projection{}, fmt.Errorf("projection: no schema %s", file)
@@ -438,7 +481,8 @@ func (p *projector) node(v any, file, ptr string, stack []string, at place) (any
 }
 
 // encode is the projection of the open value v at its place: a string
-// holding the value as a JSON text, and the place listed.
+// holding the value as a JSON text, and the place listed; in the native
+// form (H-068) any JSON value, written as itself.
 func (p *projector) encode(v any, file, ptr string, at place) (any, error) {
 	switch {
 	case len(at.steps) == 0:
@@ -451,10 +495,16 @@ func (p *projector) encode(v any, file, ptr string, at place) (any, error) {
 	loc := Location{Steps: at.steps}
 	p.encoded[loc.String()] = loc
 	desc := EncodedDescription
+	if p.native {
+		desc = NativeDescription
+	}
 	if s, ok := v.(map[string]any); ok {
 		if d, _ := s["description"].(string); d != "" {
-			desc = d + " " + EncodedDescription
+			desc = d + " " + desc
 		}
+	}
+	if p.native {
+		return map[string]any{"type": slices.Clone(nativeTypes), "description": desc}, nil
 	}
 	return map[string]any{"type": "string", "description": desc}, nil
 }
