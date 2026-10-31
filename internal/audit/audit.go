@@ -300,7 +300,7 @@ var catalogue = map[string]spec{
 	// A refused reservation writes nothing but this event (best effort:
 	// the call is refused whether or not it is recorded).
 	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},
-		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month")}},
+		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month", "investigation")}},
 	// Provisioning (cmd/provision-tenant, D-042).
 	// T-057: and the one more member an organization may get when it is
 	// created (the judge's demo account, H-035 (2)), never a second owner.

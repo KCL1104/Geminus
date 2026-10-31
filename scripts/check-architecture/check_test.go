@@ -223,6 +223,11 @@ func TestProbesAreCaught(t *testing.T) {
 		{"api-links-the-worker-scope", "cmd/api/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./cmd/api", "./internal/tenant/workerscope", false},
 		{"a-service-links-the-worker-scope", "internal/project/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/project", "./internal/tenant/workerscope", false},
 		{"storage-links-the-worker-scope", "internal/storage/projects/zz_probe.go", module + "/internal/tenant/workerscope", "worker-scope-only-in-the-worker", "./internal/storage/projects", "./internal/tenant/workerscope", false},
+		// H-061 A3: the executor's organization-only discovery.
+		{"the-worker-links-acting-for", "cmd/worker/zz_probe.go", module + "/internal/tenant/actingfor", "acting-for-only-in-the-executor", "./cmd/worker", "./internal/tenant/actingfor", false},
+		{"a-service-links-acting-for", "internal/proposals/zz_probe.go", module + "/internal/tenant/actingfor", "acting-for-only-in-the-executor", "./internal/proposals", "./internal/tenant/actingfor", false},
+		{"storage-links-acting-for", "internal/storage/investigations/zz_probe.go", module + "/internal/tenant/actingfor", "acting-for-only-in-the-executor", "./internal/storage/investigations", "./internal/tenant/actingfor", false},
+		{"the-api-routes-link-acting-for", "internal/api/zz_probe.go", module + "/internal/tenant/actingfor", "acting-for-only-in-the-executor", "./internal/api", "./internal/tenant/actingfor", false},
 		{"api-links-the-simulation-handler", "cmd/api/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/runs/runner", false},
 		{"a-service-links-the-handler", "internal/models/zz_probe.go", module + "/internal/runs/runner", "job-handlers-only-in-the-worker", "./internal/models", "./internal/runs/runner", false},
 		{"api-links-the-import-profiler", "cmd/api/zz_probe.go", module + "/internal/import/profiler", "job-handlers-only-in-the-worker", "./cmd/api", "./internal/import/profiler", false},

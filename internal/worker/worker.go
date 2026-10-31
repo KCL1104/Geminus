@@ -420,6 +420,8 @@ func resource(j jobs.Job) (targetType, id string) {
 		return "ai_proposal", r.AIProposalID
 	case r.ImportID != "":
 		return "import", r.ImportID
+	case r.InvestigationID != "":
+		return "investigation", r.InvestigationID // H-061: an investigation's own job
 	}
 	return "ai_analysis", r.AIAnalysisID
 }
@@ -433,6 +435,8 @@ func resourceKey(j jobs.Job) string {
 		return "proposal_id"
 	case "import":
 		return "import_id"
+	case "investigation":
+		return "investigation_id"
 	}
 	return "analysis_id"
 }

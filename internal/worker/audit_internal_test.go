@@ -41,7 +41,7 @@ func job(typ jobs.Type, r jobs.Resource, payload string) jobs.Job {
 // so that transaction rolls back.
 func TestTheAttemptsEvent(t *testing.T) {
 	req := ids.New("req")
-	run, prop, imp, ana := ids.New("sim"), ids.New("aip"), ids.New("imp"), ids.New("ana")
+	run, prop, imp, ana, inv := ids.New("sim"), ids.New("aip"), ids.New("imp"), ids.New("ana"), ids.New("inv")
 	w := &Worker{cfg: Config{ID: "worker-7"}}
 	for _, c := range []struct {
 		j              jobs.Job
@@ -54,6 +54,8 @@ func TestTheAttemptsEvent(t *testing.T) {
 		{job(jobs.ModelProposal, jobs.Resource{AIProposalID: prop}, `{"proposal_id":"`+prop+`","request_id":"`+req+`"}`), "ai_proposal", prop, true, true, "proposal_id", req},
 		{job(jobs.ImportValidate, jobs.Resource{ImportID: imp}, `{"import_id":"`+imp+`","mapping_revision":2,"request_id":"`+req+`"}`), "import", imp, true, true, "import_id", req},
 		{job(jobs.Analysis, jobs.Resource{AIAnalysisID: ana}, `{"analysis_id":"`+ana+`"}`), "ai_analysis", ana, false, false, "analysis_id", ""},
+		// H-061 A3: an investigation's own job, on the investigation.
+		{job(jobs.Investigation, jobs.Resource{InvestigationID: inv}, `{"investigation_id":"`+inv+`","request_id":"`+req+`"}`), "investigation", inv, true, true, "investigation_id", req},
 		// A request ID that is not one: never used.
 		{job(jobs.ImportProfile, jobs.Resource{ImportID: imp}, `{"import_id":"`+imp+`","request_id":"req_SENTINEL"}`), "import", imp, false, false, "import_id", ""},
 		{job(jobs.ImportProfile, jobs.Resource{ImportID: imp}, `not json`), "import", imp, false, false, "import_id", ""},

@@ -96,6 +96,19 @@ IDS = {
     "JOB_A71": ("job", "A", 71), "JOB_A72": ("job", "A", 72), "JOB_A73": ("job", "A", 73), "JOB_A74": ("job", "A", 74),
     "JOB_A75": ("job", "A", 75), "JOB_A76": ("job", "A", 76), "JOB_A77": ("job", "A", 77),
 }
+# H-061 A3 (investigations.sql): AI investigations, their jobs and what they
+# label; tenant R is investigation_rows.sql's (the 0019 down refusal).
+IDS.update({f"INV_A{n}": ("inv", "A", n) for n in range(1, 10)})
+IDS.update({f"JOB_A{n}": ("job", "A", n) for n in range(81, 100)})
+IDS.update({f"AIP_A{n}": ("aip", "A", n) for n in range(41, 50)})
+IDS.update({f"SCN_A{n}": ("scn", "A", n) for n in range(11, 15)})
+IDS.update({f"SIM_A{n}": ("sim", "A", n) for n in range(11, 20)})
+IDS.update({f"ANA_A{n}": ("ana", "A", n) for n in range(11, 18)})
+IDS.update({f"AUD_A{n}": ("aud", "A", n) for n in range(11, 20)})
+IDS.update({f"ASR_A{n}": ("asr", "A", n) for n in range(11, 14)})
+IDS.update({"USR_A3": ("usr", "A", 3), "USR_A4": ("usr", "A", 4), "INV_B1": ("inv", "B", 1), "JOB_B1": ("job", "B", 1),
+            "ORG_R": ("org", "R", 0), "USR_R": ("usr", "R", 1), "PRJ_R": ("prj", "R", 1), "MDL_R": ("mdl", "R", 1),
+            "MV_R1": ("mv", "R", 1), "INV_R1": ("inv", "R", 1), "JOB_R1": ("job", "R", 1)})
 
 
 def id_pool(first: int) -> str:
@@ -112,7 +125,8 @@ def values() -> dict[str, str]:
     v = {name: test_id(*spec) for name, spec in IDS.items()}
     minimal = json.loads((ROOT / "testdata/contracts/valid-minimal-ir.json").read_text(encoding="utf-8"))
     for name, model, title in [("IR_A1", "MDL_A", "Model A v1"), ("IR_A2", "MDL_A", "Model A v2"),
-                               ("IR_A21", "MDL_A2", "Model A2 v1"), ("IR_B1", "MDL_B", "Model B v1")]:
+                               ("IR_A21", "MDL_A2", "Model A2 v1"), ("IR_B1", "MDL_B", "Model B v1"),
+                               ("IR_R1", "MDL_R", "Model R v1")]:
         doc = dict(minimal, model_id=v[model], name=title)
         # D-040: stored as the canonical text the hash covers.
         canonical = rfc8785.dumps(doc)

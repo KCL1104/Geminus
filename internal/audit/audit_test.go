@@ -201,6 +201,12 @@ func valid() []audit.Event {
 			"unknown_attempts": 0, "credential_label": "org-a", "inference_geo": "global"}),
 		w("ai_spend.refuse", "investigation", inv, map[string]any{"role": "investigator", "model": "muse-spark-1.3",
 			"charge_nano_usd": int64(160_000_000), "limit": "organization_day"}),
+		// H-061 A3: the investigation's own limit (USD 2.50, 20 planner
+		// turns), on a turn or on a call of its proposals.
+		w("ai_spend.refuse", "investigation", inv, map[string]any{"role": "investigator", "model": "muse-spark-1.3",
+			"charge_nano_usd": int64(160_000_000), "limit": "investigation"}),
+		w("ai_spend.refuse", "ai_proposal", aip, map[string]any{"role": "scenario", "model": "muse-spark-1.3",
+			"charge_nano_usd": int64(40_000_000), "limit": "investigation"}),
 	}
 }
 
