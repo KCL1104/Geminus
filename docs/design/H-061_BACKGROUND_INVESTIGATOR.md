@@ -282,6 +282,8 @@ A4 extracts each effect from the person's own Create path, and each Create keeps
 | write_to_draft | effect.WriteDraft: the proposal is ready and this investigation's; base latest; the draft is clean at the base (its hash equals the base's, with none of the person's operations), otherwise DRAFT_CHANGED; recheck; models.WriteDraft computes the IR from the base and the stored patch under lock, with a CAS on the revision; ai_proposal_id; proposal → applied with applied_draft_revision; audit proposal.apply and model.draft.update | done {draft_revision}; the worker ends with draft_written |
 | finish | nothing in the API; the worker's Finish (§5.8) | — |
 
+**Open: issue codes on RECHECK_FAILED** (recorded by A4's review round 1, for the owner; not decided). The save_scenario row says RECHECK_FAILED comes with issue codes, but §5.6, §7 and §10, `ToolError` {code, path} in schemas/investigator.schema.json (no other member) and 0019's `investigation_tool_calls_error` CHECK carry only a code and a path. A4 builds to the contract: its refusal names no issue code (the shared check still finds them; a person's approval shows them in its 422). To carry them, change the contract first (`ToolError.issue_codes`, at most 10 codes), then the CHECK in a new migration and the TS types; otherwise drop the words from the row.
+
 ### 6.5 Shutdown and replicas
 - On ctx.Done the executor stops claiming. A transaction already running finishes within 10 s or rolls back, which leaves its row pending.
 - During a deploy overlap, two API processes may both run executors. SKIP LOCKED plus the single pending→done transition still give exactly once.

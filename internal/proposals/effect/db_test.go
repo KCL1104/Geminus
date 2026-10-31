@@ -15,6 +15,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"slices"
@@ -49,8 +50,10 @@ import (
 	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/investigations"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
+	modelstore "github.com/kcl1104/geminus/internal/storage/models"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/storage/postgres"
+	store "github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/tenant/workerscope"
 	"github.com/kcl1104/geminus/internal/worker"
@@ -745,9 +748,16 @@ func TestSaveScenarioRefusals(t *testing.T) {
 		return err
 	})
 	var r *effect.Refusal
-	if refused(t, "a proposal the check refuses now", err, investigator.RecheckFailed, "/proposal_id"); errors.As(err, &r) &&
-		!slices.Contains(r.Issues, "DOMAIN_RULE_FAILED") {
-		t.Errorf("the recheck's issue codes: %v", r.Issues)
+	if refused(t, "a proposal the check refuses now", err, investigator.RecheckFailed, "/proposal_id"); errors.As(err, &r) {
+		// The refusal is the contract's ToolError and nothing more: the
+		// issue codes have no place in it (H-061 §6.4's gap, recorded for
+		// the owner; A4 review round 1).
+		matches(t, "investigator.schema.json#/$defs/ToolError", r)
+	}
+	// The cause is the rule learned since the review: the shared check,
+	// the approval's own, finds it now.
+	if codes := e.checkCodes(t, strictPacks{e.reg}, strict.ProposalID); !slices.Contains(codes, "DOMAIN_RULE_FAILED") {
+		t.Errorf("the shared check's issue codes: %v", codes)
 	}
 	if got := e.get(t, strict.ProposalID); got.Status != "ready" {
 		t.Errorf("after the check refused it: %s", got.Status)
@@ -827,6 +837,41 @@ func (e *env) setRole(t *testing.T, user string, role tenant.Role) {
 		_, err := tx.Exec(ctx, `UPDATE twin.memberships SET role=$3 WHERE organization_id=$1 AND user_id=$2`, e.org.ID, user, string(role))
 		return err
 	})
+}
+
+// checkCodes are the codes of the issues the shared check (effect.Check,
+// the approval's own) finds in proposal id now, with the domain packs of
+// packs: what a person's approval would answer in its 422.
+func (e *env) checkCodes(t *testing.T, packs effect.PackLookup, id string) []string {
+	t.Helper()
+	var codes []string
+	err := e.db.Run(context.Background(), e.scope(tenant.Viewer), tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, m tenant.Membership) error {
+		p, err := store.Get(ctx, tx, m.OrganizationID, id)
+		if err != nil {
+			return err
+		}
+		base, err := modelstore.GetVersion(ctx, tx, m.OrganizationID, p.BaseVersionID)
+		if err != nil {
+			return err
+		}
+		pack, err := packs.Lookup("software_delivery")
+		if err != nil {
+			return err
+		}
+		_, err = effect.Check(ctx, tx, m.OrganizationID, e.effects.Objects, pack, p, base)
+		var invalid *effect.InvalidError
+		if !errors.As(err, &invalid) {
+			return fmt.Errorf("the shared check passes or fails otherwise: %v", err)
+		}
+		for _, is := range invalid.Issues {
+			codes = append(codes, is.Code)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return codes
 }
 
 // strictPacks is the registry with a rule learned since the review: a CI

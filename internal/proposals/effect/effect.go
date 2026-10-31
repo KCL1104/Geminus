@@ -269,13 +269,14 @@ func NewScenario(org string, p store.Proposal, c Checked, createdBy string) scen
 // Refusal is an AI effect's typed refusal (H-061 §6.2 step 6, §7): the
 // InvestigationToolCode and the JSON Pointer into the call's arguments the
 // executor records in the ledger, after rolling back to its savepoint.
-// Nothing the call asked for took effect.
+// Nothing the call asked for took effect. It is exactly the contract's
+// ToolError {code, path} (investigator.schema.json; 0019's
+// investigation_tool_calls_error allows no other key), so a RECHECK_FAILED
+// names no issue code: H-061 §6.4 says it would, §5.6, §7 and the contract
+// do not, and the owner decides (recorded under §6.4).
 type Refusal struct {
-	Code investigator.Code
-	Path string
-	// Issues are the codes of the issues a RECHECK_FAILED refusal found
-	// (never their messages); nil otherwise.
-	Issues []string
+	Code investigator.Code `json:"code"`
+	Path string            `json:"path"`
 }
 
 func (r *Refusal) Error() string { return fmt.Sprintf("effect: refused: %s at %q", r.Code, r.Path) }
@@ -402,9 +403,8 @@ func locate(ctx context.Context, tx tenant.Tx, m tenant.Membership, id, mode str
 	return target{proposal: p, model: mdl, draft: d, base: base}, nil
 }
 
-// check is Check for the AI: a proposal the review refuses now is
-// RECHECK_FAILED with its issue codes, one whose risk changed since its
-// review RECHECK_FAILED with none.
+// check is Check for the AI: a proposal the review refuses now, or whose
+// risk changed since its review, is RECHECK_FAILED.
 func (s *Service) check(ctx context.Context, tx tenant.Tx, org string, t target) (Checked, error) {
 	pack, err := s.Packs.Lookup(t.model.Domain)
 	if err != nil {
@@ -413,17 +413,7 @@ func (s *Service) check(ctx context.Context, tx tenant.Tx, org string, t target)
 	c, err := Check(ctx, tx, org, s.Objects, pack, t.proposal, t.base)
 	var invalid *InvalidError
 	var risk *RiskChangedError
-	switch {
-	case errors.As(err, &invalid):
-		codes := []string{}
-		for _, is := range invalid.Issues {
-			if !slices.Contains(codes, is.Code) {
-				codes = append(codes, is.Code)
-			}
-		}
-		return Checked{}, &Refusal{Code: investigator.RecheckFailed, Path: proposalPath, Issues: codes}
-	case errors.As(err, &risk):
-		// The server's risk changed since the review: no issue to name.
+	if errors.As(err, &invalid) || errors.As(err, &risk) {
 		return Checked{}, &Refusal{Code: investigator.RecheckFailed, Path: proposalPath}
 	}
 	return c, err

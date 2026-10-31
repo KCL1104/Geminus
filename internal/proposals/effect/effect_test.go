@@ -6,19 +6,23 @@ package effect_test
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/investigator"
+	"github.com/kcl1104/geminus/internal/contracttest"
 	"github.com/kcl1104/geminus/internal/ids"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	"github.com/kcl1104/geminus/internal/proposals/effect"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -60,10 +64,35 @@ func TestRefusedBeforeAnyRead(t *testing.T) {
 	}
 }
 
+// A refusal is exactly the contract's ToolError (investigator.schema.json;
+// H-061 §5.6, §7, §10): a code and a JSON Pointer, nothing else, so the
+// executor (A7) records it in the ledger as it is (0019's
+// investigation_tool_calls_error allows these two keys only). H-061 §6.4's
+// "RECHECK_FAILED with issue codes" has no place there, so the refusal
+// carries none (A4 review round 1: the gap is recorded under §6.4 for the
+// owner, not decided here).
+func TestRefusalIsTheContractsToolError(t *testing.T) {
+	contracttest.LoadSchemas(t).Parity(t, reflect.TypeFor[effect.Refusal](), "investigator.schema.json#/$defs/ToolError")
+	for _, r := range []effect.Refusal{
+		{Code: investigator.RecheckFailed, Path: "/proposal_id"},
+		{Code: investigator.NotInInvestigation, Path: "/proposal_id"},
+		{Code: investigator.ModeMismatch, Path: ""},
+		{Code: investigator.DraftChanged, Path: ""},
+	} {
+		data, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if issues, err := validate.Document(data, "investigator.schema.json#/$defs/ToolError", "TOOL_ERROR"); err != nil || len(issues) > 0 {
+			t.Errorf("%s is not a ToolError: %v %v", data, issues, err)
+		}
+	}
+}
+
 // A refusal is an InvestigationToolCode at a JSON Pointer, errors.Is
 // investigator.ErrRefused, and its text names the code and the place only.
 func TestRefusalShape(t *testing.T) {
-	r := &effect.Refusal{Code: investigator.RecheckFailed, Path: "/proposal_id", Issues: []string{"DOMAIN_RULE_FAILED"}}
+	r := &effect.Refusal{Code: investigator.RecheckFailed, Path: "/proposal_id"}
 	if !errors.Is(r, investigator.ErrRefused) || !slices.Contains(investigator.Codes, r.Code) {
 		t.Errorf("%v", r)
 	}
