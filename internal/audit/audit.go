@@ -253,6 +253,20 @@ var catalogue = map[string]spec{
 		"engine_version": {shape: label}, "model_hash": {shape: hash}, "effective_model_hash": {shape: hash}, "config_hash": {shape: hash},
 		"dataset_manifest_hash": {shape: hash}, "scenario_id": idOf("scn")})},
 	"simulation.cancel": {User, []string{"simulation"}, map[string]field{"effect": oneOf("cancelled", "cancellation_requested")}},
+	// H-061 A7 (PROPOSED): a person starts an AI investigation (the stored
+	// acting-for scope, never the intent) and stops it (the requester, or
+	// an owner: by_owner); the API's executor records each call it carried
+	// out for the requester, by step, tool, outcome and code, always with
+	// the AI's mark (aiOnly). Never the AI's idea, note or arguments.
+	"investigation.create": {User, []string{"investigation"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"),
+		"mode": modes, "source": oneOf("request", "analysis"), "source_analysis_id": idOf("ana"), "output_locale": locales,
+		"research": {shape: flag}, "requested_model": oneOf("muse-spark-1.3", "muse-wonder-1.0"),
+		"planner_model": oneOf("muse-spark-1.3", "muse-wonder-1.0"), "replications": {shape: count}, "baseline_reused": {shape: flag}}},
+	"investigation.stop": {User, []string{"investigation"}, map[string]field{"reason": oneOf("stopped_by_person"), "steps": {shape: count},
+		"by_owner": {shape: flag}}},
+	"investigation.tool_call": {User, []string{"investigation"}, fieldsOf(byAI, map[string]field{"seq": {shape: count},
+		"tool":    oneOf("propose_what_if", "save_scenario", "run_what_if", "explain_results", "propose_model_edit", "write_to_draft"),
+		"outcome": oneOf("done", "refused", "failed"), "code": {shape: code}})},
 	// Job handlers: the worker, in the attempt's Finish (or Checkpoint)
 	// transaction, under the request that queued the job.
 	"import.profile": {Worker, []string{"import"}, map[string]field{"attempt": {shape: count}, "status": oneOf("FAILED", "AWAITING_MAPPING"),
@@ -384,7 +398,7 @@ func Check(e Event) error {
 
 // aiOnly are the actions only an AI investigation's tools write (H-061
 // A4): each event carries the AI's mark.
-var aiOnly = map[string]bool{"proposal.apply": true}
+var aiOnly = map[string]bool{"proposal.apply": true, "investigation.tool_call": true}
 
 var actionRe = regexp.MustCompile(`^[a-z][a-z_]{0,31}(\.[a-z_]{1,32}){1,2}$`)
 

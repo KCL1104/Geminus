@@ -8,9 +8,10 @@ import "testing"
 // executor), the API's one organization-only scope
 // (internal/tenant/actingfor) and the effects shared with approval
 // (internal/proposals/effect) are linked only by the API; the worker's
-// investigation handler (internal/investigator) only by the worker. None of
-// these packages exists yet, so each probe adds them through a go build
-// overlay.
+// investigation handler (internal/investigator) only by the worker. Each
+// probe adds the package it names through a go build overlay, beside the
+// real one where it exists (A3: actingfor; A4: effect; A7: the service and
+// the executor).
 func TestInvestigationPlacement(t *testing.T) {
 	m := func(p string) string { return module + "/" + p }
 	service := blankImports("investigations")
@@ -32,10 +33,13 @@ func TestInvestigationPlacement(t *testing.T) {
 			"internal/investigations/a.go": service,
 			"internal/runs/zz_probe.go":    blankImports("runs", m("internal/investigations")),
 		}, "investigations-only-in-the-api", "./internal/runs", "./internal/investigations", ""},
-		{"the HTTP transport links the executor", map[string]string{
+		// H-061 A7: the executor now exists and links the services, which
+		// link the HTTP transport, so internal/httpapi can no longer link it
+		// (an import cycle); another service probes the same rule.
+		{"another service links the executor", map[string]string{
 			"internal/investigations/executor/a.go": executor,
-			"internal/httpapi/zz_probe.go":          blankImports("httpapi", m("internal/investigations/executor")),
-		}, "investigations-only-in-the-api", "./internal/httpapi", "./internal/investigations/executor", ""},
+			"internal/project/zz_probe.go":          blankImports("project", m("internal/investigations/executor")),
+		}, "investigations-only-in-the-api", "./internal/project", "./internal/investigations/executor", ""},
 		// acting-for-only-in-the-executor
 		{"the worker links the acting-for scope", map[string]string{
 			"internal/tenant/actingfor/a.go": actingfor,

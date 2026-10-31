@@ -15,11 +15,13 @@ import (
 	"github.com/kcl1104/geminus/internal/comparisons"
 	"github.com/kcl1104/geminus/internal/httpapi"
 	"github.com/kcl1104/geminus/internal/import/upload"
+	"github.com/kcl1104/geminus/internal/investigations"
 	"github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/packs"
 	"github.com/kcl1104/geminus/internal/project"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/proposals/approval"
+	"github.com/kcl1104/geminus/internal/proposals/effect"
 	"github.com/kcl1104/geminus/internal/runs"
 	"github.com/kcl1104/geminus/internal/scenarios"
 	"github.com/kcl1104/geminus/internal/simulation"
@@ -43,7 +45,34 @@ type options struct {
 	research  proposals.Availability
 	// models and photoModels are the models a person may choose (H-049).
 	models, photoModels []string
+	// investigations are the AI investigations' settings (H-061 A7); the
+	// zero value has them off.
+	investigations Investigations
 }
+
+// Investigations are a deployment's AI investigation settings (H-061 A7,
+// behind GEMINUS_INVESTIGATIONS; cmd/api derives them from the
+// configuration and the approval the worker's live gate accepts).
+type Investigations struct {
+	// On is GEMINUS_INVESTIGATIONS; Organizations the organizations it
+	// serves (INVESTIGATION_ORGANIZATION_IDS); PlannerModels the planners
+	// it offers (INVESTIGATION_PLANNER_MODELS).
+	On                           bool
+	Organizations, PlannerModels []string
+	// InvestigatorApproved and ApprovedPlanners are what the recorded
+	// approval allows: the investigator role, and those planner models for
+	// it (the fake: all).
+	InvestigatorApproved bool
+	ApprovedPlanners     []string
+	// DefaultProposalModel is the proposal model stored when a request
+	// names none (the deployment's).
+	DefaultProposalModel string
+}
+
+// WithInvestigations sets the AI investigation routes' settings (H-061
+// A7). Without it, or with On false, every investigation route answers 503
+// SERVICE_UNAVAILABLE (INVESTIGATIONS_OFF) and changes nothing.
+func WithInvestigations(i Investigations) Option { return func(o *options) { o.investigations = i } }
 
 // WithObjects gives the API private object storage (D-044): dataset
 // snapshots for runs, the runs' trace artifacts, uploaded import files and
@@ -99,6 +128,37 @@ func WithProposalModels(words, photo []string) Option {
 	return func(o *options) { o.models, o.photoModels = slices.Clone(words), slices.Clone(photo) }
 }
 
+// Effects are the services the API's investigation executor carries out
+// the AI's tool calls with (H-061 §6.4), configured as Handler configures a
+// person's own routes from the same options, but for the run limits: a run
+// an investigation starts keeps D-007's (0019 refuses any other), whatever
+// WithRunLimits sets for the person's.
+type Effects struct {
+	Proposals *proposals.Service
+	Runs      *runs.Service
+	Analyses  *analyses.Service
+	Effects   *effect.Service
+}
+
+// NewEffects builds the executor's services on db from opts.
+func NewEffects(db *tenant.DB, opts ...Option) (Effects, error) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	served, err := packs.Registry()
+	if err != nil {
+		return Effects{}, err
+	}
+	return Effects{
+		Proposals: &proposals.Service{DB: db, AI: o.ai, Photo: o.photo, Research: o.research, Objects: o.objects, Models: o.models,
+			PhotoModels: o.photoModels},
+		Runs:     &runs.Service{DB: db, Packs: served, Objects: o.objects},
+		Analyses: &analyses.Service{DB: db, AI: o.ai},
+		Effects:  &effect.Service{Packs: served, Objects: o.objects},
+	}, nil
+}
+
 // Domains lists the domains Handler serves (internal/packs, the registry
 // the worker builds as well).
 func Domains() ([]string, error) {
@@ -151,6 +211,14 @@ func Handler(log *slog.Logger, v auth.Verifier, db *tenant.DB, opts ...Option) (
 	// The comparison of two completed runs (T-029): it reads runs and
 	// results only, computes in internal/results/compare and writes nothing.
 	comparisons.Register(mux, log, v, db, &comparisons.Service{DB: db})
+	// AI investigations (H-061 A7, behind GEMINUS_INVESTIGATIONS): a
+	// person's own requests to start, read and stop one. The calls the AI
+	// makes are carried out by cmd/api's background executor, not here.
+	i := o.investigations
+	investigations.Register(mux, log, v, db, &investigations.Service{DB: db, On: i.On, Organizations: slices.Clone(i.Organizations),
+		PlannerModels: slices.Clone(i.PlannerModels), AI: o.ai, InvestigatorApproved: i.InvestigatorApproved,
+		ApprovedPlanners: slices.Clone(i.ApprovedPlanners), ProposalModels: o.models, DefaultProposalModel: i.DefaultProposalModel,
+		Research: o.research})
 	notFound := httpapi.Handler(log, func(http.ResponseWriter, *http.Request) error {
 		return httpapi.Errorf(httpapi.NotFound, "no such operation")
 	})

@@ -3952,7 +3952,7 @@ paths:
         when the deployment lists it in INVESTIGATION_PLANNER_MODELS (422 REQUEST_VALIDATION_FAILED at /planner_model, details[0].code
         INVESTIGATION_PLANNER_NOT_OFFERED, otherwise). research is for the first what-if only, and is 422 at /research (details[0].code
         INVESTIGATION_RESEARCH_OVER_CEILING) when that proposal''s research reservation cannot fit the investigation''s USD
-        2.50 (Muse Wonder research reserves USD 4.994304). A caller with a running investigation in this organization gets
+        2.50 (Muse Wonder research reserves USD 6.914304 with its 128,000-token bound, H-065; Muse Spark 1.3 research USD 1.60672). A caller with a running investigation in this organization gets
         409 LIFECYCLE_CONFLICT (an expired one is first stopped with time_limit in the same transaction); the 11th investigation
         of the organization''s UTC day gets 429 RATE_LIMITED with Retry-After. The organization must be in INVESTIGATION_ORGANIZATION_IDS
         and the recorded approval must list the investigator role and the planner model (503 otherwise; a Claude deployment,

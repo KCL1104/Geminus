@@ -184,6 +184,15 @@ func (t *Telemetry) Engine(ctx context.Context, start time.Time, how string, eve
 	t.engineEvents.Add(ctx, events, metric.WithAttributes(o))
 }
 
+// ToolCall records a tool call of an AI investigation that the API's
+// executor carried out, started at start (H-061 §6.2): its span, by tool,
+// outcome (done, refused, failed) and code. Never an argument, the AI's
+// text or an ID.
+func (t *Telemetry) ToolCall(ctx context.Context, start time.Time, tool, how, failure string) {
+	t.after(ctx, "investigation tool call", start, how == "failed", str("geminus.investigation.tool", observability.KindToken, tool),
+		outcome(how), code(failure))
+}
+
 // ProviderCall records an AI provider call that started at start: its
 // span, duration and tokens, by provider, model, role and outcome code
 // (OK, or the job failure code). Never the prompt or the answer.

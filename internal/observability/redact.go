@@ -79,7 +79,9 @@ var fields = map[string]Kind{
 	"proposal_id":      KindID,
 	"import_id":        KindID,
 	"analysis_id":      KindID,
-	"investigation_id": KindID, // H-061: an AI investigation (its job, its calls)
+	"investigation_id": KindID,     // H-061: an AI investigation (its job, its calls)
+	"seq":              KindNumber, // H-061 A7: a call's place in its investigation's ledger
+	"tool":             KindToken,  // H-061 A7: the call's tool (one of seven names), never its arguments
 	"model_id":         KindID,
 	"model_version_id": KindID,
 	"scenario_id":      KindID,

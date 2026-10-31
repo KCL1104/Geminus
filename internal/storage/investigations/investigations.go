@@ -34,6 +34,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+
+	"github.com/kcl1104/geminus/internal/storage/postgres"
 )
 
 // Mode is what the investigation tries.
@@ -151,8 +153,8 @@ type Investigation struct {
 	CreatedAt            time.Time
 	FinishedAt           *time.Time
 	// JobID is its one investigation job ("" before Insert's caller
-	// enqueued it).
-	JobID string
+	// enqueued it), JobStatus that job's status ("" with it).
+	JobID, JobStatus string
 }
 
 // CallStatus is a ledger row's state.
@@ -274,7 +276,7 @@ func Insert(ctx context.Context, tx pgx.Tx, inv Investigation) (Investigation, e
 const columns = `i.id, i.model_id, i.base_version_id, i.mode, i.source, i.source_analysis_id, i.intent, i.context, i.output_locale, i.research,
 	i.proposal_model, i.planner_model, i.prompt_template_version, i.objective, i.run_config, i.run_config_hash, i.baseline_name,
 	i.baseline_run_id, i.caps, i.status, i.reason, i.ai_outcome, i.stop_requested_by, i.deadline_at, i.created_by, i.created_at,
-	i.finished_at, coalesce(j.id, '')`
+	i.finished_at, coalesce(j.id, ''), coalesce(j.status, '')`
 
 const from = ` FROM twin.investigations i
 	LEFT JOIN twin.jobs j ON j.organization_id=i.organization_id AND j.investigation_id=i.id`
@@ -287,7 +289,7 @@ func scan(row pgx.Row, org string) (Investigation, error) {
 	err := row.Scan(&inv.ID, &inv.ModelID, &inv.BaseVersionID, &mode, &source, &inv.SourceAnalysisID, &inv.Intent, &inv.Context,
 		&inv.OutputLocale, &inv.Research, &inv.ProposalModel, &inv.PlannerModel, &inv.PromptTemplateVersion, &inv.Objective, &inv.RunConfig,
 		&inv.RunConfigHash, &inv.BaselineName, &inv.BaselineRunID, &caps, &status, &reason, &inv.AIOutcome, &inv.StopRequestedBy,
-		&inv.DeadlineAt, &inv.CreatedBy, &inv.CreatedAt, &inv.FinishedAt, &inv.JobID)
+		&inv.DeadlineAt, &inv.CreatedBy, &inv.CreatedAt, &inv.FinishedAt, &inv.JobID, &inv.JobStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Investigation{}, ErrNotFound
 	}
@@ -341,17 +343,18 @@ type Position struct {
 	ID        string
 }
 
-// List returns up to limit investigations of the model in (created_at, id)
-// order, after the position if one is given.
+// List returns up to limit investigations of the model newest first
+// (created_at, then id, both descending: listInvestigations), after the
+// position if one is given.
 func List(ctx context.Context, tx pgx.Tx, org, modelID string, after *Position, limit int) ([]Investigation, error) {
 	var rows pgx.Rows
 	var err error
 	if after == nil {
 		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE i.organization_id=$1 AND i.model_id=$2
-			ORDER BY i.created_at, i.id LIMIT $3`, org, modelID, limit)
+			ORDER BY i.created_at DESC, i.id DESC LIMIT $3`, org, modelID, limit)
 	} else {
 		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE i.organization_id=$1 AND i.model_id=$2
-			AND (i.created_at, i.id) > ($3, $4) ORDER BY i.created_at, i.id LIMIT $5`, org, modelID, after.CreatedAt, after.ID, limit)
+			AND (i.created_at, i.id) < ($3, $4) ORDER BY i.created_at DESC, i.id DESC LIMIT $5`, org, modelID, after.CreatedAt, after.ID, limit)
 	}
 	if err != nil {
 		return nil, err
@@ -572,4 +575,121 @@ func Observe(ctx context.Context, tx pgx.Tx, org, id string, seq int, observatio
 		return ErrObserved
 	}
 	return nil
+}
+
+// Numbered is a row an investigation made, with the number its label
+// gives it: a proposal's what-if index (1..3), a run's slot (0 for the
+// baseline, k for what-if k) or an explanation's index (1..4).
+type Numbered struct {
+	ID string
+	N  int
+}
+
+// Made is what the investigation made, read by the labels the database
+// wrote (0019), each kind in its number's order.
+type Made struct {
+	Proposals, Runs, Analyses []Numbered
+}
+
+// MadeBy returns what investigation id of org made (the API's reads: the
+// candidates, the counts, the stop).
+func MadeBy(ctx context.Context, tx pgx.Tx, org, id string) (Made, error) {
+	rows, err := tx.Query(ctx, `SELECT 'proposal', p.id, p.investigation_index FROM twin.ai_proposals p
+		  WHERE p.organization_id=$1 AND p.investigation_id=$2
+		UNION ALL SELECT 'run', r.id, r.investigation_slot FROM twin.simulation_runs r
+		  WHERE r.organization_id=$1 AND r.investigation_id=$2
+		UNION ALL SELECT 'analysis', a.id, a.investigation_index FROM twin.ai_analyses a
+		  WHERE a.organization_id=$1 AND a.investigation_id=$2
+		ORDER BY 1, 3`, org, id)
+	if err != nil {
+		return Made{}, err
+	}
+	defer rows.Close()
+	var m Made
+	for rows.Next() {
+		var kind string
+		var n Numbered
+		if err := rows.Scan(&kind, &n.ID, &n.N); err != nil {
+			return Made{}, err
+		}
+		switch kind {
+		case "proposal":
+			m.Proposals = append(m.Proposals, n)
+		case "run":
+			m.Runs = append(m.Runs, n)
+		default:
+			m.Analyses = append(m.Analyses, n)
+		}
+	}
+	return m, rows.Err()
+}
+
+// CancelQueuedJob cancels investigation id's own job while it is still
+// queued, in the stop's transaction, which ends the investigation too (the
+// database requires it at commit): the stop's first lock after the
+// membership (H-061 §6.3, §13), taken with SKIP LOCKED, so a stop never
+// waits on a worker that is claiming the job. It reports whether it did; a
+// job that is running (or being claimed) sees the stop at its next poll.
+func CancelQueuedJob(ctx context.Context, tx pgx.Tx, org, id string) (bool, error) {
+	tag, err := tx.Exec(ctx, `UPDATE twin.jobs SET status='cancelled'
+		WHERE organization_id=$1 AND id=(SELECT j.id FROM twin.jobs j WHERE j.organization_id=$1 AND j.investigation_id=$2
+		  AND j.status='queued' FOR UPDATE SKIP LOCKED)`, org, id)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// QueuedProposalJobs returns the queued jobs of investigation id's
+// proposals, in ID order: the stop cancels them, and the proposals then
+// fail with JOB_CANCELLED (follow_proposal_job). Its explanations' queued
+// jobs are not among them: the API holds no UPDATE on ai_analyses, which
+// follow_analysis_job needs to fail one (0002, 0018; no existing grant
+// changes in H-061), so they stay queued and their handler ends them,
+// before the paid call, once their investigation is not running (A6).
+func QueuedProposalJobs(ctx context.Context, tx pgx.Tx, org, id string) ([]string, error) {
+	rows, err := tx.Query(ctx, `SELECT j.id FROM twin.jobs j JOIN twin.ai_proposals p ON p.organization_id=j.organization_id AND p.id=j.ai_proposal_id
+		WHERE j.organization_id=$1 AND p.investigation_id=$2 AND j.status='queued' ORDER BY j.id`, org, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var j string
+		if err := rows.Scan(&j); err != nil {
+			return nil, err
+		}
+		out = append(out, j)
+	}
+	return out, rows.Err()
+}
+
+// capConstraints are the database's caps of what an investigation makes
+// (0019): a number past the cap is refused by the cap's name (23514), a
+// race for one number by its unique constraint (23505).
+var capConstraints = map[string]bool{
+	"ai_proposals_investigation_cap": true, "ai_analyses_investigation_cap": true,
+	"ai_proposals_investigation_slot": true, "simulation_runs_investigation_runs": true, "ai_analyses_investigation_explanations": true,
+}
+
+// AtCap reports whether err is the database refusing a row past an
+// investigation's cap (LIMIT_REACHED to the executor).
+func AtCap(err error) bool {
+	var pe *postgres.Error
+	return errors.As(postgres.Classify(err), &pe) && (pe.Kind == postgres.ErrConstraint || pe.Kind == postgres.ErrConflict) &&
+		capConstraints[pe.Constraint]
+}
+
+// Immutable reports whether err is the database's 55000: one of 0019's
+// guards found the investigation ended, or its deadline passed, before the
+// write (or a row that never changes was written).
+func Immutable(err error) bool { return errors.Is(postgres.Classify(err), postgres.ErrImmutable) }
+
+// Now is the database's time in the transaction (now()): the clock every
+// deadline is held to.
+func Now(ctx context.Context, tx pgx.Tx) (time.Time, error) {
+	var now time.Time
+	err := tx.QueryRow(ctx, `SELECT now()`).Scan(&now)
+	return now, err
 }

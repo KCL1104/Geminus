@@ -308,6 +308,28 @@ func TestProviderCallsAndImports(t *testing.T) {
 	}
 }
 
+// H-061 A7: a call the API's executor carried out for an AI investigation
+// is a span with its tool, outcome and code only: never an argument, the
+// AI's text or an ID; a tool or code of another shape is redacted.
+func TestToolCalls(t *testing.T) {
+	r := install(t)
+	tel := telemetry.Current()
+	tel.ToolCall(context.Background(), time.Now().Add(-time.Second), "save_scenario", "done", "")
+	tel.ToolCall(context.Background(), time.Now(), "run_what_if", "failed", "SERVICE_UNAVAILABLE")
+	tel.ToolCall(context.Background(), time.Now(), "Add a second tester", "refused", "the base moved")
+	names := r.dump(t)
+	for _, want := range []string{`span "investigation tool call" geminus.investigation.tool="save_scenario" geminus.outcome="done" geminus.code="" status ""`,
+		`span "investigation tool call" geminus.investigation.tool="run_what_if" geminus.outcome="failed" geminus.code="SERVICE_UNAVAILABLE"`,
+		`geminus.investigation.tool="[redacted]" geminus.outcome="refused" geminus.code="[redacted]"`} {
+		if !strings.Contains(names, want) {
+			t.Errorf("no %s in\n%s", want, names)
+		}
+	}
+	if strings.Contains(names, "Add a second tester") || strings.Contains(names, "the base moved") {
+		t.Errorf("text reached a span:\n%s", names)
+	}
+}
+
 // T-053: what settled live AI calls cost, and the calls a spend limit
 // refused, by model, role, outcome and limit; never an ID.
 func TestSpend(t *testing.T) {
