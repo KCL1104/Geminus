@@ -578,6 +578,10 @@ func TestRestLanesClaimEachQueuedJobOnce(t *testing.T) {
 		}
 		return n == k
 	})
+	// The log before the stop: a lane in the middle of a reap or claim when
+	// the context ends logs that transaction's context error, which says
+	// nothing about the lanes' claims (verification of review round 1).
+	beforeStop := logs.String()
 	cancel()
 	if code := exited(t, done, &logs); code != 0 {
 		t.Fatalf("exit = %d: %s", code, logs.String())
@@ -603,8 +607,8 @@ func TestRestLanesClaimEachQueuedJobOnce(t *testing.T) {
 	out := logs.String()
 	for _, bad := range []string{"claiming failed", "reaping failed", "lease lost", "no longer this attempt's", "recording the failure failed",
 		"renewing the lease failed", "could not be renewed", "WORKER_LANE_"} {
-		if strings.Contains(out, bad) {
-			t.Errorf("stderr has %q: %s", bad, out)
+		if strings.Contains(beforeStop, bad) {
+			t.Errorf("stderr has %q before the stop: %s", bad, beforeStop)
 		}
 	}
 	if got := runningIDs(t, out); !slices.Equal(got, append([]string{"worker-0:sim"}, lanes...)) || !strings.Contains(out, `"msg":"stopped"`) {
