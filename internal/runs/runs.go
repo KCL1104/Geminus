@@ -35,6 +35,7 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	"github.com/kcl1104/geminus/internal/model/patch"
 	"github.com/kcl1104/geminus/internal/model/validate"
+	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/simulation"
 	"github.com/kcl1104/geminus/internal/simulation/des"
 	"github.com/kcl1104/geminus/internal/simulation/engine"
@@ -194,6 +195,10 @@ type Run struct {
 	StartedAt             *string                    `json:"started_at"`
 	FinishedAt            *string                    `json:"finished_at"`
 	Error                 *ErrorEnvelope             `json:"error"`
+	// MadeByAI is the label of a run an AI investigation started (H-061,
+	// PROPOSED); nil, and left out, for a person's run, so its body is
+	// byte for byte as before.
+	MadeByAI *proposals.MadeByAI `json:"made_by_ai,omitzero"`
 }
 
 // Progress is Run.progress.
@@ -249,31 +254,11 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 			out, err = hashing.Canonical(replay.Body)
 			return err
 		}
-		r, err := s.freeze(ctx, tx, m.OrganizationID, req)
+		a, err := s.Queue(ctx, tx, m, requestID, req)
 		if err != nil {
 			return err
 		}
-		r.ID, r.CreatedBy = ids.New("sim"), m.UserID
-		run, err := store.Insert(ctx, tx, r)
-		if err != nil {
-			return err
-		}
-		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.Simulation,
-			Resource: jobs.Resource{SimulationRunID: run.ID}, Payload: map[string]any{"run_id": run.ID, "request_id": requestID}}, s.policy()); err != nil {
-			return err
-		}
-		// The frozen input by its hashes only, never its content (SECURITY §9).
-		meta := map[string]any{"model_version_id": run.ModelVersionID, "replications": run.Config.Replications, "engine_version": run.EngineVersion,
-			"model_hash": run.ModelHash, "effective_model_hash": run.EffectiveModelHash, "config_hash": run.ConfigHash,
-			"dataset_manifest_hash": run.DatasetManifestHash}
-		if run.ScenarioID != nil {
-			meta["scenario_id"] = *run.ScenarioID
-		}
-		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "simulation.create", TargetType: "simulation", TargetID: run.ID, RequestID: requestID, Metadata: meta}); err != nil {
-			return err
-		}
-		data, err := json.Marshal(Accepted{ID: run.ID, Status: string(store.Queued), ModelVersionID: run.ModelVersionID, CreatedAt: timestamp(run.CreatedAt)})
+		data, err := json.Marshal(a)
 		if err != nil {
 			return err
 		}
@@ -284,6 +269,48 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key st
 		return idempotency.Complete(ctx, tx, k, idempotency.Response{Status: status, Body: out})
 	})
 	return status, out, err
+}
+
+// Queue is createSimulation's body in the caller's transaction (H-061 A4),
+// after the role and the Idempotency-Key, which stay Create's: it freezes
+// req (every check the engine will make), inserts the run with its dataset
+// manifest, queues its one simulation job and writes simulation.create. In
+// an AI investigation's acting-for transaction (m.ActingFor) the database
+// labels the run, assigns its slot and holds it to the investigation's
+// frozen settings and D-007's limits (0019), and the event carries the
+// AI's mark; a person's run is written exactly as before. It requires a
+// writer again, so no caller can queue for a viewer.
+func (s *Service) Queue(ctx context.Context, tx tenant.Tx, m tenant.Membership, requestID string, req CreateRequest) (Accepted, error) {
+	if err := m.Require(writeRoles...); err != nil {
+		return Accepted{}, err
+	}
+	r, err := s.freeze(ctx, tx, m.OrganizationID, req)
+	if err != nil {
+		return Accepted{}, err
+	}
+	r.ID, r.CreatedBy = ids.New("sim"), m.UserID
+	run, err := store.Insert(ctx, tx, r)
+	if err != nil {
+		return Accepted{}, err
+	}
+	if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.Simulation,
+		Resource: jobs.Resource{SimulationRunID: run.ID}, Payload: map[string]any{"run_id": run.ID, "request_id": requestID}}, s.policy()); err != nil {
+		return Accepted{}, err
+	}
+	// The frozen input by its hashes only, never its content (SECURITY §9);
+	// the AI's mark (H-061).
+	meta := map[string]any{"model_version_id": run.ModelVersionID, "replications": run.Config.Replications, "engine_version": run.EngineVersion,
+		"model_hash": run.ModelHash, "effective_model_hash": run.EffectiveModelHash, "config_hash": run.ConfigHash,
+		"dataset_manifest_hash": run.DatasetManifestHash}
+	if run.ScenarioID != nil {
+		meta["scenario_id"] = *run.ScenarioID
+	}
+	if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
+		Action: "simulation.create", TargetType: "simulation", TargetID: run.ID, RequestID: requestID,
+		Metadata: auditlog.MarkAI(meta, m.ActingFor)}); err != nil {
+		return Accepted{}, err
+	}
+	return Accepted{ID: run.ID, Status: string(store.Queued), ModelVersionID: run.ModelVersionID, CreatedAt: timestamp(run.CreatedAt)}, nil
 }
 
 // freeze builds the run row of req: the version and its whole manifest,
@@ -752,6 +779,13 @@ func public(r store.Run, requestID string) (Run, error) {
 			EventsProcessed: r.EventsProcessed, Revision: r.ProgressRevision}}
 	if p.DatasetBindings == nil {
 		p.DatasetBindings = []model.DatasetBinding{}
+	}
+	if l := r.AI; l != nil {
+		label, err := proposals.PlannedBy(l.InvestigationID, l.RequestedBy, l.PlannerModel)
+		if err != nil {
+			return Run{}, fmt.Errorf("run %s: %w", r.ID, err)
+		}
+		p.MadeByAI = label
 	}
 	if r.Status == store.Failed {
 		id := r.RequestID

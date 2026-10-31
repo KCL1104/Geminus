@@ -240,6 +240,13 @@ var catalogue = map[string]spec{
 		"draft_out_of_date": {shape: flag}, "scenario_id": idOf("scn")}},
 	"proposal.reject": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"from": oneOf("ready", "needs_input")}},
+	// H-061 A4 (PROPOSED): an AI investigation acted on its own ready
+	// proposal for the person who started it (internal/proposals/effect):
+	// the scenario it saved or the draft revision it wrote, by ID, hash,
+	// risk and count; always with the AI's mark (aiOnly). Never a decision.
+	"proposal.apply": {User, []string{"ai_proposal"}, fieldsOf(byAI, map[string]field{"mode": modes, "model_id": idOf("mdl"),
+		"base_version_id": idOf("mv"), "patch_hash": {shape: hash}, "server_risk_level": risks, "risk_level": risks,
+		"scenario_id": idOf("scn"), "draft_revision": {shape: count}})},
 	"scenario.create": {User, []string{"scenario"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"patch_hash": {shape: hash}, "operations": {shape: count}}},
 	"simulation.create": {User, []string{"simulation"}, fieldsOf(byAI, map[string]field{"model_version_id": idOf("mv"), "replications": {shape: count},
@@ -369,9 +376,15 @@ func Check(e Event) error {
 		return bad("investigation_id", "by_ai names its investigation")
 	case marked && mark != true:
 		return bad("by_ai", "by_ai is true when present")
+	case aiOnly[e.Action] && !marked:
+		return bad("by_ai", "only an AI investigation writes this action, marked as the AI's")
 	}
 	return nil
 }
+
+// aiOnly are the actions only an AI investigation's tools write (H-061
+// A4): each event carries the AI's mark.
+var aiOnly = map[string]bool{"proposal.apply": true}
 
 var actionRe = regexp.MustCompile(`^[a-z][a-z_]{0,31}(\.[a-z_]{1,32}){1,2}$`)
 

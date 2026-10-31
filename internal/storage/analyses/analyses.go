@@ -48,6 +48,12 @@ type Analysis struct {
 	CreatedAt time.Time
 	// RequestID is the request that created it (its job's payload).
 	RequestID string
+	// InvestigationID and InvestigationIndex are the AI's label (H-061,
+	// 0019): the investigation that asked for it and its explanation number
+	// (1..4), set by the database from the transaction's acting-for scope;
+	// nil for a person's analysis.
+	InvestigationID    *string
+	InvestigationIndex *int
 }
 
 // ErrNotFound: no such analysis in the organization (or no access).
@@ -76,7 +82,7 @@ func Insert(ctx context.Context, tx pgx.Tx, a Analysis) (Analysis, error) {
 // The job's payload holds the request that created the analysis (one job
 // at most, 0001).
 const selectAnalysis = `SELECT a.id, a.run_id, a.baseline_run_id, a.status, a.question, a.output_locale, a.analysis, a.provider_metadata,
-	  a.error, a.created_by, a.created_at, coalesce(j.payload->>'request_id', '')
+	  a.error, a.created_by, a.created_at, coalesce(j.payload->>'request_id', ''), a.investigation_id, a.investigation_index
 	FROM twin.ai_analyses a LEFT JOIN twin.jobs j ON j.organization_id=a.organization_id AND j.ai_analysis_id=a.id
 	WHERE a.organization_id=$1 AND a.id=$2`
 
@@ -84,7 +90,7 @@ func scan(row pgx.Row, org string) (Analysis, error) {
 	a := Analysis{OrganizationID: org}
 	var status string
 	err := row.Scan(&a.ID, &a.RunID, &a.BaselineRunID, &status, &a.Question, &a.OutputLocale, &a.Analysis, &a.ProviderMetadata,
-		&a.Failure, &a.CreatedBy, &a.CreatedAt, &a.RequestID)
+		&a.Failure, &a.CreatedBy, &a.CreatedAt, &a.RequestID, &a.InvestigationID, &a.InvestigationIndex)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Analysis{}, ErrNotFound
 	}

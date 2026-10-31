@@ -86,6 +86,12 @@ type Membership struct {
 	OrganizationID string
 	UserID         string
 	Role           Role
+	// ActingFor is the scope's ActingFor: the AI investigation whose call
+	// this transaction carries out for UserID (app.investigation_id, which
+	// Run set from the same value), "" for a person's own request. The
+	// services mark their audit events with it (H-061 §6.2 step 7) and the
+	// shared effects require it (internal/proposals/effect).
+	ActingFor string
 }
 
 var (
@@ -179,7 +185,7 @@ func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx c
 		if err != nil {
 			return err
 		}
-		return fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role})
+		return fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role, ActingFor: s.ActingFor})
 	})
 }
 

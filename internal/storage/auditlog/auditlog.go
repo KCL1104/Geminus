@@ -32,6 +32,24 @@ type Event struct {
 	Metadata   map[string]any // IDs and counts only
 }
 
+// MarkAI returns meta with the AI's mark when investigation is the AI
+// investigation the transaction acts for (tenant.Membership.ActingFor;
+// H-061 §6.2 step 7, §10): its ID and by_ai true, always together. A
+// person's own event ("") is returned as it is, byte for byte. Inside an
+// acting-for transaction the database refuses an unmarked event, and
+// outside one a marked event (0019); the catalogue holds the mark to the
+// actions the investigation's tools write.
+func MarkAI(meta map[string]any, investigation string) map[string]any {
+	if investigation == "" {
+		return meta
+	}
+	if meta == nil {
+		meta = map[string]any{}
+	}
+	meta["investigation_id"], meta["by_ai"] = investigation, true
+	return meta
+}
+
 // AppendUser records e as an action of the user tx is scoped to (its
 // app.user_id), in organization org.
 func AppendUser(ctx context.Context, tx pgx.Tx, org, user string, e Event) error {

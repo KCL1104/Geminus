@@ -59,18 +59,57 @@ type Proposal struct {
 	// RequestedModel is the model the request named (H-065), in every
 	// state; empty when it named none.
 	RequestedModel string `json:"requested_model,omitzero"`
+	// Investigation is the AI's label (H-061, PROPOSED): the investigation
+	// that asked for the proposal and its place there, in every state; nil
+	// for a person's proposal, so its body is byte for byte as before.
+	Investigation *ProposalInvestigation `json:"investigation,omitzero"`
+	// AppliedDraftRevision is the draft revision an applied edit was
+	// written into (status applied, mode edit only).
+	AppliedDraftRevision *int64 `json:"applied_draft_revision,omitzero"`
+}
+
+// ProposalInvestigation is proposal.schema.json's investigation.
+type ProposalInvestigation struct {
+	ID    string `json:"id"`
+	Index int    `json:"index"`
 }
 
 // MadeByAI is common.schema.json's MadeByAI (H-061, PROPOSED): the label of
 // a scenario or run an AI investigation made for the person who started
-// it, with the planner that chose to make it. Present only on such rows;
-// nothing sets it before the investigation slices land, so every body is
-// byte for byte as before.
+// it, with the planner that chose to make it. Present only on such rows
+// (PlannedBy), so every other body is byte for byte as before.
 type MadeByAI struct {
 	InvestigationID string      `json:"investigation_id"`
 	RequestedBy     string      `json:"requested_by"`
 	GeneratedBy     GeneratedBy `json:"generated_by"`
 }
+
+// PlannerModels are the models an investigation's planner may be
+// (common.schema.json PlannerModel, H-060): Meta's Muse Spark 1.3 and Muse
+// Wonder 1.0, by their exact model IDs.
+var PlannerModels = []string{"muse-spark-1.3", "muse-wonder-1.0"}
+
+// PlannerProvider is the provider of every planner model (H-060: both are
+// Meta's). The investigation stores its planner model only, so the label
+// names the model's provider, not whichever backend a deployment answered
+// with (the fake, in tests).
+const PlannerProvider = "meta"
+
+// PlannedBy is the MadeByAI label of a row investigation made for
+// requestedBy with planner model planner, read from the database's label
+// columns. A planner outside PlannerModels or an ID outside D-001 is an
+// error, never a label shown with a part left out.
+func PlannedBy(investigation, requestedBy, planner string) (*MadeByAI, error) {
+	if !investigationIDs.MatchString(investigation) || !userIDs.MatchString(requestedBy) || !slices.Contains(PlannerModels, planner) {
+		return nil, fmt.Errorf("proposals: an AI label of investigation %q is not one the database could hold", investigation)
+	}
+	return &MadeByAI{InvestigationID: investigation, RequestedBy: requestedBy, GeneratedBy: GeneratedBy{Provider: PlannerProvider, Model: planner}}, nil
+}
+
+var (
+	investigationIDs = regexp.MustCompile(`^inv_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+	userIDs          = regexp.MustCompile(`^usr_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
+)
 
 // GeneratedBy is common.schema.json's GeneratedBy (H-043): which provider
 // and model wrote an AI result and, for a photo, which segmenter read it,
@@ -348,6 +387,19 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 			return Proposal{}, err
 		}
 		out.NewVersionID, out.ScenarioID = p.NewVersionID, p.ScenarioID
+	case store.Applied:
+		// The AI's action on its own ready proposal (H-061): the reviewed
+		// content and its one effect, never a decision record (0019 holds
+		// it to none); the scenario it saved, or the draft revision it
+		// wrote.
+		if err := reviewed(); err != nil {
+			return Proposal{}, err
+		}
+		if p.InvestigationID == nil || p.DecidedBy != nil || p.DecidedAt != nil || p.NewVersionID != nil ||
+			(p.Mode == "scenario") != (p.ScenarioID != nil) || (p.Mode == "edit") != (p.AppliedDraftRevision != nil) {
+			return Proposal{}, fmt.Errorf("proposal %s: applied without its investigation and its one effect", p.ID)
+		}
+		out.ScenarioID, out.AppliedDraftRevision = p.ScenarioID, p.AppliedDraftRevision
 	case store.Rejected:
 		// Rejected after review (it has changes) or after asking for
 		// input (it has questions).
@@ -379,6 +431,16 @@ func Public(p store.Proposal, requestID string) (Proposal, error) {
 		out.Error = e
 	default:
 		return Proposal{}, fmt.Errorf("proposal %s: unknown status %q", p.ID, p.Status)
+	}
+	// The AI's label (0019: an investigation's proposal has its index, a
+	// person's neither), in every state.
+	switch {
+	case p.InvestigationID == nil && p.InvestigationIndex == nil:
+	case p.InvestigationID != nil && p.InvestigationIndex != nil && investigationIDs.MatchString(*p.InvestigationID) &&
+		*p.InvestigationIndex >= 1 && *p.InvestigationIndex <= 3:
+		out.Investigation = &ProposalInvestigation{ID: *p.InvestigationID, Index: *p.InvestigationIndex}
+	default:
+		return Proposal{}, fmt.Errorf("proposal %s: its investigation label is not one the database could hold", p.ID)
 	}
 	return out, nil
 }

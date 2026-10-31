@@ -650,6 +650,35 @@ func TestActingForIsTransactionLocal(t *testing.T) {
 	}
 }
 
+// H-061 A4: the membership Run hands fn names the investigation the
+// transaction acts for, exactly the value Run set app.investigation_id to,
+// and nothing for a person's own request; the services mark their audit
+// events from it.
+func TestMembershipNamesTheInvestigation(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	d := tenant.New(as(t, apiLogin, 1, true))
+	inv := newID(t, "inv")
+	for _, c := range []struct {
+		s    tenant.Scope
+		opts tenant.TxOptions
+		want string
+	}{
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}, tenant.ReadWrite, inv},
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}, tenant.ReadOnly, inv},
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user}, tenant.ReadWrite, ""},
+	} {
+		var got, setting string
+		err := d.Run(context.Background(), c.s, c.opts, func(ctx context.Context, tx pgx.Tx, m tenant.Membership) error {
+			got = m.ActingFor
+			return tx.QueryRow(ctx, `SELECT coalesce(current_setting('app.investigation_id', true), '')`).Scan(&setting)
+		})
+		if err != nil || got != c.want || setting != c.want {
+			t.Errorf("acting for %q: the membership names %q, the setting is %q: %v", c.want, got, setting, err)
+		}
+	}
+}
+
 // H-061 §8 (1): only the API's investigation executor sets
 // tenant.Scope.ActingFor in production code; tests of the scope itself
 // and of the storage under it may.
