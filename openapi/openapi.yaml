@@ -4015,11 +4015,14 @@ paths:
         '415':
           $ref: '#/components/responses/Error415'
         '422':
-          description: 'The body does not fit the contract (REQUEST_VALIDATION_FAILED at the member: run settings over the
-            caps, a scenario without run_config, an edit with one, an unknown member), or names a planner this deployment
-            does not offer (/planner_model, INVESTIGATION_PLANNER_NOT_OFFERED), research that cannot fit the investigation''s
-            USD 2.50 (/research, INVESTIGATION_RESEARCH_OVER_CEILING), a warmup not shorter than the horizon (/run_config/warmup)
-            or an analysis whose baseline cannot be reused (/from_analysis_id). Nothing was stored. Codes: REQUEST_VALIDATION_FAILED.'
+          description: 'The body does not fit the contract (REQUEST_VALIDATION_FAILED, one detail per failure: run settings over the caps at
+            their member, such as /run_config/replications or /run_config/horizon/value; a scenario without run_config or
+            baseline_name, an edit with run_config, baseline_name or objective, or an unknown member at the object, named in the
+            reason. A body with from_analysis_id is checked as entry B only, any other body as entry A only), or names a planner
+            this deployment does not offer (/planner_model, INVESTIGATION_PLANNER_NOT_OFFERED), research that cannot fit the
+            investigation''s USD 2.50 (/research, INVESTIGATION_RESEARCH_OVER_CEILING), a warmup not shorter than the horizon
+            (/run_config/warmup) or an analysis whose baseline cannot be reused (/from_analysis_id). Nothing was stored. Codes:
+            REQUEST_VALIDATION_FAILED.'
           headers:
             X-Request-ID:
               $ref: '#/components/headers/RequestID'
@@ -4051,14 +4054,15 @@ paths:
                         code: INVESTIGATION_RESEARCH_OVER_CEILING
                       request_id: req_01M4YDQK00V6H8S0ST4F7510KR
                 too_many_replications:
-                  summary: Run settings over the caps
+                  summary: Run settings over the caps (testdata/contracts/invalid-investigation-request-replications.json)
                   value:
                     error:
                       code: REQUEST_VALIDATION_FAILED
-                      message: the request does not match the contract
+                      message: the request body does not match the schema
                       details:
                       - path: /run_config/replications
-                        reason: at most 10
+                        reason: 'maximum: got 11, want 10'
+                        severity: error
                       request_id: req_01M4YDQK00V6H8S0ST4F7510KR
         '429':
           description: 'The organization started 10 investigations this UTC day; Retry-After says when the next may start.
@@ -4434,7 +4438,7 @@ paths:
                 $ref: ../schemas/investigation.schema.json#/$defs/Investigation
               examples:
                 running:
-                  summary: Waiting for the runs of its first what-if; its explanation is asked for
+                  summary: Waiting for the runs of its first what-if
                   value:
                     id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
                     organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
@@ -4467,7 +4471,7 @@ paths:
                       what_ifs: 1
                       runs: 2
                       explanations: 0
-                      steps: 4
+                      steps: 3
                     run_config:
                       horizon:
                         value: 7
@@ -4517,18 +4521,6 @@ paths:
                       note: null
                       requested_at: '2026-11-01T06:00:30Z'
                       resolved_at: '2026-11-01T06:00:31Z'
-                      observed_at: null
-                    - seq: 4
-                      tool: explain_results
-                      arguments:
-                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
-                        question: null
-                      status: pending
-                      effect: null
-                      error: null
-                      note: null
-                      requested_at: '2026-11-01T06:00:45Z'
-                      resolved_at: null
                       observed_at: null
                     candidates:
                     - index: 1
@@ -4864,7 +4856,7 @@ paths:
                 $ref: ../schemas/investigation.schema.json#/$defs/Investigation
               examples:
                 stopped:
-                  summary: Stopped by an owner while its first explanation was pending
+                  summary: Stopped by an owner while it waited for the runs of its first what-if
                   value:
                     id: inv_01M4YDQK00B8S5WQXJ3TQ7ZK2A
                     organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
@@ -4897,7 +4889,7 @@ paths:
                       what_ifs: 1
                       runs: 2
                       explanations: 0
-                      steps: 4
+                      steps: 3
                     run_config:
                       horizon:
                         value: 7
@@ -4947,18 +4939,6 @@ paths:
                       note: null
                       requested_at: '2026-11-01T06:00:30Z'
                       resolved_at: '2026-11-01T06:00:31Z'
-                      observed_at: null
-                    - seq: 4
-                      tool: explain_results
-                      arguments:
-                        run_id: sim_01M4YDQK00B8S5WQXJ3TQ7ZK51
-                        question: null
-                      status: pending
-                      effect: null
-                      error: null
-                      note: null
-                      requested_at: '2026-11-01T06:00:45Z'
-                      resolved_at: null
                       observed_at: null
                     candidates:
                     - index: 1

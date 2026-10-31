@@ -617,9 +617,13 @@ describe("H-061 investigation contract types (PROPOSED)", () => {
 
   it("each step's tool is one of the seven, or invalid_call", () => {
     const running = fixture("valid-investigation-running.json") as Investigation;
-    const tools: readonly InvestigatorTool[] = ["propose_what_if", "save_scenario", "run_what_if", "explain_results"];
+    const tools: readonly InvestigatorTool[] = ["propose_what_if", "save_scenario", "run_what_if"];
     expect(running.steps.map((s) => s.tool)).toEqual(tools);
-    expect(running.steps.at(-1)?.status).toBe("pending");
+    // Waiting for the runs: the last row is carried out and not yet observed,
+    // and every earlier row is (H-061 §11: a row follows only an observed one).
+    const last = running.steps.at(-1);
+    expect([running.activity.state, last?.status, last?.observed_at]).toEqual(["waiting", "done", null]);
+    expect(running.steps.slice(0, -1).every((s) => s.observed_at !== null)).toBe(true);
   });
 });
 

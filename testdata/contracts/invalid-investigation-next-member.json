@@ -21,7 +21,7 @@
   "status": "running",
   "reason": null,
   "activity": {
-    "state": "waiting"
+    "state": "carrying_out"
   },
   "caps": {
     "what_ifs": 3,
@@ -99,7 +99,7 @@
       "note": null,
       "requested_at": "2026-11-01T06:00:30Z",
       "resolved_at": "2026-11-01T06:00:31Z",
-      "observed_at": null
+      "observed_at": "2026-11-01T06:00:44Z"
     },
     {
       "seq": 4,

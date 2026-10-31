@@ -83,79 +83,98 @@
           "$ref": "common.schema.json#/$defs/Duration"
         },
         {
-          "not": {
-            "anyOf": [
-              {
-                "properties": {
-                  "unit": {
-                    "const": "day"
-                  },
-                  "value": {
-                    "exclusiveMinimum": 28
-                  }
-                },
-                "required": [
-                  "unit",
-                  "value"
-                ]
-              },
-              {
-                "properties": {
-                  "unit": {
-                    "const": "hour"
-                  },
-                  "value": {
-                    "exclusiveMinimum": 672
-                  }
-                },
-                "required": [
-                  "unit",
-                  "value"
-                ]
-              },
-              {
-                "properties": {
-                  "unit": {
-                    "const": "minute"
-                  },
-                  "value": {
-                    "exclusiveMinimum": 40320
-                  }
-                },
-                "required": [
-                  "unit",
-                  "value"
-                ]
-              },
-              {
-                "properties": {
-                  "unit": {
-                    "const": "second"
-                  },
-                  "value": {
-                    "exclusiveMinimum": 2419200
-                  }
-                },
-                "required": [
-                  "unit",
-                  "value"
-                ]
-              },
-              {
-                "properties": {
-                  "unit": {
-                    "const": "millisecond"
-                  },
-                  "value": {
-                    "exclusiveMinimum": 2419200000
-                  }
-                },
-                "required": [
-                  "unit",
-                  "value"
-                ]
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "day"
               }
+            },
+            "required": [
+              "unit"
             ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "maximum": 28
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "hour"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "maximum": 672
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "minute"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "maximum": 40320
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "second"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "maximum": 2419200
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "unit": {
+                "const": "millisecond"
+              }
+            },
+            "required": [
+              "unit"
+            ]
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "maximum": 2419200000
+              }
+            }
           }
         }
       ]
@@ -307,25 +326,17 @@
             ]
           },
           "then": {
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "run_config"
-                  ]
-                },
-                {
-                  "required": [
-                    "baseline_name"
-                  ]
-                },
-                {
-                  "required": [
-                    "objective"
-                  ]
-                }
-              ]
-            }
+            "properties": {
+              "base_version_id": true,
+              "mode": true,
+              "intent": true,
+              "context": true,
+              "output_locale": true,
+              "research": true,
+              "model": true,
+              "planner_model": true
+            },
+            "additionalProperties": false
           }
         }
       ]
@@ -358,15 +369,18 @@
       "additionalProperties": false
     },
     "InvestigationRequest": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/InvestigationFromRequest"
-        },
-        {
-          "$ref": "#/$defs/InvestigationFromAnalysis"
-        }
-      ],
-      "description": "createInvestigation's body: from a request (entry A) or from an analysis (entry B). No member names caps, limits, steps or a user."
+      "if": {
+        "required": [
+          "from_analysis_id"
+        ]
+      },
+      "then": {
+        "$ref": "#/$defs/InvestigationFromAnalysis"
+      },
+      "else": {
+        "$ref": "#/$defs/InvestigationFromRequest"
+      },
+      "description": "createInvestigation's body: from an analysis (entry B) when it has from_analysis_id, otherwise from a request (entry A); a body is checked as that entry only. No member names caps, limits, steps or a user."
     },
     "InvestigationAccepted": {
       "type": "object",

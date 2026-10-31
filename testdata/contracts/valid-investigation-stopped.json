@@ -34,7 +34,7 @@
     "what_ifs": 1,
     "runs": 2,
     "explanations": 0,
-    "steps": 4
+    "steps": 3
   },
   "run_config": {
     "horizon": {
@@ -99,21 +99,6 @@
       "note": null,
       "requested_at": "2026-11-01T06:00:30Z",
       "resolved_at": "2026-11-01T06:00:31Z",
-      "observed_at": null
-    },
-    {
-      "seq": 4,
-      "tool": "explain_results",
-      "arguments": {
-        "run_id": "sim_01M4YDQK00B8S5WQXJ3TQ7ZK51",
-        "question": null
-      },
-      "status": "pending",
-      "effect": null,
-      "error": null,
-      "note": null,
-      "requested_at": "2026-11-01T06:00:45Z",
-      "resolved_at": null,
       "observed_at": null
     }
   ],

@@ -70,8 +70,8 @@ export type InvestigationFromAnalysis = {
   objective?: InvestigationObjectiveChoice;
 };
 
-/** createInvestigation's body: from a request (entry A) or from an analysis (entry B). No member names caps, limits, steps or a user. */
-export type InvestigationRequest = InvestigationFromRequest | InvestigationFromAnalysis;
+/** createInvestigation's body: from an analysis (entry B) when it has from_analysis_id, otherwise from a request (entry A); a body is checked as that entry only. No member names caps, limits, steps or a user. */
+export type InvestigationRequest = InvestigationFromAnalysis | InvestigationFromRequest;
 
 /** createInvestigation's 202: stored with its one investigation job; nothing is proposed yet (the AI's first call does that). */
 export type InvestigationAccepted = {

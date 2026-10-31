@@ -2903,7 +2903,7 @@
       "valid": false,
       "layer": "schema",
       "expected_error_paths": [
-        "/run_config/horizon"
+        "/run_config/horizon/value"
       ]
     },
     {
@@ -2913,7 +2913,7 @@
       "valid": false,
       "layer": "schema",
       "expected_error_paths": [
-        "/run_config/horizon"
+        "/run_config/horizon/value"
       ]
     },
     {
@@ -2989,6 +2989,26 @@
     {
       "id": "invalid-investigation-request-from-analysis-locale",
       "instance": "testdata/contracts/invalid-investigation-request-from-analysis-locale.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-from-analysis-planner",
+      "instance": "testdata/contracts/invalid-investigation-request-from-analysis-planner.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/planner_model"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-empty",
+      "instance": "testdata/contracts/invalid-investigation-request-empty.json",
       "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
       "valid": false,
       "layer": "schema",
