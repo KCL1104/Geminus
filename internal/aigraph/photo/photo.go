@@ -34,10 +34,18 @@
 // for once the attempt is stopping), so the graph runs on the caller's
 // context without its cancellation, and each node hands its step the node's
 // context (Eino's values over the caller's) with the caller's deadline and
-// cancellation. A step that panics (the vision client included) panics Run
-// with the same value: Eino would make it an error whose text holds the
-// stack, which the worker would then retry; its handler treats a panic as
-// before, a bug never retried.
+// cancellation.
+//
+// Panics: Eino recovers a node's panic into an error whose text holds the
+// stack, which the worker would then retry. So no step runs inside Eino:
+// each node hands its body to Run, which runs it on the caller's goroutine
+// (Eino's run has a goroutine of its own, which only orders the nodes and
+// waits). A step that panics (the vision client included) panics the caller
+// with the same value, from where it was raised and never recovered on the
+// way, so the stack the worker's handler takes and logs shows the step, as
+// before; the handler treats it as before, a bug never retried. The node
+// is told, the run ends there, and Run waits for it before the panic goes
+// on.
 package photo
 
 import (
@@ -120,11 +128,37 @@ type flow struct {
 	err  error
 	// next is the node a branch sends the run to.
 	next string
-	// panicked is a step's panic, which Run panics with.
-	panicked *panicValue
+	// bodies carries each node's body to Run, which runs it on the
+	// caller's goroutine.
+	bodies chan body
+	// stopped: a body did not return (it panicked, or its goroutine
+	// exited); the run ends.
+	stopped bool
 }
 
-type panicValue struct{ v any }
+// body is a node's body on its way to Run; done is told whether it
+// returned.
+type body struct {
+	run  func()
+	done chan bool
+}
+
+// exec runs b on the calling goroutine (Run's, the caller's) and tells its
+// node whether it returned. A panic goes on from here unrecovered.
+func (b body) exec() {
+	returned := false
+	defer func() { b.done <- returned }()
+	b.run()
+	returned = true
+}
+
+// ended is how Eino's run ended: its error, or a panic of Eino's own
+// outside every node body.
+type ended struct {
+	err      error
+	panicked bool
+	v        any
+}
 
 // within is a node's context for its step: the node's values (Eino's, over
 // the caller's) with the caller's deadline and cancellation.
@@ -146,22 +180,24 @@ func (w within) Value(key any) any {
 	return w.Context.Value(key)
 }
 
-// node is a node of the graph: body runs on the node's context for its
-// step and names the node the run goes to next (END when the step decided
-// the proposal). A panic in body is kept for Run, and the run ends.
-func node(body func(ctx context.Context, f *flow) string) *compose.Lambda {
-	return compose.InvokableLambda(func(ctx context.Context, f *flow) (out *flow, err error) {
+// node is a node of the graph: step runs on the node's context for its
+// step, on the caller's goroutine (Run's), and names the node the run goes
+// to next (END when the step decided the proposal). When it does not
+// return (a panic), the run ends.
+func node(step func(ctx context.Context, f *flow) string) *compose.Lambda {
+	return compose.InvokableLambda(func(ctx context.Context, f *flow) (*flow, error) {
 		f.next = compose.END
-		if f.panicked != nil {
+		if f.stopped {
 			return f, nil
 		}
-		defer func() {
-			if v := recover(); v != nil {
-				f.panicked, f.next = &panicValue{v: v}, compose.END
-				out, err = f, nil
-			}
-		}()
-		f.next = body(within{Context: f.caller, node: ctx}, f)
+		next := compose.END
+		b := body{run: func() { next = step(within{Context: f.caller, node: ctx}, f) }, done: make(chan bool, 1)}
+		f.bodies <- b
+		if !<-b.done {
+			f.stopped = true
+			return f, nil
+		}
+		f.next = next
 		return f, nil
 	})
 }
@@ -282,8 +318,10 @@ var compiled = sync.OnceValues(build)
 
 // Run runs a photo proposal's steps on the graph, the vision model's calls
 // through vision (the metered client). The steps keep the proposal's
-// outcome or error; Run's own error is ErrGraph only. A step's panic is
-// Run's (see the package comment).
+// outcome or error; Run's own error is ErrGraph only. Every step runs on
+// the calling goroutine, and a step's panic is the caller's (see the
+// package comment). Run returns, or panics, only once the graph's run has
+// ended.
 func Run(ctx context.Context, vision provider.LLMProvider, steps Steps) error {
 	if steps == nil {
 		return ErrGraph
@@ -292,13 +330,42 @@ func Run(ctx context.Context, vision provider.LLMProvider, steps Steps) error {
 	if err != nil {
 		return ErrGraph
 	}
-	f := &flow{steps: steps, caller: ctx, vision: vision}
-	_, err = g.Invoke(context.WithoutCancel(ctx), f)
-	if f.panicked != nil {
-		panic(f.panicked.v)
+	f := &flow{steps: steps, caller: ctx, vision: vision, bodies: make(chan body)}
+	done := make(chan ended, 1)
+	go func() {
+		var e ended
+		defer func() {
+			if v := recover(); v != nil {
+				// Eino's own panic, outside every body (none is ever run on
+				// this goroutine): the caller's, with the same value.
+				e = ended{panicked: true, v: v}
+			}
+			done <- e
+		}()
+		_, e.err = g.Invoke(context.WithoutCancel(ctx), f)
+	}()
+	over := false
+	defer func() {
+		if !over {
+			// A body did not return: its node was told, so the run ends
+			// there. Wait for it; then the panic goes on, its stack the
+			// step's.
+			<-done
+		}
+	}()
+	for {
+		select {
+		case b := <-f.bodies:
+			b.exec()
+		case e := <-done:
+			over = true
+			switch {
+			case e.panicked:
+				panic(e.v)
+			case e.err != nil:
+				return ErrGraph
+			}
+			return nil
+		}
 	}
-	if err != nil {
-		return ErrGraph
-	}
-	return nil
 }

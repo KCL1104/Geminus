@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -36,7 +38,9 @@ import (
 // cause), the observer's calls in order, every request the segmenter and the
 // vision model got, the spend reserved and settled, and a panic's value.
 
-// before is Propose before E5, verbatim but for the package's names.
+// before is Propose before E5, verbatim but for the package's names and
+// its repair, onceBefore (repair.Once before E5): so the repair branch is
+// held to the code as it was too (E5 review round 1).
 func before(ctx context.Context, c photopipeline.Clients, req photopipeline.Request, obs photopipeline.Observer) (photopipeline.Result, error) {
 	var r photopipeline.Result
 	if c.Segmenter == nil || c.Vision == nil {
@@ -123,7 +127,7 @@ func before(ctx context.Context, c photopipeline.Clients, req photopipeline.Requ
 			obs.Answered(2, m, err)
 		}
 	}
-	outcome, r.Repair, err = repair.Once(ctx, c.Vision, pctx, res.Prior, outcome, check, answered)
+	outcome, r.Repair, err = onceBefore(ctx, c.Vision, pctx, res.Prior, outcome, check, answered)
 	if err != nil {
 		var ae *aicontext.Error
 		if errors.As(err, &ae) {
@@ -133,6 +137,67 @@ func before(ctx context.Context, c photopipeline.Clients, req photopipeline.Requ
 	}
 	r.Outcome = outcome
 	return r, nil
+}
+
+// onceBefore is repair.Once before E5 (repair.go at 31ab222), verbatim but
+// for the package's names.
+func onceBefore(ctx context.Context, client provider.LLMProvider, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome,
+	check repair.Check, answered func(provider.Metadata, error)) (review.Outcome, *repair.Record, error) {
+	issues, notListed := repair.Issues(refused)
+	if len(issues) == 0 || !prior.Present() {
+		return refused, nil, nil
+	}
+	rc, err := aicontext.Revise(first, prior, issues, notListed)
+	if err != nil {
+		return refused, nil, err
+	}
+	if err := ctx.Err(); err != nil {
+		// Stopping between the two calls: no second call.
+		return refused, nil, provider.NewError(provider.CodeCancelled, 0, "").WithCause(err)
+	}
+	rec := &repair.Record{Issues: len(issues), NotListed: notListed}
+	res, err := client.GenerateModelProposal(ctx, rc)
+	meta := res.Metadata
+	rec.Call = &meta
+	if answered != nil {
+		answered(meta, err)
+	}
+	if err != nil {
+		if ctx.Err() != nil {
+			return refused, rec, err
+		}
+		var pe *provider.Error
+		if errors.As(err, &pe) && pe.Code == provider.CodeInvalidOutput && res.Prior.Present() {
+			// The second answer refused for what it says (the client handed
+			// it back, as it does only then): its own issues, cleaned like
+			// every other, and nothing of it.
+			rec.Outcome = repair.Invalid
+			return review.InvalidOutput(pe.Issues), rec, nil
+		}
+		// Every other failure, and invalid_output with no answer handed back
+		// (no text block, a stop reason this build does not know, another
+		// model's answer, an empty or oversized one, a web search it was not
+		// offered: H-057 review round 1): no second answer the server
+		// reviewed, as the same refusal of a first call is not repaired. The
+		// first outcome stays; AI_INVALID_OUTPUT here is what shows an
+		// endpoint that does not take the repair's turns.
+		rec.Outcome, rec.Code = repair.Failed, codeOfBefore(err)
+		return refused, rec, nil
+	}
+	outcome, err := check(res.Output)
+	if err != nil {
+		return refused, rec, err
+	}
+	rec.Outcome = string(outcome.Status)
+	return outcome, rec, nil
+}
+
+// codeOfBefore is repair's codeOf at 31ab222.
+func codeOfBefore(err error) string {
+	if c := provider.CodeOf(err); c != "" {
+		return "AI_" + strings.ToUpper(string(c))
+	}
+	return "INTERNAL"
 }
 
 func beforeNoBoxes(outputLocale string) review.Outcome {
@@ -153,8 +218,12 @@ const (
 )
 
 // billedVision is the fake as a billable vision backend, so a metered
-// client reserves and settles each call.
-type billedVision struct{ *fake.Backend }
+// client reserves and settles each call; the repair's answer names
+// hooks.repairModel when a case sets it.
+type billedVision struct {
+	*fake.Backend
+	h *hooks
+}
 
 func (b billedVision) Quote(context.Context, provider.Request) (provider.Quote, error) {
 	return provider.Quote{Model: "muse-spark-1.3", MaxInputTokens: 30_000}, nil
@@ -163,6 +232,9 @@ func (b billedVision) Quote(context.Context, provider.Request) (provider.Quote, 
 func (b billedVision) Complete(ctx context.Context, req provider.Request) (provider.Response, error) {
 	r, err := b.Backend.Complete(ctx, req)
 	r.Model, r.Usage = "muse-spark-1.3", provider.Usage{InputTokens: 7000, OutputTokens: 900}
+	if b.h != nil && b.h.repairModel != "" && req.Prompt.Revision != nil {
+		r.Model = b.h.repairModel
+	}
 	return r, err
 }
 
@@ -196,6 +268,10 @@ type hooks struct {
 	onVision func(n int, after bool)
 	// onSegment runs before the n-th concept's segmentation call.
 	onSegment func(n int)
+	// repairModel, when set, is the model a metered vision backend's
+	// repair answer names (another model's answer: the client refuses it
+	// and hands nothing back).
+	repairModel string
 }
 
 type visionHook struct {
@@ -312,7 +388,7 @@ func newWorld(t *testing.T, metered bool, sh shared) *world {
 	vb := &visionHook{Backend: w.f, h: &w.hooks}
 	if metered {
 		w.ledger = &ledger{m: provider.NewMemoryMeter(1 << 50)}
-		vision, err = provider.NewMetered(billedVision{Backend: w.f}, provider.DefaultBudget(), w.ledger)
+		vision, err = provider.NewMetered(billedVision{Backend: w.f, h: &w.hooks}, provider.DefaultBudget(), w.ledger)
 	} else {
 		vision, err = provider.New(vb, provider.DefaultBudget())
 	}
@@ -405,6 +481,9 @@ type seen struct {
 	canceled bool
 	detail   string
 	panicked any
+	// site is the function the panic was raised in, from the stack taken
+	// where the caller recovered it (panicSite).
+	site     string
 	events   []string
 	visions  []provider.Request
 	segments []provider.SegmentCall
@@ -415,7 +494,9 @@ type seen struct {
 func run(w *world, propose func(context.Context, photopipeline.Clients, photopipeline.Request, photopipeline.Observer) (photopipeline.Result, error)) (s seen) {
 	defer func() {
 		if v := recover(); v != nil {
-			s.panicked = v
+			// As the worker's handler does (internal/worker, handle): the
+			// stack where the panic is recovered, which its log line holds.
+			s.panicked, s.site = v, panicSite(debug.Stack())
 		}
 		s.events, s.visions, s.segments = w.events, w.f.Requests(), w.seg.Calls()
 		if w.ledger != nil {
@@ -439,6 +520,28 @@ func run(w *world, propose func(context.Context, photopipeline.Clients, photopip
 		}
 	}
 	return s
+}
+
+// panicSite is the function a panic was raised in, read from a stack taken
+// in the deferred function that recovered it: the first frame below the
+// panic's own that is not the runtime's. "" when the stack shows none.
+func panicSite(stack []byte) string {
+	lines := strings.Split(string(stack), "\n")
+	for i, l := range lines {
+		if !strings.HasPrefix(l, "panic(") {
+			continue
+		}
+		for _, f := range lines[i+1:] {
+			if f == "" || strings.HasPrefix(f, "\t") || strings.HasPrefix(f, "runtime.") {
+				continue
+			}
+			if j := strings.LastIndex(f, "("); j > 0 {
+				f = f[:j]
+			}
+			return f
+		}
+	}
+	return ""
 }
 
 // normalized is res without its calls' latencies (a clock's) and their
@@ -485,6 +588,14 @@ func TestProposeIsThePipelineAsItWas(t *testing.T) {
 	}
 	schemaInvalid := []byte(`{"status":"proposed","summary":"ANSWER-SENTINEL"}`)
 	needsInput := []byte(`{"status":"needs_input","summary":"Which line?","assumptions":[],"questions":["Which stations?"],"requires_confirmation":true}`)
+	// The client's refusal of the repair's answer with nothing handed back
+	// (H-057 review round 1), with an issue of its own that must never be
+	// the outcome.
+	noAnswer := func() error {
+		e := provider.NewError(provider.CodeInvalidOutput, 0, "")
+		e.Issues = []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not from the Standard-mode model the request named", model.SeverityError)}
+		return e
+	}
 	cases := []struct {
 		name    string
 		metered bool
@@ -556,6 +667,25 @@ func TestProposeIsThePipelineAsItWas(t *testing.T) {
 			w.script(0, 0, 0)
 			w.f.Script(provider.RoleModeler, w.digest(), routingHalf(w))
 			w.f.FailRevision(provider.RoleModeler, w.digest(), provider.NewError(provider.CodeRateLimited, 429, "meta"))
+		}},
+		{name: "refused by the review, the repair refused with no answer handed back", setup: func(w *world) {
+			w.script(0, 0, 0)
+			w.f.Script(provider.RoleModeler, w.digest(), routingHalf(w))
+			w.f.FailRevision(provider.RoleModeler, w.digest(), noAnswer())
+		}},
+		{name: "schema-invalid, the repair refused with no answer handed back", setup: func(w *world) {
+			w.script(0, 0, 0)
+			w.f.Script(provider.RoleModeler, w.digest(), schemaInvalid)
+			w.f.FailRevision(provider.RoleModeler, w.digest(), noAnswer())
+		}},
+		{name: "refused by the review, the repair answered by another model, metered", metered: true, setup: func(w *world) {
+			w.script(0, 0, 0)
+			w.f.Script(provider.RoleModeler, w.digest(), routingHalf(w))
+			w.f.ScriptRevision(provider.RoleModeler, w.digest(), w.answer())
+			// The person chose a model (H-049): the client takes no other
+			// model's answer in its place.
+			w.req.Model = "muse-spark-1.3"
+			w.hooks.repairModel = "claude-opus-5-5"
 		}},
 		{name: "refused by the review, the repair needs input", setup: func(w *world) {
 			w.script(0, 0, 0)
@@ -687,6 +817,11 @@ func TestProposeIsThePipelineAsItWas(t *testing.T) {
 			want, got := run(old, before), run(now, photopipeline.Propose)
 			if fmt.Sprint(got.panicked) != fmt.Sprint(want.panicked) || reflect.TypeOf(got.panicked) != reflect.TypeOf(want.panicked) {
 				t.Fatalf("panicked with %v, before with %v", got.panicked, want.panicked)
+			}
+			// The stack the caller recovers the panic with (the worker logs
+			// it) still shows where it was raised (E5 review round 1).
+			if want.panicked != nil && (want.site == "" || got.site != want.site) {
+				t.Errorf("a panic raised in %q, before in %q", got.site, want.site)
 			}
 			if !reflect.DeepEqual(got.result, want.result) {
 				t.Errorf("result\n %+v\nbefore\n %+v", got.result, want.result)

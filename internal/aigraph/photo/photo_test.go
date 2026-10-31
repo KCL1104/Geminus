@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"sync"
@@ -349,6 +350,64 @@ func TestAPanicIsTheCallers(t *testing.T) {
 	}()
 	if got != "PANIC-vision" || len(s.ran) != 4 {
 		t.Errorf("the vision client's panic: %v, ran %v", got, s.ran)
+	}
+}
+
+// E5 review round 1: the stack a caller takes where it recovers a step's
+// panic (as the worker's handler does, internal/worker handle, and logs as
+// "stack") shows where the panic was raised, as it did before the graph: the
+// panic is never recovered and raised again on the way, which would start
+// the stack at Run.
+func TestAPanicKeepsItsStack(t *testing.T) {
+	// raisedIn is the first frame below the panic's own that is not the
+	// runtime's.
+	raisedIn := func(stack string) string {
+		lines := strings.Split(stack, "\n")
+		for i, l := range lines {
+			if !strings.HasPrefix(l, "panic(") {
+				continue
+			}
+			for _, f := range lines[i+1:] {
+				if f == "" || strings.HasPrefix(f, "\t") || strings.HasPrefix(f, "runtime.") {
+					continue
+				}
+				if j := strings.LastIndex(f, "("); j > 0 {
+					f = f[:j]
+				}
+				return f
+			}
+		}
+		return ""
+	}
+	recovered := func(run func()) (v any, stack string) {
+		defer func() {
+			v, stack = recover(), string(debug.Stack())
+		}()
+		run()
+		return nil, ""
+	}
+	const steps = "github.com/kcl1104/geminus/internal/aigraph/photo_test.(*steps)."
+	for _, c := range []struct{ at, method string }{
+		{"gate", "Gate"}, {"segment", "Segment"}, {"segments", "Segments"}, {"context", "Context"}, {"answered", "Answered"},
+		{"review", "Review"}, {"repair", "Repair"}, {"repaired", "Repaired"},
+	} {
+		t.Run(c.at, func(t *testing.T) {
+			s := newSteps(t)
+			s.after, s.panicAt = photo.ToReview, c.at
+			v, stack := recovered(func() { _ = photo.Run(context.Background(), &spy{}, s) })
+			if v != "PANIC-"+c.at {
+				t.Fatalf("panicked with %v", v)
+			}
+			if got := raisedIn(stack); got != steps+"rec" || !strings.Contains(stack, "\n"+steps+c.method+"(") {
+				t.Errorf("the stack shows the panic raised in %q, not in the step %s:\n%s", got, c.method, stack)
+			}
+		})
+	}
+	s := newSteps(t)
+	s.after = photo.ToReview
+	v, stack := recovered(func() { _ = photo.Run(context.Background(), &spy{panics: true}, s) })
+	if got := raisedIn(stack); v != "PANIC-vision" || got != "github.com/kcl1104/geminus/internal/aigraph/photo_test.(*spy).GenerateModelProposal" {
+		t.Errorf("the vision client's panic %v raised in %q:\n%s", v, got, stack)
 	}
 }
 
