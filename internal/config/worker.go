@@ -28,7 +28,8 @@ type Worker struct {
 }
 
 // Lanes is WORKER_LANES (H-056 design §9, W1): one job loop for every job
-// type, or two in the same process on the same organizations, so a
+// type, or, in the same process on the same organizations, a loop for
+// simulations and WORKER_REST_LANES loops for the other types, so a
 // simulation never waits behind a long AI job.
 type Lanes string
 

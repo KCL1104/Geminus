@@ -4,9 +4,10 @@ package main
 // WORKER_REST_LANES through run, as the plain worker login on the
 // disposable database: the lanes claim only their own types, a simulation
 // does not wait for a long job of another type, two rest lanes run two
-// long jobs at once and claim no job twice, a stop drains every lane, a
-// lane's failure stops the worker loudly, and single mode keeps its one
-// loop under WORKER_ID.
+// long jobs at once and renew both leases, four rest lanes contending for
+// one queue claim each job once, a stop drains every lane, a lane's
+// failure stops the worker loudly, and single mode keeps its one loop
+// under WORKER_ID.
 
 import (
 	"context"
@@ -358,10 +359,14 @@ func TestALanesPanicStopsTheWorker(t *testing.T) {
 // types run at once, one in each rest lane, while a third job, a
 // simulation, runs to its end in the sim lane; a further job of the rest
 // lanes' types waits only until a rest lane is free, and then runs there
-// while the other long job goes on. No job is claimed twice (jobs.Claim's
-// FOR UPDATE SKIP LOCKED and the lease fence, as between two workers). A
+// while the other long job goes on. Both lanes' leases are renewed, each
+// under its own ID, while both lanes hold a job past a heartbeat (10 s). A
 // stop drains every lane: each attempt in flight is recorded as
-// WORKER_STOPPED, and the worker exits 0.
+// WORKER_STOPPED, and the worker exits 0. Here no two lanes ever compete
+// for one queued job, so the count of claims below is a check of the
+// handlers' bookkeeping, not of the claim: that two lanes never take one
+// job is TestRestLanesClaimEachQueuedJobOnce's (and jobs'
+// TestConcurrentClaims').
 func TestTwoRestLanesRunTwoLongJobsAtOnce(t *testing.T) {
 	e := laneSetup(t)
 	long1, long2 := e.profile(t), e.profile(t)
@@ -465,6 +470,11 @@ func TestTwoRestLanesRunTwoLongJobsAtOnce(t *testing.T) {
 	if by := claimed(t, claims, done, &logs, long3)[long3].LockedBy; by != held[long1] {
 		t.Errorf("the third long job is held by %q, the free lane is %q", by, held[long1])
 	}
+	held[long3] = held[long1]
+	// Both lanes hold their job past a heartbeat, and each renews its own
+	// lease, under its own ID, in this one process.
+	until(t, &logs, "both held leases are renewed", func() bool { return e.renewed(t, long2) && e.renewed(t, long3) })
+	stillRunning("after both renewals", long2, long3)
 	cancel()
 	if code := exited(t, done, &logs); code != 0 {
 		t.Fatalf("exit = %d: %s", code, logs.String())
@@ -491,6 +501,114 @@ func TestTwoRestLanesRunTwoLongJobsAtOnce(t *testing.T) {
 	}
 	if strings.Contains(out, "WORKER_LANE_") {
 		t.Errorf("a stop was reported as a lane failure: %s", out)
+	}
+}
+
+// renewed reports whether job id's lease has been renewed since its claim:
+// a heartbeat after the claim's own (the claim sets both to its now()).
+func (e *laneEnv) renewed(t *testing.T, id string) bool {
+	t.Helper()
+	var ok bool
+	if err := e.pool.QueryRow(context.Background(), `SELECT coalesce(heartbeat_at>locked_at, false) FROM twin.jobs
+		WHERE organization_id=$1 AND id=$2`, e.org.ID, id).Scan(&ok); err != nil {
+		t.Fatal(err)
+	}
+	return ok
+}
+
+// Four rest lanes (at AI_MAX_CONCURRENT_PER_ORGANIZATION=4) start on one
+// queue of short jobs of their types, queued before the start, so their
+// claims compete for the same oldest job from the first pass on: each job
+// is claimed exactly once (attempt 1, ended as its handler said) and no
+// claim fails. That is jobs.Claim's FOR UPDATE SKIP LOCKED with the lease
+// fence, between lanes of one process as between workers. Each lane's
+// first job is held until every rest lane holds one, so all four lanes
+// claim from the queue at once and each appears in locked_by; the sim
+// lane takes none of them.
+func TestRestLanesClaimEachQueuedJobOnce(t *testing.T) {
+	e := laneSetup(t)
+	const k = 24
+	queued := make([]string, k)
+	for i := range queued {
+		queued[i] = e.profile(t)
+	}
+	lanes := []string{"worker-0:rest", "worker-0:rest2", "worker-0:rest3", "worker-0:rest4"}
+	var mu sync.Mutex
+	seen := map[string]int{}        // the claims of each job
+	by := map[string]bool{}         // the lanes that claimed a job
+	together := make(chan struct{}) // closed once every rest lane has claimed a job
+	claim := func(j jobs.Job) {
+		mu.Lock()
+		defer mu.Unlock()
+		seen[j.ID]++
+		if !by[j.LockedBy] {
+			by[j.LockedBy] = true
+			if len(by) == len(lanes) {
+				close(together)
+			}
+		}
+	}
+	hs := map[jobs.Type]handler.Handler{
+		jobs.Simulation: handler.Func(func(ctx context.Context, r handler.Run) error {
+			claim(r.Job())
+			return &jobs.Failure{Code: "TEST_SIMULATION_ENDED", Message: "the test ended this run"}
+		}),
+		jobs.ImportProfile: handler.Func(func(ctx context.Context, r handler.Run) error {
+			claim(r.Job())
+			select {
+			case <-together:
+				return &jobs.Failure{Code: "TEST_ENDED", Message: "the test ended this job"}
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}),
+	}
+	var logs syncBuffer
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan int, 1)
+	go func() {
+		done <- run(ctx, e.getenv("split", "WORKER_REST_LANES", "4", "AI_MAX_CONCURRENT_PER_ORGANIZATION", "4"), &logs, fixed(hs))
+	}()
+	until(t, &logs, "every queued job ends", func() bool {
+		var n int
+		if err := e.pool.QueryRow(context.Background(), `SELECT count(*) FROM twin.jobs WHERE organization_id=$1 AND id=ANY($2) AND status='failed'`,
+			e.org.ID, queued).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == k
+	})
+	cancel()
+	if code := exited(t, done, &logs); code != 0 {
+		t.Fatalf("exit = %d: %s", code, logs.String())
+	}
+	for _, id := range queued {
+		if j := e.job(t, id); j != (stored{status: "failed", attempt: 1, code: "TEST_ENDED"}) {
+			t.Errorf("%s: %+v", id, j)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, id := range queued {
+		if seen[id] != 1 {
+			t.Errorf("%s was claimed %d times", id, seen[id])
+		}
+	}
+	if len(seen) != k {
+		t.Errorf("%d jobs claimed, %d queued: %v", len(seen), k, seen)
+	}
+	if got := slices.Sorted(maps.Keys(by)); !slices.Equal(got, lanes) {
+		t.Errorf("the jobs were claimed by %v", got)
+	}
+	out := logs.String()
+	for _, bad := range []string{"claiming failed", "reaping failed", "lease lost", "no longer this attempt's", "recording the failure failed",
+		"renewing the lease failed", "could not be renewed", "WORKER_LANE_"} {
+		if strings.Contains(out, bad) {
+			t.Errorf("stderr has %q: %s", bad, out)
+		}
+	}
+	if got := runningIDs(t, out); !slices.Equal(got, append([]string{"worker-0:sim"}, lanes...)) || !strings.Contains(out, `"msg":"stopped"`) {
+		t.Errorf("running as %v: %s", got, out)
 	}
 }
 

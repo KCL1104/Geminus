@@ -25,6 +25,7 @@ Follow-up to W1 ([H-056_W1_VALIDATION.md](H-056_W1_VALIDATION.md)) after the H-0
 - `jobs.Claim` selects with `FOR UPDATE SKIP LOCKED LIMIT 1` (`internal/storage/jobs/jobs.go:241`).
 - Each lane holds its leases under its own `locked_by`, fenced by `lease_token`.
 - So two rest lanes are two workers in ADR-024's sense, exactly as two processes would be (`TestWorkersShareTheQueue`, unchanged). Per-organization AI concurrency limits are unchanged.
+- Review round 1 (§9) refines this: what stops two claims of one job is the row lock of `FOR UPDATE` (with PostgreSQL's recheck of `status='queued'`) and the running-row trigger behind it. `SKIP LOCKED` only spares a lane waiting on a row another lane is claiming.
 
 ## 2. What changed
 
@@ -116,7 +117,7 @@ These run through `run`, as the plain worker login. Runs are created through `in
 3. A further import job stays `queued` with attempt 0 for more than two idle passes, while both rest lanes are busy.
 4. One long job is released (`failed`, `TEST_LONG_ENDED`). The waiting job is then claimed by the lane that held it, and ends (`TEST_ENDED`), while the other long job still runs.
 5. A third long job is claimed by that same freed lane.
-6. At the stop, the worker exits 0. Both in-flight long jobs are `queued`, attempt 1, `WORKER_STOPPED`, with no holder. Each of the 5 jobs was claimed exactly once.
+6. At the stop, the worker exits 0. Both in-flight long jobs are `queued`, attempt 1, `WORKER_STOPPED`, with no holder. Each of the 5 jobs was claimed exactly once. (Review round 1, §9: no two lanes compete for one job in this test, so this count could not fail on a claim race. Since round 1 the contention is tested by `TestRestLanesClaimEachQueuedJobOnce`.)
 7. The `running` lines name `worker-0:sim`, `worker-0:rest` and `worker-0:rest2`, in order. No `WORKER_LANE_` report appears.
 
 W1's 3 lane DB tests and `TestRunWorksAndStops` pass unchanged. `getenv` now takes extra variables, and `profile` gained `profileAs` (a job ID chosen by the test). No assertion was weakened, and no skip was added.
@@ -222,3 +223,80 @@ It also rewrote `checks/contracts-check.json` (positive fixtures 86 → 87, nega
   - No GOMEMLIMIT or container limit is configured (W1 risk 1, still open), and nothing was measured.
 - **Two Muse Wonder proposals still fill both rest lanes**, and each further one in the queue waits up to about 1,800 s. Only the second lane is new. The claim cannot tell models apart (H-065 P5 (b)).
 - **A lane failure stops all three lanes** (exit 4), and each in-flight attempt is recorded as `WORKER_STOPPED`. That ends a Muse Wonder or research proposal in flight, because its job has one attempt: this was already true at any stop or redeploy (H-065 §7 risk 2). The drain runs in parallel, so Railway's 30 s grace covers the slowest lane's stop, not the sum.
+
+## 9. Review round 1
+
+Two Low findings, both fixed. Same branch, base `1c205a8`, on top of `6d7a15b`. Status still **PROPOSED**: not merged, not deployed. No live AI call was made, and no `.env` value or key was read.
+
+### L1: the DB test did not show that no job is claimed twice (fixed: a contending test)
+
+**The finding.** In `TestTwoRestLanesRunTwoLongJobsAtOnce`, no two lanes ever compete for one queued job: each job it counts is already `running` when another lane polls. The reviewer removed `FOR UPDATE SKIP LOCKED` from `jobs.Claim` in an `-overlay` copy, and the test still passed 5 of 5. So §1, §4 step 6 and the test's comment overstated what it shows. The finding was confirmed here before the fix: that test passes on that mutant (5 of 5 below).
+
+**The fix (tests only, no production change):**
+- **New `TestRestLanesClaimEachQueuedJobOnce`** (`cmd/worker/lanes_db_test.go`), through `run` as the plain worker login:
+  - `WORKER_LANES=split`, `WORKER_REST_LANES=4` at `AI_MAX_CONCURRENT_PER_ORGANIZATION=4`;
+  - 24 short import jobs are queued before the start, so the four rest lanes' claims compete for the same oldest job from the first pass on;
+  - each lane's first job is held until every rest lane holds one. So all four claim from the queue at once, and each appears in `locked_by`. After that, the jobs end at once, and the four lanes go back to the queue together.
+  - It checks:
+    - every job ends `failed`, attempt 1, `TEST_ENDED`, with no holder, and was claimed exactly once (24 claims, no other);
+    - the jobs were claimed by exactly `worker-0:rest`, `:rest2`, `:rest3` and `:rest4`, and the sim lane took none;
+    - stderr has no `claiming failed`, `reaping failed`, lost lease, unrecorded end, failed renewal or `WORKER_LANE_` line;
+    - the `running` lines name the sim lane and the four rest lanes, in order, and the worker exits 0 at the stop.
+- **`TestTwoRestLanesRunTwoLongJobsAtOnce`**:
+  - Its comment now says what it shows. It also says that two lanes never taking one job is shown by the new test and by `jobs.TestConcurrentClaims`. Its count of claims stays, unweakened, as a check of the handlers' bookkeeping.
+  - It now holds both rest lanes' jobs past one heartbeat (10 s), as the reviewer suggested as an option. Before the stop it waits until both held leases (`long2` in one lane, `long3` in the other) have been renewed (`heartbeat_at` after `locked_at`). Then both must still be `running`, attempt 1, each held by its own lane. So two lanes of one process renew their leases under their own IDs at the same time. The test now takes about 14.7 s, up from 4.7 s.
+
+**Mutants** (each an `-overlay` copy in the session scratchpad, `wrl2/mut*`; the worktree was never touched, and `sha256sum -c` of the mutated file was OK after each):
+
+| Mutant | Tests run | Result |
+|---|---|---|
+| R1: the reviewer's: `FOR UPDATE SKIP LOCKED` removed from `jobs.Claim` (`LIMIT 1` alone) | the new test and `TestTwoRestLanesRunTwoLongJobsAtOnce`, 5 runs | **killed 5 of 5**, by the new test. The trigger refuses the second claim of a running job ("immutable record ... the worker only renews, ends or retries a running job, under its lease"), and the lane logs `claiming failed`. `TestTwoRestLanesRunTwoLongJobsAtOnce` passed 5 of 5, as the reviewer found. `jobs.TestConcurrentClaims` fails on this mutant with the same trigger error, also as the reviewer found. |
+| R2: only `SKIP LOCKED` removed (`FOR UPDATE LIMIT 1`) | the same two tests, 3 runs | survived 3 of 3. **Not a defect, and no test should kill it.** Under READ COMMITTED, PostgreSQL rechecks a row it waited to lock against the claim's `WHERE` (`status='queued'`) and skips it once the other claim has committed, so no job is taken twice. The claims only wait for each other. `jobs.TestConcurrentClaims` also passed 20 of 20 on this mutant. |
+| R3: the loop's renewal does not write (`jobs.Heartbeat` replaced by `return nil` in `internal/worker`) | `TestTwoRestLanesRunTwoLongJobsAtOnce` | **killed**: "waited 20 s for both held leases are renewed" |
+
+R2 corrects one sentence of round 0. §1 credited `SKIP LOCKED` with "several loops claiming the same types are safe". In fact `SKIP LOCKED` is about throughput: a lane does not wait on a row another lane is claiming. The no-double-claim guarantee is the row lock of `FOR UPDATE` with that recheck, and the running-row trigger behind it. §1 now says so. The other docs (`lanes.go`, the runbook, ADR-024 and `variables.json`) name `FOR UPDATE SKIP LOCKED` together with the lease fence, which is still accurate, so they are unchanged.
+
+The new test also passed 20 of 20 in a row (`-count=20 -race`, 8.7 s), so the barrier does not make it flaky.
+
+### L2: the WORKER_LANES docs still described two loops (fixed)
+
+The `WORKER_LANES` wording now matches `WORKER_REST_LANES` and the deployed `variables.json` (split plus 2 rest lanes, so three loops):
+- **`docs/runbooks/deploy.md` §4.3, the `WORKER_LANES` row**: split runs "a sim loop ... and `WORKER_REST_LANES` rest loops (1 by default; see the next row)" under `<WORKER_ID>:rest`, `<WORKER_ID>:rest2`, ...; "a stop drains every lane"; "the other lanes are stopped and drained".
+- **`internal/config/worker.go`**: the `Lanes` type's doc says one loop for every type, or a sim loop and `WORKER_REST_LANES` loops for the other types.
+- **`.env.example`**: the `WORKER_LANES` comment names the `WORKER_REST_LANES` rest loops, `<WORKER_ID>:rest`, `:rest2`, ...
+
+No other place W1 documented `WORKER_LANES` still says two lanes. `grep` finds "both lanes", "the other lane" and "two loops" nowhere in the runbook, `internal/config`, `cmd/worker` or `.env.example`. The one hit is `variables.json`'s `WORKER_REST_LANES` text, where "the other lane" is right for 2 rest lanes. W1's own sentence in ADR-024 ("runs two such loops") is kept as W1's record, and the next sentence adds the rest lanes.
+
+### Commands and real results (round 1)
+
+Toolchain: Go 1.27.3 (`GOTOOLCHAIN=local`) and the borrowed `.venv` (a symlink, not committed). The test wrapper (`wrl2/gt.sh` in the scratchpad) removes every `AI_*`, `GEMINUS_*` (but the test database's), `ANTHROPIC_*`, `MODEL_API_KEY`, `OTEL_*` and `WORKER_*` variable of the session, by name only.
+
+The DB tests ran on a new throwaway PostgreSQL 16.15 cluster in the session scratchpad:
+- `wrl2/pgdata`: trust auth, TCP 127.0.0.1:55614 only, no Unix socket, `fsync=off`;
+- on `dt_test_wrl2`, created fresh for this round.
+
+The other agents' cluster (127.0.0.1:55491) was left alone.
+
+| Command | Exit | Result |
+|---|---|---|
+| `initdb -A trust`, `pg_ctl start` (port 55614), `CREATE DATABASE dt_test_wrl2` | 0 | PostgreSQL 16.15 up, the database created |
+| `make db-test` (`DT_ALLOW_DB_TESTS=yes`, `DATABASE_URL` = `dt_test_wrl2`) | 0 | "DB migration smoke up/down/up completed" |
+| `go test -count=1 -race -run 'TestTwoRestLanesRunTwoLongJobsAtOnce\|TestRestLanesClaimEachQueuedJobOnce' -v ./cmd/worker/` (DB tests required), on the real code | 0 | both PASS (14.71 s, 0.50 s) |
+| the same, with `-overlay` R2, 3 runs | 0 | both PASS each time: R2 survives (see above) |
+| the same, with `-overlay` R1, 5 runs | 1 | `TestRestLanesClaimEachQueuedJobOnce` FAIL 5 of 5 (`claiming failed`, the trigger's error); `TestTwoRestLanesRunTwoLongJobsAtOnce` PASS 5 of 5 |
+| `go test -race -count=20 -run 'TestConcurrentClaims$' ./internal/storage/jobs/` with R2 | 0 | ok: 20 of 20 pass |
+| `go test -race -count=1 -run 'TestConcurrentClaims$' -v ./internal/storage/jobs/` with R1 | 1 | FAIL: the trigger's "immutable record" error |
+| `go test -count=1 -race -run TestTwoRestLanesRunTwoLongJobsAtOnce -v ./cmd/worker/` with `-overlay` R3 | 1 | FAIL (24.7 s): "waited 20 s for both held leases are renewed" |
+| `sha256sum -c` of `jobs.go` and `worker.go` after the mutants | 0 | OK |
+| `gofmt -l cmd internal`; `go vet ./cmd/worker/ ./internal/config/ ./internal/worker/` | 0 | clean |
+| `go test -p 1 -count=1 -race -v ./internal/config/ ./internal/worker/ ./cmd/worker/` (`dt_test_wrl2`, DB tests required) | 0 | `internal/config` ok (1.3 s, 28 tests), `internal/worker` ok (41.6 s, 36 tests), `cmd/worker` ok (20.9 s, 42 tests, among them all 6 lane DB tests and `TestRunWorksAndStops`); 0 SKIP, 0 FAIL |
+| `go test -count=20 -race -run TestRestLanesClaimEachQueuedJobOnce ./cmd/worker/` | 0 | ok (8.7 s): 20 of 20 |
+| `make architecture-check` | 0 | "PASS architecture: 103 packages, 40 rules, 16 build configurations" |
+| `PATH=.venv/bin:$PATH make spec-check` | 0 | every part passed: contracts `PASS_LIMITED_SPEC_CHECKS`, planning PASS, docs PASS (173 Markdown files, 334 relative links), the SQL inventory, reference math and engine vectors, decisions `PASS_REGISTER_SHAPE_ONLY`, TS contracts fresh, independent hashes, DB test render fresh, deploy `PASS_STATIC_DEPLOY_CHECKS` (with `WORKER_REST_LANES` among the code's variables). As in round 0, it rewrote `checks/contracts-check.json` for the base's H-065 fixtures (86 → 87, 164 → 165, 159 → 160); the file was restored and is left out of this commit |
+| `DROP DATABASE dt_test_wrl2`, `pg_ctl stop` | 0 | dropped, no `dt_test_*` database left on the cluster, the cluster stopped |
+
+### NOT RUN (round 1)
+
+- Everything §6 lists as NOT RUN is still NOT RUN: `make backend-test`, `make backend-race`, `make integration-test` (the full DB suite), `make frontend-test`, `make e2e-test`, the browser suite, `make ai-eval`, any deployment and any live AI call. This is the slice's test policy: the coordinator runs the full suites on the merged tree, and CI runs them again.
+- `jobs.TestConcurrentClaims` and the rest of `internal/storage/jobs` were not run on the unmutated code in this round, because the slice does not touch that package. They ran only on the mutants above.
+- R1 with the running-row trigger dropped, which would show a double claim itself rather than the trigger's refusal, was not run. The new test would fail either way, because it checks both the claim count and the absence of `claiming failed` (reasoned, not run).
