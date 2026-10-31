@@ -30,9 +30,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/domainpack"
@@ -41,14 +39,13 @@ import (
 	"github.com/kcl1104/geminus/internal/model/hashing"
 	modelsvc "github.com/kcl1104/geminus/internal/models"
 	"github.com/kcl1104/geminus/internal/proposals"
+	"github.com/kcl1104/geminus/internal/proposals/effect"
 	"github.com/kcl1104/geminus/internal/storage/auditlog"
-	"github.com/kcl1104/geminus/internal/storage/datasets"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	models "github.com/kcl1104/geminus/internal/storage/models"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	store "github.com/kcl1104/geminus/internal/storage/proposals"
 	"github.com/kcl1104/geminus/internal/storage/scenarios"
-	"github.com/kcl1104/geminus/internal/storage/snapshots"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
 
@@ -312,6 +309,10 @@ func (s *Service) Approve(ctx context.Context, sc tenant.Scope, requestID, key, 
 		switch {
 		case decidedStatus(p.Status):
 			return &DecidedError{Status: p.Status}
+		case p.Status == store.Applied:
+			// H-061: an AI investigation acted on it already (its scenario
+			// or its draft edit); applied is final, never approved.
+			return &StateError{Status: p.Status, Decision: "approve"}
 		case p.Status != store.Ready:
 			return &StateError{Status: p.Status, Decision: "approve"}
 		}
@@ -367,8 +368,9 @@ func (s *Service) conflict(ctx context.Context, tx tenant.Tx, m tenant.Membershi
 	return 409, out, err
 }
 
-// apply reviews the ready proposal of l again (recheck), runs the dataset
-// binding stage against its base's manifest, creates its one effect and
+// apply reviews the ready proposal of l again and runs the dataset binding
+// stage against its base's manifest (effect.Check, the revalidation an AI
+// investigation's effects run too, H-061 A4), creates its one effect and
 // records the approval and its audit event.
 func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, requestID string, l locked, comment *string) (any, error) {
 	org, p := m.OrganizationID, l.proposal
@@ -380,39 +382,22 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 	if err != nil {
 		return nil, err
 	}
-	r, err := recheck(p, base.IR, pack)
+	// The review again (recheck), then the manifest a new version freezes,
+	// which is the proposal's dataset_bindings, the base's whole manifest
+	// (D-062 (g), TWIN_IR_SPEC §5.2; a proposal that holds another one is
+	// the server's fault, never approved), then the dataset binding stage
+	// (D-006, D-033) with the snapshots read again now: the candidate's
+	// empirical distributions are bound in that manifest and every snapshot
+	// verifies. A snapshot that cannot be read is a datasets.ReadError (503
+	// DATASET_STORAGE_FAILED, as the generator's, D-061 (c); review I2); the
+	// ended request's context error, or a server fault (500), otherwise
+	// (T-054 review L1, L2).
+	c, err := effect.Check(ctx, tx, org, s.Objects, pack, p, base)
 	if err != nil {
-		return nil, err
+		return nil, refused(err)
 	}
-	// The manifest a new version freezes is the proposal's dataset_bindings,
-	// the base's whole manifest (D-062 (g), TWIN_IR_SPEC §5.2); a proposal
-	// that holds another one is the server's fault, never approved.
-	manifest := sorted(base.DatasetBindings)
-	if manifest == nil || !slices.Equal(manifest, sorted(p.DatasetBindings)) {
-		return nil, fmt.Errorf("approval: proposal %s does not bind its base's dataset manifest", p.ID)
-	}
-	// The dataset binding stage (D-006, D-033), with the snapshots read
-	// again now: the candidate's empirical distributions are bound in that
-	// manifest and every snapshot verifies.
-	if len(manifest) > 0 && s.Objects == nil {
-		return nil, ErrDatasetsUnavailable
-	}
-	keys, err := snapshots.Keys(ctx, tx, org, manifest)
-	if err != nil {
-		return nil, err
-	}
-	snaps := snapshots.Store{Keys: keys, Objects: s.Objects}
-	resolution, err := datasets.Resolve(ctx, snaps, org, r.ir, manifest)
-	if err != nil {
-		// A snapshot that cannot be read is a datasets.ReadError (503
-		// DATASET_STORAGE_FAILED, as the generator's, D-061 (c); review
-		// I2); the ended request's context error, or a server fault (500),
-		// otherwise (T-054 review L1, L2).
-		return nil, datasets.Failure(ctx, err)
-	}
-	if o := r.outcome.Refuse(withoutIR(resolution.Issues)); o.Status != r.outcome.Status {
-		return nil, &InvalidError{Issues: o.Validation.Issues}
-	}
+	r := rechecked{outcome: c.Outcome, candidate: c.Candidate, hash: c.Hash, ir: c.IR}
+	manifest, snaps := c.Manifest, c.Snapshots
 	common := map[string]any{"mode": p.Mode, "model_id": p.ModelID, "base_version_id": p.BaseVersionID, "patch_hash": r.outcome.PatchHash,
 		"server_risk_level": string(r.outcome.ServerRisk), "risk_level": string(r.outcome.Risk)}
 	audit := func(meta map[string]any) error {
@@ -453,9 +438,7 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 	case "scenario":
 		// An immutable what-if on the base: no version, no draft change,
 		// no run (D-004, AI_SPEC §7).
-		sc, err := scenarios.Insert(ctx, tx, scenarios.Scenario{ID: ids.New("scn"), OrganizationID: org, ModelID: p.ModelID,
-			BaseVersionID: base.ID, Name: scenarioName(*p.Summary, p.ID), Patch: r.outcome.Changes, PatchHash: r.outcome.PatchHash,
-			SourceProposalID: &p.ID, CreatedBy: m.UserID})
+		sc, err := scenarios.Insert(ctx, tx, effect.NewScenario(org, p, c, m.UserID))
 		if err != nil {
 			return nil, err
 		}
@@ -472,30 +455,11 @@ func (s *Service) apply(ctx context.Context, tx tenant.Tx, m tenant.Membership, 
 	return nil, fmt.Errorf("approval: proposal %s has mode %q", p.ID, p.Mode)
 }
 
-// sorted is a manifest in D-034 order ([] for none), or nil when it binds a
-// logical_ref twice.
-func sorted(manifest []model.DatasetBinding) []model.DatasetBinding {
-	out, err := hashing.SortManifest(manifest)
-	if err != nil {
-		return nil // never equal to a verified manifest
-	}
-	return out
-}
-
 // scenarioName is the name of the scenario an approval creates (D-067
-// APPROVED): the proposal's summary, which the person reviewed, each run
-// of white space made one space, cut at maxName characters with "…"; the
-// proposal's ID when the summary is only white space.
-func scenarioName(summary, id string) string {
-	name := strings.Join(strings.Fields(summary), " ")
-	if name == "" {
-		return id
-	}
-	if r := []rune(name); len(r) > maxName {
-		return strings.TrimRightFunc(string(r[:maxName-1]), unicode.IsSpace) + "…"
-	}
-	return name
-}
+// APPROVED): effect.ScenarioName, the proposal's summary, which the person
+// reviewed, each run of white space made one space, cut at 200 characters
+// with "…"; the proposal's ID when the summary is only white space.
+func scenarioName(summary, id string) string { return effect.ScenarioName(summary, id) }
 
 // Reject rejects proposal id for the scoped user, or replays the answer of
 // the earlier request with the same Idempotency-Key: 200 and the proposal
@@ -536,6 +500,9 @@ func (s *Service) Reject(ctx context.Context, sc tenant.Scope, requestID, key, i
 		switch {
 		case decidedStatus(p.Status):
 			return &DecidedError{Status: p.Status}
+		case p.Status == store.Applied:
+			// H-061: applied is final; what the AI made stays, labelled.
+			return &StateError{Status: p.Status, Decision: "reject"}
 		case p.Status != store.Ready && p.Status != store.NeedsInput:
 			return &StateError{Status: p.Status, Decision: "reject"}
 		}

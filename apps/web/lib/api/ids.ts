@@ -2,7 +2,7 @@
 // bar, so they are checked before they become part of an API path.
 const ULID = "[0-7][0-9A-HJKMNP-TV-Z]{25}";
 
-export type IDPrefix = "org" | "usr" | "prj" | "mdl" | "mv" | "ds" | "dsv" | "imp" | "aip" | "scn" | "sim" | "ana" | "job" | "aud" | "req" | "art";
+export type IDPrefix = "org" | "usr" | "prj" | "mdl" | "mv" | "ds" | "dsv" | "imp" | "aip" | "scn" | "sim" | "ana" | "job" | "aud" | "req" | "art" | "inv";
 
 const patterns = new Map<IDPrefix, RegExp>();
 

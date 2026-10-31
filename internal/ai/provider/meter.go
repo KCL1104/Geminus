@@ -83,12 +83,17 @@ const (
 	LimitMonth           = "month"
 	// LimitRun bounds one live eval or smoke run (MemoryMeter).
 	LimitRun = "run"
+	// LimitInvestigation bounds one AI investigation (H-060, H-061 §12): USD
+	// 2.50, settled and open, its planner turns' and its proposals' and
+	// analyses' calls together, and 20 planner turns; the spend ledger and
+	// its database count it.
+	LimitInvestigation = "investigation"
 )
 
 // Attribution names what a call is for, for the spend ledger and its
 // audit: the resource a job works on and the request that queued it.
 type Attribution struct {
-	TargetType string // "ai_proposal", "ai_analysis", "import"
+	TargetType string // "ai_proposal", "ai_analysis", "import", "investigation" (a planner turn, H-061)
 	TargetID   string
 	RequestID  string
 }

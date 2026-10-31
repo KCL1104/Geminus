@@ -135,35 +135,11 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, r
 			out, err = hashing.Canonical(replay.Body)
 			return err
 		}
-		if s.AI != proposals.Available {
-			return &proposals.UnavailableError{Availability: s.AI}
-		}
-		a, err := prepare(ctx, tx, m, runID, req)
+		a, err := s.Queue(ctx, tx, m, requestID, runID, req)
 		if err != nil {
 			return err
 		}
-		if a, err = store.Insert(ctx, tx, a); err != nil {
-			return err
-		}
-		policy := s.Policy
-		if policy == (jobs.Policy{}) {
-			policy = jobs.DefaultPolicy
-		}
-		if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.Analysis,
-			Resource: jobs.Resource{AIAnalysisID: a.ID}, Payload: map[string]any{"analysis_id": a.ID, "request_id": requestID}}, policy); err != nil {
-			return err
-		}
-		// IDs, the language and whether a question was asked: never the
-		// question (customer prose, SECURITY §9).
-		meta := map[string]any{"run_id": a.RunID, "output_locale": a.OutputLocale, "question": a.Question != nil}
-		if a.BaselineRunID != nil {
-			meta["baseline_run_id"] = *a.BaselineRunID
-		}
-		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "analysis.create", TargetType: "ai_analysis", TargetID: a.ID, RequestID: requestID, Metadata: meta}); err != nil {
-			return err
-		}
-		data, err := json.Marshal(Accepted{ID: a.ID, Status: string(store.Generating)})
+		data, err := json.Marshal(a)
 		if err != nil {
 			return err
 		}
@@ -174,6 +150,51 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, r
 		return idempotency.Complete(ctx, tx, k, idempotency.Response{Status: status, Body: out})
 	})
 	return status, out, err
+}
+
+// Queue is createAnalysis's body in the caller's transaction (H-061 A4),
+// after the role and the Idempotency-Key, which stay Create's: the
+// deployment's AI check, the request and both runs (completed, one model,
+// comparable), the analysis, its one analysis job and its analysis.create
+// event. In an AI investigation's acting-for transaction (m.ActingFor) the
+// database labels the analysis and assigns its explanation number (0019),
+// and the event carries the AI's mark; a person's analysis is written
+// exactly as before. It requires a writer again, so no caller can queue
+// for a viewer.
+func (s *Service) Queue(ctx context.Context, tx tenant.Tx, m tenant.Membership, requestID, runID string, req CreateRequest) (Accepted, error) {
+	if err := m.Require(writeRoles...); err != nil {
+		return Accepted{}, err
+	}
+	if s.AI != proposals.Available {
+		return Accepted{}, &proposals.UnavailableError{Availability: s.AI}
+	}
+	a, err := prepare(ctx, tx, m, runID, req)
+	if err != nil {
+		return Accepted{}, err
+	}
+	if a, err = store.Insert(ctx, tx, a); err != nil {
+		return Accepted{}, err
+	}
+	policy := s.Policy
+	if policy == (jobs.Policy{}) {
+		policy = jobs.DefaultPolicy
+	}
+	if _, err := jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: m.OrganizationID, Type: jobs.Analysis,
+		Resource: jobs.Resource{AIAnalysisID: a.ID}, Payload: map[string]any{"analysis_id": a.ID, "request_id": requestID}}, policy); err != nil {
+		return Accepted{}, err
+	}
+	// IDs, the language and whether a question was asked: never the
+	// question (customer prose, SECURITY §9); the AI's mark (H-061).
+	meta := map[string]any{"run_id": a.RunID, "output_locale": a.OutputLocale, "question": a.Question != nil}
+	if a.BaselineRunID != nil {
+		meta["baseline_run_id"] = *a.BaselineRunID
+	}
+	if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
+		Action: "analysis.create", TargetType: "ai_analysis", TargetID: a.ID, RequestID: requestID,
+		Metadata: auditlog.MarkAI(meta, m.ActingFor)}); err != nil {
+		return Accepted{}, err
+	}
+	return Accepted{ID: a.ID, Status: string(store.Generating)}, nil
 }
 
 // prepare checks req and the runs in the caller's organization, and binds
@@ -213,7 +234,7 @@ func prepare(ctx context.Context, tx tenant.Tx, m tenant.Membership, runID strin
 		// The server establishes comparability first (AI_SPEC §9; T-030
 		// review r1 M4): runs it would not compare are not explained as if
 		// it had, and nothing is paid for.
-		c, err := comparison(ctx, tx, m.OrganizationID, base, run)
+		c, err := Comparison(ctx, tx, m.OrganizationID, base, run)
 		if err != nil {
 			return store.Analysis{}, err
 		}
@@ -226,8 +247,11 @@ func prepare(ctx context.Context, tx tenant.Tx, m tenant.Membership, runID strin
 	return a, nil
 }
 
-// comparison is the server's comparison of the two completed runs.
-func comparison(ctx context.Context, tx tenant.Tx, org string, base, scen runs.Run) (compare.Comparison, error) {
+// Comparison is the server's comparison of the two completed runs, read in
+// the caller's transaction (compare.Compare over their stored results, as
+// compareSimulations shows it): createAnalysis's comparability check, and
+// the figures an AI investigation's candidates show (H-061 §10).
+func Comparison(ctx context.Context, tx tenant.Tx, org string, base, scen runs.Run) (compare.Comparison, error) {
 	var in [2]compare.Run
 	for i, r := range []runs.Run{base, scen} {
 		stored, err := runs.GetResult(ctx, tx, org, r.ID)
@@ -270,6 +294,10 @@ type Record struct {
 	Error          *proposals.ErrorEnvelope `json:"error"`
 	// GeneratedBy is which provider and model wrote it (H-043), once completed.
 	GeneratedBy *proposals.GeneratedBy `json:"generated_by,omitzero"`
+	// InvestigationID is the AI's label (H-061, PROPOSED): the
+	// investigation that asked for the analysis; nil, and left out, for a
+	// person's, so its body is byte for byte as before.
+	InvestigationID *string `json:"investigation_id,omitzero"`
 }
 
 // Get returns analysis id.
@@ -297,7 +325,12 @@ func (s *Service) Get(ctx context.Context, sc tenant.Scope, requestID, id string
 // error with the failure's own code in details[0].code.
 func public(a store.Analysis, requestID string) (Record, error) {
 	r := Record{ID: a.ID, OrganizationID: a.OrganizationID, RunID: a.RunID, BaselineRunID: a.BaselineRunID, Status: string(a.Status),
-		Analysis: jsontext.Value("null"), CreatedAt: a.CreatedAt.UTC().Format(time.RFC3339Nano)}
+		Analysis: jsontext.Value("null"), CreatedAt: a.CreatedAt.UTC().Format(time.RFC3339Nano), InvestigationID: a.InvestigationID}
+	// 0019: an investigation's analysis has its explanation number, a
+	// person's neither.
+	if (a.InvestigationID == nil) != (a.InvestigationIndex == nil) {
+		return Record{}, fmt.Errorf("analyses: analysis %s: its investigation label is not one the database could hold", a.ID)
+	}
 	switch a.Status {
 	case store.Completed:
 		r.Analysis = jsontext.Value(a.Analysis)

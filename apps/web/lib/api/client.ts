@@ -15,6 +15,10 @@ import type {
   CreateModel,
   CreateScenario,
   Draft,
+  Investigation,
+  InvestigationAccepted,
+  InvestigationRequest,
+  Investigations,
   JsonPatch,
   Me,
   Model,
@@ -508,6 +512,58 @@ export function createApiClient(cfg: ClientConfig) {
     async downloadSimulationTrace(runId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<TraceArtifact>> {
       if (!isID("sim", runId)) return notFound("The run");
       return call<TraceArtifact>({ method: "GET", path: `/simulations/${runId}/trace`, signal: opts.signal });
+    },
+    /**
+     * H-061 (PROPOSED): asks the AI to test ideas on the model, in the
+     * background, for the person asking (createInvestigation): in words on
+     * its latest version (entry A), or from a completed analysis (entry B,
+     * from_analysis_id). The server stores the investigation and its one job
+     * and answers 202; from then on the AI picks each step and the API
+     * carries it out in this person's name, until it ends or is stopped. The
+     * AI never publishes or decides a proposal. Reuse `key` to retry.
+     */
+    async createInvestigation(modelId: string, body: InvestigationRequest, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<InvestigationAccepted>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      if ("from_analysis_id" in body) {
+        if (!isID("ana", body.from_analysis_id)) return notFound("The analysis");
+      } else if (!isID("mv", body.base_version_id)) return notFound("The version");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<InvestigationAccepted>({
+        method: "POST",
+        path: `/models/${modelId}/investigations`,
+        body: JSON.stringify(body),
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
+    },
+    /** The model's AI investigations, newest first, a page of up to 100 (H-061). */
+    async listInvestigations(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}): Promise<Result<Investigations>> {
+      if (!isID("mdl", modelId)) return notFound("The model");
+      return call<Investigations>({ method: "GET", path: `/models/${modelId}/investigations`, query: { cursor: opts.cursor, limit: "100" }, signal: opts.signal });
+    },
+    /** An investigation as the server holds it: the AI's steps (the ledger's rows), the server's candidates, ranking and closing line, and the AI's claim (H-061). */
+    async getInvestigation(investigationId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Investigation>> {
+      if (!isID("inv", investigationId)) return notFound("The investigation");
+      return call<Investigation>({ method: "GET", path: `/investigations/${investigationId}`, signal: opts.signal });
+    },
+    /**
+     * Stops an investigation (the requester or an owner, H-061 §13): nothing
+     * more is carried out, its runs are asked to cancel, and what the AI made
+     * stays, labelled. One that already ended is a conflict
+     * (LIFECYCLE_CONFLICT). Reuse `key` to retry.
+     */
+    async stopInvestigation(investigationId: string, key: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Investigation>> {
+      if (!isID("inv", investigationId)) return notFound("The investigation");
+      if (!IDEMPOTENCY_KEY.test(key)) return badKey();
+      return call<Investigation>({
+        method: "POST",
+        path: `/investigations/${investigationId}/stop`,
+        body: "{}",
+        contentType: "application/json",
+        idempotencyKey: key,
+        signal: opts.signal,
+      });
     },
   };
 }

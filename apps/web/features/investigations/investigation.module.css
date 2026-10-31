@@ -1,0 +1,173 @@
+/* The AI investigation page (H-061 A8; DESIGN.md Notes and Outcomes,
+   Compare Table): the budget and the clock under the header, each part a
+   card, the steps as hairline rows, the candidates as a table whose figures
+   never break, the outcome a card that takes the focus once. */
+.section {
+  max-width: var(--gm-content-width);
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.section > h2:first-child {
+  margin-top: 0;
+}
+
+.section:focus-visible {
+  outline: var(--gm-focus-ring);
+  outline-offset: var(--gm-focus-offset);
+}
+
+.meta {
+  max-width: 75ch;
+  color: var(--gm-color-ink-2);
+}
+
+.budget {
+  margin: 0 0 var(--gm-space-xs);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps > li {
+  padding: var(--gm-space-md) 0;
+}
+
+.steps > li + li {
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.steps h3 {
+  margin: 0 0 var(--gm-space-xs);
+}
+
+.steps p {
+  max-width: 75ch;
+  margin: 0 0 var(--gm-space-xs);
+}
+
+/* What the step made: one link each, spaced as targets (WCAG 2.5.8). */
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+}
+
+/* The AI's words: its own, quoted, never the page's. */
+.words {
+  overflow-wrap: anywhere;
+}
+
+.state {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+}
+
+.table caption {
+  padding-top: var(--gm-space-md);
+  caption-side: bottom;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--gm-space-sm) var(--gm-space-xs);
+  border-bottom: 1px solid var(--gm-color-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table data {
+  white-space: nowrap;
+}
+
+.table tbody th {
+  font-weight: var(--gm-font-weight-regular);
+}
+
+.table tbody th > * + * {
+  margin-top: var(--gm-space-xs);
+}
+
+.table ul {
+  margin: 0;
+  padding-inline-start: var(--gm-space-gutter);
+}
+
+/* The best candidate's row: its mark carries the words; the wash only helps the eye. */
+.table tr[data-best] > * {
+  background: var(--gm-color-scenario-wash);
+}
+
+.marks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs);
+}
+
+.claim {
+  margin: var(--gm-space-md) 0;
+  padding: var(--gm-space-md);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-md);
+}
+
+.claim p {
+  margin: 0 0 var(--gm-space-xs);
+}
+
+/* A phone (review round 1, as the results' metrics table, H-039): each row
+   is a grid under heads laid out the same way, so every figure stays under
+   its head on screen: the what-if and the proposal's state each take a
+   line, the baseline and the what-if's figure the next, side by side, and
+   the change the one after. The heads stay in the accessibility tree too
+   (the table states its roles, investigation-view.tsx); never display: none. */
+@media (max-width: 720px) {
+  .table {
+    min-width: 0;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table caption {
+    display: block;
+  }
+
+  .table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--gm-color-rule);
+  }
+
+  .table th,
+  .table td {
+    border-bottom: 0;
+  }
+
+  .table tr > :nth-child(1),
+  .table tr > :nth-child(2),
+  .table tr > :nth-child(5),
+  .table td[colspan="3"] {
+    grid-column: 1 / -1;
+  }
+}

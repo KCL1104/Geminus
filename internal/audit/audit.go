@@ -178,15 +178,23 @@ var (
 		"repair_provider_request_id": {shape: label}, "repair_cost_nano_usd": {shape: count}, "repair_spend_reservation_id": idOf("asr"),
 		"repair_spend_unsettled": {shape: flag},
 	}
-	aiRoles = oneOf("modeler", "scenario", "analyst", "importer")
+	// H-061 A2 (PROPOSED): investigator is the planner's role; its turns
+	// are spent on the investigation itself.
+	aiRoles = oneOf("modeler", "scenario", "analyst", "importer", "investigator")
 	// spendTargets are what a live AI call is for (provider.Attribution).
-	spendTargets = []string{"ai_proposal", "ai_analysis", "import"}
+	spendTargets = []string{"ai_proposal", "ai_analysis", "import", "investigation"}
+	// byAI is the mark of a person's event that an AI investigation wrote
+	// for them, under its acting-for scope (H-061 §6.2, §10, PROPOSED): the
+	// investigation's ID and by_ai, always together and by_ai true (Check),
+	// on the actions the investigation's tools write. Never free text: no
+	// idea, note, argument or answer.
+	byAI = map[string]field{"investigation_id": idOf("inv"), "by_ai": {shape: flag}}
 )
 
 // targets are the target types and the ID kind each names.
 var targets = map[string]string{
 	"project": "prj", "membership": "usr", "model": "mdl", "model_version": "mv", "import": "imp", "ai_proposal": "aip",
-	"scenario": "scn", "simulation": "sim", "organization": "org", "ai_analysis": "ana",
+	"scenario": "scn", "simulation": "sim", "organization": "org", "ai_analysis": "ana", "investigation": "inv",
 }
 
 // spec is one action: who records it, what it targets, what it may hold.
@@ -204,23 +212,27 @@ var catalogue = map[string]spec{
 	"membership.update":  {User, []string{"membership"}, map[string]field{"role": roles, "previous_role": roles}},
 	"membership.delete":  {User, []string{"membership"}, map[string]field{"role": roles}},
 	"model.create":       {User, []string{"model"}, map[string]field{"template": {shape: label}, "locale": locales, "version_id": idOf("mv")}},
-	"model.draft.update": {User, []string{"model"}, map[string]field{"revision": {shape: count}}},
+	"model.draft.update": {User, []string{"model"}, fieldsOf(byAI, map[string]field{"revision": {shape: count}})},
 	"model.draft.reset":  {User, []string{"model"}, map[string]field{"revision": {shape: count}, "version_id": idOf("mv")}},
-	"model.publish":      {User, []string{"model_version"}, map[string]field{"version": {shape: count}, "model_id": idOf("mdl")}},
+	// H-061 (PROPOSED): contains_ai_edit says the published draft held a
+	// change an AI investigation wrote; a person publishes it.
+	"model.publish": {User, []string{"model_version"}, map[string]field{"version": {shape: count}, "model_id": idOf("mdl"),
+		"contains_ai_edit": {shape: flag}}},
 	"import.upload": {User, []string{"import"}, map[string]field{"kind": oneOf("csv_events", "json_events", "json_model"),
 		"model_id": idOf("mdl"), "base_version_id": idOf("mv"), "size_bytes": {shape: count}, "upload_content_hash": {shape: hash}}},
 	"import.map": {User, []string{"import"}, map[string]field{"mapping_revision": {shape: count}, "columns_imported": {shape: count},
 		"columns_left_out": {shape: count}, "metadata_columns": {shape: count}, "confirmed_low_confidence": {shape: count},
 		"validations_cancelled": {shape: count}}},
-	"proposal.create": {User, []string{"ai_proposal"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"), "mode": modes,
+	"proposal.create": {User, []string{"ai_proposal"}, fieldsOf(byAI, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"), "mode": modes,
 		"output_locale": locales, "selected_entities": {shape: count},
 		// T-056: asked for in words or with a photo, by the stored image's
-		// hash and size.
-		"source": oneOf("intent", "image"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count},
+		// hash and size. H-061 (PROPOSED): or, by an AI investigation, from
+		// one of an analysis's suggested experiments.
+		"source": oneOf("intent", "image", "suggestion"), "image_content_hash": {shape: hash}, "image_size_bytes": {shape: count},
 		// H-046 (2): the person asked for web research first.
 		"research": {shape: flag},
 		// H-049: the model the person chose (absent: the deployment's).
-		"requested_model": oneOf("muse-spark-1.3", "muse-wonder-1.0")}},
+		"requested_model": oneOf("muse-spark-1.3", "muse-wonder-1.0")})},
 	"proposal.conflict": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"latest_version_id": idOf("mv")}},
 	"proposal.approve": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
@@ -228,12 +240,33 @@ var catalogue = map[string]spec{
 		"draft_out_of_date": {shape: flag}, "scenario_id": idOf("scn")}},
 	"proposal.reject": {User, []string{"ai_proposal"}, map[string]field{"mode": modes, "model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"from": oneOf("ready", "needs_input")}},
+	// H-061 A4 (PROPOSED): an AI investigation acted on its own ready
+	// proposal for the person who started it (internal/proposals/effect):
+	// the scenario it saved or the draft revision it wrote, by ID, hash,
+	// risk and count; always with the AI's mark (aiOnly). Never a decision.
+	"proposal.apply": {User, []string{"ai_proposal"}, fieldsOf(byAI, map[string]field{"mode": modes, "model_id": idOf("mdl"),
+		"base_version_id": idOf("mv"), "patch_hash": {shape: hash}, "server_risk_level": risks, "risk_level": risks,
+		"scenario_id": idOf("scn"), "draft_revision": {shape: count}})},
 	"scenario.create": {User, []string{"scenario"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"),
 		"patch_hash": {shape: hash}, "operations": {shape: count}}},
-	"simulation.create": {User, []string{"simulation"}, map[string]field{"model_version_id": idOf("mv"), "replications": {shape: count},
+	"simulation.create": {User, []string{"simulation"}, fieldsOf(byAI, map[string]field{"model_version_id": idOf("mv"), "replications": {shape: count},
 		"engine_version": {shape: label}, "model_hash": {shape: hash}, "effective_model_hash": {shape: hash}, "config_hash": {shape: hash},
-		"dataset_manifest_hash": {shape: hash}, "scenario_id": idOf("scn")}},
+		"dataset_manifest_hash": {shape: hash}, "scenario_id": idOf("scn")})},
 	"simulation.cancel": {User, []string{"simulation"}, map[string]field{"effect": oneOf("cancelled", "cancellation_requested")}},
+	// H-061 A7 (PROPOSED): a person starts an AI investigation (the stored
+	// acting-for scope, never the intent) and stops it (the requester, or
+	// an owner: by_owner); the API's executor records each call it carried
+	// out for the requester, by step, tool, outcome and code, always with
+	// the AI's mark (aiOnly). Never the AI's idea, note or arguments.
+	"investigation.create": {User, []string{"investigation"}, map[string]field{"model_id": idOf("mdl"), "base_version_id": idOf("mv"),
+		"mode": modes, "source": oneOf("request", "analysis"), "source_analysis_id": idOf("ana"), "output_locale": locales,
+		"research": {shape: flag}, "requested_model": oneOf("muse-spark-1.3", "muse-wonder-1.0"),
+		"planner_model": oneOf("muse-spark-1.3", "muse-wonder-1.0"), "replications": {shape: count}, "baseline_reused": {shape: flag}}},
+	"investigation.stop": {User, []string{"investigation"}, map[string]field{"reason": oneOf("stopped_by_person"), "steps": {shape: count},
+		"by_owner": {shape: flag}}},
+	"investigation.tool_call": {User, []string{"investigation"}, fieldsOf(byAI, map[string]field{"seq": {shape: count},
+		"tool":    oneOf("propose_what_if", "save_scenario", "run_what_if", "explain_results", "propose_model_edit", "write_to_draft"),
+		"outcome": oneOf("done", "refused", "failed"), "code": {shape: code}})},
 	// Job handlers: the worker, in the attempt's Finish (or Checkpoint)
 	// transaction, under the request that queued the job.
 	"import.profile": {Worker, []string{"import"}, map[string]field{"attempt": {shape: count}, "status": oneOf("FAILED", "AWAITING_MAPPING"),
@@ -250,8 +283,8 @@ var catalogue = map[string]spec{
 	// T-030: an analysis of completed runs, asked for by a person and
 	// written by its job; IDs, counts and codes, never the question or what
 	// the provider wrote.
-	"analysis.create": {User, []string{"ai_analysis"}, map[string]field{"run_id": idOf("sim"), "baseline_run_id": idOf("sim"),
-		"output_locale": locales, "question": {shape: flag}}},
+	"analysis.create": {User, []string{"ai_analysis"}, fieldsOf(byAI, map[string]field{"run_id": idOf("sim"), "baseline_run_id": idOf("sim"),
+		"output_locale": locales, "question": {shape: flag}})},
 	"analysis.generate": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
 		"deltas": {shape: count}, "conclusions": {shape: count}, "experiments": {shape: count}})},
 	"analysis.attempt_failed": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
@@ -262,8 +295,9 @@ var catalogue = map[string]spec{
 	// without a result, in the transaction that records it, on the job's
 	// resource. uncorrelated: the job's payload named no request, so the
 	// event has a request ID of its own.
-	"job.attempt_failed": {Worker, []string{"simulation", "ai_proposal", "import", "ai_analysis"}, map[string]field{"job_id": idOf("job"),
-		"job_type": oneOf("simulation", "model_proposal", "import_profile", "import_validate", "import_mapping", "analysis"),
+	// H-061 (PROPOSED): an investigation's own job, on the investigation.
+	"job.attempt_failed": {Worker, []string{"simulation", "ai_proposal", "import", "ai_analysis", "investigation"}, map[string]field{"job_id": idOf("job"),
+		"job_type": oneOf("simulation", "model_proposal", "import_profile", "import_validate", "import_mapping", "analysis", "investigation"),
 		"attempt":  {shape: count}, "max_attempts": {shape: count}, "code": {shape: code}, "retryable": {shape: flag},
 		"outcome": oneOf("requeued", "failed"), "uncorrelated": {shape: flag}}},
 	// The spend ledger of live AI (T-053, internal/storage/aispend): the
@@ -287,7 +321,7 @@ var catalogue = map[string]spec{
 	// A refused reservation writes nothing but this event (best effort:
 	// the call is refused whether or not it is recorded).
 	"ai_spend.refuse": {Worker, spendTargets, map[string]field{"role": aiRoles, "model": {shape: label},
-		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month")}},
+		"charge_nano_usd": {shape: count}, "limit": oneOf("organization_day", "day", "month", "investigation")}},
 	// Provisioning (cmd/provision-tenant, D-042).
 	// T-057: and the one more member an organization may get when it is
 	// created (the judge's demo account, H-035 (2)), never a second owner.
@@ -346,8 +380,25 @@ func Check(e Event) error {
 			return bad(name, reason)
 		}
 	}
+	// The AI's mark: the investigation and by_ai together, by_ai true.
+	_, inv := e.Metadata["investigation_id"]
+	mark, marked := e.Metadata["by_ai"]
+	switch {
+	case inv && !marked:
+		return bad("by_ai", "an investigation's event is marked by_ai")
+	case marked && !inv:
+		return bad("investigation_id", "by_ai names its investigation")
+	case marked && mark != true:
+		return bad("by_ai", "by_ai is true when present")
+	case aiOnly[e.Action] && !marked:
+		return bad("by_ai", "only an AI investigation writes this action, marked as the AI's")
+	}
 	return nil
 }
+
+// aiOnly are the actions only an AI investigation's tools write (H-061
+// A4): each event carries the AI's mark.
+var aiOnly = map[string]bool{"proposal.apply": true, "investigation.tool_call": true}
 
 var actionRe = regexp.MustCompile(`^[a-z][a-z_]{0,31}(\.[a-z_]{1,32}){1,2}$`)
 

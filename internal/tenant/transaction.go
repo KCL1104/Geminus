@@ -10,6 +10,12 @@
 // RunSelf (D-045) is the one transaction with no organization selected: it
 // reads the user's own memberships for GET /v1/me, read-only.
 //
+// H-061 (D-008 as amended): a Scope may also act for an AI investigation
+// (ActingFor). Run then sets app.investigation_id with the organization and
+// the requester, transaction-locally, after the same membership check, and
+// migration 0019's labels, guards and deny triggers confine everything the
+// transaction writes to that investigation's tool effects.
+//
 // Implements D-008 (approved 2026-10-15).
 package tenant
 
@@ -66,6 +72,13 @@ var (
 type Scope struct {
 	OrganizationID string // selected via X-Organization-ID; authorized by membership
 	UserID         string // resolved from the verified token's issuer and subject
+	// ActingFor is the AI investigation (an inv_ ID) whose recorded tool
+	// call this transaction carries out for its requester, UserID, whose
+	// membership Run checks as for any request (H-061 §6.2, D-008 as
+	// amended). Empty for a person's own request. Only the API's
+	// investigation executor sets it (TestOnlyTheExecutorActsFor); RunOwners
+	// refuses it.
+	ActingFor string
 }
 
 // Membership is what Run found for the scope; fn decides what the role allows.
@@ -73,6 +86,12 @@ type Membership struct {
 	OrganizationID string
 	UserID         string
 	Role           Role
+	// ActingFor is the scope's ActingFor: the AI investigation whose call
+	// this transaction carries out for UserID (app.investigation_id, which
+	// Run set from the same value), "" for a person's own request. The
+	// services mark their audit events with it (H-061 §6.2 step 7) and the
+	// shared effects require it (internal/proposals/effect).
+	ActingFor string
 }
 
 var (
@@ -93,8 +112,9 @@ var (
 )
 
 var (
-	orgID  = scope.OrgID
-	userID = scope.UserID
+	orgID           = scope.OrgID
+	userID          = scope.UserID
+	investigationID = scope.InvestigationID
 )
 
 // DB runs scoped transactions on a pool.
@@ -104,10 +124,10 @@ type DB struct{ db *postgres.DB }
 // back with any scope left on it is discarded.
 func New(pool *pgxpool.Pool) *DB { return &DB{db: postgres.OpenPool(pool)} }
 
-// ScopeSettings are the custom settings RLS policies read. Placeholder
-// settings are not listed in pg_settings, so Guard checks each by name; a
-// test keeps this list equal to what the migrations read.
-var ScopeSettings = []string{"app.oidc_issuer", "app.oidc_subject", "app.organization_id", "app.user_id"}
+// ScopeSettings are the custom settings RLS policies and triggers read.
+// Placeholder settings are not listed in pg_settings, so Guard checks each
+// by name; a test keeps this list equal to what the migrations read.
+var ScopeSettings = []string{"app.investigation_id", "app.oidc_issuer", "app.oidc_subject", "app.organization_id", "app.user_id"}
 
 // guardSQL is true only for a connection with no state that could carry one
 // request's data or privileges into the next checkout: no scope setting, no
@@ -146,11 +166,11 @@ func Guard(conn *pgx.Conn) bool {
 // from fn are classified by postgres.Classify; the transaction rolls back
 // on error, panic or cancellation, which also clears the scope.
 func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx context.Context, tx pgx.Tx, m Membership) error) error {
-	if !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) {
+	if !orgID.MatchString(s.OrganizationID) || !userID.MatchString(s.UserID) || (s.ActingFor != "" && !investigationID.MatchString(s.ActingFor)) {
 		return ErrInvalidScope
 	}
 	return d.db.Tx(ctx, opts, func(ctx context.Context, tx pgx.Tx) error {
-		if err := scope.Set(ctx, tx, s.OrganizationID, s.UserID); err != nil {
+		if err := scope.SetActing(ctx, tx, s.OrganizationID, s.UserID, s.ActingFor); err != nil {
 			return err
 		}
 		q := `SELECT role FROM twin.memberships WHERE organization_id=$1 AND user_id=$2`
@@ -165,7 +185,7 @@ func (d *DB) Run(ctx context.Context, s Scope, opts pgx.TxOptions, fn func(ctx c
 		if err != nil {
 			return err
 		}
-		return fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role})
+		return fn(ctx, tx, Membership{OrganizationID: s.OrganizationID, UserID: s.UserID, Role: role, ActingFor: s.ActingFor})
 	})
 }
 

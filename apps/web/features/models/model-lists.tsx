@@ -15,6 +15,7 @@ import { MorePages, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
 import { ScenarioList } from "../simulations/scenario-list";
 import { visible } from "../ai-proposals/shown";
+import { AiMark } from "../investigations/ai-mark";
 
 function Section({ model, title, children }: { model: Model; title: string; children: ReactNode }) {
   const { t } = useI18n();
@@ -58,6 +59,9 @@ const proposalTone: Readonly<Record<Proposal["status"], string>> = {
   approved: "ok",
   rejected: "neutral",
   conflicted: "warning",
+  // H-061 (PROPOSED): the AI acted on its own ready proposal for the person
+  // who asked (saved it as a scenario or wrote it into the draft).
+  applied: "ok",
 };
 
 // H-052: a proposal the server refused or the AI never finished is folded
@@ -131,6 +135,8 @@ export function RunsPage({ modelId }: { modelId: string }) {
                     {page.items.map((r) => (
                       <li key={r.id}>
                         {r.scenario_id === null ? <span className={list.name}>{r.name}</span> : <Link href={`/scenarios/${r.scenario_id}`}>{r.name}</Link>}
+                        {/* H-061 A8: a run an AI investigation started for the person who asked. */}
+                        {r.made_by_ai && <AiMark kind="started" />}
                         <span className={list.pill} data-tone={runTone[r.status]}>
                           {r.status === "running" && r.cancellation_requested ? t("runs.status.stopping") : t(`runs.status.${r.status}`)}
                         </span>

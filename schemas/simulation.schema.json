@@ -280,6 +280,10 @@
             }
           ],
           "$comment": "details[0].code is the job failure code (CB-38(a): no catalogue yet; internal/storage/runs). ADR-026 D-050 adds SIMULATION_DEADLOCK (B1, circular wait) and SIMULATION_STALLED (B2, a bundle that can never be filled), recorded from T-047–T-050 and shown, like the execution limits, as MODEL_VALIDATION_FAILED (T-023 interim mapping; D-063 PROPOSED)."
+        },
+        "made_by_ai": {
+          "$ref": "common.schema.json#/$defs/MadeByAI",
+          "description": "H-061 (PROPOSED): present only on a run an AI investigation started (\"Started by the AI\")."
         }
       },
       "required": [

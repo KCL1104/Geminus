@@ -63,6 +63,20 @@ type Run struct {
 	CreatedAt             time.Time
 	StartedAt, FinishedAt *time.Time
 	RequestID             string // the request that created it (its job's payload)
+	// AI is the label of a run an AI investigation started (H-061, 0019):
+	// set by the database from the transaction's acting-for scope, with the
+	// slot its cap counts (0 its baseline, k its what-if k), read back with
+	// the investigation's requester and planner; nil for a person's run
+	// (and on Insert's result).
+	AI *Label
+}
+
+// Label is what a labelled run shows of the AI investigation that started
+// it: the investigation, its slot, the person it was started for and the
+// planner model.
+type Label struct {
+	InvestigationID, RequestedBy, PlannerModel string
+	Slot                                       int
 }
 
 // ErrNotFound: no such run in the organization.
@@ -110,25 +124,39 @@ func Insert(ctx context.Context, tx pgx.Tx, r Run) (Run, error) {
 const columns = `r.id, r.model_id, r.model_version_id, r.scenario_id, r.name, r.scenario_patch, r.config, r.engine_version, r.model_hash,
 	r.effective_model_hash, r.config_hash, r.dataset_manifest_hash, r.dataset_bindings, r.execution_limits, r.event_budget_reserved,
 	r.execution_deadline_at, r.status, r.completed_replications, r.events_processed, r.progress_revision, r.cancellation_requested,
-	r.error, r.created_by, r.created_at, r.started_at, r.finished_at, coalesce(j.payload->>'request_id','')`
+	r.error, r.created_by, r.created_at, r.started_at, r.finished_at, coalesce(j.payload->>'request_id',''),
+	r.investigation_id, r.investigation_slot, i.created_by, i.planner_model`
 
 // from joins each run with its job, whose payload holds the request that
-// created it (both immutable).
-const from = ` FROM twin.simulation_runs r LEFT JOIN twin.jobs j ON j.organization_id=r.organization_id AND j.simulation_run_id=r.id`
+// created it (both immutable), and with the investigation that started it,
+// if one did (its label, 0019), in the same organization.
+const from = ` FROM twin.simulation_runs r LEFT JOIN twin.jobs j ON j.organization_id=r.organization_id AND j.simulation_run_id=r.id
+	LEFT JOIN twin.investigations i ON i.organization_id=r.organization_id AND i.id=r.investigation_id`
 
 func scan(row pgx.Row, org string) (Run, error) {
 	r := Run{OrganizationID: org}
 	var patch, config, manifest, limits []byte
 	var status string
+	var inv, requester, planner *string
+	var slot *int
 	err := row.Scan(&r.ID, &r.ModelID, &r.ModelVersionID, &r.ScenarioID, &r.Name, &patch, &config, &r.EngineVersion, &r.ModelHash,
 		&r.EffectiveModelHash, &r.ConfigHash, &r.DatasetManifestHash, &manifest, &limits, &r.EventBudgetReserved, &r.ExecutionDeadlineAt,
 		&status, &r.CompletedReplications, &r.EventsProcessed, &r.ProgressRevision, &r.CancellationRequested, &r.Failure, &r.CreatedBy,
-		&r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.RequestID)
+		&r.CreatedAt, &r.StartedAt, &r.FinishedAt, &r.RequestID, &inv, &slot, &requester, &planner)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Run{}, ErrNotFound
 	}
 	if err != nil {
 		return Run{}, err
+	}
+	if inv != nil {
+		// 0019: a labelled run has its slot, and its investigation is the
+		// organization's; one that cannot be read is an error, never left
+		// unlabelled.
+		if slot == nil || requester == nil || planner == nil {
+			return Run{}, fmt.Errorf("run %s: its investigation %s is not visible", r.ID, *inv)
+		}
+		r.AI = &Label{InvestigationID: *inv, RequestedBy: *requester, PlannerModel: *planner, Slot: *slot}
 	}
 	r.Status, r.ScenarioPatch = Status(status), patch
 	if err := json.Unmarshal(config, &r.Config); err != nil {

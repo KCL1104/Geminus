@@ -108,6 +108,14 @@ var kernelThirdParty = []string{
 	"golang.org/x/text/message/...",
 }
 
+// aiThirdParty is what the AI packages outside the adapters may link: the
+// kernel's list, and Unicode normalization (H-061 A2: the investigator's
+// tool decoder refuses text that is not NFC, internal/ai/investigator).
+// golang.org/x/text/unicode/norm and the transform package it links are
+// tables and computation; the rest of golang.org/x/text stays out
+// (unicode/cldr reads files).
+var aiThirdParty = cat(kernelThirdParty, []string{"golang.org/x/text/transform", "golang.org/x/text/unicode/norm"})
+
 // otelAPI is the OpenTelemetry API (T-035, ADR-028): attributes, codes,
 // the metric and trace interfaces and their no-op implementations, and
 // what they link. Not the SDK or an exporter (otel-sdk-only-in-export).
@@ -421,6 +429,18 @@ var rules = []rule{
 		forbid:  []string{"./internal/tenant/workerscope/..."},
 	},
 	{
+		// H-061 §6.1 (D-008 as amended (c)): the API's one organization-only
+		// scope, the investigation executor's discovery, checks no
+		// membership; only the executor and the API binary that runs it link
+		// it (A3 adds the rule with the package; A1's rule set names it the
+		// same way).
+		name:    "acting-for-only-in-the-executor",
+		why:     "internal/tenant/actingfor runs with no user in an assigned organization: only the API's investigation executor and cmd/api may link it, never the worker, a service or internal/ai (H-061, D-008 as amended)",
+		applies: []string{"./..."},
+		except:  []string{"./cmd/api/...", "./internal/investigations/executor/...", "./internal/tenant/actingfor/..."},
+		forbid:  []string{"./internal/tenant/actingfor/..."},
+	},
+	{
 		// A job handler runs a claimed job under the worker's lease; the
 		// worker binary registers it (ADR-024). The API and the services it
 		// shares never link one, so no request can run the engine or write
@@ -620,7 +640,7 @@ var rules = []rule{
 		except: []string{"./internal/ai/provider/anthropic/...", "./internal/ai/provider/meta/...", // T-055: the Meta adapter's own HTTP client
 			"./internal/ai/photopipeline"},
 		forbid:     cat(ioStd, llmSDKs),
-		thirdParty: kernelThirdParty,
+		thirdParty: aiThirdParty,
 		stdOnly:    kernelStd,
 		goOnly:     true,
 	},
@@ -630,12 +650,14 @@ var rules = []rule{
 		// AI package (TestPhotopipelineRuleKeepsTheAIPackagesLists); it
 		// reaches Eino's closure, which links net, os and syscall underneath,
 		// only through internal/aigraph/photo, which aigraph-has-no-storage
-		// holds. No other AI package has a gateway.
+		// holds. No other AI package has a gateway. Its third-party list is
+		// the AI packages' (aiThirdParty, which H-061 A2 widened with Unicode
+		// normalization; the A3 merge had left this copy behind).
 		name:       "photopipeline-is-pure-but-its-graph",
 		why:        "the photo pipeline does no I/O of its own, like every AI package outside the adapters; it reaches Eino only through the photo role graph (ADR-031, AGENTS.md §2, SECURITY §7)",
 		applies:    []string{"./internal/ai/photopipeline"},
 		forbid:     cat(ioStd, llmSDKs),
-		thirdParty: kernelThirdParty,
+		thirdParty: aiThirdParty,
 		stdOnly:    kernelStd,
 		goOnly:     true,
 		through:    []string{"./internal/aigraph/photo"},

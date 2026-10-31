@@ -282,6 +282,8 @@ A4 extracts each effect from the person's own Create path, and each Create keeps
 | write_to_draft | effect.WriteDraft: the proposal is ready and this investigation's; base latest; the draft is clean at the base (its hash equals the base's, with none of the person's operations), otherwise DRAFT_CHANGED; recheck; models.WriteDraft computes the IR from the base and the stored patch under lock, with a CAS on the revision; ai_proposal_id; proposal → applied with applied_draft_revision; audit proposal.apply and model.draft.update | done {draft_revision}; the worker ends with draft_written |
 | finish | nothing in the API; the worker's Finish (§5.8) | — |
 
+**Open: issue codes on RECHECK_FAILED** (recorded by A4's review round 1, for the owner; not decided). The save_scenario row says RECHECK_FAILED comes with issue codes, but §5.6, §7 and §10, `ToolError` {code, path} in schemas/investigator.schema.json (no other member) and 0019's `investigation_tool_calls_error` CHECK carry only a code and a path. A4 builds to the contract: its refusal names no issue code (the shared check still finds them; a person's approval shows them in its 422). To carry them, change the contract first (`ToolError.issue_codes`, at most 10 codes), then the CHECK in a new migration and the TS types; otherwise drop the words from the row.
+
 ### 6.5 Shutdown and replicas
 - On ctx.Done the executor stops claiming. A transaction already running finishes within 10 s or rolls back, which leaves its row pending.
 - During a deploy overlap, two API processes may both run executors. SKIP LOCKED plus the single pending→done transition still give exactly once.
@@ -428,6 +430,7 @@ Every other prompt, golden and InputHash is byte-identical.
 - `model` stays the proposal model (H-049).
 - research applies to what-if 1 only.
 - Entry B {from_analysis_id, output_locale, model?, planner_model?, objective?} is otherwise unchanged.
+- The entry is picked by from_analysis_id (if/then/else, not §7's oneOf): a body with it is checked as entry B only, any other as entry A only. So a 422 names only the failures of the entry the person used. Edit mode refuses run_config, baseline_name and objective like unknown members (A2 review round 1).
 
 **Investigation: added fields**
 - steps[≤14] {seq, tool, arguments (server-validated; idea is AI text), status pending|done|refused|failed, effect refs, error {code, path} | null, note (AI text, optional), requested_at, resolved_at, observed_at};
@@ -627,6 +630,8 @@ A9 measures these from the ledger before anything is quoted.
 6. 200. A second stop answers 409 LIFECYCLE_CONFLICT.
 
 After the commit, the database refuses every labelled write and every ledger insert. An executor transaction that already holds the investigation FOR SHARE either commits before the stop or is refused after it. The worker sees the stop within one 500 ms poll or before its next turn. It cancels the agent's context (a model call in flight is cancelled, and its reservation is settled on a detached context) and finishes. Running child jobs either complete inertly or fail fast before their paid call. Whatever the AI already made stays, labelled.
+
+**Open: step 4 for analysis jobs** (recorded by A7's review round 1, for the owner; not decided). Step 4 cannot cancel a queued analysis job under the grants this delta keeps. Cancelling one fires 0018's follow_analysis_job, which reads the analysis FOR UPDATE: the API holds no UPDATE on ai_analyses (permission denied). With a column UPDATE granted, 0018's protect_analysis_lifecycle still refuses the change ("the API changes nothing of an analysis; its job does"). Both were probed on a disposable database. So A7's stop cancels only the queued proposal jobs. A queued analysis job stays queued until the analyzer's fail-fast (§12, slice A6) fails it with JOB_CANCELLED before its paid call. stopInvestigation's contract says this, and GEMINUS_INVESTIGATIONS is not turned on before A6's fail-fast has its DB test (a stop with a queued explanation leaves no ai_spend_reservations row for it, and the analysis fails with JOB_CANCELLED). Making the stop itself cancel them needs one of these, each a change to an existing object (the owner's call): a SECURITY DEFINER function for the API that cancels only a stopped investigation's queued analysis jobs; or a column UPDATE grant on ai_analyses plus a redefined protect_analysis_lifecycle that lets the API fail an analysis whose job is cancelled.
 
 **Ends**
 - **Time limit.** The worker's deadline, then time_limit. With no worker alive, the next claim finishes it at once. With no worker at all, Get derives "time limit reached", and the requester's next createInvestigation stops the stale row in their own transaction.

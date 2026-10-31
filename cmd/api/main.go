@@ -8,6 +8,13 @@
 // photo proposals, is decided from the non-secret AI settings
 // (config.LoadAPIAI, T-053 I5 and the T-056 follow-up), and any AI key
 // variable in its environment stops it.
+//
+// H-061 A7 (behind GEMINUS_INVESTIGATIONS, off by default): with
+// investigations on, it also runs the investigation executor
+// (internal/investigations/executor) in the background, on the same pool,
+// in the organizations INVESTIGATION_ORGANIZATION_IDS assigns, and stops it
+// with the server: it stops claiming at once, and a call under way has
+// executor.DefaultDrain to finish.
 package main
 
 import (
@@ -30,11 +37,13 @@ import (
 	"github.com/kcl1104/geminus/internal/auth"
 	"github.com/kcl1104/geminus/internal/config"
 	"github.com/kcl1104/geminus/internal/httpapi"
+	"github.com/kcl1104/geminus/internal/investigations/executor"
 	"github.com/kcl1104/geminus/internal/observability"
 	"github.com/kcl1104/geminus/internal/observability/telemetry/export"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/storage/objects"
 	"github.com/kcl1104/geminus/internal/tenant"
+	"github.com/kcl1104/geminus/internal/tenant/actingfor"
 )
 
 const (
@@ -68,7 +77,8 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	authCfg, authErr := config.LoadAuth(getenv)
 	srvCfg, srvErr := config.LoadServer(getenv)
 	telCfg, telErr := config.LoadTelemetry(getenv)
-	if err = errors.Join(err, authErr, srvErr, telErr); err != nil {
+	invCfg, invErr := config.LoadInvestigations(getenv)
+	if err = errors.Join(err, authErr, srvErr, telErr, invErr); err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
@@ -91,7 +101,8 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("invalid configuration", "error", "the object storage cannot be used: "+err.Error())
 		return exitConfig
 	}
-	opts := handlerOptions(ai, store)
+	opts := append(handlerOptions(ai, store), api.WithInvestigations(investigationOptions(ai, invCfg)))
+	logInvestigations(log, invCfg)
 	poolCfg, err := poolConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("invalid configuration", "error", "DATABASE_URL is not a valid PostgreSQL connection string")
@@ -121,6 +132,13 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 		log.Error("the domain packs are not valid", "error", err.Error())
 		return exitConfig
 	}
+	var ex *executor.Executor
+	if invCfg.Enabled {
+		if ex, err = newExecutor(log, pool, invCfg, opts); err != nil {
+			log.Error("the investigation executor cannot be built", "error", err.Error())
+			return exitConfig
+		}
+	}
 	ln, err := net.Listen("tcp", srvCfg.Addr)
 	if err != nil {
 		log.Error("cannot listen", "addr", srvCfg.Addr, "error", err.Error())
@@ -131,6 +149,24 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	srv := newServer(withProbes(httpapi.AccessLog(log, handler), pool.Ping), log)
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(ln) }()
+	// The executor runs until ctx ends (or the server stops): then it
+	// stops claiming and drains (stopExecutor waits for it).
+	execCtx, stopExec := context.WithCancel(ctx)
+	defer stopExec()
+	executed := make(chan struct{})
+	if ex != nil {
+		go func() { defer close(executed); ex.Run(execCtx) }()
+	} else {
+		close(executed)
+	}
+	stopExecutor := func() {
+		stopExec()
+		select {
+		case <-executed:
+		case <-time.After(executor.DefaultDrain + 5*time.Second):
+			log.Warn("the investigation executor did not stop in time")
+		}
+	}
 	log.Info("serving", "addr", ln.Addr().String())
 	if ready != nil {
 		ready <- ln.Addr().String()
@@ -138,12 +174,15 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, read
 	select {
 	case err := <-served:
 		log.Error("server stopped", "error", err.Error())
+		stopExecutor()
 		return exitServe
 	case <-ctx.Done():
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 	defer cancel()
-	if err := srv.Shutdown(shutdown); err != nil {
+	err = srv.Shutdown(shutdown)
+	stopExecutor()
+	if err != nil {
 		log.Error("shutdown", "error", err.Error())
 		return exitServe
 	}
@@ -163,6 +202,60 @@ func handlerOptions(ai config.APIAI, store objects.Store) []api.Option {
 		opts = append(opts, api.WithObjects(store))
 	}
 	return opts
+}
+
+// investigationOptions are the AI investigation routes' settings (H-061
+// A7): the switch, the organizations and planners of the configuration,
+// and what the recorded approval allows: with the fake (development and
+// tests) the investigator role and every offered planner; with a live
+// provider that is on, the investigator role only when its approval lists
+// it and the offered planners it allows for that role
+// (aiapproval.Approval.AllowsRole, AllowsModel; none before the H-061 A5
+// record lists the role); nothing otherwise. The proposal model a request
+// that names none gets is the deployment's (Muse Spark 1.3 with the fake).
+func investigationOptions(ai config.APIAI, inv config.Investigations) api.Investigations {
+	out := api.Investigations{On: inv.Enabled, Organizations: slices.Clone(inv.Organizations), PlannerModels: slices.Clone(inv.PlannerModels)}
+	switch {
+	case ai.Provider == config.AIProviderFake:
+		out.InvestigatorApproved, out.ApprovedPlanners, out.DefaultProposalModel = true, slices.Clone(inv.PlannerModels), proposals.ProposalModels[0]
+	case ai.LiveEnabled():
+		out.InvestigatorApproved = ai.Approval.AllowsRole(investigatorRole)
+		for _, m := range inv.PlannerModels {
+			if out.InvestigatorApproved && ai.Approval.AllowsModel(investigatorRole, m) {
+				out.ApprovedPlanners = append(out.ApprovedPlanners, m)
+			}
+		}
+		out.DefaultProposalModel = ai.Model
+	}
+	return out
+}
+
+// investigatorRole is the planner's prompt role (H-060, H-061 §9).
+const investigatorRole = "investigator"
+
+// logInvestigations says whether AI investigations are on, and for how many
+// organizations: never which.
+func logInvestigations(log *slog.Logger, inv config.Investigations) {
+	if inv.Enabled {
+		log.Info("AI investigations are on; the API's executor carries out their calls", "organizations", len(inv.Organizations),
+			"code", "INVESTIGATIONS_ON")
+	}
+}
+
+// newExecutor builds the investigation executor on pool for the assigned
+// organizations, with the services Handler's options configure.
+func newExecutor(log *slog.Logger, pool *pgxpool.Pool, inv config.Investigations, opts []api.Option) (*executor.Executor, error) {
+	scope, err := actingfor.New(pool, inv.Organizations)
+	if err != nil {
+		return nil, err
+	}
+	db := tenant.New(pool)
+	fx, err := api.NewEffects(db, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return executor.New(executor.Config{Scope: scope, DB: db, Proposals: fx.Proposals, Runs: fx.Runs, Analyses: fx.Analyses,
+		Effects: fx.Effects, Log: log})
 }
 
 // aiAvailability is whether new AI proposals are accepted (T-025): with the
