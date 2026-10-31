@@ -262,42 +262,11 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 			out, err = hashing.Canonical(replay.Body)
 			return err
 		}
-		if s.AI != Available {
-			return &UnavailableError{Availability: s.AI}
-		}
-		if req.Research && s.Research != Available {
-			return &UnavailableError{Availability: s.Research, Research: true}
-		}
-		if err := s.checkModel(req.Model, false); err != nil {
-			return err
-		}
-		p, err := s.prepare(ctx, tx, m, modelID, req)
+		a, err := s.Queue(ctx, tx, m, requestID, modelID, req, FromIntent)
 		if err != nil {
 			return err
 		}
-		if p, err = store.Insert(ctx, tx, p); err != nil {
-			return err
-		}
-		if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research, req.Model), s.policy()); err != nil {
-			return err
-		}
-		// IDs, the mode, the language and a count: never the intent
-		// (customer prose) or the selected IDs (SECURITY §9); whether the
-		// person asked for research (H-046 (2)); the model they chose
-		// (H-049).
-		meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
-			"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": "intent"}
-		if req.Research {
-			meta["research"] = true
-		}
-		if req.Model != "" {
-			meta["requested_model"] = req.Model
-		}
-		if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
-			Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID, Metadata: meta}); err != nil {
-			return err
-		}
-		data, err := json.Marshal(Accepted{ProposalID: p.ID, Status: string(store.Generating)})
+		data, err := json.Marshal(a)
 		if err != nil {
 			return err
 		}
@@ -308,6 +277,74 @@ func (s *Service) Create(ctx context.Context, sc tenant.Scope, requestID, key, m
 		return idempotency.Complete(ctx, tx, k, idempotency.Response{Status: status, Body: out})
 	})
 	return status, out, err
+}
+
+// Source is where a proposal in words came from, as its audit event says.
+type Source string
+
+const (
+	// FromIntent: the person's words (createProposal), or an AI
+	// investigation's idea for them.
+	FromIntent Source = "intent"
+	// FromSuggestion: one of an analysis's suggested experiments, which an
+	// AI investigation asks for (H-061 §6.4: "<name>: <hypothesis>", built
+	// by the server); only in its acting-for transaction.
+	FromSuggestion Source = "suggestion"
+)
+
+// Queue is createProposal's body in the caller's transaction (H-061 A4),
+// after the role and the Idempotency-Key, which stay Create's: the
+// deployment's AI, research and model checks, the request and its base
+// (the model row first, then the latest-version check, ErrStaleBase), the
+// proposal, its one model_proposal job and its proposal.create event. In
+// an AI investigation's acting-for transaction (m.ActingFor) the database
+// labels the proposal with it (0019) and the event carries the AI's mark;
+// a person's proposal is written exactly as before. It requires a writer
+// again, so no caller can queue for a viewer.
+func (s *Service) Queue(ctx context.Context, tx tenant.Tx, m tenant.Membership, requestID, modelID string, req CreateRequest, source Source) (Accepted, error) {
+	if err := m.Require(writeRoles...); err != nil {
+		return Accepted{}, err
+	}
+	if source != FromIntent && (source != FromSuggestion || m.ActingFor == "") {
+		return Accepted{}, fmt.Errorf("proposals: a proposal from %q is not one this transaction may queue", source)
+	}
+	if s.AI != Available {
+		return Accepted{}, &UnavailableError{Availability: s.AI}
+	}
+	if req.Research && s.Research != Available {
+		return Accepted{}, &UnavailableError{Availability: s.Research, Research: true}
+	}
+	if err := s.checkModel(req.Model, false); err != nil {
+		return Accepted{}, err
+	}
+	p, err := s.prepare(ctx, tx, m, modelID, req)
+	if err != nil {
+		return Accepted{}, err
+	}
+	if p, err = store.Insert(ctx, tx, p); err != nil {
+		return Accepted{}, err
+	}
+	if _, err := jobs.Enqueue(ctx, tx, proposalJob(m.OrganizationID, p.ID, requestID, req.Research, req.Model), s.policy()); err != nil {
+		return Accepted{}, err
+	}
+	// IDs, the mode, the language and a count: never the intent
+	// (customer prose) or the selected IDs (SECURITY §9); whether the
+	// person asked for research (H-046 (2)); the model they chose
+	// (H-049); the AI's mark (H-061).
+	meta := map[string]any{"model_id": p.ModelID, "base_version_id": p.BaseVersionID, "mode": p.Mode,
+		"output_locale": p.OutputLocale, "selected_entities": len(p.SelectedEntityIDs), "source": string(source)}
+	if req.Research {
+		meta["research"] = true
+	}
+	if req.Model != "" {
+		meta["requested_model"] = req.Model
+	}
+	if err := auditlog.AppendUser(ctx, tx, m.OrganizationID, m.UserID, auditlog.Event{
+		Action: "proposal.create", TargetType: "ai_proposal", TargetID: p.ID, RequestID: requestID,
+		Metadata: auditlog.MarkAI(meta, m.ActingFor)}); err != nil {
+		return Accepted{}, err
+	}
+	return Accepted{ProposalID: p.ID, Status: string(store.Generating)}, nil
 }
 
 // ResearchJobAttempts is the attempts of a research proposal's job (H-046

@@ -79,3 +79,35 @@ func TestAnEventIsCheckedBeforeItIsWritten(t *testing.T) {
 		t.Errorf("%v", got)
 	}
 }
+
+// H-061 A4: MarkAI marks an event only inside an acting-for transaction,
+// with the investigation and by_ai together; a person's event is left as
+// it was (nothing added), and a marked event passes the catalogue only on
+// the actions the investigation's tools write.
+func TestMarkAI(t *testing.T) {
+	inv := ids.New("inv")
+	if got := auditlog.MarkAI(map[string]any{"revision": 2}, ""); len(got) != 1 || got["revision"] != 2 {
+		t.Errorf("a person's event was changed: %v", got)
+	}
+	if got := auditlog.MarkAI(nil, ""); got != nil {
+		t.Errorf("a person's empty metadata became %v", got)
+	}
+	got := auditlog.MarkAI(map[string]any{"revision": 2}, inv)
+	if len(got) != 3 || got["investigation_id"] != inv || got["by_ai"] != true || got["revision"] != 2 {
+		t.Errorf("the AI's mark: %v", got)
+	}
+	if got := auditlog.MarkAI(nil, inv); len(got) != 2 || got["investigation_id"] != inv || got["by_ai"] != true {
+		t.Errorf("the AI's mark on empty metadata: %v", got)
+	}
+	ev := func(action, target, kind string, meta map[string]any) audit.Event {
+		return audit.Event{ActorType: audit.User, ActorID: ids.New("usr"), Action: action, TargetType: target, TargetID: ids.New(kind),
+			RequestID: ids.New("req"), Metadata: meta}
+	}
+	if err := audit.Check(ev("model.draft.update", "model", "mdl", auditlog.MarkAI(map[string]any{"revision": 2}, inv))); err != nil {
+		t.Errorf("a marked draft update: %v", err)
+	}
+	// model.publish is a person's: the mark is not one of its fields.
+	if err := audit.Check(ev("model.publish", "model_version", "mv", auditlog.MarkAI(map[string]any{"version": 2}, inv))); !errors.Is(err, audit.ErrInvalid) {
+		t.Errorf("a marked publish: %v", err)
+	}
+}

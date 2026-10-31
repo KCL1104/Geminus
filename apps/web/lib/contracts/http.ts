@@ -2,7 +2,7 @@
 // Value shapes only: ranges, patterns and cross-field rules are enforced by the
 // schema and semantic validators, not by these types.
 import type { AnalysisOutput } from "./analysis-output";
-import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, GeneratedBy, ImportID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, ProposalModel, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
+import type { AnalysisID, AuditEventID, DatasetBinding, DatasetVersionID, Error, GeneratedBy, ImportID, InvestigationID, Locale, ModelID, ModelVersionID, OrganizationID, ProjectID, ProposalID, ProposalModel, RequestID, ResourceID, RunID, ScenarioID, UserID, ValidationIssue } from "./common";
 import type { ImportMapping } from "./import-mapping";
 import type { JsonPatch } from "./json-patch";
 import type { ModelIR } from "./model-ir";
@@ -52,6 +52,13 @@ export type Draft = {
   out_of_date: boolean;
   /** D-028: semantic issues of the saved draft; publish and run reject drafts with errors. */
   issues: ValidationIssue[];
+  /** H-061 (PROPOSED): present only while the draft holds a change an AI investigation wrote ("This draft has a change the AI wrote for you. Check it on the canvas before you publish."); a person's later save keeps it, a reset or a publish clears it. */
+  ai_edit?: {
+    proposal_id: ProposalID;
+    investigation_id: InvestigationID;
+    revision: number;
+    operations: number;
+  };
 };
 
 export type ModelVersion = {
@@ -67,6 +74,11 @@ export type ModelVersion = {
   comment: string | null;
   created_by: UserID;
   created_at: string;
+  /** H-061 (PROPOSED): present only on a version a person published from a draft that held an AI investigation's change ("Includes a change the AI wrote"). */
+  ai_edit?: {
+    proposal_id: ProposalID;
+    investigation_id: InvestigationID;
+  };
 };
 
 export type CreateProject = {
@@ -220,6 +232,8 @@ export type AnalysisRecord = {
   created_at: string;
   error: Error | null;
   generated_by?: GeneratedBy;
+  /** H-061 (PROPOSED): present only on an analysis an AI investigation asked for. */
+  investigation_id?: InvestigationID;
 };
 
 export type SignedDownload = {

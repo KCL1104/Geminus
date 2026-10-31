@@ -4,6 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"maps"
 	"math/big"
 	"net/url"
@@ -40,6 +44,23 @@ func TestScopeIsValidatedBeforeTheDatabase(t *testing.T) {
 		if err := d.RunOwners(context.Background(), s, func(context.Context, pgx.Tx, tenant.Membership, []string) error { called = true; return nil }); !errors.Is(err, tenant.ErrInvalidScope) {
 			t.Errorf("owners, %+v: %v", s, err)
 		}
+	}
+	// H-061 (D-008 as amended): the acting-for scope names an investigation
+	// by its D-001 ID, and only Run takes one: an owner's membership change
+	// is never the AI's.
+	valid := tenant.Scope{OrganizationID: "org_01M4YDQK00TA00000000000000", UserID: "usr_01M4YDQK00TA00000000000001"}
+	for _, inv := range []string{"inv_x", "inv_01m4ydqk00ta00000000000001", "aip_01M4YDQK00TA00000000000001", "inv_81M4YDQK00TA00000000000001",
+		"inv_01M4YDQK00TA00000000000001 ", "inv_01M4YDQK00TA00000000000001'; RESET ROLE; --", " "} {
+		s := valid
+		s.ActingFor = inv
+		if err := d.Run(context.Background(), s, pgx.TxOptions{}, fn); !errors.Is(err, tenant.ErrInvalidScope) {
+			t.Errorf("acting for %q: %v", inv, err)
+		}
+	}
+	owners := valid
+	owners.ActingFor = "inv_01M4YDQK00TA00000000000001"
+	if err := d.RunOwners(context.Background(), owners, func(context.Context, pgx.Tx, tenant.Membership, []string) error { called = true; return nil }); !errors.Is(err, tenant.ErrInvalidScope) {
+		t.Errorf("owners acting for an investigation: %v", err)
 	}
 	for _, user := range []string{"", "usr_x", "usr_01m4ydqk00ta00000000000001", "org_01M4YDQK00TA00000000000000",
 		"usr_81M4YDQK00TA00000000000001", "usr_01M4YDQK00TA00000000000001 ", "usr_01M4YDQK00TA00000000000001'; RESET ROLE; --"} {
@@ -513,6 +534,10 @@ func TestGuardDiscardsSessionState(t *testing.T) {
 			_, err := pool.Exec(ctx, `SELECT set_config('app.oidc_subject', 'leaked-subject', false)`)
 			return err
 		}},
+		{"session-level app.investigation_id", func() error {
+			_, err := pool.Exec(ctx, `SELECT set_config('app.investigation_id', 'inv_01M4YDQK00TA00000000000001', false)`)
+			return err
+		}},
 		{"session-level app.oidc_issuer", func() error {
 			_, err := pool.Exec(ctx, `SELECT set_config('app.oidc_issuer', 'https://leak.invalid', false)`)
 			return err
@@ -554,6 +579,159 @@ func TestGuardDiscardsSessionState(t *testing.T) {
 			t.Errorf("%s: the connection was reused (subject=%q cursors=%d, new connections %d -> %d)",
 				c.name, subject, cursors, before, pool.Stat().NewConnsCount())
 		}
+	}
+}
+
+// H-061 (D-008 as amended): Run with ActingFor sets app.investigation_id
+// with the organization and the requester, transaction-locally, after the
+// membership check as always; a person's own Run leaves it empty; the
+// reused connection carries none afterwards, whatever the run's end.
+func TestActingForIsTransactionLocal(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	pool := as(t, apiLogin, 1, true)
+	d := tenant.New(pool)
+	ctx := context.Background()
+	inv := newID(t, "inv")
+	setting := func(ctx context.Context, tx pgx.Tx) string {
+		var v string
+		if err := tx.QueryRow(ctx, `SELECT coalesce(current_setting('app.investigation_id', true), '')`).Scan(&v); err != nil {
+			t.Fatal(err)
+		}
+		return v
+	}
+	if _, err := pool.Exec(ctx, `SELECT 1`); err != nil { // the pool's one connection
+		t.Fatal(err)
+	}
+	start := pool.Stat().NewConnsCount()
+	for _, c := range []struct {
+		name string
+		s    tenant.Scope
+		want string
+	}{
+		{"acting for", tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}, inv},
+		{"a person's own", tenant.Scope{OrganizationID: a.id, UserID: a.user}, ""},
+	} {
+		var got, org, user string
+		err := d.Run(ctx, c.s, tenant.ReadWrite, func(ctx context.Context, tx pgx.Tx, m tenant.Membership) error {
+			got = setting(ctx, tx)
+			return tx.QueryRow(ctx, `SELECT current_setting('app.organization_id'), current_setting('app.user_id')`).Scan(&org, &user)
+		})
+		if err != nil || got != c.want || org != a.id || user != a.user {
+			t.Errorf("%s: app.investigation_id %q (want %q), organization %q, user %q: %v", c.name, got, c.want, org, user, err)
+		}
+		var after string
+		if err := pool.QueryRow(ctx, `SELECT coalesce(current_setting('app.investigation_id', true), '')`).Scan(&after); err != nil || after != "" {
+			t.Errorf("%s: the reused connection carries app.investigation_id %q (%v)", c.name, after, err)
+		}
+	}
+	// An error and a panic end it too.
+	s := tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}
+	_ = d.Run(ctx, s, tenant.ReadWrite, func(context.Context, pgx.Tx, tenant.Membership) error { return errors.New("boom") })
+	func() {
+		defer func() { _ = recover() }()
+		_ = d.Run(ctx, s, tenant.ReadWrite, func(context.Context, pgx.Tx, tenant.Membership) error { panic("kaboom") })
+	}()
+	var after string
+	if err := pool.QueryRow(ctx, `SELECT coalesce(current_setting('app.investigation_id', true), '')`).Scan(&after); err != nil || after != "" {
+		t.Errorf("after an error and a panic: app.investigation_id %q (%v)", after, err)
+	}
+	if n := pool.Stat().NewConnsCount(); n != start {
+		t.Errorf("connections were replaced (%d -> %d): the acting-for scope outlived its transaction", start, n)
+	}
+	// The membership is still checked first: a requester who is no member
+	// gets ErrNoMembership, and fn never runs.
+	b := newOrg(t, adm)
+	called := false
+	err := d.Run(ctx, tenant.Scope{OrganizationID: b.id, UserID: a.user, ActingFor: inv}, tenant.ReadWrite,
+		func(context.Context, pgx.Tx, tenant.Membership) error { called = true; return nil })
+	if !errors.Is(err, tenant.ErrNoMembership) || called {
+		t.Errorf("acting for a non-member: %v (fn called: %v)", err, called)
+	}
+}
+
+// H-061 A4: the membership Run hands fn names the investigation the
+// transaction acts for, exactly the value Run set app.investigation_id to,
+// and nothing for a person's own request; the services mark their audit
+// events from it.
+func TestMembershipNamesTheInvestigation(t *testing.T) {
+	adm := admin(t)
+	a := newOrg(t, adm)
+	d := tenant.New(as(t, apiLogin, 1, true))
+	inv := newID(t, "inv")
+	for _, c := range []struct {
+		s    tenant.Scope
+		opts tenant.TxOptions
+		want string
+	}{
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}, tenant.ReadWrite, inv},
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user, ActingFor: inv}, tenant.ReadOnly, inv},
+		{tenant.Scope{OrganizationID: a.id, UserID: a.user}, tenant.ReadWrite, ""},
+	} {
+		var got, setting string
+		err := d.Run(context.Background(), c.s, c.opts, func(ctx context.Context, tx pgx.Tx, m tenant.Membership) error {
+			got = m.ActingFor
+			return tx.QueryRow(ctx, `SELECT coalesce(current_setting('app.investigation_id', true), '')`).Scan(&setting)
+		})
+		if err != nil || got != c.want || setting != c.want {
+			t.Errorf("acting for %q: the membership names %q, the setting is %q: %v", c.want, got, setting, err)
+		}
+	}
+}
+
+// H-061 §8 (1): only the API's investigation executor sets
+// tenant.Scope.ActingFor in production code; tests of the scope itself
+// and of the storage under it may.
+func TestOnlyTheExecutorActsFor(t *testing.T) {
+	root := contracttest.Root(t)
+	allowed := []string{filepath.Join("internal", "tenant") + string(filepath.Separator), filepath.Join("internal", "investigations", "executor") + string(filepath.Separator)}
+	fset := token.NewFileSet()
+	var found []string
+	for _, dir := range []string{"cmd", "internal"} {
+		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, e fs.DirEntry, err error) error {
+			if err != nil || e.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return err
+			}
+			rel, _ := filepath.Rel(root, path)
+			f, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+			if err != nil {
+				return err
+			}
+			// A field set in a composite literal (Scope{ActingFor: ...}) or
+			// assigned (s.ActingFor = ...).
+			var set []*ast.Ident
+			ast.Inspect(f, func(n ast.Node) bool {
+				switch x := n.(type) {
+				case *ast.CompositeLit:
+					for _, el := range x.Elts {
+						if kv, ok := el.(*ast.KeyValueExpr); ok {
+							if id, ok := kv.Key.(*ast.Ident); ok {
+								set = append(set, id)
+							}
+						}
+					}
+				case *ast.AssignStmt:
+					for _, l := range x.Lhs {
+						if sel, ok := l.(*ast.SelectorExpr); ok {
+							set = append(set, sel.Sel)
+						}
+					}
+				}
+				return true
+			})
+			for _, id := range set {
+				if id.Name == "ActingFor" && !slices.ContainsFunc(allowed, func(p string) bool { return strings.HasPrefix(rel, p) }) {
+					found = append(found, fset.Position(id.Pos()).String())
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(found) > 0 {
+		t.Errorf("tenant.Scope.ActingFor is set outside internal/investigations/executor: %v", found)
 	}
 }
 

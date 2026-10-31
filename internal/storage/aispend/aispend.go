@@ -39,6 +39,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/spend"
@@ -101,7 +102,80 @@ func (m *Meter) today(ctx context.Context, tx tenant.Tx) (time.Time, error) {
 }
 
 // columns are the reservation's target column of each attribution target.
-var columns = map[string]string{"ai_proposal": "ai_proposal_id", "ai_analysis": "ai_analysis_id", "import": "import_id"}
+// H-061: a planner turn is reserved on its investigation.
+var columns = map[string]string{"ai_proposal": "ai_proposal_id", "ai_analysis": "ai_analysis_id", "import": "import_id",
+	"investigation": "investigation_id"}
+
+// An AI investigation's own limits (H-060, H-061 §12; migration 0019 holds
+// them too): at most InvestigationCeiling nano-USD settled and open, its
+// planner turns' and its proposals' and analyses' calls together, and at
+// most MaxPlannerTurns planner turns. A charge past either is refused with
+// provider.LimitInvestigation before any provider call.
+const (
+	InvestigationCeiling int64 = 2_500_000_000 // USD 2.50
+	MaxPlannerTurns            = 20
+)
+
+// investigationHeldSQL is what the investigation already holds, and its
+// planner turns, under the investigation's advisory lock (the same lock
+// migration 0019's trigger takes, so the check and the insert are one).
+const investigationHeldSQL = `SELECT coalesce(sum(CASE WHEN r.state = 'reserved' THEN r.reserved_nano_usd ELSE r.settled_nano_usd END), 0),
+	  count(*) FILTER (WHERE r.role = 'investigator')
+	FROM twin.ai_spend_reservations r
+	WHERE r.organization_id = $1 AND (r.investigation_id = $2
+	  OR r.ai_proposal_id IN (SELECT p.id FROM twin.ai_proposals p WHERE p.organization_id = $1 AND p.investigation_id = $2)
+	  OR r.ai_analysis_id IN (SELECT a.id FROM twin.ai_analyses a WHERE a.organization_id = $1 AND a.investigation_id = $2))`
+
+// investigationOf is the investigation a charge counts against: its own
+// target for a planner turn, or the investigation of the proposal or
+// analysis it is for ("" for none).
+func investigationOf(ctx context.Context, tx tenant.Tx, c provider.Charge) (string, error) {
+	var q string
+	switch c.Attribution.TargetType {
+	case "investigation":
+		return c.Attribution.TargetID, nil
+	case "ai_proposal":
+		q = `SELECT coalesce(investigation_id, '') FROM twin.ai_proposals WHERE organization_id = $1 AND id = $2`
+	case "ai_analysis":
+		q = `SELECT coalesce(investigation_id, '') FROM twin.ai_analyses WHERE organization_id = $1 AND id = $2`
+	default:
+		return "", nil
+	}
+	var inv string
+	err := tx.QueryRow(ctx, q, c.OrganizationID, c.Attribution.TargetID).Scan(&inv)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil // the reservation's foreign key refuses it
+	}
+	return inv, err
+}
+
+// withinInvestigation refuses c past its investigation's limits.
+func withinInvestigation(ctx context.Context, tx tenant.Tx, c provider.Charge) error {
+	inv, err := investigationOf(ctx, tx, c)
+	if err != nil || inv == "" {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(61020, hashtext($1))`, inv); err != nil {
+		return err
+	}
+	var held int64
+	var turns int
+	if err := tx.QueryRow(ctx, investigationHeldSQL, c.OrganizationID, inv).Scan(&held, &turns); err != nil {
+		return err
+	}
+	if held+c.NanoUSD > InvestigationCeiling || (c.Role == "investigator" && turns >= MaxPlannerTurns) {
+		return &errRefused{provider.LimitInvestigation}
+	}
+	return nil
+}
+
+// refusedByTheDatabase is migration 0019's refusal of a reservation past an
+// investigation's limits (its trigger names the limit it holds).
+func refusedByTheDatabase(err error) bool {
+	var pg *pgconn.PgError
+	return errors.As(err, &pg) && (pg.ConstraintName == "ai_spend_reservations_investigation_ceiling" ||
+		pg.ConstraintName == "ai_spend_reservations_investigation_turns")
+}
 
 var (
 	reservationID = regexp.MustCompile(`^asr_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
@@ -174,9 +248,15 @@ func (m *Meter) Reserve(ctx context.Context, c provider.Charge) (provider.Reserv
 				return &errRefused{step.limit}
 			}
 		}
+		if err := withinInvestigation(ctx, tx, c); err != nil {
+			return err
+		}
 		if _, err := tx.Exec(ctx, fmt.Sprintf(`INSERT INTO twin.ai_spend_reservations(id,organization_id,day,role,model,%s,request_id,reserved_nano_usd)
 			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`, col), id, c.OrganizationID, day, string(c.Role), c.Model, c.Attribution.TargetID,
 			c.Attribution.RequestID, c.NanoUSD); err != nil {
+			if refusedByTheDatabase(err) {
+				return &errRefused{provider.LimitInvestigation}
+			}
 			return err
 		}
 		var held int64
@@ -230,10 +310,11 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 		var day time.Time
 		var reserved int64
 		var state, request string
-		var aip, ana, imp *string
-		err := tx.QueryRow(ctx, `SELECT day, reserved_nano_usd, state, role, model, request_id, ai_proposal_id, ai_analysis_id, import_id
+		var aip, ana, imp, inv *string
+		err := tx.QueryRow(ctx, `SELECT day, reserved_nano_usd, state, role, model, request_id, ai_proposal_id, ai_analysis_id, import_id,
+			  investigation_id
 			FROM twin.ai_spend_reservations WHERE organization_id = $1 AND id = $2 FOR UPDATE`, org, r.ID).
-			Scan(&day, &reserved, &state, &role, &model, &request, &aip, &ana, &imp)
+			Scan(&day, &reserved, &state, &role, &model, &request, &aip, &ana, &imp, &inv)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
 		}
@@ -276,6 +357,8 @@ func (m *Meter) Settle(ctx context.Context, r provider.Reservation, s provider.S
 			target.TargetType, target.TargetID = "ai_analysis", *ana
 		case imp != nil:
 			target.TargetType, target.TargetID = "import", *imp
+		case inv != nil:
+			target.TargetType, target.TargetID = "investigation", *inv
 		}
 		meta := map[string]any{"reservation_id": r.ID, "role": role,
 			"model": audit.Label(model), "reserved_nano_usd": reserved, "settled_nano_usd": s.NanoUSD, "outcome": string(s.Outcome),

@@ -2588,6 +2588,892 @@
       "expected_error_paths": [
         "/requested_model"
       ]
+    },
+    {
+      "id": "valid-investigator-propose-what-if",
+      "instance": "testdata/contracts/valid-investigator-propose-what-if.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-propose-from-suggestion",
+      "instance": "testdata/contracts/valid-investigator-propose-from-suggestion.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-save-scenario",
+      "instance": "testdata/contracts/valid-investigator-save-scenario.json",
+      "schema": "schemas/investigator.schema.json#/$defs/SaveScenarioArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-run-what-if",
+      "instance": "testdata/contracts/valid-investigator-run-what-if.json",
+      "schema": "schemas/investigator.schema.json#/$defs/RunWhatIfArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-explain-results",
+      "instance": "testdata/contracts/valid-investigator-explain-results.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ExplainResultsArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-explain-results-no-question",
+      "instance": "testdata/contracts/valid-investigator-explain-results-no-question.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ExplainResultsArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-propose-model-edit",
+      "instance": "testdata/contracts/valid-investigator-propose-model-edit.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeModelEditArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-write-to-draft",
+      "instance": "testdata/contracts/valid-investigator-write-to-draft.json",
+      "schema": "schemas/investigator.schema.json#/$defs/WriteToDraftArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-finish",
+      "instance": "testdata/contracts/valid-investigator-finish.json",
+      "schema": "schemas/investigator.schema.json#/$defs/FinishArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-finish-no-best",
+      "instance": "testdata/contracts/valid-investigator-finish-no-best.json",
+      "schema": "schemas/investigator.schema.json#/$defs/FinishArguments",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-investigator-unknown-member",
+      "instance": "testdata/contracts/invalid-investigator-unknown-member.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigator-missing-nullable-member",
+      "instance": "testdata/contracts/invalid-investigator-missing-nullable-member.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigator-names-the-organization",
+      "instance": "testdata/contracts/invalid-investigator-names-the-organization.json",
+      "schema": "schemas/investigator.schema.json#/$defs/SaveScenarioArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigator-idea-empty",
+      "instance": "testdata/contracts/invalid-investigator-idea-empty.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/idea"
+      ]
+    },
+    {
+      "id": "invalid-investigator-idea-blank",
+      "instance": "testdata/contracts/invalid-investigator-idea-blank.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/idea"
+      ]
+    },
+    {
+      "id": "invalid-investigator-idea-control",
+      "instance": "testdata/contracts/invalid-investigator-idea-control.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/idea"
+      ]
+    },
+    {
+      "id": "invalid-investigator-idea-newline",
+      "instance": "testdata/contracts/invalid-investigator-idea-newline.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeModelEditArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/idea"
+      ]
+    },
+    {
+      "id": "invalid-investigator-idea-too-long",
+      "instance": "testdata/contracts/invalid-investigator-idea-too-long.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/idea"
+      ]
+    },
+    {
+      "id": "invalid-investigator-suggestion-index",
+      "instance": "testdata/contracts/invalid-investigator-suggestion-index.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/from_suggestion/index"
+      ]
+    },
+    {
+      "id": "invalid-investigator-suggestion-run-id",
+      "instance": "testdata/contracts/invalid-investigator-suggestion-run-id.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposeWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/from_suggestion/analysis_id"
+      ]
+    },
+    {
+      "id": "invalid-investigator-scenario-id-kind",
+      "instance": "testdata/contracts/invalid-investigator-scenario-id-kind.json",
+      "schema": "schemas/investigator.schema.json#/$defs/RunWhatIfArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/scenario_id"
+      ]
+    },
+    {
+      "id": "invalid-investigator-question-too-long",
+      "instance": "testdata/contracts/invalid-investigator-question-too-long.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ExplainResultsArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/question"
+      ]
+    },
+    {
+      "id": "invalid-investigator-finish-outcome",
+      "instance": "testdata/contracts/invalid-investigator-finish-outcome.json",
+      "schema": "schemas/investigator.schema.json#/$defs/FinishArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/outcome"
+      ]
+    },
+    {
+      "id": "invalid-investigator-finish-best-run",
+      "instance": "testdata/contracts/invalid-investigator-finish-best-run.json",
+      "schema": "schemas/investigator.schema.json#/$defs/FinishArguments",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/best_scenario_id"
+      ]
+    },
+    {
+      "id": "valid-investigator-observation-proposal",
+      "instance": "testdata/contracts/valid-investigator-observation-proposal.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposalObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-needs-input",
+      "instance": "testdata/contracts/valid-investigator-observation-needs-input.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposalObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-proposal-decided",
+      "instance": "testdata/contracts/valid-investigator-observation-proposal-decided.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ProposalObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-scenario",
+      "instance": "testdata/contracts/valid-investigator-observation-scenario.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ScenarioObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-run",
+      "instance": "testdata/contracts/valid-investigator-observation-run.json",
+      "schema": "schemas/investigator.schema.json#/$defs/RunObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-explanation",
+      "instance": "testdata/contracts/valid-investigator-observation-explanation.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ExplanationObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-draft",
+      "instance": "testdata/contracts/valid-investigator-observation-draft.json",
+      "schema": "schemas/investigator.schema.json#/$defs/DraftObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigator-observation-error",
+      "instance": "testdata/contracts/valid-investigator-observation-error.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-investigator-observation-http-code",
+      "instance": "testdata/contracts/invalid-investigator-observation-http-code.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/error/code"
+      ]
+    },
+    {
+      "id": "invalid-investigator-observation-budget-steps",
+      "instance": "testdata/contracts/invalid-investigator-observation-budget-steps.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ScenarioObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/budget/steps_left"
+      ]
+    },
+    {
+      "id": "invalid-investigator-observation-run-completed-without-comparison",
+      "instance": "testdata/contracts/invalid-investigator-observation-run-completed-without-comparison.json",
+      "schema": "schemas/investigator.schema.json#/$defs/RunObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/comparison"
+      ]
+    },
+    {
+      "id": "valid-investigation-request",
+      "instance": "testdata/contracts/valid-investigation-request.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-request-minimal",
+      "instance": "testdata/contracts/valid-investigation-request-minimal.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-request-edit",
+      "instance": "testdata/contracts/valid-investigation-request-edit.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-request-from-analysis",
+      "instance": "testdata/contracts/valid-investigation-request-from-analysis.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-request-hours",
+      "instance": "testdata/contracts/valid-investigation-request-hours.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-investigation-request-replications",
+      "instance": "testdata/contracts/invalid-investigation-request-replications.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/run_config/replications"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-horizon",
+      "instance": "testdata/contracts/invalid-investigation-request-horizon.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/run_config/horizon/value"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-horizon-minutes",
+      "instance": "testdata/contracts/invalid-investigation-request-horizon-minutes.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/run_config/horizon/value"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-trace-full",
+      "instance": "testdata/contracts/invalid-investigation-request-trace-full.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/run_config/trace_level"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-planner",
+      "instance": "testdata/contracts/invalid-investigation-request-planner.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/planner_model"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-scenario-without-run-config",
+      "instance": "testdata/contracts/invalid-investigation-request-scenario-without-run-config.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-edit-with-run-config",
+      "instance": "testdata/contracts/invalid-investigation-request-edit-with-run-config.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-limits",
+      "instance": "testdata/contracts/invalid-investigation-request-limits.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-advance-step",
+      "instance": "testdata/contracts/invalid-investigation-request-advance-step.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-both-entries",
+      "instance": "testdata/contracts/invalid-investigation-request-both-entries.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-from-analysis-locale",
+      "instance": "testdata/contracts/invalid-investigation-request-from-analysis-locale.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-from-analysis-planner",
+      "instance": "testdata/contracts/invalid-investigation-request-from-analysis-planner.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/planner_model"
+      ]
+    },
+    {
+      "id": "invalid-investigation-request-empty",
+      "instance": "testdata/contracts/invalid-investigation-request-empty.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationRequest",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-investigation-accepted",
+      "instance": "testdata/contracts/valid-investigation-accepted.json",
+      "schema": "schemas/investigation.schema.json#/$defs/InvestigationAccepted",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-stop-request",
+      "instance": "testdata/contracts/valid-investigation-stop-request.json",
+      "schema": "schemas/investigation.schema.json#/$defs/StopInvestigation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-investigation-stop-request-reason",
+      "instance": "testdata/contracts/invalid-investigation-stop-request-reason.json",
+      "schema": "schemas/investigation.schema.json#/$defs/StopInvestigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-investigation-running",
+      "instance": "testdata/contracts/valid-investigation-running.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-finished",
+      "instance": "testdata/contracts/valid-investigation-finished.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-stopped",
+      "instance": "testdata/contracts/valid-investigation-stopped.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigation-edit-written",
+      "instance": "testdata/contracts/valid-investigation-edit-written.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-investigations-page",
+      "instance": "testdata/contracts/valid-investigations-page.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigations",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-investigation-old-reason",
+      "instance": "testdata/contracts/invalid-investigation-old-reason.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/reason"
+      ]
+    },
+    {
+      "id": "invalid-investigation-running-with-reason",
+      "instance": "testdata/contracts/invalid-investigation-running-with-reason.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/reason"
+      ]
+    },
+    {
+      "id": "invalid-investigation-finished-with-stopped-reason",
+      "instance": "testdata/contracts/invalid-investigation-finished-with-stopped-reason.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/reason"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-member",
+      "instance": "testdata/contracts/invalid-investigation-step-member.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-next-member",
+      "instance": "testdata/contracts/invalid-investigation-next-member.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-15-steps",
+      "instance": "testdata/contracts/invalid-investigation-15-steps.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-refused-without-error",
+      "instance": "testdata/contracts/invalid-investigation-step-refused-without-error.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/3/error"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-pending-with-effect",
+      "instance": "testdata/contracts/invalid-investigation-step-pending-with-effect.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/3/effect"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-invalid-call-with-arguments",
+      "instance": "testdata/contracts/invalid-investigation-step-invalid-call-with-arguments.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/3/arguments"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-arguments-of-another-tool",
+      "instance": "testdata/contracts/invalid-investigation-step-arguments-of-another-tool.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/1/arguments"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-unknown-tool",
+      "instance": "testdata/contracts/invalid-investigation-step-unknown-tool.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/3/tool"
+      ]
+    },
+    {
+      "id": "invalid-investigation-step-http-error-code",
+      "instance": "testdata/contracts/invalid-investigation-step-http-error-code.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/steps/3/error/code"
+      ]
+    },
+    {
+      "id": "invalid-investigation-outcome-without-finish",
+      "instance": "testdata/contracts/invalid-investigation-outcome-without-finish.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/ai_outcome"
+      ]
+    },
+    {
+      "id": "invalid-investigation-edit-with-runs",
+      "instance": "testdata/contracts/invalid-investigation-edit-with-runs.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/run_config"
+      ]
+    },
+    {
+      "id": "invalid-investigation-stopped-by-person-without-stop",
+      "instance": "testdata/contracts/invalid-investigation-stopped-by-person-without-stop.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/stop"
+      ]
+    },
+    {
+      "id": "invalid-investigation-closing-line-free-text",
+      "instance": "testdata/contracts/invalid-investigation-closing-line-free-text.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/closing_line/key"
+      ]
+    },
+    {
+      "id": "invalid-investigation-candidate-status",
+      "instance": "testdata/contracts/invalid-investigation-candidate-status.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/candidates/0/proposal_status"
+      ]
+    },
+    {
+      "id": "invalid-investigation-caps-steps",
+      "instance": "testdata/contracts/invalid-investigation-caps-steps.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/caps/steps"
+      ]
+    },
+    {
+      "id": "valid-proposal-applied-scenario",
+      "instance": "testdata/contracts/valid-proposal-applied-scenario.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-applied-edit",
+      "instance": "testdata/contracts/valid-proposal-applied-edit.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "valid-proposal-ready-by-ai",
+      "instance": "testdata/contracts/valid-proposal-ready-by-ai.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-applied-without-investigation",
+      "instance": "testdata/contracts/invalid-proposal-applied-without-investigation.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-applied-with-decider",
+      "instance": "testdata/contracts/invalid-proposal-applied-with-decider.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-applied-edit-without-revision",
+      "instance": "testdata/contracts/invalid-proposal-applied-edit-without-revision.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-applied-edit-with-version",
+      "instance": "testdata/contracts/invalid-proposal-applied-edit-with-version.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-applied-scenario-without-scenario",
+      "instance": "testdata/contracts/invalid-proposal-applied-scenario-without-scenario.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-investigation-index",
+      "instance": "testdata/contracts/invalid-proposal-investigation-index.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/investigation/index"
+      ]
+    },
+    {
+      "id": "invalid-proposal-draft-revision-when-ready",
+      "instance": "testdata/contracts/invalid-proposal-draft-revision-when-ready.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "valid-scenario-made-by-ai",
+      "instance": "testdata/contracts/valid-scenario-made-by-ai.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-scenario-made-by-ai-without-proposal",
+      "instance": "testdata/contracts/invalid-scenario-made-by-ai-without-proposal.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/source_proposal_id"
+      ]
+    },
+    {
+      "id": "invalid-scenario-made-by-ai-free-text",
+      "instance": "testdata/contracts/invalid-scenario-made-by-ai-free-text.json",
+      "schema": "schemas/scenario.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/made_by_ai"
+      ]
+    },
+    {
+      "id": "valid-run-made-by-ai",
+      "instance": "testdata/contracts/valid-run-made-by-ai.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Run",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-run-made-by-ai-without-investigation",
+      "instance": "testdata/contracts/invalid-run-made-by-ai-without-investigation.json",
+      "schema": "schemas/simulation.schema.json#/$defs/Run",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/made_by_ai"
+      ]
+    },
+    {
+      "id": "valid-analysis-record-by-ai",
+      "instance": "testdata/contracts/valid-analysis-record-by-ai.json",
+      "schema": "schemas/http.schema.json#/$defs/AnalysisRecord",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-analysis-record-investigation-id",
+      "instance": "testdata/contracts/invalid-analysis-record-investigation-id.json",
+      "schema": "schemas/http.schema.json#/$defs/AnalysisRecord",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/investigation_id"
+      ]
+    },
+    {
+      "id": "valid-draft-ai-edit",
+      "instance": "testdata/contracts/valid-draft-ai-edit.json",
+      "schema": "schemas/http.schema.json#/$defs/Draft",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-draft-ai-edit-without-proposal",
+      "instance": "testdata/contracts/invalid-draft-ai-edit-without-proposal.json",
+      "schema": "schemas/http.schema.json#/$defs/Draft",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/ai_edit"
+      ]
+    },
+    {
+      "id": "valid-model-version-ai-edit",
+      "instance": "testdata/contracts/valid-model-version-ai-edit.json",
+      "schema": "schemas/http.schema.json#/$defs/ModelVersion",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-model-version-ai-edit-member",
+      "instance": "testdata/contracts/invalid-model-version-ai-edit-member.json",
+      "schema": "schemas/http.schema.json#/$defs/ModelVersion",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/ai_edit"
+      ]
     }
   ]
 }

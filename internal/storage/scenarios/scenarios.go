@@ -13,6 +13,7 @@ package scenarios
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -29,12 +30,29 @@ type Scenario struct {
 	SourceProposalID *string
 	CreatedBy        string
 	CreatedAt        time.Time
+	// AI is the label of a scenario an AI investigation saved (H-061,
+	// 0019): set by the database from the transaction's acting-for scope,
+	// read back with the investigation's requester and planner; nil for a
+	// person's scenario (and on Insert's result).
+	AI *Label
+}
+
+// Label is what a labelled row shows of the AI investigation that made it:
+// the investigation, the person it was made for and its planner model.
+type Label struct {
+	InvestigationID, RequestedBy, PlannerModel string
 }
 
 // ErrNotFound: no such scenario in the organization.
 var ErrNotFound = errors.New("scenarios: not found")
 
-const columns = `id, model_id, base_version_id, name, patch, patch_hash, source_proposal_id, created_by, created_at`
+const columns = `s.id, s.model_id, s.base_version_id, s.name, s.patch, s.patch_hash, s.source_proposal_id, s.created_by, s.created_at,
+	s.investigation_id, i.created_by, i.planner_model`
+
+// from joins each scenario with the investigation that saved it, if one did
+// (its label, 0019), in the same organization.
+const from = ` FROM twin.scenarios s
+	LEFT JOIN twin.investigations i ON i.organization_id=s.organization_id AND i.id=s.investigation_id`
 
 // Insert stores s.
 func Insert(ctx context.Context, tx pgx.Tx, s Scenario) (Scenario, error) {
@@ -46,13 +64,31 @@ func Insert(ctx context.Context, tx pgx.Tx, s Scenario) (Scenario, error) {
 
 func scan(row pgx.Row, org string) (Scenario, error) {
 	s := Scenario{OrganizationID: org}
-	err := row.Scan(&s.ID, &s.ModelID, &s.BaseVersionID, &s.Name, &s.Patch, &s.PatchHash, &s.SourceProposalID, &s.CreatedBy, &s.CreatedAt)
+	var inv, requester, planner *string
+	if err := row.Scan(&s.ID, &s.ModelID, &s.BaseVersionID, &s.Name, &s.Patch, &s.PatchHash, &s.SourceProposalID, &s.CreatedBy, &s.CreatedAt,
+		&inv, &requester, &planner); err != nil {
+		return Scenario{}, err
+	}
+	var err error
+	s.AI, err = label(s.ID, inv, requester, planner)
 	return s, err
+}
+
+// label is the AI label of scenario id, or nil for a person's; a label
+// whose investigation cannot be read is an error, never left out.
+func label(id string, inv, requester, planner *string) (*Label, error) {
+	if inv == nil {
+		return nil, nil
+	}
+	if requester == nil || planner == nil {
+		return nil, fmt.Errorf("scenarios: scenario %s: its investigation %s is not visible", id, *inv)
+	}
+	return &Label{InvestigationID: *inv, RequestedBy: *requester, PlannerModel: *planner}, nil
 }
 
 // Get returns the scenario id of organization org.
 func Get(ctx context.Context, tx pgx.Tx, org, id string) (Scenario, error) {
-	s, err := scan(tx.QueryRow(ctx, `SELECT `+columns+` FROM twin.scenarios WHERE organization_id=$1 AND id=$2`, org, id), org)
+	s, err := scan(tx.QueryRow(ctx, `SELECT `+columns+from+` WHERE s.organization_id=$1 AND s.id=$2`, org, id), org)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Scenario{}, ErrNotFound
 	}
@@ -72,11 +108,11 @@ func List(ctx context.Context, tx pgx.Tx, org, versionID string, after *Position
 	var rows pgx.Rows
 	var err error
 	if after == nil {
-		rows, err = tx.Query(ctx, `SELECT `+columns+` FROM twin.scenarios WHERE organization_id=$1 AND base_version_id=$2
-			ORDER BY created_at, id LIMIT $3`, org, versionID, limit)
+		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE s.organization_id=$1 AND s.base_version_id=$2
+			ORDER BY s.created_at, s.id LIMIT $3`, org, versionID, limit)
 	} else {
-		rows, err = tx.Query(ctx, `SELECT `+columns+` FROM twin.scenarios WHERE organization_id=$1 AND base_version_id=$2
-			AND (created_at, id) > ($3, $4) ORDER BY created_at, id LIMIT $5`, org, versionID, after.CreatedAt, after.ID, limit)
+		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE s.organization_id=$1 AND s.base_version_id=$2
+			AND (s.created_at, s.id) > ($3, $4) ORDER BY s.created_at, s.id LIMIT $5`, org, versionID, after.CreatedAt, after.ID, limit)
 	}
 	if err != nil {
 		return nil, err

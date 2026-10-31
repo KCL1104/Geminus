@@ -38,6 +38,7 @@ var (
 	ana    = ids.New("ana")
 	job    = ids.New("job")
 	prj    = ids.New("prj")
+	inv    = ids.New("inv")
 	worker = "worker-0.pod_a:1"
 )
 
@@ -174,6 +175,58 @@ func valid() []audit.Event {
 			"schema": "", "output_locale": "", "input_hash": "", "input_tokens": int64(0), "output_tokens": int64(0), "latency_ms": int64(0),
 			"attempt": 1, "code": "AI_RATE_LIMITED", "retryable": true, "image_content_hash": hash("7"), "segmenter": "fake",
 			"segmenter_concepts": 8, "segmenter_boxes": 0, "segmenter_latency_ms": int64(3)}),
+		// H-061 A2 (PROPOSED): what an AI investigation writes for the
+		// person who started it is that person's event, marked with the
+		// investigation and by_ai (the executor's writes, the database's
+		// guard); a what-if built from an analysis's suggestion says so.
+		u("proposal.create", "ai_proposal", aip, map[string]any{"model_id": mdl, "base_version_id": mv, "mode": "scenario",
+			"output_locale": "en", "selected_entities": 0, "source": "suggestion", "requested_model": "muse-spark-1.3",
+			"investigation_id": inv, "by_ai": true}),
+		u("simulation.create", "simulation", sim, map[string]any{"model_version_id": mv, "replications": 5, "engine_version": "des-go-0.4.0",
+			"model_hash": hash("1"), "effective_model_hash": hash("2"), "config_hash": hash("3"), "dataset_manifest_hash": hash("4"),
+			"scenario_id": scn, "investigation_id": inv, "by_ai": true}),
+		u("analysis.create", "ai_analysis", ana, map[string]any{"run_id": sim, "baseline_run_id": ids.New("sim"), "output_locale": "en",
+			"question": false, "investigation_id": inv, "by_ai": true}),
+		u("model.draft.update", "model", mdl, map[string]any{"revision": int64(4), "investigation_id": inv, "by_ai": true}),
+		// H-061 A4: the AI acted on its own ready proposal: the scenario it
+		// saved, or the draft revision it wrote.
+		u("proposal.apply", "ai_proposal", aip, map[string]any{"mode": "scenario", "model_id": mdl, "base_version_id": mv,
+			"patch_hash": hash("5"), "server_risk_level": "low", "risk_level": "medium", "scenario_id": scn, "investigation_id": inv, "by_ai": true}),
+		u("proposal.apply", "ai_proposal", aip, map[string]any{"mode": "edit", "model_id": mdl, "base_version_id": mv,
+			"patch_hash": hash("6"), "server_risk_level": "low", "risk_level": "low", "draft_revision": int64(4), "investigation_id": inv, "by_ai": true}),
+		// A person publishes a draft that holds the AI's change.
+		u("model.publish", "model_version", mv2, map[string]any{"version": 3, "model_id": mdl, "contains_ai_edit": true}),
+		// H-061 A7: a person starts an investigation (IDs, counts, flags
+		// and model names, never the intent), and stops it; the executor
+		// records each carried-out call, marked as the AI's.
+		u("investigation.create", "investigation", inv, map[string]any{"model_id": mdl, "base_version_id": mv, "mode": "scenario",
+			"source": "request", "output_locale": "en", "research": true, "requested_model": "muse-spark-1.3",
+			"planner_model": "muse-spark-1.3", "replications": 5}),
+		u("investigation.create", "investigation", inv, map[string]any{"model_id": mdl, "base_version_id": mv, "mode": "scenario",
+			"source": "analysis", "source_analysis_id": ana, "output_locale": "zh-Hant", "requested_model": "muse-wonder-1.0",
+			"planner_model": "muse-wonder-1.0", "replications": 10, "baseline_reused": true}),
+		u("investigation.stop", "investigation", inv, map[string]any{"reason": "stopped_by_person", "steps": 3, "by_owner": true}),
+		u("investigation.tool_call", "investigation", inv, map[string]any{"seq": 2, "tool": "save_scenario", "outcome": "done",
+			"investigation_id": inv, "by_ai": true}),
+		u("investigation.tool_call", "investigation", inv, map[string]any{"seq": 5, "tool": "run_what_if", "outcome": "refused",
+			"code": "ALREADY_RUN", "investigation_id": inv, "by_ai": true}),
+		// The investigation's job and its planner turns.
+		w("job.attempt_failed", "investigation", inv, map[string]any{"job_id": job, "job_type": "investigation", "attempt": 1,
+			"max_attempts": 5, "code": "WORKER_STOPPED", "retryable": true, "outcome": "requeued"}),
+		w("ai_spend.reserve", "investigation", inv, map[string]any{"reservation_id": ids.New("asr"), "role": "investigator",
+			"model": "muse-spark-1.3", "reserved_nano_usd": int64(160_000_000), "organization_day_committed_nano_usd": int64(400_000_000)}),
+		w("ai_spend.settle", "investigation", inv, map[string]any{"reservation_id": ids.New("asr"), "role": "investigator",
+			"model": "muse-spark-1.3", "reserved_nano_usd": int64(160_000_000), "settled_nano_usd": int64(9_000_000), "outcome": "usage",
+			"input_tokens": int64(6000), "output_tokens": int64(180), "cache_write_tokens": int64(0), "cache_read_tokens": int64(0),
+			"unknown_attempts": 0, "credential_label": "org-a", "inference_geo": "global"}),
+		w("ai_spend.refuse", "investigation", inv, map[string]any{"role": "investigator", "model": "muse-spark-1.3",
+			"charge_nano_usd": int64(160_000_000), "limit": "organization_day"}),
+		// H-061 A3: the investigation's own limit (USD 2.50, 20 planner
+		// turns), on a turn or on a call of its proposals.
+		w("ai_spend.refuse", "investigation", inv, map[string]any{"role": "investigator", "model": "muse-spark-1.3",
+			"charge_nano_usd": int64(160_000_000), "limit": "investigation"}),
+		w("ai_spend.refuse", "ai_proposal", aip, map[string]any{"role": "scenario", "model": "muse-spark-1.3",
+			"charge_nano_usd": int64(40_000_000), "limit": "investigation"}),
 	}
 }
 
@@ -302,6 +355,162 @@ func TestRefused(t *testing.T) {
 			t.Errorf("%s: the error repeats the value: %v", name, err)
 		}
 	}
+	// H-061 A2 (PROPOSED): the AI's mark on a person's event is the
+	// investigation's ID with by_ai true, together, only on the actions an
+	// investigation's tools write; never free text, never on a decision,
+	// a membership or a person's own scenario.
+	aiBase := audit.Event{ActorType: audit.User, ActorID: user, Action: "simulation.create", TargetType: "simulation", TargetID: sim,
+		RequestID: req, Metadata: map[string]any{"model_version_id": mv, "replications": 5, "scenario_id": scn,
+			"investigation_id": inv, "by_ai": true}}
+	if err := audit.Check(aiBase); err != nil {
+		t.Fatal(err)
+	}
+	for name, edit := range map[string]func(*audit.Event){
+		"an investigation of another kind":   meta("investigation_id", aip),
+		"an investigation of free text":      meta("investigation_id", "inv_"+thought),
+		"by_ai as text":                      meta("by_ai", "yes"),
+		"by_ai false":                        meta("by_ai", false),
+		"by_ai without the investigation":    func(e *audit.Event) { delete(e.Metadata, "investigation_id") },
+		"the investigation without by_ai":    func(e *audit.Event) { delete(e.Metadata, "by_ai") },
+		"the AI's idea":                      meta("idea", "SENTINEL add a tester"),
+		"the AI's note":                      meta("note", "SENTINEL I start at ICT"),
+		"the planner's tool arguments":       meta("arguments", map[string]any{"idea": csvRow}),
+		"a worker writes the person's event": func(e *audit.Event) { e.ActorType = audit.Worker; e.ActorID = worker },
+		"on a decision": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.approve", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn, "investigation_id": inv, "by_ai": true}
+		},
+		"on a rejection": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.reject", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "from": "ready", "investigation_id": inv, "by_ai": true}
+		},
+		"on a person's scenario": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "scenario.create", "scenario", scn
+			e.Metadata = map[string]any{"model_id": mdl, "investigation_id": inv, "by_ai": true}
+		},
+		"on a membership": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "membership.update", "membership", ids.New("usr")
+			e.Metadata = map[string]any{"role": "editor", "previous_role": "viewer", "investigation_id": inv, "by_ai": true}
+		},
+		"on a publish": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "model.publish", "model_version", mv
+			e.Metadata = map[string]any{"version": 2, "model_id": mdl, "investigation_id": inv, "by_ai": true}
+		},
+		"a publish's AI mark as text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "model.publish", "model_version", mv
+			e.Metadata = map[string]any{"version": 2, "model_id": mdl, "contains_ai_edit": "true"}
+		},
+		"an investigation target for a project": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID, e.Metadata = "project.create", "investigation", inv, nil
+		},
+		"an investigation target of another kind": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "job.attempt_failed", "investigation", aip
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"job_type": "investigation"}
+		},
+		"a job type of free text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "job.attempt_failed", "investigation", inv
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"job_type": "investigator SENTINEL"}
+		},
+		"the planner role on a proposal's call": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.generate", "ai_proposal", aip
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = with(provider(), "attempt", 1, "status", "ready", "role", "investigator")
+		},
+		"a source of free text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.create", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "source": "the AI's idea SENTINEL", "investigation_id": inv, "by_ai": true}
+		},
+		// H-061 A4: the AI's action on its proposal is always marked, and
+		// holds IDs, hashes, risk and a count only.
+		"an apply without the AI's mark": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn}
+		},
+		"an apply of a person's comment": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn, "comment": "SENTINEL looks fine", "investigation_id": inv, "by_ai": true}
+		},
+		"an apply's draft revision as text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "edit", "draft_revision": "4 SENTINEL", "investigation_id": inv, "by_ai": true}
+		},
+		"an apply naming a version": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.Metadata = map[string]any{"mode": "edit", "new_version_id": mv, "investigation_id": inv, "by_ai": true}
+		},
+		"an apply by the worker": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "proposal.apply", "ai_proposal", aip
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"mode": "scenario", "scenario_id": scn, "investigation_id": inv, "by_ai": true}
+		},
+		// H-061 A7: an investigation's own events hold IDs, counts, flags,
+		// closed names and codes; the call is always the AI's, the start and
+		// the stop never are.
+		"an investigation's intent": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.create", "investigation", inv
+			e.Metadata = map[string]any{"mode": "scenario", "intent": "lower the lead time SENTINEL"}
+		},
+		"an investigation of another kind of target": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.create", "model", mdl
+			e.Metadata = map[string]any{"mode": "scenario"}
+		},
+		"a planner of free text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.create", "investigation", inv
+			e.Metadata = map[string]any{"planner_model": "SENTINEL planner"}
+		},
+		"a start marked as the AI's": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.create", "investigation", inv
+			e.Metadata = map[string]any{"mode": "edit", "investigation_id": inv, "by_ai": true}
+		},
+		"a stop for another reason": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.stop", "investigation", inv
+			e.Metadata = map[string]any{"reason": "role_lost"}
+		},
+		"a stop by the worker": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.stop", "investigation", inv
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"reason": "stopped_by_person"}
+		},
+		"a call without the AI's mark": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.Metadata = map[string]any{"seq": 1, "tool": "propose_what_if", "outcome": "done"}
+		},
+		"a call's arguments": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.Metadata = map[string]any{"seq": 1, "tool": "propose_what_if", "outcome": "done", "idea": "SENTINEL idea",
+				"investigation_id": inv, "by_ai": true}
+		},
+		"a call of an unknown tool": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.Metadata = map[string]any{"seq": 1, "tool": "publish_version SENTINEL", "outcome": "done", "investigation_id": inv, "by_ai": true}
+		},
+		"a call's outcome of free text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.Metadata = map[string]any{"seq": 1, "tool": "save_scenario", "outcome": "approved SENTINEL", "investigation_id": inv, "by_ai": true}
+		},
+		"a call's code of free text": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.Metadata = map[string]any{"seq": 1, "tool": "save_scenario", "outcome": "refused", "code": "the base moved SENTINEL",
+				"investigation_id": inv, "by_ai": true}
+		},
+		"a call by the worker": func(e *audit.Event) {
+			e.Action, e.TargetType, e.TargetID = "investigation.tool_call", "investigation", inv
+			e.ActorType, e.ActorID = audit.Worker, worker
+			e.Metadata = map[string]any{"seq": 1, "tool": "save_scenario", "outcome": "done", "investigation_id": inv, "by_ai": true}
+		},
+	} {
+		e := aiBase
+		e.Metadata = maps.Clone(aiBase.Metadata)
+		edit(&e)
+		err := audit.Check(e)
+		if !errors.Is(err, audit.ErrInvalid) {
+			t.Errorf("%s: %v", name, err)
+		} else if strings.Contains(err.Error(), "SENTINEL") || strings.Contains(err.Error(), "FCT_FAIL") {
+			t.Errorf("%s: the error repeats the value: %v", name, err)
+		}
+	}
 	// T-057: the member provisioned with an organization is an editor or a
 	// viewer, by ID; never a second owner and never free text.
 	for name, m := range map[string]map[string]any{
@@ -391,7 +600,7 @@ func TestActors(t *testing.T) {
 	}
 }
 
-var actionLiteral = regexp.MustCompile(`^(project|membership|model|import|proposal|scenario|simulation|organization|job|analysis|ai_spend)\.[a-z_]+(\.[a-z_]+)?$`)
+var actionLiteral = regexp.MustCompile(`^(project|membership|model|import|proposal|scenario|simulation|organization|job|analysis|ai_spend|investigation)\.[a-z_]+(\.[a-z_]+)?$`)
 
 // The catalogue is the code's: every action name a production file writes
 // is listed, and every listed action is written somewhere. (What each one

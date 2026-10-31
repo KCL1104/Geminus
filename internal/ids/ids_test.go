@@ -1,6 +1,9 @@
 package ids
 
 import (
+	"encoding/json/v2"
+	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -69,5 +72,40 @@ func TestNew(t *testing.T) {
 	}
 	if a, b := ULID(base), ULID(base); a[:10] != b[:10] || a == b {
 		t.Errorf("same millisecond: %s %s (same time part, different randomness expected)", a, b)
+	}
+}
+
+// H-061 A3: the investigation kind. The contract's InvestigationID
+// (common.schema.json) and migration 0019's twin.inv_id domain name the
+// same pattern, and New("inv") issues IDs of it.
+func TestInvestigationIDs(t *testing.T) {
+	schema, err := os.ReadFile(filepath.Join("..", "..", "schemas", "common.schema.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		Defs map[string]struct {
+			Pattern string `json:"pattern"`
+		} `json:"$defs"`
+	}
+	if err := json.Unmarshal(schema, &doc); err != nil {
+		t.Fatal(err)
+	}
+	const want = `^inv_[0-7][0-9A-HJKMNP-TV-Z]{25}$`
+	if got := doc.Defs["InvestigationID"].Pattern; got != want {
+		t.Fatalf("common.schema.json InvestigationID pattern %q, want %q", got, want)
+	}
+	migration, err := os.ReadFile(filepath.Join("..", "..", "migrations", "0019_investigations.up.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(migration), `CREATE DOMAIN twin.inv_id AS text CHECK (VALUE ~ '`+want+`');`) {
+		t.Error("migration 0019 does not define twin.inv_id with the contract's pattern")
+	}
+	re := regexp.MustCompile(want)
+	for range 1000 {
+		if id := New("inv"); !re.MatchString(id) {
+			t.Fatalf("%q is not an investigation ID", id)
+		}
 	}
 }
