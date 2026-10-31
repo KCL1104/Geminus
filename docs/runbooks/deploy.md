@@ -106,8 +106,9 @@ The source is the code that reads the variable. Variables with "Yes" in the **Se
 
 | Variable | Required | Secret | Notes |
 |---|---|---|---|
-| `WORKER_ID` | Yes | No | The name in leases and audit (starts with a letter, at most 128); different for each worker, so run only one replica |
+| `WORKER_ID` | Yes | No | The name in leases and audit (starts with a letter, at most 128; at most 123 with `WORKER_LANES=split`); different for each worker, so run only one replica |
 | `WORKER_ORGANIZATION_IDS` | Yes | No | The organizations the worker serves (comma-separated, D-008): the `organization_id` of §3.3 |
+| `WORKER_LANES` | No | No | `single` (the default; unset is single): one job loop for every type, as before. `split` (H-056 design §9, W1; PROPOSED; set in `variables.json`): two loops in the one process, on the same organizations and pool: simulations under `<WORKER_ID>:sim` and every other type (AI proposals, analyses, imports, any later type) under `<WORKER_ID>:rest`, so a run never waits behind an AI job; each lane's name is its leases' `locked_by` and the actor of the loop's own audit events (reaps, failed attempts), while the handlers' audit events keep `WORKER_ID`. Anything else refuses startup (exit 1), as does `split` on a build without a simulation handler and another one. A stop drains both lanes (each attempt recorded as `WORKER_STOPPED`); if a lane's loop panics or ends while the worker runs, the error line names the lane (`code` `WORKER_LANE_PANICKED` or `WORKER_LANE_ENDED`), the other lane is stopped and drained, and the worker exits 4. The replica count is unchanged (1) |
 
 ### 4.4 AI (`internal/config/ai.go`, `apiai.go`; live calls only in the worker; the API holds no key)
 
