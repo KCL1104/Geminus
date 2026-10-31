@@ -411,9 +411,13 @@ func TestNoComparisonWithoutABaseline(t *testing.T) {
 	}
 }
 
-// A cancelled context reaches the graph and the call: before the run, no
-// node runs and nothing is asked; during the call, the client's cancelled
-// call comes back as the call's failure (its metadata kept), observed once.
+// A cancelled context reaches every step and the call, which meet it
+// themselves, as the analyzer's steps did before the graph (E6 review round
+// 1, finding 1: Eino no longer stops a run between two nodes): before the
+// run, every step runs, and the client refuses the call before the backend
+// (its cancelled call comes back as the call's failure, observed once);
+// during the call, the client's cancelled call comes back as the call's
+// failure (its metadata kept), observed once.
 func TestCancellation(t *testing.T) {
 	f := fake.New()
 	obs := &calls{}
@@ -422,9 +426,14 @@ func TestCancellation(t *testing.T) {
 	cancel()
 	_, err := g.Run(ctx, input(t))
 	var e *analysis.Error
-	if !errors.Is(err, context.Canceled) || errors.As(err, &e) || len(f.Requests()) != 0 || len(obs.all()) != 0 {
-		t.Errorf("cancelled before the run: %v; %d requests, %d observed", err, len(f.Requests()), len(obs.all()))
+	if !errors.As(err, &e) || e.Kind != analysis.CallFailed || provider.CodeOf(e.Err) != provider.CodeCancelled || !errors.Is(e.Err, context.Canceled) ||
+		len(f.Requests()) != 0 {
+		t.Errorf("cancelled before the run: %v %+v; %d requests", err, e, len(f.Requests()))
 	}
+	if seen := obs.all(); len(seen) != 1 || e == nil || seen[0].err != e.Err {
+		t.Errorf("cancelled before the run: observed %+v", seen)
+	}
+	obs = &calls{}
 
 	ctx, cancel = context.WithCancel(context.Background())
 	defer cancel()
@@ -440,20 +449,34 @@ func TestCancellation(t *testing.T) {
 
 	// Cancelled after the call answered, before the check (the attempt
 	// stopped as the answer came in): the call was observed as answered,
-	// and the run ends as a cancellation at the next node, not as a failure
-	// of the analysis.
-	ctx, cancel = context.WithCancel(context.Background())
-	defer cancel()
-	f = fake.New()
-	var answered []error
-	g, err = analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
-		Called: func(_ context.Context, _ provider.Metadata, err error) { answered = append(answered, err); cancel() }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = g.Run(ctx, input(t))
-	if !errors.Is(err, context.Canceled) || errors.As(err, &e) || len(answered) != 1 || answered[0] != nil || len(f.Requests()) != 1 {
-		t.Errorf("cancelled after the answer: %v; observed %v; %d requests", err, answered, len(f.Requests()))
+	// and the check still runs, as it did before the graph: a grounded
+	// answer is the checked analysis, an ungrounded one the run's failure.
+	for name, script := range map[string]func(*fake.Backend){
+		"grounded":   nil,
+		"ungrounded": func(f *fake.Backend) { f.Script(provider.RoleAnalyst, question, invented(t)) },
+	} {
+		ctx, cancel = context.WithCancel(context.Background())
+		defer cancel()
+		f = fake.New()
+		if script != nil {
+			script(f)
+		}
+		var answered []error
+		g, err = analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
+			Called: func(_ context.Context, _ provider.Metadata, err error) { answered = append(answered, err); cancel() }})
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := g.Run(ctx, input(t))
+		if len(answered) != 1 || answered[0] != nil || len(f.Requests()) != 1 || ctx.Err() == nil {
+			t.Errorf("cancelled after the %s answer: observed %v; %d requests", name, answered, len(f.Requests()))
+		}
+		switch {
+		case script == nil && (err != nil || out.Analysis.Baseline == nil || out.Metadata.Provider != "fake"):
+			t.Errorf("cancelled after the grounded answer: %v, want the checked analysis", err)
+		case script != nil && (!errors.As(err, &e) || e.Kind != analysis.Ungrounded || len(e.Issues) == 0 || e.Metadata == nil):
+			t.Errorf("cancelled after the ungrounded answer: %v, want it ungrounded", err)
+		}
 	}
 }
 

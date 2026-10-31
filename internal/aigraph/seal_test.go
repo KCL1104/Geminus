@@ -14,12 +14,21 @@ package aigraph
 //     call: Once is H-057's reviewed repair around a direct call, kept as
 //     the reference its tests and the graphs' parity tests hold the graphs
 //     to; no non-test code uses it, outside internal/ai/repair or in it.
-//   - Nowhere, tests included: Eino's checkpoint store (WithCheckPointStore,
-//     CheckPointStore; the rows are the state, design §6.5), its
-//     process-wide callback handlers (AppendGlobalHandlers,
-//     InitCallbackHandlers; callbacks are attached per run, §6.4), and the
-//     ADK's model retry and failover (ModelRetryConfig, ModelFailoverConfig;
-//     the metered client retries under its own reservation, §6.3).
+//   - Nowhere, tests included: Eino's checkpoint stores (the rows are the
+//     state, design §6.5): a graph's (WithCheckPointStore), an ADK runner's
+//     (RunnerConfig's CheckPointStore field) and the ADK turn loop's
+//     (TurnLoopConfig's Store with its CheckpointID: the turn loop is
+//     refused as a whole, TurnLoopConfig and NewTurnLoop, as Store is too
+//     common a name to refuse; H-061's investigator runs on adk.NewRunner),
+//     the store's own types (CheckPointStore, CheckPointDeleter), the
+//     checkpoint IDs a run loads from and writes to (WithCheckPointID, of
+//     compose and of adk; WithWriteToCheckPointID), a resume from one
+//     (ResumeWithParams) and a stored state's migration
+//     (MigrateCheckpointState); its process-wide callback handlers
+//     (AppendGlobalHandlers, InitCallbackHandlers; callbacks are attached
+//     per run, §6.4); and the ADK's model retry and failover
+//     (ModelRetryConfig, ModelFailoverConfig; the metered client retries
+//     under its own reservation, §6.3).
 //
 // The check reads source (go/ast, no types): every .go file of every
 // package of the module (go list ./...), whatever its build constraints. It
@@ -94,13 +103,27 @@ const (
 // notUsed are the names of Eino's features the design keeps out, refused
 // anywhere, tests included.
 var notUsed = map[string]string{
-	"WithCheckPointStore":  "an Eino checkpoint store: the database rows are the state, no second store (design §6.5, H-061 §5.3)",
-	"CheckPointStore":      "an Eino checkpoint store: the database rows are the state, no second store (design §6.5, H-061 §5.3)",
-	"AppendGlobalHandlers": "process-wide Eino callback handlers: callbacks are attached per run, never globally (design §6.4)",
-	"InitCallbackHandlers": "process-wide Eino callback handlers: callbacks are attached per run, never globally (design §6.4)",
-	"ModelRetryConfig":     "Eino's model retry: the metered client retries under its own reservation (design §6.3, H-061 §5.3)",
-	"ModelFailoverConfig":  "Eino's model failover: the model is the person's choice, checked and metered by the client (design §6.3, H-061 §5.3)",
+	"WithCheckPointStore":     checkpointWhy,
+	"CheckPointStore":         checkpointWhy,
+	"CheckPointDeleter":       checkpointWhy,
+	"TurnLoopConfig":          turnLoopWhy,
+	"NewTurnLoop":             turnLoopWhy,
+	"CheckpointID":            turnLoopWhy,
+	"WithCheckPointID":        "the checkpoint an Eino run loads from and writes to: " + checkpointWhy,
+	"WithWriteToCheckPointID": "the checkpoint an Eino run writes to: " + checkpointWhy,
+	"ResumeWithParams":        "an ADK run resumed from its checkpoint: " + checkpointWhy,
+	"MigrateCheckpointState":  "a stored Eino checkpoint's state: " + checkpointWhy,
+	"AppendGlobalHandlers":    "process-wide Eino callback handlers: callbacks are attached per run, never globally (design §6.4)",
+	"InitCallbackHandlers":    "process-wide Eino callback handlers: callbacks are attached per run, never globally (design §6.4)",
+	"ModelRetryConfig":        "Eino's model retry: the metered client retries under its own reservation (design §6.3, H-061 §5.3)",
+	"ModelFailoverConfig":     "Eino's model failover: the model is the person's choice, checked and metered by the client (design §6.3, H-061 §5.3)",
 }
+
+const (
+	checkpointWhy = "an Eino checkpoint store: the database rows are the state, no second store (design §6.5, H-061 §5.3)"
+	turnLoopWhy   = "the ADK's turn loop, which keeps its turns in a checkpoint store (its Store and CheckpointID): the database rows are the state, " +
+		"no second store (design §6.5, H-061 §5.3; the investigator runs on adk.NewRunner without a store)"
+)
 
 // seal checks files: the names notUsed refuses anywhere, and in non-test
 // code the model methods outside modelCallers (but Once's own call) and any
@@ -369,6 +392,27 @@ func TestTheSealFindsAPlantedName(t *testing.T) {
 			"package investigator\n\nvar zzPlanted = adk.ChatModelAgentConfig{ModelRetryConfig: nil}\n", true, "ModelRetryConfig"},
 		{"the ADK's model failover", "internal/investigator/zz_planted_test.go",
 			"package investigator\n\nvar zzPlanted = adk.ChatModelAgentConfig{ModelFailoverConfig: nil}\n", true, "ModelFailoverConfig"},
+		// E6 review round 1, finding 2: the ADK's other checkpoint store (the
+		// turn loop's Store and CheckpointID) and the checkpoint IDs a run
+		// loads from and writes to.
+		{"a turn loop's checkpoint store", "internal/investigator/zz_planted.go",
+			"package investigator\n\nvar zzPlanted = adk.TurnLoopConfig[string, *schema.Message]{Store: s}\n", true, "TurnLoopConfig"},
+		{"a turn loop", "internal/aigraph/analysis/graph.go",
+			"var zzPlanted = adk.NewTurnLoop[string, *schema.Message]", false, "NewTurnLoop"},
+		{"a turn loop's checkpoint ID", "internal/investigator/zz_planted.go",
+			"package investigator\n\nfunc zzPlanted(c config) string { return c.CheckpointID }\n", true, "CheckpointID"},
+		{"a graph run's checkpoint ID", "internal/aigraph/proposal/proposal.go",
+			"var zzPlanted = compose.WithCheckPointID(\"x\")", false, "WithCheckPointID"},
+		{"an agent run's checkpoint ID in a test", "internal/investigator/zz_planted_test.go",
+			"package investigator\n\nvar zzPlanted = adk.WithCheckPointID(\"x\")\n", true, "WithCheckPointID"},
+		{"a checkpoint to write to", "internal/aigraph/photo/photo.go",
+			"var zzPlanted = compose.WithWriteToCheckPointID(\"x\")", false, "WithWriteToCheckPointID"},
+		{"a runner resumed from a checkpoint", "internal/investigator/zz_planted.go",
+			"package investigator\n\nfunc zzPlanted(ctx context.Context, r *adk.Runner) { r.ResumeWithParams(ctx, \"x\", nil) }\n", true, "ResumeWithParams"},
+		{"a checkpoint store's deleter", "internal/investigator/zz_planted.go",
+			"package investigator\n\nvar zzPlanted adk.CheckPointDeleter\n", true, "CheckPointDeleter"},
+		{"a checkpoint's state migrated", "internal/aigraph/proposal/proposal.go",
+			"var zzPlanted, _ = compose.MigrateCheckpointState(nil, nil, nil)", false, "MigrateCheckpointState"},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			r, err := seal(planted(t, c.path, c.extra, c.add))
@@ -379,6 +423,31 @@ func TestTheSealFindsAPlantedName(t *testing.T) {
 				t.Errorf("found %v, want %s in %s", r.findings, c.want, c.path)
 			}
 		})
+	}
+}
+
+// E6 review round 1, finding 2: the reviewer's plant, an in-memory store
+// handed to the ADK's turn loop to resume turns, is refused for each
+// checkpoint name it uses (the store itself is the field Store, a name the
+// seal cannot refuse alone), in non-test and test code alike.
+func TestTheSealFindsATurnLoopsCheckpointStore(t *testing.T) {
+	const plant = "package investigator\n\nfunc zzPlanted(invID string) any {\n\treturn adk.NewTurnLoop(adk.TurnLoopConfig[string, *schema.Message]{Store: memStore{}, CheckpointID: invID})\n}\n"
+	for _, p := range []string{"internal/aigraph/investigator/zz_planted.go", "internal/aigraph/investigator/zz_planted_test.go"} {
+		r, err := seal(planted(t, p, plant, true))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var names []string
+		for _, f := range r.findings {
+			if !strings.HasPrefix(f.at, p+":") {
+				t.Errorf("a finding outside the plant: %v", f)
+			}
+			names = append(names, f.name)
+		}
+		slices.Sort(names)
+		if want := []string{"CheckpointID", "NewTurnLoop", "TurnLoopConfig"}; !slices.Equal(names, want) {
+			t.Errorf("%s: found %v, want %v", p, names, want)
+		}
 	}
 }
 
@@ -399,6 +468,12 @@ func TestTheSealLetsPass(t *testing.T) {
 			"var zzPlanted sync.Once", false},
 		{"names in a comment and a string", "internal/proposals/generator/generator.go",
 			"// c.GenerateModelProposal(ctx, pc) and compose.WithCheckPointStore(s)\nvar zzPlanted = \"repair.Once AppendGlobalHandlers ModelRetryConfig\"", false},
+		// H-061 §5.3's runner, with no checkpoint store, and a field called
+		// Store on something else (E6 review round 1, finding 2).
+		{"the investigator's runner without a store", "internal/aigraph/investigator/zz_planted.go",
+			"package investigator\n\nfunc zzPlanted(ctx context.Context, a adk.Agent) *adk.Runner {\n\treturn adk.NewRunner(ctx, adk.RunnerConfig{Agent: a, EnableStreaming: false})\n}\n", true},
+		{"a field called Store", "internal/proposals/generator/generator.go",
+			"func zzPlanted(c Config) any { return c.Store }", false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			r, err := seal(planted(t, c.path, c.extra, c.add))

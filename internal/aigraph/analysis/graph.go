@@ -31,11 +31,18 @@
 // comparison and observes each call (Config.Called, its log line).
 //
 // The graph is compiled once (New) and serves concurrent runs; its nodes run
-// one after the other in the caller's goroutine. ctx reaches every node and
-// the call; Eino also stops between nodes once ctx is done. No callback
-// handler is attached, per run or globally (a graph-level handler would see
-// the input and the answer: checks/E1_VALIDATION.md finding 4). A panic in
-// a node is the caller's panic: Run raises it again as a Panic, the node's
+// one after the other in the caller's goroutine. Each step runs under the
+// attempt's own context (its values, its cancellation, its cause and its
+// deadline) and meets a stop itself, as the handler's steps did before the
+// graph: Eino, which would end a run between two nodes once its context is
+// done, runs on one that never is (context.WithoutCancel), so a stopped
+// attempt ends with the failure of the step that saw it (the client refuses
+// a call once the attempt has stopped, and the check of an answer that came
+// before the stop still runs; E6 review round 1, the proposal graph's E3
+// review round 1 pattern). No callback handler is attached, per run or
+// globally (a graph-level handler would see the input and the answer:
+// checks/E1_VALIDATION.md finding 4). A panic in a node is the caller's
+// panic: Run raises it again as a Panic, the node's
 // own value and the stack where the node panicked, which the worker records
 // as when the steps were one function (handler.Reraised): INTERNAL, not
 // retried, logged with that stack.
@@ -49,6 +56,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"time"
 
 	"github.com/cloudwego/eino/compose"
 	"github.com/cloudwego/eino/schema"
@@ -225,11 +233,14 @@ func New(cfg Config) (*Graph, error) {
 }
 
 // Run runs one analysis. Its error is an *Error for every failure the
-// graph classifies; otherwise ctx's end (a cancellation wrapped by Eino) or,
-// for a bug in the graph's wiring, Eino's own error. A node's panic is
-// raised again as a Panic.
+// graph classifies, a stopped attempt's included (the step that saw the
+// stop ends the run with its own failure: a cancelled call is CallFailed
+// with the client's error); otherwise, for a bug in the graph's wiring,
+// Eino's own error. A node's panic is raised again as a Panic.
 func (g *Graph) Run(ctx context.Context, in Input) (Output, error) {
-	out, err := g.r.Invoke(ctx, in)
+	// Eino ends a run between two nodes once its context ends; the steps see
+	// the attempt's themselves (attempt), so the run's own never ends.
+	out, err := g.r.Invoke(context.WithValue(context.WithoutCancel(ctx), attemptKey{}, ctx), in)
 	if err == nil {
 		return out, nil
 	}
@@ -424,9 +435,33 @@ type nodePanic struct{ p Panic }
 
 func (*nodePanic) Error() string { return "analysis: a node panicked" }
 
-// guard turns a panic of fn into a *nodePanic, with the stack of the
-// goroutine that panicked: recover does not unwind it until the deferred
-// call returns.
+// attemptKey holds, in the context Run hands Eino, the attempt's own
+// context (the caller's).
+type attemptKey struct{}
+
+// attempt is a step's context: the node's (its values: Eino's, and below
+// them the attempt's) with the attempt's cancellation and deadline. A value
+// the node's does not hold is the attempt's: the cancellation's own, which
+// keeps context.Cause and the contexts the step derives (the client's call)
+// tied to the attempt's directly. It is the proposal graph's attempt.
+type attempt struct {
+	context.Context // the node's, from Eino: never cancelled
+	of              context.Context
+}
+
+func (c attempt) Deadline() (time.Time, bool) { return c.of.Deadline() }
+func (c attempt) Done() <-chan struct{}       { return c.of.Done() }
+func (c attempt) Err() error                  { return c.of.Err() }
+func (c attempt) Value(key any) any {
+	if v := c.Context.Value(key); v != nil {
+		return v
+	}
+	return c.of.Value(key)
+}
+
+// guard runs fn under the attempt's context and turns a panic of fn into a
+// *nodePanic, with the stack of the goroutine that panicked: recover does
+// not unwind it until the deferred call returns.
 func guard[I, O any](fn func(context.Context, I) (O, error)) func(context.Context, I) (O, error) {
 	return func(ctx context.Context, in I) (out O, err error) {
 		defer func() {
@@ -435,6 +470,9 @@ func guard[I, O any](fn func(context.Context, I) (O, error)) func(context.Contex
 				out, err = zero, &nodePanic{Panic{Value: v, Stack: stack()}}
 			}
 		}()
+		if of, ok := ctx.Value(attemptKey{}).(context.Context); ok {
+			ctx = attempt{Context: ctx, of: of}
+		}
 		return fn(ctx, in)
 	}
 }

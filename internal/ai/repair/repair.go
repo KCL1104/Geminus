@@ -3,11 +3,15 @@
 // refuses the model's first answer for what it says, the model is asked
 // once more, with its own answer and the server's issues, and the server's
 // review of that second answer is the proposal's outcome. Both paths that
-// ask for a proposal run it: the worker's text proposals (the proposal role
-// graph, internal/aigraph/proposal, which internal/proposals/generator runs:
-// Plan and Settle around a second call of its own, H-059) and the photo
-// pipeline (internal/ai/photopipeline, Once, which the live photo smoke
-// runs too).
+// ask for a proposal run it as Plan and Settle around a second call of their
+// own, made through the metered Eino ChatModel (einomodel.Metered, H-059):
+// the worker's text proposals on the proposal role graph
+// (internal/aigraph/proposal, which internal/proposals/generator runs; the
+// live text eval runs it with no repair) and photo proposals on the photo graph
+// (internal/aigraph/photo, which internal/ai/photopipeline runs, for the
+// generator and the live photo smoke). Once, Plan, a direct call and
+// Settle, is H-057's reference for tests only: no production code calls it,
+// and the seal (internal/aigraph/seal_test.go) refuses any non-test use.
 //
 //   - A repair follows an invalid outcome with at least one error, when the
 //     client handed back the model's answer (provider.ProposalResult.Prior:
@@ -28,7 +32,8 @@
 //     with the answer handed back, as for a first call). A second call that
 //     fails otherwise, invalid_output with no answer handed back included,
 //     leaves the first outcome, and the Record says so (Failed).
-//   - At most one: Once never asks a third time.
+//   - At most one: nothing asks a third time (the graphs' repair branches
+//     have no cycle, and Once makes one call).
 //
 // The answers stay in memory: the Record holds the second call's metadata
 // (no prompt, no answer) and what came of it.

@@ -334,7 +334,7 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 	none := provider.AnalysisOutput{}
 	var e *analysis.Error
 	if !errors.As(err, &e) {
-		return none, nil, 0, err // ctx ended between two nodes: the attempt is stopping, the worker records it, or nothing
+		return none, nil, 0, err // Eino's own error (a bug in the graph's wiring): the worker records INTERNAL
 	}
 	switch e.Kind {
 	case analysis.VersionUndecodable:
