@@ -114,9 +114,11 @@ func Issues(o review.Outcome) ([]model.ValidationIssue, int) {
 // client handed back is reviewed (Record.Revised): an invalid_output with
 // none is a failed call.
 //
-// It is Plan, the second call, then Settle; the proposal role graph
-// (internal/aigraph/proposal, H-059) runs the same three as nodes of its
-// own, with the second call made through the metered Eino ChatModel.
+// It is Plan, the second call, then Settle; a role graph that makes the
+// second call through its own node (the proposal graph,
+// internal/aigraph/proposal, and the photo path's graph, H-059) runs the
+// same three steps, with the second call made through the metered Eino
+// ChatModel.
 func Once(ctx context.Context, client provider.LLMProvider, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome,
 	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
 	rc, rec, err := Plan(ctx, first, prior, refused)
@@ -124,12 +126,7 @@ func Once(ctx context.Context, client provider.LLMProvider, first provider.Propo
 		return refused, nil, err
 	}
 	res, err := client.GenerateModelProposal(ctx, rc)
-	meta := res.Metadata
-	rec.Call = &meta
-	if answered != nil {
-		answered(meta, err)
-	}
-	return Settle(ctx, rec, refused, res, err, check)
+	return Settle(ctx, rec, refused, res, err, check, answered)
 }
 
 // Plan is what a repair of refused asks the second time: the follow-up of
@@ -139,7 +136,7 @@ func Once(ctx context.Context, client provider.LLMProvider, first provider.Propo
 // no answer handed back. The error is the follow-up's that could not be
 // built (an *aicontext.Error: the server's own fault), or the attempt's
 // when ctx ended before the second call (the client's cancelled error); no
-// record comes with either.
+// record comes with either, and the outcome stays refused.
 func Plan(ctx context.Context, first provider.ProposalContext, prior provider.PriorAnswer, refused review.Outcome) (provider.ProposalContext, *Record, error) {
 	issues, notListed := Issues(refused)
 	if len(issues) == 0 || !prior.Present() {
@@ -156,13 +153,21 @@ func Plan(ctx context.Context, first provider.ProposalContext, prior provider.Pr
 	return rc, &Record{Issues: len(issues), NotListed: notListed}, nil
 }
 
-// Settle is what came of a repair's second call, res and err, for rec (the
-// record Plan started, its Call set by the caller to the call's metadata)
-// and refused, the first outcome: check's review of a second answer, the
-// client's refusal of a second answer it handed back, or, for a call that
-// failed otherwise, refused itself with the record saying how. The error is
-// the attempt's when ctx ended during the call, or check's.
-func Settle(ctx context.Context, rec *Record, refused review.Outcome, res provider.ProposalResult, err error, check Check) (review.Outcome, *Record, error) {
+// Settle is what came of a repair's second call, res and err as the client
+// returned them for Plan's request, for rec (the record Plan started) and
+// refused, the first outcome (Once's rules: see Once): rec's Call is set to
+// the call's metadata and answered, when set, told of the call's end; then
+// check's review of a second answer, the client's refusal of a second
+// answer it handed back, or, for a call that failed otherwise, refused
+// itself with the record saying how. The error is the attempt's when ctx
+// ended during the call, or check's.
+func Settle(ctx context.Context, rec *Record, refused review.Outcome, res provider.ProposalResult, err error,
+	check Check, answered func(provider.Metadata, error)) (review.Outcome, *Record, error) {
+	meta := res.Metadata
+	rec.Call = &meta
+	if answered != nil {
+		answered(meta, err)
+	}
 	if err != nil {
 		if ctx.Err() != nil {
 			return refused, rec, err

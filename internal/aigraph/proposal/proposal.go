@@ -680,7 +680,9 @@ func (g *Graph) generateAgain(ctx context.Context, f *flow) {
 }
 
 // reviewAgain is what came of the repair (repair.Settle): its answer goes
-// through exactly the first one's checks.
+// through exactly the first one's checks. Hooks.Answered was told of the
+// call in generate_2, so Settle is told of no one (it sets the record's
+// Call to the same metadata generate_2 did).
 func (g *Graph) reviewAgain(ctx context.Context, f *flow) {
 	check := func(out provider.ProposalOutput) (review.Outcome, error) {
 		outcome, err := g.reviewed(f, out)
@@ -692,6 +694,6 @@ func (g *Graph) reviewAgain(ctx context.Context, f *flow) {
 		}
 		return outcome, nil
 	}
-	outcome, rec, err := repair.Settle(ctx, f.rec, f.outcome, f.res2, f.err2, check)
+	outcome, rec, err := repair.Settle(ctx, f.rec, f.outcome, f.res2, f.err2, check, nil)
 	f.outcome, f.rec, f.err = outcome, rec, err
 }
