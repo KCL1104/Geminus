@@ -34,10 +34,11 @@ import (
 // token's shape that no other call of the turn has, and its arguments are
 // one strict JSON object (no duplicate member, valid UTF-8, a number JSON can
 // hold) of at most MaxToolArgumentBytes, valid under the tool's input
-// schema, whose every object refuses members it does not list (closedSchema),
-// so no unknown member gets through. What acts on a call, and whether it may,
-// is the caller's and the server's (H-061: the API carries out an
-// investigator's calls under the person's scope, role and audit). A tool turn
+// schema, whose every object refuses members it does not list and whose
+// every array says what its elements are (closedSchema), so no unknown member
+// gets through. What acts on a call, and whether it may, is the caller's and
+// the server's (H-061: the API carries out an investigator's calls under the
+// person's scope, role and audit). A tool turn
 // goes through the same checks as every call (call): the sealed prompt, the
 // attribution, the approved model, the prompt budget (the tools and the
 // transcript count towards it), the organization's slot, the spend
@@ -91,8 +92,9 @@ type Tool struct {
 	// holding no block.
 	Description string
 	// InputSchema is the tool's arguments: a JSON Schema 2020-12 schema of a
-	// JSON object, whose every object refuses unknown members and which
-	// refers to nothing outside itself (closedSchema).
+	// JSON object, whose every object refuses unknown members, whose every
+	// array says what its elements are (items), and which refers to nothing
+	// outside itself (closedSchema).
 	InputSchema jsontext.Value
 }
 
@@ -526,10 +528,12 @@ const draft2020 = "https://json-schema.org/draft/2020-12/schema"
 
 // closedSchema checks that s (a schema of root, depth levels down) accepts no
 // object with a member it does not list: every schema says what it accepts
-// (saysWhat; the schema true is refused), and every one that may accept an
-// object lists its members and sets additionalProperties to false. It uses
-// only toolSchemaKeywords, refers only within root (#/$defs/...), and is
-// 2020-12 if it names a draft at all.
+// (saysWhat; the schema true is refused), every one that may accept an
+// object lists its members and sets additionalProperties to false, and every
+// one that may accept an array says what its elements are (items: a closed
+// schema, or false after prefixItems). It uses only toolSchemaKeywords,
+// refers only within root (#/$defs/...), and is 2020-12 if it names a draft
+// at all.
 func closedSchema(v any, root map[string]any, depth int) error {
 	fail := func(format string, a ...any) error {
 		return fmt.Errorf("ai provider: a tool's input schema: "+format, a...)
@@ -601,7 +605,13 @@ func closedSchema(v any, root map[string]any, depth int) error {
 			}
 		}
 	}
-	if items, ok := s["items"]; ok {
+	items, hasItems := s["items"]
+	if arrayish(s) && !hasItems {
+		// Without items, every element (after prefixItems' ones) may be any
+		// value, an object with any member included (review round 1, M1).
+		return fail("an array does not say what its elements are")
+	}
+	if hasItems {
 		if err := closedSchema(items, root, depth+1); err != nil {
 			return err
 		}
@@ -630,12 +640,26 @@ func objectish(s map[string]any) bool {
 	if _, ok := s["properties"]; ok {
 		return true
 	}
+	return typeNames(s, "object")
+}
+
+// arrayish reports whether s may accept an array by its own type: its type
+// is "array" or a list naming it, or it has prefixItems.
+func arrayish(s map[string]any) bool {
+	if _, ok := s["prefixItems"]; ok {
+		return true
+	}
+	return typeNames(s, "array")
+}
+
+// typeNames reports whether s's type is name or a list naming it.
+func typeNames(s map[string]any, name string) bool {
 	switch t := s["type"].(type) {
 	case string:
-		return t == "object"
+		return t == name
 	case []any:
 		for _, x := range t {
-			if x == "object" {
+			if x == name {
 				return true
 			}
 		}

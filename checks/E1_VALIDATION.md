@@ -82,3 +82,42 @@ Toolchain: go1.27.3 linux/amd64 (`PATH=~/go/pkg/mod/golang.org/toolchain@v0.0.1-
 - `contentBlock.ID` is read for every Meta answer now (as raw JSON, so nothing that decoded before fails); a malformed ID only fails a tool turn.
 - The fake answers tool turns for every role in development deployments; no code path makes one.
 - `scripts/check-architecture`'s test time is at Go's default timeout under load (finding 6).
+
+## Review round 1
+
+One finding, Medium; fixed. No finding disputed.
+
+### M1: an array schema did not have to say what its elements are
+
+- **Problem.** `closedSchema` walked `items` only when it was present, and `objectish` is false for `type: array`. So `{"type":"array"}`, `{"type":["string","array"]}` and `prefixItems` without `items` passed `CheckTools`, and each element of such an array could be any value, an object with members nobody declared included. A call `{"ids":[{"evil":1,"publish":true}]}` against `{"ids":{"type":"array"}}` came back from `Client.Turn` as a checked call (the test `ToolTurner`, and end to end through the metered Meta adapter with `SetTools`). Meta's `SchemaViolations` did not catch it, since `type` counts as saying what the value is. That broke the slice's claim (§1, AI_SPEC §2) that no unknown member gets through.
+- **Fix** (`internal/ai/provider/tools.go`). A schema that may accept an array (`arrayish`: its type is `"array"` or a list naming it, or it has `prefixItems`) must have `items`, else `invalid_request` before any I/O ("an array does not say what its elements are"). `items` is then checked as before: a closed schema or `false` (`true` and `{}` were already refused). `objectish` and the new `arrayish` share `typeNames`. The comments of `closedSchema`, `Tool.InputSchema` and the package doc say so. AI_SPEC §2's list of what is checked now names the rule.
+- **Stricter, not wider.** A schema whose array is closed only through a sibling in `allOf` (`allOf: [{type: array}, {items: ...}]`) is now refused although JSON Schema would close it. That costs nothing for server-written tool schemas (as with the keyword allowlist). Eino's reflector (`eino-contrib/jsonschema` v1.0.3, `reflect.go` `reflectSliceOrArray`) writes `items` for every slice or array (a `[]byte` is a string), so tools inferred by `utils.InferTool` should still pass. That is read from the source, not tested: no test infers a slice field. `TestWithToolsChecksTheTools` is unchanged and `ok`.
+- **Tests (written first).** `TestTurnRequestsTheClientRefuses` gains "array without items" (the finding's schema), "prefixItems without items", "a type list with array, no items", "an array in a branch, no items" and "array items true". The four new kinds failed before the fix (each reached the backend), and "array items true" was already refused. New `TestArraySchemasSayWhatTheirElementsAre`: five closed array schemas (`items`, a type list with `items`, `prefixItems` with `items: false`, `items` of closed objects, `items: false`) pass `CheckTools`. A valid call of each is handed back, and an element the schema does not take (`{"evil":1,...}`, an extra element after `prefixItems`, a member the item object does not list) is `invalid_output`. `meta.TestTurnRefusedBeforeIO` gains the finding's schema: with the fix reverted it failed ("an array without items: invalid_output", `sent [POST /v1/messages], committed 277500`); with the fix it passes, and nothing is sent or committed.
+
+### Commands and results (round 1)
+
+Same toolchain and environment as §3. No live AI call, no `.env` read, no database used.
+
+| Command | Exit | Result |
+|---|---|---|
+| Tests first: `go test -count=1 -run 'TestTurnRequestsTheClientRefuses\|TestArraySchemasSayWhatTheirElementsAre' ./internal/ai/provider` on the code before the fix | 1 | FAIL as intended: "array without items", "prefixItems without items", "a type list with array, no items" and "an array in a branch, no items" were `invalid_output` from the backend's answer instead of `invalid_request`, and "the backend was asked". `TestArraySchemasSayWhatTheirElementsAre` passed (closed array schemas were already accepted) |
+| The same after the fix (`-v`) | 0 | both `PASS` |
+| `tools.go` fix stashed, `go test -count=1 -run TestTurnRefusedBeforeIO ./internal/ai/provider/meta`; then the fix restored, the same | 1, then 0 | without the fix: `sent [POST /v1/messages], committed 277500`; with it: `ok` |
+| `gofmt -l internal/`, `go build ./...`, `go vet ./internal/ai/... ./internal/aigraph/...` | 0 | clean |
+| `go test -count=1 ./internal/ai/... ./internal/aigraph/... ./internal/proposals/generator/` | 0 | every package `ok`. The request goldens of both adapters are unchanged (no golden file touched) |
+| `make architecture-check` | 0 | `PASS architecture: 103 packages, 40 rules, 16 build configurations` |
+| `make ai-eval` | 0 | TestFakeProviderEval, TestReviewEval, TestAnalystEval PASS; `checks/ai-evals/*.json` unchanged (`git status` clean for them) |
+| `go test -race -count=1 ./internal/ai/provider/... ./internal/aigraph/...` | 0 | all `ok` |
+| `make backend-test` | 2 | gofmt clean, `go vet` clean, `GEMINUS_FULL_DIFFERENTIAL=1 go test`: 87 packages `ok`, among them every touched one; only `scripts/check-architecture` failed, with `panic: test timed out after 10m0s` (finding 6 again; load average about 12). It started before a comment-only reflow in `tools.go`; the touched package was run again after it (`go test -count=1 ./internal/ai/provider`: `ok`) |
+| `GEMINUS_FULL_DIFFERENTIAL=1 go test -count=1 -timeout 45m ./scripts/check-architecture/` on the final tree | 0 | `ok github.com/kcl1104/geminus/scripts/check-architecture 780.256s` (load average 11 to 12) |
+| `make architecture-check` on the final tree | 0 | `PASS architecture: 103 packages, 40 rules, 16 build configurations` |
+| `PATH=.venv/bin:$PATH make spec-check` | 0 | every stage PASS (contracts `PASS_LIMITED_SPEC_CHECKS`, planning, docs `PASS`, SQL inventory, reference math, engine vectors, decisions, TS contracts fresh, hashes, DB tests fresh, deploy) |
+
+### NOT RUN (round 1)
+
+As §4: any live AI call, `govulncheck`, `make backend-race` in full (only the touched packages under `-race`), `make integration-test` / `make db-test` (no DB-backed code changed), `make frontend-test`, `make e2e-test`, `make ai-eval-live`, container builds and staging smoke. An independent review of this round's fix is also NOT RUN.
+
+### PROPOSED and risks (round 1)
+
+- Nothing new to decide. Finding 6 (`-timeout` on `make backend-test`) still stands: the target failed for the same reason again.
+- Risk: a future tool schema that closes an array only through an `allOf` sibling is refused, not accepted. The refusal is loud (`invalid_request` before any I/O, from `WithTools` or `Client.Turn`), so the schema's author would see it at once.

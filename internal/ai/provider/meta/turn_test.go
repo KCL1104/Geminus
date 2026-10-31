@@ -161,6 +161,12 @@ func TestTurnRefusedBeforeIO(t *testing.T) {
 	if _, err := c.Turn(context.Background(), wide); provider.CodeOf(err) != provider.CodeInvalidRequest {
 		t.Errorf("a schema keyword outside the documented limits: %v", err)
 	}
+	// Review round 1 (M1): an array that does not say what its elements are.
+	open := turnContext(t)
+	open.Tools = []provider.Tool{{Name: "pick", InputSchema: jsontext.Value(`{"type":"object","properties":{"ids":{"type":"array"}},"required":["ids"],"additionalProperties":false}`)}}
+	if _, err := c.Turn(context.Background(), open); provider.CodeOf(err) != provider.CodeInvalidRequest {
+		t.Errorf("an array without items: %v", err)
+	}
 	chosen := turnContext(t)
 	chosen.Model = "muse-wonder-1.0"
 	if _, err := c.Turn(context.Background(), chosen); provider.CodeOf(err) != provider.CodeModelNotApproved {

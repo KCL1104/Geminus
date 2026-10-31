@@ -172,6 +172,23 @@ func TestTurnRequestsTheClientRefuses(t *testing.T) {
 		"open array items": func(in *TurnContext) {
 			in.Tools = tool("t", `{"type":"object","properties":{"a":{"type":"array","items":{"properties":{}}}},"additionalProperties":false}`)
 		},
+		// Review round 1 (M1): an array that does not say what its elements
+		// are takes any element, an object with any member included.
+		"array without items": func(in *TurnContext) {
+			in.Tools = tool("t", `{"type":"object","properties":{"ids":{"type":"array"}},"required":["ids"],"additionalProperties":false}`)
+		},
+		"prefixItems without items": func(in *TurnContext) {
+			in.Tools = tool("t", `{"type":"object","properties":{"a":{"type":"array","prefixItems":[{"type":"string"}]}},"additionalProperties":false}`)
+		},
+		"a type list with array, no items": func(in *TurnContext) {
+			in.Tools = tool("t", `{"type":"object","properties":{"a":{"type":["string","array"]}},"additionalProperties":false}`)
+		},
+		"an array in a branch, no items": func(in *TurnContext) {
+			in.Tools = tool("t", `{"type":"object","properties":{"a":{"anyOf":[{"type":"null"},{"type":"array"}]}},"additionalProperties":false}`)
+		},
+		"array items true": func(in *TurnContext) {
+			in.Tools = tool("t", `{"type":"object","properties":{"a":{"type":"array","items":true}},"additionalProperties":false}`)
+		},
 		"a true schema": func(in *TurnContext) {
 			in.Tools = tool("t", `{"type":"object","properties":{"a":true},"additionalProperties":false}`)
 		},
@@ -266,6 +283,44 @@ func TestTurnRequestsTheClientRefuses(t *testing.T) {
 	small := func(budget *Budget) { budget.MaxPromptBytes = len(in.Prompt.System) + len(in.Prompt.User()) + 10 }
 	if _, err := client(t, b, small).Turn(context.Background(), in); CodeOf(err) != CodeContextTooLarge || b.calls.Load() != 0 {
 		t.Errorf("tools over the prompt budget: %v", err)
+	}
+}
+
+// Review round 1 (M1): an array schema that says what its elements are
+// (items, a closed schema; or prefixItems and items false) passes, and an
+// element holding a member nobody declared is refused like any other unknown
+// member: the client never hands such a call back.
+func TestArraySchemasSayWhatTheirElementsAre(t *testing.T) {
+	const evil = `{"ids":[{"evil":1,"publish":true}]}`
+	obj := func(ids string) string {
+		return `{"type":"object","properties":{"ids":` + ids + `},"required":["ids"],"additionalProperties":false}`
+	}
+	cases := map[string]struct{ schema, good, bad string }{
+		"items":                 {obj(`{"type":"array","items":{"type":"string"}}`), `{"ids":["a","b"]}`, evil},
+		"a type list and items": {obj(`{"type":["string","array"],"items":{"type":"string"}}`), `{"ids":"a"}`, evil},
+		"prefixItems and items false": {obj(`{"type":"array","prefixItems":[{"type":"string"}],"items":false}`),
+			`{"ids":["a"]}`, `{"ids":["a",{"evil":1}]}`},
+		"items of closed objects": {obj(`{"type":"array","items":{"type":"object","properties":{"id":{"type":"string"}},` +
+			`"required":["id"],"additionalProperties":false}}`), `{"ids":[{"id":"a"}]}`, `{"ids":[{"id":"a","evil":1}]}`},
+		"items false": {obj(`{"type":"array","items":false}`), `{"ids":[]}`, `{"ids":["a"]}`},
+	}
+	for name, tc := range cases {
+		tools := []Tool{{Name: "pick", Description: "Pick some IDs.", InputSchema: jsontext.Value(tc.schema)}}
+		if err := CheckTools(tools); err != nil {
+			t.Errorf("%s: a closed array schema refused: %v", name, err)
+			continue
+		}
+		in := turnCtx(t)
+		in.Tools = tools
+		b := &turner{accepts: true, respond: calls(call("c1", "pick", tc.good))}
+		if res, err := client(t, b).Turn(context.Background(), in); err != nil || len(res.Calls) != 1 {
+			t.Errorf("%s: a valid call: %+v %v", name, res, err)
+		}
+		b.respond = calls(call("c1", "pick", tc.bad))
+		res, err := client(t, b).Turn(context.Background(), in)
+		if CodeOf(err) != CodeInvalidOutput || len(res.Calls) != 0 {
+			t.Errorf("%s: an element the schema does not take: %+v %v, want invalid_output", name, res, err)
+		}
 	}
 }
 
