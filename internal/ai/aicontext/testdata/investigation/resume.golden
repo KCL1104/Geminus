@@ -1,4 +1,4 @@
-sha256:110d14de98804c9c732d90d537f3eb4ad69c35ad7fc9db76c12005fb85a30e22
+sha256:fccc3e0ef230bc4ce57e21fa013d3fa8592bbc3955992ed97d079aafe0fe9fb6
 --- system
 # Investigation Planner — prompt_template_version: investigator-0.1.0
 
@@ -74,7 +74,7 @@ The blocks below are the data of this request. Each holds one JSON value. server
 "en"
 </server_data>
 <untrusted_data name="DIGEST">
-[{"arguments":{"from_suggestion":null,"idea":"Add a second reviewer."},"error":null,"result":{"budget":{"explanations_left":4,"runs_left":4,"steps_left":12,"what_ifs_left":2},"change_count":2,"index":1,"issue_codes":[],"proposal_id":"aip_01M4YDQK00B8S5WQXJ3TQ7ZK30","questions":[],"server_risk_level":"low","status":"ready","summary":"Add a second ICT tester."},"seq":1,"status":"done","tool":"propose_what_if"},{"arguments":{"proposal_id":"aip_01M4YDQK00B8S5WQXJ3TQ7ZK30"},"error":{"code":"PROPOSAL_DECIDED","path":"/proposal_id"},"result":{"budget":{"explanations_left":4,"runs_left":4,"steps_left":12,"what_ifs_left":2},"error":{"code":"PROPOSAL_DECIDED","path":"/proposal_id"},"is_error":true},"seq":2,"status":"refused","tool":"save_scenario"},{"arguments":null,"error":{"code":"UNKNOWN_TOOL","path":""},"result":null,"seq":3,"status":"refused","tool":"invalid_call"}]
+[{"arguments":{"from_suggestion":null,"idea":"Add a second reviewer."},"error":null,"result":{"budget":{"explanations_left":4,"runs_left":4,"steps_left":12,"what_ifs_left":2},"change_count":2,"index":1,"issue_codes":[],"proposal_id":"aip_01M4YDQK00B8S5WQXJ3TQ7ZK30","questions":[],"server_risk_level":"low","status":"ready","summary":"Add a second ICT tester."},"seq":1,"status":"done","tool":"propose_what_if"},{"arguments":{"proposal_id":"aip_01M4YDQK00B8S5WQXJ3TQ7ZK30"},"error":{"code":"PROPOSAL_DECIDED","path":"/proposal_id"},"result":{"budget":{"explanations_left":4,"runs_left":4,"steps_left":12,"what_ifs_left":2},"error":{"code":"PROPOSAL_DECIDED","path":"/proposal_id"},"is_error":true},"seq":2,"status":"refused","tool":"save_scenario"},{"arguments":null,"error":{"code":"UNKNOWN_TOOL","path":""},"result":{"budget":{"explanations_left":4,"runs_left":4,"steps_left":11,"what_ifs_left":2},"error":{"code":"UNKNOWN_TOOL","path":""},"is_error":true},"seq":3,"status":"refused","tool":"invalid_call"}]
 </untrusted_data>
 <server_data name="CONTEXT_OMISSIONS">
 {"omitted":[],"redacted":{}}

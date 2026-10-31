@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -106,8 +107,15 @@ func args(t *testing.T, m investigator.Mode, a investigator.Arguments) []byte {
 }
 
 // resumeDigest: a ready what-if, a refused save (a person decided it first)
-// and a recorded invalid turn.
+// and a recorded invalid turn, each observed as the ledger holds it before
+// the next step (migration 0019): the invalid turn's result is its error
+// observation.
 func resumeDigest(t *testing.T) []InvestigationStep {
+	invalid, err := investigator.ErrorObservation(investigator.ToolError{Code: investigator.UnknownTool},
+		investigator.Budget{WhatIfsLeft: 2, RunsLeft: 4, ExplanationsLeft: 4, StepsLeft: 11})
+	if err != nil {
+		t.Fatal(err)
+	}
 	return []InvestigationStep{
 		{Seq: 1, Tool: string(investigator.ProposeWhatIf), Status: "done",
 			Arguments:   args(t, investigator.Scenario, investigator.ProposeWhatIfArguments{Idea: "Add a second reviewer."}),
@@ -115,7 +123,7 @@ func resumeDigest(t *testing.T) []InvestigationStep {
 		{Seq: 2, Tool: string(investigator.SaveScenario), Status: "refused",
 			Arguments:   args(t, investigator.Scenario, investigator.SaveScenarioArguments{ProposalID: aipI}),
 			Observation: obs(t, "valid-investigator-observation-error.json"), ErrorCode: "PROPOSAL_DECIDED", ErrorPath: "/proposal_id"},
-		{Seq: 3, Tool: investigator.InvalidCall, Status: "refused", ErrorCode: "UNKNOWN_TOOL"},
+		{Seq: 3, Tool: investigator.InvalidCall, Status: "refused", ErrorCode: "UNKNOWN_TOOL", Observation: invalid},
 	}
 }
 
@@ -192,6 +200,11 @@ func TestInvestigationContext(t *testing.T) {
 	if len(digest) != 3 || digest[0]["tool"] != "propose_what_if" || digest[1]["status"] != "refused" || digest[2]["tool"] != "invalid_call" ||
 		digest[2]["arguments"] != nil || digest[1]["error"].(map[string]any)["code"] != "PROPOSAL_DECIDED" {
 		t.Errorf("digest %v", digest)
+	}
+	// The invalid turn's result is the error it was shown, with the budget.
+	if res, ok := digest[2]["result"].(map[string]any); !ok || res["is_error"] != true || res["error"].(map[string]any)["code"] != "UNKNOWN_TOOL" ||
+		res["budget"].(map[string]any)["steps_left"] != float64(11) {
+		t.Errorf("the invalid turn's result %v", digest[2]["result"])
 	}
 	if !strings.Contains(string(blocks(t, p4)["DIGEST"].Content), aipI) {
 		t.Error("the investigation's own proposal ID was redacted")
@@ -277,6 +290,148 @@ func TestInvestigationRedaction(t *testing.T) {
 		if p.Disclosure.Redacted[kind] == 0 {
 			t.Errorf("no %s redaction counted: %v", kind, p.Disclosure.Redacted)
 		}
+	}
+}
+
+// leakyResult is a ready proposal's result whose AI text holds a credential,
+// URLs, e-mail and IP addresses, another server ID and a bidirectional
+// override, around the investigation's own proposal ID.
+func leakyResult(t *testing.T) []byte {
+	t.Helper()
+	const key = "sk-ant-api03-SENTINELKEYabcdefghijklmnop"
+	summary := `{"proposal_id":"` + aipI + `","index":1,"status":"ready","summary":"Copied from https://evil.example.com/p?token=abcdefghij and ` +
+		simI + ` (` + key + `), mail ops@example.com \u202Edone","change_count":1,"server_risk_level":"low","questions":["ask 10.0.0.7?"],"issue_codes":[],` +
+		`"budget":{"what_ifs_left":2,"runs_left":4,"explanations_left":4,"steps_left":13}}`
+	o, err := canonical([]byte(summary))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return o
+}
+
+var replayLeaks = []string{"sk-ant-api03-SENTINELKEY", "ops@example.com", "evil.example.com", "10.0.0.7", "\u202E", `\u202e`, `\u202E`, simI}
+
+// A replayed result (H-061 §5.4, TranscriptReplay) is the digest's result of
+// the same step: redacted and bounded as it, the investigation's own IDs
+// kept whole; anything else is refused.
+func TestInvestigationResult(t *testing.T) {
+	in := withLeft(invInput(t), 1)
+	o := leakyResult(t)
+	got, err := InvestigationResult(in, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range replayLeaks {
+		if strings.Contains(string(got), leak) {
+			t.Errorf("%q in the replayed result", leak)
+		}
+	}
+	if !strings.Contains(string(got), `"proposal_id":"`+aipI+`"`) || !strings.Contains(string(got), "[REDACTED:credential]") {
+		t.Errorf("the replayed result %s", got)
+	}
+	in.Digest = []InvestigationStep{{Seq: 1, Tool: string(investigator.ProposeWhatIf), Status: "done",
+		Arguments: args(t, investigator.Scenario, investigator.ProposeWhatIfArguments{Idea: "Add a second reviewer."}), Observation: o}}
+	p, err := Investigation(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var digest []map[string]any
+	decode(t, blocks(t, p)["DIGEST"].Content, &digest)
+	want, _ := json.Marshal(digest[0]["result"], json.Deterministic(true))
+	if string(got) != string(want) {
+		t.Errorf("the replayed result is not the digest's:\n%s\n%s", got, want)
+	}
+	// Long strings are cut to the digest's bound; a result that cannot fit
+	// a digest entry, one that is not a JSON object, or no base model, is
+	// refused.
+	long := map[string]any{"summary": strings.Repeat("a", 3000)}
+	data, _ := json.Marshal(long)
+	if got, err := InvestigationResult(in, data); err != nil || !strings.Contains(string(got), "…[truncated]") {
+		t.Errorf("a long string: %s %v", got, err)
+	}
+	huge := map[string]any{}
+	for i := range 200 {
+		huge[fmt.Sprintf("m%03d", i)] = strings.Repeat("b", 120)
+	}
+	data, _ = json.Marshal(huge)
+	noIR := in
+	noIR.Version.IR = nil
+	for name, c := range map[string]struct {
+		in   InvestigationInput
+		obs  []byte
+		code Code
+		path string
+	}{
+		"too large":       {in, data, TooLarge, "/observation"},
+		"not JSON":        {in, []byte(`{"summary":`), InvalidInput, "/observation"},
+		"not an object":   {in, []byte(`["ready"]`), InvalidInput, "/observation"},
+		"a duplicate key": {in, []byte(`{"status":"ready","status":"failed"}`), InvalidInput, "/observation"},
+		"no base model":   {noIR, o, InvalidInput, "/version/ir"},
+	} {
+		_, err := InvestigationResult(c.in, c.obs)
+		var e *Error
+		if !errors.As(err, &e) || e.Code != c.code || e.Path != c.path {
+			t.Errorf("%s: %v, want %s at %q", name, err, c.code, c.path)
+		}
+	}
+}
+
+// The redaction test of a replay (INVESTIGATOR_TRANSCRIPT=replay): a step's
+// result, replayed in the next turn's tool_result, is redacted as the
+// digest redacts it; none of the credential, URL, e-mail or IP address,
+// other server ID or invisible character reaches the planner turn, and the
+// investigation's own proposal ID is kept for its next call.
+func TestInvestigationRedactionReplay(t *testing.T) {
+	in := invInput(t)
+	brief := func(ledger []investigator.LedgerStep) (provider.Prompt, error) {
+		b := withLeft(in, len(ledger))
+		for _, s := range ledger {
+			d := InvestigationStep{Seq: s.Seq, Tool: s.Tool, Arguments: s.Arguments, Status: string(s.Status), Observation: s.Observation}
+			if s.Error != nil {
+				d.ErrorCode, d.ErrorPath = string(s.Error.Code), s.Error.Path
+			}
+			b.Digest = append(b.Digest, d)
+		}
+		return Investigation(b)
+	}
+	result := func(o []byte) (jsontext.Value, error) { return InvestigationResult(in, o) }
+	tr, err := investigator.NewTranscript(investigator.TranscriptReplay, investigator.Scenario, brief, result, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	full := investigator.Budget{WhatIfsLeft: 3, RunsLeft: 4, ExplanationsLeft: 4, StepsLeft: 14}
+	if _, err := tr.Next(orgA, provider.Attribution{TargetType: provider.PlannerTarget, TargetID: invA}, "muse-spark-1.3", full); err != nil {
+		t.Fatal(err)
+	}
+	a := args(t, investigator.Scenario, investigator.ProposeWhatIfArguments{Idea: "Add a second reviewer."})
+	res := provider.PlanResult{Call: provider.ToolCall{ID: "t1", Name: string(investigator.ProposeWhatIf), Input: jsontext.Value(a)}}
+	o := leakyResult(t)
+	if err := tr.Record(res, investigator.LedgerStep{Seq: 1, Tool: string(investigator.ProposeWhatIf), Arguments: a,
+		Status: investigator.StepDone, Observation: o}); err != nil {
+		t.Fatal(err)
+	}
+	left := full
+	left.WhatIfsLeft, left.StepsLeft = 2, 13
+	pc, err := tr.Next(orgA, provider.Attribution{TargetType: provider.PlannerTarget, TargetID: invA}, "muse-spark-1.3", left)
+	if err != nil || len(pc.Steps) != 1 || len(pc.Steps[0].Results) != 1 {
+		t.Fatalf("the replayed turn: %v %+v", err, pc.Steps)
+	}
+	content := string(pc.Steps[0].Results[0].Content)
+	for _, leak := range replayLeaks {
+		if strings.Contains(content, leak) {
+			t.Errorf("%q reached the replayed tool_result", leak)
+		}
+	}
+	if !strings.Contains(content, `"proposal_id":"`+aipI+`"`) {
+		t.Error("the investigation's own proposal ID was redacted")
+	}
+	// The ledger mirror keeps the result as stored: the redaction is what
+	// the planner is sent, never a change to the step.
+	if got := tr.Ledger(); len(got) != 1 || string(got[0].Observation) != string(o) {
+		t.Error("the stored result changed")
+	}
+	if want, _ := InvestigationResult(in, o); content != string(want) {
+		t.Errorf("the replayed result is not the context's: %s", content)
 	}
 }
 

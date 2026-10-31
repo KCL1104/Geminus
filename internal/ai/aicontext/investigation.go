@@ -129,6 +129,10 @@ const (
 	maxSeeds            = 10
 )
 
+// resultBounds are the string bounds a digest entry, or a replayed result,
+// is cut to in turn until it fits maxDigestEntryBytes.
+var resultBounds = []int{maxStringRunes, 500, 100}
+
 // plannerRulesVersion names the server rules of the planner's system text.
 const plannerRulesVersion = "planner-rules-1"
 
@@ -371,7 +375,7 @@ func digestEntry(s InvestigationStep, z *sanitizer, om *omissions) (any, error) 
 	if s.ErrorCode != "" {
 		stepErr = map[string]any{"code": s.ErrorCode, "path": s.ErrorPath}
 	}
-	for _, bound := range []int{maxStringRunes, 500, 100} {
+	for _, bound := range resultBounds {
 		// Each attempt counts its own redactions; only the one kept counts.
 		try := newSanitizer(maxStringRunes)
 		try.ids = z.ids
@@ -392,6 +396,41 @@ func digestEntry(s InvestigationStep, z *sanitizer, om *omissions) (any, error) 
 		}
 	}
 	return nil, fmt.Errorf("a step larger than its bound")
+}
+
+// InvestigationResult is a step's stored result as a replayed planner
+// turn's tool_result shows it (H-061 §5.4, investigator.TranscriptReplay):
+// sanitized as the digest shows the same step's result (Investigation), the
+// investigation's own whole-value IDs kept, every other string redacted
+// (credentials, URLs, e-mail and IP addresses, other server IDs, invisible
+// characters) and cut to its bound, the base model's long entity IDs exempt
+// as in the brief; bounded to a digest entry, by cutting its strings
+// further when needed. in is the brief's input (its base model names the
+// exempt IDs). A result that is not one JSON object, or that no bound
+// fits, is refused.
+func InvestigationResult(in InvestigationInput, observation []byte) (jsontext.Value, error) {
+	if in.Version.IR == nil {
+		return nil, fail(InvalidInput, "/version/ir")
+	}
+	var result any
+	if err := json.Unmarshal(observation, &result); err != nil {
+		return nil, &Error{Code: InvalidInput, Path: "/observation", cause: err}
+	}
+	if _, ok := result.(map[string]any); !ok {
+		return nil, fail(InvalidInput, "/observation")
+	}
+	z := newSanitizer(maxStringRunes)
+	z.exempt(modelIDs(in.Version.IR))
+	for _, bound := range resultBounds {
+		data, err := json.Marshal(keepOwnIDs(result, z, bound), json.Deterministic(true))
+		if err != nil {
+			return nil, &Error{Code: InvalidInput, Path: "/observation", cause: err}
+		}
+		if len(data) <= maxDigestEntryBytes {
+			return data, nil
+		}
+	}
+	return nil, fail(TooLarge, "/observation")
 }
 
 // keepOwnIDs sanitizes every string of v to bound, but an ID of the

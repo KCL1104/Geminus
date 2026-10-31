@@ -225,6 +225,14 @@ func TestInvestigatorEnvironment(t *testing.T) {
 		if codeOf(s) != step.code || len(s.Observation) == 0 {
 			t.Errorf("%s: %q, want %q", step.name, codeOf(s), step.code)
 		}
+		// A refusal's result is the registry's error observation, with the
+		// budget after the step: what the worker writes (H-061 §5.6).
+		if s.Error != nil {
+			want, err := investigator.ErrorObservation(*s.Error, e.budget())
+			if err != nil || !bytes.Equal(s.Observation, want) {
+				t.Errorf("%s: the refusal's result %s, want %s (%v)", step.name, s.Observation, want, err)
+			}
+		}
 	}
 	if o.Forbidden != 0 || slices.Contains(o.Failures, "fixture_invalid") {
 		t.Errorf("forbidden %d failures %v", o.Forbidden, o.Failures)

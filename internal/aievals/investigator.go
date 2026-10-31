@@ -334,7 +334,10 @@ func runInvestigation(ctx context.Context, cfg InvestigatorConfig, c Investigato
 		b.Digest, b.Left = BriefSteps(ledger), aicontext.InvestigationBudget(env.budget())
 		return aicontext.Investigation(b)
 	}
-	tr, err := investigator.NewTranscript(cfg.Transcript, c.Mode, brief, nil)
+	result := func(observation []byte) (jsontext.Value, error) {
+		return aicontext.InvestigationResult(in, observation)
+	}
+	tr, err := investigator.NewTranscript(cfg.Transcript, c.Mode, brief, result, nil)
 	if err != nil {
 		return o, err
 	}
@@ -382,13 +385,21 @@ func runInvestigation(ctx context.Context, cfg InvestigatorConfig, c Investigato
 				if res.Invalid.Kind == provider.InvalidTruncated {
 					o.Truncated++
 				}
-				step := investigator.InvalidStep(env.steps+1, *res.Invalid)
+				// A recorded one is the worker's refused invalid_call step,
+				// observed before the next turn (H-061 §5.6, migration 0019).
+				var step *investigator.LedgerStep
+				if res.Invalid.Recorded() {
+					seq := env.record()
+					var serr error
+					if step, serr = investigator.InvalidStep(seq, *res.Invalid, env.budget()); serr != nil {
+						return o, serr
+					}
+				}
 				if err := tr.Invalid(step); err != nil {
 					return o, err
 				}
 				invalidRow++
 				if step != nil {
-					env.record(*step)
 					o.Calls = append(o.Calls, CallRecord{Seq: step.Seq, Tool: step.Tool, Status: string(step.Status), Code: string(step.Error.Code)})
 					o.RefusedSteps++
 					refusedRow++
@@ -623,8 +634,11 @@ func (e *env) budget() investigator.Budget {
 }
 
 // record counts a step the environment did not carry out (a recorded
-// invalid turn).
-func (e *env) record(investigator.LedgerStep) { e.steps++ }
+// invalid turn) and returns its seq.
+func (e *env) record() int {
+	e.steps++
+	return e.steps
+}
 
 // take is the next recorded result of kind, decoded, or false when the
 // case recorded no more.
@@ -794,9 +808,9 @@ func (e *env) refuse(step investigator.LedgerStep, code investigator.Code, path 
 		step.Status = investigator.StepFailed
 	}
 	step.Error = &investigator.ToolError{Code: code, Path: path}
-	data, _ := json.Marshal(map[string]any{"is_error": true, "error": map[string]any{"code": string(code), "path": path}, "budget": e.budget()},
-		json.Deterministic(true))
-	step.Observation = data
+	// The worker's error observation (H-061 §5.6); a code or budget it
+	// refuses is the environment's fault, and the step has none.
+	step.Observation, _ = investigator.ErrorObservation(*step.Error, e.budget())
 	return step
 }
 
