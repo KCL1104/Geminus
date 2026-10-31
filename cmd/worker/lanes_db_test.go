@@ -1,14 +1,17 @@
 package main
 
-// DB-backed tests of WORKER_LANES (H-056 design §9, W1) through run, as
-// the plain worker login on the disposable database: the two lanes claim
-// only their own types, a simulation does not wait for a long job of
-// another type, a stop drains both lanes, a lane's failure stops the
-// worker loudly, and single mode keeps its one loop under WORKER_ID.
+// DB-backed tests of WORKER_LANES (H-056 design §9, W1) and
+// WORKER_REST_LANES through run, as the plain worker login on the
+// disposable database: the lanes claim only their own types, a simulation
+// does not wait for a long job of another type, two rest lanes run two
+// long jobs at once and claim no job twice, a stop drains every lane, a
+// lane's failure stops the worker loudly, and single mode keeps its one
+// loop under WORKER_ID.
 
 import (
 	"context"
 	"encoding/json/v2"
+	"maps"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -40,7 +43,7 @@ type laneEnv struct {
 	org     dbtest.Org
 	runs    *runs.Service
 	version string
-	getenv  func(lanes string) func(string) string
+	getenv  func(lanes string, kv ...string) func(string) string
 }
 
 // laneSetup provisions an organization with an owner and an editor and a
@@ -57,8 +60,8 @@ func laneSetup(t *testing.T) *laneEnv {
 	api := dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 4, true)
 	workerURL := dbtest.LoginURL(t, dbtest.WorkerLogin)
 	e := &laneEnv{pool: admin, admin: postgres.OpenPool(admin), org: org, runs: &runs.Service{DB: tenant.New(api), Packs: served},
-		getenv: func(lanes string) func(string) string {
-			return with("DATABASE_URL", workerURL, "WORKER_ORGANIZATION_IDS", org.ID, "WORKER_LANES", lanes)
+		getenv: func(lanes string, kv ...string) func(string) string {
+			return with(append([]string{"DATABASE_URL", workerURL, "WORKER_ORGANIZATION_IDS", org.ID, "WORKER_LANES", lanes}, kv...)...)
 		}}
 	var ir map[string]any
 	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "golden-models", "default-delivery.json")), &ir); err != nil {
@@ -121,11 +124,18 @@ func (e *laneEnv) simulation(t *testing.T) string {
 // import; it returns the job's ID.
 func (e *laneEnv) profile(t *testing.T) string {
 	t.Helper()
+	return e.profileAs(t, ids.New("job"))
+}
+
+// profileAs is profile with the job's ID chosen by the caller, so a
+// handler can know the job before any lane can claim it.
+func (e *laneEnv) profileAs(t *testing.T, id string) string {
+	t.Helper()
 	imp := dbtest.NewImport(t, e.pool, e.org)
 	var j jobs.Job
 	if err := e.admin.Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
 		var err error
-		j, err = jobs.Enqueue(ctx, tx, jobs.New{ID: ids.New("job"), OrganizationID: e.org.ID, Type: jobs.ImportProfile,
+		j, err = jobs.Enqueue(ctx, tx, jobs.New{ID: id, OrganizationID: e.org.ID, Type: jobs.ImportProfile,
 			Resource: jobs.Resource{ImportID: imp}, Payload: map[string]any{"import_id": imp, "request_id": ids.New("req")}}, jobs.DefaultPolicy)
 		return err
 	}); err != nil {
@@ -340,6 +350,159 @@ func TestALanesPanicStopsTheWorker(t *testing.T) {
 	line := laneReport(t, logs.String())
 	if line["worker_id"] != "worker-0:sim" || line["code"] != "WORKER_LANE_PANICKED" || line["panic"] != "lane panicked with a string" {
 		t.Errorf("the report: %v", line)
+	}
+}
+
+// WORKER_REST_LANES=2 (after H-065's finding that a Muse Wonder proposal
+// holds a rest lane for up to 30 minutes): two long jobs of the rest lanes'
+// types run at once, one in each rest lane, while a third job, a
+// simulation, runs to its end in the sim lane; a further job of the rest
+// lanes' types waits only until a rest lane is free, and then runs there
+// while the other long job goes on. No job is claimed twice (jobs.Claim's
+// FOR UPDATE SKIP LOCKED and the lease fence, as between two workers). A
+// stop drains every lane: each attempt in flight is recorded as
+// WORKER_STOPPED, and the worker exits 0.
+func TestTwoRestLanesRunTwoLongJobsAtOnce(t *testing.T) {
+	e := laneSetup(t)
+	long1, long2 := e.profile(t), e.profile(t)
+	var mu sync.Mutex
+	seen := map[string]int{}                                        // the claims of each job (a simulation's by its run's ID)
+	short := map[string]bool{}                                      // the jobs that end at once; every other import job is long
+	release := map[string]chan struct{}{long1: make(chan struct{})} // a long job without one runs until the stop
+	claims := make(chan jobs.Job, 16)
+	claim := func(j jobs.Job) (bool, chan struct{}) {
+		mu.Lock()
+		key := j.ID
+		if j.Resource.SimulationRunID != "" {
+			key = j.Resource.SimulationRunID
+		}
+		seen[key]++
+		isShort, released := short[j.ID], release[j.ID]
+		mu.Unlock()
+		claims <- j
+		return isShort, released
+	}
+	hs := map[jobs.Type]handler.Handler{
+		jobs.Simulation: handler.Func(func(ctx context.Context, r handler.Run) error {
+			claim(r.Job())
+			return &jobs.Failure{Code: "TEST_SIMULATION_ENDED", Message: "the test ended this run"}
+		}),
+		jobs.ImportProfile: handler.Func(func(ctx context.Context, r handler.Run) error {
+			isShort, released := claim(r.Job())
+			if isShort {
+				return &jobs.Failure{Code: "TEST_ENDED", Message: "the test ended this job"}
+			}
+			select {
+			case <-released: // nil: held until the stop
+				return &jobs.Failure{Code: "TEST_LONG_ENDED", Message: "the test ended this long job"}
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}),
+	}
+	var logs syncBuffer
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	done := make(chan int, 1)
+	go func() { done <- run(ctx, e.getenv("split", "WORKER_REST_LANES", "2"), &logs, fixed(hs)) }()
+
+	// Both long jobs are in flight at once, one in each rest lane.
+	got := claimed(t, claims, done, &logs, long1, long2)
+	held := map[string]string{long1: got[long1].LockedBy, long2: got[long2].LockedBy}
+	if lanes := slices.Sorted(maps.Values(held)); !slices.Equal(lanes, []string{"worker-0:rest", "worker-0:rest2"}) {
+		t.Fatalf("the long jobs are held by %v", held)
+	}
+	stillRunning := func(when string, ids ...string) {
+		t.Helper()
+		for _, id := range ids {
+			if j := e.job(t, id); j != (stored{status: "running", attempt: 1, lockedBy: held[id]}) {
+				t.Errorf("%s, %s: %+v", when, id, j)
+			}
+		}
+	}
+	stillRunning("both rest lanes busy", long1, long2)
+
+	// A third job, a simulation, runs to its end meanwhile, in the sim lane.
+	sim := e.simulation(t)
+	if by := claimed(t, claims, done, &logs, sim)[sim].LockedBy; by != "worker-0:sim" {
+		t.Errorf("the simulation is held by %q", by)
+	}
+	until(t, &logs, "the simulation ends", func() bool { return e.runJob(t, sim).status == "failed" })
+	if j := e.runJob(t, sim); j != (stored{status: "failed", attempt: 1, code: "TEST_SIMULATION_ENDED"}) {
+		t.Errorf("the simulation: %+v", j)
+	}
+	stillRunning("after the simulation", long1, long2)
+
+	// A further import job waits while both rest lanes are busy (the idle
+	// sim lane never takes it, nor does a third rest lane: there is none)...
+	waiting := ids.New("job")
+	mu.Lock()
+	short[waiting] = true
+	mu.Unlock()
+	e.profileAs(t, waiting)
+	time.Sleep(2500 * time.Millisecond) // more than two of an idle lane's passes (idle = 1 s)
+	if j := e.job(t, waiting); j != (stored{status: "queued"}) {
+		t.Errorf("a job claimed while both rest lanes were busy: %+v", j)
+	}
+	// ...and runs as soon as one is free, in that lane, while the other
+	// long job goes on.
+	close(release[long1])
+	if by := claimed(t, claims, done, &logs, waiting)[waiting].LockedBy; by != held[long1] {
+		t.Errorf("the waiting job is held by %q, the freed lane is %q", by, held[long1])
+	}
+	until(t, &logs, "the waiting job ends", func() bool { return e.job(t, waiting).status == "failed" })
+	if j := e.job(t, waiting); j != (stored{status: "failed", attempt: 1, code: "TEST_ENDED"}) {
+		t.Errorf("the waiting job: %+v", j)
+	}
+	if j := e.job(t, long1); j != (stored{status: "failed", attempt: 1, code: "TEST_LONG_ENDED"}) {
+		t.Errorf("the released long job: %+v", j)
+	}
+	stillRunning("after the waiting job", long2)
+
+	// The freed lane takes the next long job: at the stop, every rest lane
+	// holds one.
+	long3 := e.profile(t)
+	if by := claimed(t, claims, done, &logs, long3)[long3].LockedBy; by != held[long1] {
+		t.Errorf("the third long job is held by %q, the free lane is %q", by, held[long1])
+	}
+	cancel()
+	if code := exited(t, done, &logs); code != 0 {
+		t.Fatalf("exit = %d: %s", code, logs.String())
+	}
+	stopped := stored{status: "queued", attempt: 1, code: "WORKER_STOPPED"}
+	for name, id := range map[string]string{"the long job held to the stop": long2, "the third long job": long3} {
+		if j := e.job(t, id); j != stopped {
+			t.Errorf("%s after the stop: %+v", name, j)
+		}
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, id := range []string{long1, long2, sim, waiting, long3} {
+		if seen[id] != 1 {
+			t.Errorf("%s was claimed %d times", id, seen[id])
+		}
+	}
+	if len(seen) != 5 {
+		t.Errorf("claims %v", seen)
+	}
+	out := logs.String()
+	if got := runningIDs(t, out); !slices.Equal(got, []string{"worker-0:sim", "worker-0:rest", "worker-0:rest2"}) || !strings.Contains(out, `"msg":"stopped"`) {
+		t.Errorf("running as %v: %s", got, out)
+	}
+	if strings.Contains(out, "WORKER_LANE_") {
+		t.Errorf("a stop was reported as a lane failure: %s", out)
+	}
+}
+
+// until waits up to 20 s for cond, failing the test with what it waited for.
+func until(t *testing.T, logs *syncBuffer, what string, cond func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for !cond() {
+		if time.Now().After(deadline) {
+			t.Fatalf("waited 20 s for %s: %s", what, logs.String())
+		}
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 

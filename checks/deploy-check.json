@@ -51,7 +51,7 @@
         ]
       },
       "worker": {
-        "variables": 26,
+        "variables": 27,
         "secrets": [
           "GEMINUS_ANTHROPIC_API_KEY_A",
           "GEMINUS_ANTHROPIC_API_KEY_B",
@@ -101,7 +101,7 @@
     "binary_sha256": "2bc2ef7c1ab3c340a50bebb2c6bfd9692ea23dfee539bf7a2e1aac3debb3491c"
   },
   "runbook": {
-    "variables_named": 69
+    "variables_named": 70
   },
   "code_variables": [
     "AI_API_KEY",
@@ -172,7 +172,8 @@
     "SESSION_KEYS",
     "WORKER_ID",
     "WORKER_LANES",
-    "WORKER_ORGANIZATION_IDS"
+    "WORKER_ORGANIZATION_IDS",
+    "WORKER_REST_LANES"
   ],
   "container_build": "NOT_RUN_HERE (make build-containers)",
   "container_scan": "NOT_RUN (no scanner chosen)"

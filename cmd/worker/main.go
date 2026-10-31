@@ -3,8 +3,8 @@
 // it validates configuration, connects to PostgreSQL as the worker runtime
 // login (refusing an unsafe one) and runs internal/worker's loop over the
 // deployment's organizations until SIGINT or SIGTERM; with
-// WORKER_LANES=split, two loops: one for simulations, one for every other
-// type (lanes.go).
+// WORKER_LANES=split, one loop for simulations and WORKER_REST_LANES loops
+// (1 by default) for every other type (lanes.go).
 //
 // The handlers this build registers: simulation runs (T-023,
 // internal/runs/runner), import profiling (T-016, internal/import/profiler),
@@ -67,7 +67,7 @@ const (
 	exitNotImplemented = 2
 	exitDatabase       = 3
 	// exitLane: with WORKER_LANES=split, a lane's loop panicked or ended
-	// while the worker ran; the other lane was stopped and drained first.
+	// while the worker ran; the other lanes were stopped and drained first.
 	exitLane = 4
 )
 
@@ -388,6 +388,12 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
 	}
+	// No more rest lanes than the AI calls an organization may have in
+	// flight in this process: the rest lanes share the AI clients (lanes.go).
+	if err := checkRestLanes(wcfg, aiBudget(ai.Budget).MaxConcurrentPerOrganization); err != nil {
+		log.Error("invalid configuration", "error", err.Error())
+		return exitConfig
+	}
 	// The whole configuration is checked before anything else: the allowlist
 	// (workerscope checks it without a pool) and the connection string as
 	// pgx reads it, which no connection is made for yet.
@@ -450,8 +456,9 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		}
 	}
 	// One loop per lane (WORKER_LANES; single: one, under WORKER_ID, with
-	// every handler), all built before the database is checked.
-	lanes, err := plan(wcfg.Lanes, wcfg.ID, handlers)
+	// every handler; split: the sim lane and WORKER_REST_LANES rest lanes),
+	// all built before the database is checked.
+	lanes, err := plan(wcfg, handlers)
 	if err != nil {
 		log.Error("invalid configuration", "error", err.Error())
 		return exitConfig
