@@ -348,13 +348,16 @@ WITH cols AS (
     ('dataset_id','ds_id'),('dataset_version_id','dsv_id'),('parent_dataset_version_id','dsv_id'),
     ('import_id','imp_id'),('source_import_id','imp_id'),('proposal_id','aip_id'),('source_proposal_id','aip_id'),('ai_proposal_id','aip_id'),
     ('scenario_id','scn_id'),('run_id','sim_id'),('simulation_run_id','sim_id'),('baseline_run_id','sim_id'),('ai_analysis_id','ana_id'),
-    ('request_id','req_id'),('trace_artifact_id','art_id'),('created_by','usr_id'),('updated_by','usr_id'),('decided_by','usr_id')
+    ('request_id','req_id'),('trace_artifact_id','art_id'),('created_by','usr_id'),('updated_by','usr_id'),('decided_by','usr_id'),
+    -- H-061 A3 (0019): investigations, their ledger and the AI's labels
+    ('investigation_id','inv_id'),('source_analysis_id','ana_id'),('analysis_id','ana_id'),('job_id','job_id'),
+    ('ai_edit_proposal_id','aip_id')
   ) AS m(column_name, domain) ON m.column_name=c.column_name
   LEFT JOIN (VALUES
     ('users','usr_id'),('organizations','org_id'),('projects','prj_id'),('models','mdl_id'),('model_versions','mv_id'),
     ('datasets','ds_id'),('dataset_versions','dsv_id'),('imports','imp_id'),('ai_proposals','aip_id'),('scenarios','scn_id'),
     ('simulation_runs','sim_id'),('ai_analyses','ana_id'),('jobs','job_id'),('audit_events','aud_id'),
-    ('ai_spend_reservations','asr_id')
+    ('ai_spend_reservations','asr_id'),('investigations','inv_id')
   ) AS p(table_name, domain) ON p.table_name=c.table_name
 )
 SELECT pg_temp.check(count(*)=0, 'ID columns without their D-001 domain: ' ||

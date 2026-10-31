@@ -1,0 +1,12 @@
+{
+  "base_version_id": "mv_01M4YDQK00FRYWV7GS7X1QCXZR",
+  "mode": "scenario",
+  "intent": "Find a change that lowers the median lead time without a new line.",
+  "output_locale": "en",
+  "research": false,
+  "model": "muse-spark-1.3",
+  "planner_model": "muse-spark-1.3",
+  "objective": {
+    "metric_path": "/metrics/lead_time_minutes/p50"
+  }
+}

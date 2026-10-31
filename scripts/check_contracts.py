@@ -236,6 +236,29 @@ def main() -> dict[str, Any]:
                         assert ref.startswith('../schemas/'),(method,path,code,ref)
                         errors=list(validator(ref[len('../'):]).iter_errors(example['value']))
                         assert not errors,(method,path,code,name,[e.message for e in errors])
+    # H-061 A2 review round 1: these examples are copies of validated fixtures,
+    # so a fixture that changes without its example (or the reverse) fails here.
+    copies={('createInvestigation','request','what_ifs'):'valid-investigation-request.json',
+            ('createInvestigation','request','edit'):'valid-investigation-request-edit.json',
+            ('createInvestigation','request','from_analysis'):'valid-investigation-request-from-analysis.json',
+            ('createInvestigation','202','accepted'):'valid-investigation-accepted.json',
+            ('listInvestigations','200','page'):'valid-investigations-page.json',
+            ('getInvestigation','200','running'):'valid-investigation-running.json',
+            ('getInvestigation','200','finished'):'valid-investigation-finished.json',
+            ('getInvestigation','200','edit_written'):'valid-investigation-edit-written.json',
+            ('stopInvestigation','request','empty'):'valid-investigation-stop-request.json',
+            ('stopInvestigation','200','stopped'):'valid-investigation-stopped.json'}
+    found={}
+    for item in oas['paths'].values():
+        for operation in item.values():
+            parts=[('request',operation.get('requestBody',{}))]+list(operation['responses'].items())
+            for code,part in parts:
+                for media in part.get('content',{}).values():
+                    for name,example in media.get('examples',{}).items():
+                        found[(operation['operationId'],code,name)]=example['value']
+    for key,fixture in copies.items():
+        assert key in found,('no OpenAPI example',key)
+        assert found[key]==load(ROOT/'testdata/contracts'/fixture),('OpenAPI example differs from its fixture',key,fixture)
     inventory=load(ROOT/'planning/api-operations.json')['operations']
     assert set(operations)=={x['operation_id'] for x in inventory}
     assert len(inventory)==len(operations)

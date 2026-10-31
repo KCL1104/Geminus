@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/model/hashing"
+	"github.com/kcl1104/geminus/internal/proposals"
 	store "github.com/kcl1104/geminus/internal/storage/scenarios"
 )
 
@@ -26,6 +27,10 @@ type Scenario struct {
 	SourceProposalID *string        `json:"source_proposal_id"`
 	CreatedBy        string         `json:"created_by"`
 	CreatedAt        string         `json:"created_at"`
+	// MadeByAI is the label of a scenario an AI investigation saved (H-061,
+	// PROPOSED); nil, and left out, for every other scenario. Nothing sets
+	// it yet: the label columns arrive with migration 0019.
+	MadeByAI *proposals.MadeByAI `json:"made_by_ai,omitzero"`
 }
 
 // Page is http.schema.json#/$defs/Scenarios.

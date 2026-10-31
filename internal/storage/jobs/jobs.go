@@ -37,6 +37,9 @@ const (
 	ImportValidate Type = "import_validate"
 	ImportMapping  Type = "import_mapping"
 	Analysis       Type = "analysis"
+	// Investigation is an AI investigation's one durable job (H-061 §5.1,
+	// migration 0019): the agent's run, on the worker's agent lanes only.
+	Investigation Type = "investigation"
 )
 
 // Status is a job's state.
@@ -63,7 +66,7 @@ var (
 // Resource is the one row a job works on: exactly one ID is set, the one
 // of the job's type.
 type Resource struct {
-	SimulationRunID, AIProposalID, ImportID, AIAnalysisID string
+	SimulationRunID, AIProposalID, ImportID, AIAnalysisID, InvestigationID string
 }
 
 // New is a job to enqueue.
@@ -153,7 +156,7 @@ const LeaseExpired = "LEASE_EXPIRED"
 
 func (r Resource) of(t Type) bool {
 	set := 0
-	for _, id := range []string{r.SimulationRunID, r.AIProposalID, r.ImportID, r.AIAnalysisID} {
+	for _, id := range []string{r.SimulationRunID, r.AIProposalID, r.ImportID, r.AIAnalysisID, r.InvestigationID} {
 		if id != "" {
 			set++
 		}
@@ -170,6 +173,8 @@ func (r Resource) of(t Type) bool {
 		return r.ImportID != ""
 	case Analysis:
 		return r.AIAnalysisID != ""
+	case Investigation:
+		return r.InvestigationID != ""
 	}
 	return false
 }
@@ -198,20 +203,23 @@ func Enqueue(ctx context.Context, tx pgx.Tx, j New, p Policy) (Job, error) {
 		return Job{}, fmt.Errorf("%w: payload: %v", ErrInvalidJob, err)
 	}
 	r := j.Resource
-	return scan(tx.QueryRow(ctx, `INSERT INTO twin.jobs(id,organization_id,type,status,payload,simulation_run_id,ai_proposal_id,import_id,ai_analysis_id,priority,max_attempts)
-		VALUES ($1,$2,$3,'queued',$4,$5,$6,$7,$8,$9,$10) RETURNING `+columns,
+	return scan(tx.QueryRow(ctx, `INSERT INTO twin.jobs(id,organization_id,type,status,payload,simulation_run_id,ai_proposal_id,import_id,ai_analysis_id,
+		  investigation_id,priority,max_attempts)
+		VALUES ($1,$2,$3,'queued',$4,$5,$6,$7,$8,$9,$10,$11) RETURNING `+columns,
 		j.ID, j.OrganizationID, string(j.Type), payload, nullable(r.SimulationRunID), nullable(r.AIProposalID), nullable(r.ImportID), nullable(r.AIAnalysisID),
-		j.Priority, j.MaxAttempts))
+		nullable(r.InvestigationID), j.Priority, j.MaxAttempts))
 }
 
 const columns = `id, organization_id, type, status, payload, coalesce(simulation_run_id,''), coalesce(ai_proposal_id,''), coalesce(import_id,''),
-	coalesce(ai_analysis_id,''), priority, attempt, max_attempts, available_at, coalesce(locked_by,''), lease_token, lease_expires_at, error, created_at`
+	coalesce(ai_analysis_id,''), coalesce(investigation_id,''), priority, attempt, max_attempts, available_at, coalesce(locked_by,''), lease_token,
+	lease_expires_at, error, created_at`
 
 func scan(row pgx.Row) (Job, error) {
 	var j Job
 	var typ, status string
 	err := row.Scan(&j.ID, &j.OrganizationID, &typ, &status, &j.Payload, &j.Resource.SimulationRunID, &j.Resource.AIProposalID, &j.Resource.ImportID,
-		&j.Resource.AIAnalysisID, &j.Priority, &j.Attempt, &j.MaxAttempts, &j.AvailableAt, &j.LockedBy, &j.LeaseToken, &j.LeaseExpiresAt, &j.Error, &j.CreatedAt)
+		&j.Resource.AIAnalysisID, &j.Resource.InvestigationID, &j.Priority, &j.Attempt, &j.MaxAttempts, &j.AvailableAt, &j.LockedBy, &j.LeaseToken,
+		&j.LeaseExpiresAt, &j.Error, &j.CreatedAt)
 	j.Type, j.Status = Type(typ), Status(status)
 	return j, err
 }
@@ -256,8 +264,8 @@ func Claim(ctx context.Context, tx pgx.Tx, org, worker string, types []Type, p P
 // qualified is columns for a statement where another table could make a
 // name ambiguous.
 const qualified = `j.id, j.organization_id, j.type, j.status, j.payload, coalesce(j.simulation_run_id,''), coalesce(j.ai_proposal_id,''),
-	coalesce(j.import_id,''), coalesce(j.ai_analysis_id,''), j.priority, j.attempt, j.max_attempts, j.available_at, coalesce(j.locked_by,''),
-	j.lease_token, j.lease_expires_at, j.error, j.created_at`
+	coalesce(j.import_id,''), coalesce(j.ai_analysis_id,''), coalesce(j.investigation_id,''), j.priority, j.attempt, j.max_attempts, j.available_at,
+	coalesce(j.locked_by,''), j.lease_token, j.lease_expires_at, j.error, j.created_at`
 
 // fence is the condition every write under a lease needs.
 const fence = `organization_id=$1 AND id=$2 AND locked_by=$3 AND lease_token=$4 AND status='running' AND lease_expires_at>now()`

@@ -251,6 +251,53 @@ func insertUser(ctx context.Context, tx pgx.Tx, m Member, issuer string) error {
 	return err
 }
 
+// NewModel inserts, as the provisioning login, a project and a model with
+// its first version (the minimal contract IR, in canonical form with its
+// hash, as its latest version) in o, and returns their IDs. o needs an
+// owner.
+func NewModel(t testing.TB, admin *pgxpool.Pool, o Org) (prj, mdl, mv string) {
+	t.Helper()
+	owner, ok := o.Members[tenant.Owner]
+	if !ok {
+		t.Fatal("dbtest.NewModel needs an organization with an owner")
+	}
+	prj, mdl, mv = ids.New("prj"), ids.New("mdl"), ids.New("mv")
+	var doc map[string]any
+	if err := json.Unmarshal(contracttest.ReadFile(t, filepath.Join(contracttest.Root(t), "testdata", "contracts", "valid-minimal-ir.json")), &doc); err != nil {
+		t.Fatal(err)
+	}
+	doc["model_id"] = mdl
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ir, err := hashing.Canonical(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = postgres.OpenPool(admin).Tx(context.Background(), pgx.TxOptions{}, func(ctx context.Context, tx pgx.Tx) error {
+		for _, q := range []struct {
+			sql  string
+			args []any
+		}{
+			{`INSERT INTO twin.projects(id,organization_id,name,created_by) VALUES ($1,$2,'P',$3)`, []any{prj, o.ID, owner.UserID}},
+			{`INSERT INTO twin.models(id,organization_id,project_id,name,domain,created_by) VALUES ($1,$2,$3,'M','software_delivery',$4)`, []any{mdl, o.ID, prj, owner.UserID}},
+			{`INSERT INTO twin.model_versions(id,organization_id,model_id,version,schema_version,ir,hash,created_by) VALUES ($1,$2,$3,1,'0.1',$4,$5,$6)`,
+				[]any{mv, o.ID, mdl, string(ir), hashing.Sum(ir), owner.UserID}},
+			{`UPDATE twin.models SET latest_version_id=$1 WHERE id=$2`, []any{mv, mdl}},
+		} {
+			if _, err := tx.Exec(ctx, q.sql, q.args...); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return prj, mdl, mv
+}
+
 // NewImport inserts, as the provisioning login, a project, a model with its
 // first version (the minimal contract IR, in canonical form with its hash)
 // and an uploaded import in o, and returns the import's ID: a resource row

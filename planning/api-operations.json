@@ -402,6 +402,48 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/v1/models/{id}/investigations",
+      "operation_id": "createInvestigation",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/models/{id}/investigations",
+      "operation_id": "listInvestigations",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/v1/investigations/{id}",
+      "operation_id": "getInvestigation",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/v1/investigations/{id}/stop",
+      "operation_id": "stopInvestigation",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/v1/audit-events",
       "operation_id": "listAuditEvents",

@@ -1,0 +1,769 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://twin.example/spec/0.1/investigator.schema.json",
+  "title": "investigator",
+  "$comment": "H-061 §7 (PROPOSED, pending the owner's confirmation of the D-008 amendment and ADR-032; behind GEMINUS_INVESTIGATIONS): the seven tools an AI investigation's planner may call, their arguments, the server-written results it is shown (observations), its budget and the closed refusal codes. This file is the single source: the provider's input_schema, the Go strict decoders (internal/ai/investigator) and the TS types are generated from it or contract-tested against it. Arguments are what the model wrote: every member required (null where optional), no other member, AI text without control characters (and in NFC, which the Go decoder checks), IDs of D-001. The model never supplies the organization, the user, the version, the run settings, names or limits. Schema-valid is not authorized: the API's executor checks every call again, under the requester's scope and current role, before it has any effect (H-061 §6.2).",
+  "$defs": {
+    "InvestigatorTool": {
+      "type": "string",
+      "enum": [
+        "propose_what_if",
+        "save_scenario",
+        "run_what_if",
+        "explain_results",
+        "propose_model_edit",
+        "write_to_draft",
+        "finish"
+      ],
+      "description": "The seven tools (H-061 §7). Each call is one step, finish included."
+    },
+    "ScenarioModeTool": {
+      "type": "string",
+      "enum": [
+        "propose_what_if",
+        "save_scenario",
+        "run_what_if",
+        "explain_results",
+        "finish"
+      ],
+      "description": "The tools of a what-if (scenario mode) investigation."
+    },
+    "EditModeTool": {
+      "type": "string",
+      "enum": [
+        "propose_model_edit",
+        "write_to_draft",
+        "finish"
+      ],
+      "description": "The tools of a change-to-the-model (edit mode) investigation: one proposal, one draft write, no runs."
+    },
+    "ProposeWhatIfArguments": {
+      "type": "object",
+      "description": "propose_what_if (scenario mode): ask for the next what-if (a scenario proposal on the investigation's base, with the person's proposal model; research only for the first, and only when the person asked for it).",
+      "properties": {
+        "idea": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f]*[^\\x00-\\x20\\x7f-\\x9f][^\\x00-\\x1f\\x7f-\\x9f]*$",
+          "description": "The what-if in the AI's words, for the proposal pipeline to turn into a reviewed change. AI text: shown labelled; the server writes and reviews every change."
+        },
+        "from_suggestion": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SuggestionRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "idea",
+        "from_suggestion"
+      ],
+      "additionalProperties": false
+    },
+    "SuggestionRef": {
+      "type": "object",
+      "description": "One of the analyst's suggested experiments, by its analysis of this investigation and its place there. The server builds the proposal's intent from it (\"<name>: <hypothesis>\"), never from the AI's idea.",
+      "properties": {
+        "analysis_id": {
+          "$ref": "common.schema.json#/$defs/AnalysisID"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9,
+          "description": "The suggested experiment's place in that analysis (0 is the first)."
+        }
+      },
+      "required": [
+        "analysis_id",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "SaveScenarioArguments": {
+      "type": "object",
+      "description": "save_scenario (scenario mode): save a ready what-if of this investigation as a scenario, after the server checks it again against the base. The proposal becomes applied, never approved.",
+      "properties": {
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        }
+      },
+      "required": [
+        "proposal_id"
+      ],
+      "additionalProperties": false
+    },
+    "RunWhatIfArguments": {
+      "type": "object",
+      "description": "run_what_if (scenario mode): run a scenario this investigation saved against the baseline, with the investigation's frozen run settings (the baseline once, unless a person's baseline is reused).",
+      "properties": {
+        "scenario_id": {
+          "$ref": "common.schema.json#/$defs/ScenarioID"
+        }
+      },
+      "required": [
+        "scenario_id"
+      ],
+      "additionalProperties": false
+    },
+    "ExplainResultsArguments": {
+      "type": "object",
+      "description": "explain_results (scenario mode): ask the analyst (Muse Spark 1.3) to explain a completed what-if run of this investigation against its baseline; every figure it states is checked against the runs.",
+      "properties": {
+        "run_id": {
+          "$ref": "common.schema.json#/$defs/RunID"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f]*[^\\x00-\\x20\\x7f-\\x9f][^\\x00-\\x1f\\x7f-\\x9f]*$",
+              "description": "What the AI wants the analyst to look at, or null. AI text."
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "run_id",
+        "question"
+      ],
+      "additionalProperties": false
+    },
+    "ProposeModelEditArguments": {
+      "type": "object",
+      "description": "propose_model_edit (edit mode): ask for the one change to the model this investigation may make.",
+      "properties": {
+        "idea": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "pattern": "^[^\\x00-\\x1f\\x7f-\\x9f]*[^\\x00-\\x20\\x7f-\\x9f][^\\x00-\\x1f\\x7f-\\x9f]*$",
+          "description": "The change in the AI's words, for the proposal pipeline to turn into a reviewed edit. AI text."
+        }
+      },
+      "required": [
+        "idea"
+      ],
+      "additionalProperties": false
+    },
+    "WriteToDraftArguments": {
+      "type": "object",
+      "description": "write_to_draft (edit mode): write a ready edit of this investigation into the model's draft, only when the draft has none of a person's changes at the base. A person publishes.",
+      "properties": {
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        }
+      },
+      "required": [
+        "proposal_id"
+      ],
+      "additionalProperties": false
+    },
+    "FinishArguments": {
+      "type": "object",
+      "description": "finish (both modes; always offered): end the investigation. Its outcome and best scenario are kept as the AI's claim, shown beside the server's own ranking and closing line.",
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/AiOutcome"
+        },
+        "best_scenario_id": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/ScenarioID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "outcome",
+        "best_scenario_id"
+      ],
+      "additionalProperties": false
+    },
+    "AiOutcome": {
+      "type": "string",
+      "enum": [
+        "improvement_found",
+        "no_improvement",
+        "out_of_ideas",
+        "needs_person"
+      ],
+      "description": "What the AI said when it called finish: a claim, never the server's verdict."
+    },
+    "InvestigationToolCode": {
+      "type": "string",
+      "enum": [
+        "LIMIT_REACHED",
+        "BASE_MOVED",
+        "DRAFT_CHANGED",
+        "PROPOSAL_NOT_READY",
+        "PROPOSAL_DECIDED",
+        "RECHECK_FAILED",
+        "RUN_NOT_COMPLETED",
+        "ALREADY_RUN",
+        "NOT_IN_INVESTIGATION",
+        "MODE_MISMATCH",
+        "UNKNOWN_TOOL",
+        "INVALID_ARGUMENTS",
+        "SERVICE_UNAVAILABLE",
+        "DATASET_STORAGE_FAILED",
+        "INTERNAL"
+      ],
+      "description": "H-061 §7: why a tool call was refused or failed. A closed list of its own, not an HTTP ErrorCode: LIMIT_REACHED (a cap is used up), BASE_MOVED (the base is no longer the model's latest), DRAFT_CHANGED (the draft has a person's changes or moved), PROPOSAL_NOT_READY, PROPOSAL_DECIDED (a person approved, rejected or conflicted it first), RECHECK_FAILED (the server's second check refused it), RUN_NOT_COMPLETED, ALREADY_RUN, NOT_IN_INVESTIGATION (the ID is not one of this investigation's), MODE_MISMATCH (the tool is not one of this mode's), UNKNOWN_TOOL and INVALID_ARGUMENTS (the model's output did not decode), SERVICE_UNAVAILABLE and DATASET_STORAGE_FAILED (transient, after the executor's retries), INTERNAL."
+    },
+    "ToolError": {
+      "type": "object",
+      "description": "Why a call was refused or failed: a closed code and where.",
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/InvestigationToolCode"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 2048,
+          "pattern": "^(/([^~/]|~[01])*)*$",
+          "description": "A JSON Pointer into the call's arguments (\"\" for the call as a whole); only the tool's own member names, never one the model made up."
+        }
+      },
+      "required": [
+        "code",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "Budget": {
+      "type": "object",
+      "description": "What the investigation may still do (H-060's caps less what it used), counted by the server and shown with every result.",
+      "properties": {
+        "what_ifs_left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        },
+        "runs_left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "explanations_left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "steps_left": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 14
+        }
+      },
+      "required": [
+        "what_ifs_left",
+        "runs_left",
+        "explanations_left",
+        "steps_left"
+      ],
+      "additionalProperties": false
+    },
+    "ProposalObservation": {
+      "type": "object",
+      "description": "The result of propose_what_if or propose_model_edit, written by the worker once the proposal left generating: what the proposal pipeline and the server's review made of the idea.",
+      "properties": {
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        },
+        "index": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "The what-if's place in this investigation."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "needs_input",
+            "invalid",
+            "failed",
+            "decided"
+          ],
+          "description": "The proposal once it left generating; decided when a person approved, rejected or conflicted it before the AI looked (saving or writing it is then refused with PROPOSAL_DECIDED)."
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "change_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "server_risk_level": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/RiskLevel"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "issue_codes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+          },
+          "minItems": 0,
+          "maxItems": 10
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "proposal_id",
+        "index",
+        "status",
+        "summary",
+        "change_count",
+        "server_risk_level",
+        "questions",
+        "issue_codes",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "ScenarioObservation": {
+      "type": "object",
+      "description": "The result of save_scenario.",
+      "properties": {
+        "scenario_id": {
+          "$ref": "common.schema.json#/$defs/ScenarioID"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "proposal_id": {
+          "$ref": "common.schema.json#/$defs/ProposalID"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "scenario_id",
+        "name",
+        "proposal_id",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "RunComparison": {
+      "type": "object",
+      "description": "The server's comparison of a baseline and a what-if run (internal/comparisons over the stored results, as compareSimulations): the objective's metric and at most six others. Only server figures.",
+      "properties": {
+        "comparable": {
+          "type": "boolean"
+        },
+        "incomparable_reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "http.schema.json#/$defs/IncomparableReason"
+          },
+          "uniqueItems": true,
+          "minItems": 0,
+          "maxItems": 8
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "$ref": "http.schema.json#/$defs/ComparisonMetric"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "http.schema.json#/$defs/ComparisonMetric"
+          },
+          "minItems": 0,
+          "maxItems": 6
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "http.schema.json#/$defs/ComparisonWarning"
+          },
+          "uniqueItems": true,
+          "minItems": 0,
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "comparable",
+        "incomparable_reasons",
+        "objective",
+        "metrics",
+        "warnings"
+      ],
+      "additionalProperties": false
+    },
+    "RunObservation": {
+      "type": "object",
+      "description": "The result of run_what_if, written by the worker once both runs ended.",
+      "properties": {
+        "baseline_run_id": {
+          "$ref": "common.schema.json#/$defs/RunID"
+        },
+        "run_id": {
+          "$ref": "common.schema.json#/$defs/RunID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "failed",
+            "cancelled"
+          ],
+          "description": "The what-if run once both runs ended (the baseline's failure counts as the pair's)."
+        },
+        "comparison": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunComparison"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "baseline_run_id",
+        "run_id",
+        "status",
+        "comparison",
+        "error_code",
+        "budget"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "comparison": {
+                "$ref": "#/$defs/RunComparison"
+              },
+              "error_code": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "comparison": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Finding": {
+      "type": "object",
+      "description": "One of the analysis's findings that passed analyst.Check.",
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "observation",
+            "inference"
+          ]
+        }
+      },
+      "required": [
+        "statement",
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "SuggestedExperiment": {
+      "type": "object",
+      "description": "One of the analysis's suggested experiments, with its place there (what from_suggestion names).",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "hypothesis": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "required": [
+        "index",
+        "name",
+        "hypothesis"
+      ],
+      "additionalProperties": false
+    },
+    "ExplanationObservation": {
+      "type": "object",
+      "description": "The result of explain_results, written by the worker once the analysis ended.",
+      "properties": {
+        "analysis_id": {
+          "$ref": "common.schema.json#/$defs/AnalysisID"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Finding"
+          },
+          "minItems": 0,
+          "maxItems": 6
+        },
+        "suggested_next_experiments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SuggestedExperiment"
+          },
+          "minItems": 0,
+          "maxItems": 5
+        },
+        "omitted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "How many findings and suggestions were left out to keep the result within 6 KiB."
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "analysis_id",
+        "status",
+        "summary",
+        "findings",
+        "suggested_next_experiments",
+        "omitted",
+        "error_code",
+        "budget"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "summary": {
+                "type": "string"
+              },
+              "error_code": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "error_code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+              },
+              "summary": {
+                "type": "null"
+              },
+              "findings": {
+                "maxItems": 0
+              },
+              "suggested_next_experiments": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "DraftObservation": {
+      "type": "object",
+      "description": "The result of write_to_draft; the investigation then ends with draft_written.",
+      "properties": {
+        "draft_revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "operation_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "draft_revision",
+        "operation_count",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "ErrorObservation": {
+      "type": "object",
+      "description": "The result of a refused or failed call (sent as an is_error tool result).",
+      "properties": {
+        "is_error": {
+          "const": true
+        },
+        "error": {
+          "$ref": "#/$defs/ToolError"
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        }
+      },
+      "required": [
+        "is_error",
+        "error",
+        "budget"
+      ],
+      "additionalProperties": false
+    },
+    "ToolObservation": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ProposalObservation"
+        },
+        {
+          "$ref": "#/$defs/ScenarioObservation"
+        },
+        {
+          "$ref": "#/$defs/RunObservation"
+        },
+        {
+          "$ref": "#/$defs/ExplanationObservation"
+        },
+        {
+          "$ref": "#/$defs/DraftObservation"
+        },
+        {
+          "$ref": "#/$defs/ErrorObservation"
+        }
+      ],
+      "description": "Every result the planner is shown: written once by the worker from rows it can read, at most 6 KiB, stored with the step so a resume shows the model exactly what it saw. Server data, never instructions; AI and person text in it is quoted, never obeyed."
+    }
+  }
+}
