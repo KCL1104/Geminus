@@ -172,3 +172,63 @@ Toolchain go1.27.3, Python from `.venv` (symlinked from the main checkout, not c
 - **The write_to_draft observation trusts the executor's binding.** The proposal it counts is the one the arguments name; the API's executor (A7) carries the call out only for this investigation's ready proposal (NOT_IN_INVESTIGATION, `check_proposal_effect`). The worker's read is the organization's, so at worst a wrong count, never another tenant's row (`TestADraftWritesProposalIsReadInItsOrganization`).
 - **Unrecorded invalid turns do not survive a restart** (H-061 §7 records none), so an attempt that lost one counts from the ledger's rows only: at most one more planner turn, inside the 20-turn cap.
 - **Planner turns across attempts still rely on the spend ledger** (§6 above): with the unmetered fake a resume starts from the reservations the database holds (none), so the app-side cap is per attempt there; metered, it is the investigation's.
+
+## The merge into the main branch: review round 1
+
+**Date: 2026-11-01 | Status: agent fixes of the merge review's findings (two Medium findings, one defect), no second review yet; no live call; investigations stay behind `GEMINUS_INVESTIGATIONS` (off by default) | Decisions: H-059 (no second pipeline is left, the E6 seal), H-056 §6.4 (the live eval measures the production path) and §6.6, H-061 §5.3, §7, §12, §13, §14 | Requirements: REQ-019 (AI authority containment), REQ-021**
+
+The merge commit b641235 (main at fb7d9b0 with this branch) kept E6's seal passing only because the seal did not know A5's planner turn: neither side could add it alone (E6 is main's, `provider.Client.PlanTurn` is A5's). Changed: `internal/aigraph/seal_test.go`, `internal/aievals/investigator.go` and its test, `docs/ARCHITECTURE.md`, `docs/adr/ADR-031-eino.md`, `docs/AI_SPEC.md`. Not changed: the agent, `einomodel.Planner`, the worker's handler, the registry, the transcript, the provider, prompts, goldens, schemas, OpenAPI, migrations, the web, and every fake eval report (byte for byte).
+
+### M1. Findings and what was done
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| 1, 2 | Medium (the same defect, found twice) | The E6 seal's `modelMethods` (the client's model methods only `internal/aigraph/einomodel` and `internal/ai/provider` may name in non-test code) did not list `PlanTurn`, the investigator role's only path to a model. `internal/aievals/investigator.go:376` called `client.PlanTurn` directly: the investigator eval (`make ai-eval`, and `cmd/ai-eval-live -suite investigator`, which decides whether Muse Wonder 1.0 may be offered) ran a planner loop of its own beside the worker's ADK agent, and a direct call planted in `internal/investigator` passed the seal. So the seal's comment and `docs/ARCHITECTURE.md` ("no role keeps a second pipeline") were false. | **Fixed, without an exception.** `PlanTurn` is a sealed model method (only `einomodel.Planner` names it: the seal sees 1). The eval now runs the worker's planner path: `runInvestigation` builds `einomodel.NewPlanner(client)` and runs `agent.Run` (`internal/aigraph/investigator`) with the mode's tools as the worker registers them (`ToolsOf(mode)`) and the steps left, and its simulated environment is the agent's `Env` (`evalRun`: `Next` is the transcript's turn and the 14-step and 20-turn limits; `Carry` carries the call out, records the step, ends the run on a written draft or three refused steps in a row). Around the runs it keeps the worker's loop (H-061 §7, §13): an invalid turn is recorded or not and a new run starts from the digest, `concurrency_limited` waits 1 s, a failed turn is asked again at most twice. The four fake reports are byte-identical. The seal's comment, ADR-031's "As built in E6" paragraph, ARCHITECTURE's seal bullet, its diagram (the eval reaches the agent) and who-links-it line (`cmd/ai-eval-live` now links the ADK: 25 Eino packages, as `cmd/worker`), and AI_SPEC's eval line say so. |
+
+**One behaviour of the eval changed, to the worker's.** Its `planner_turns` is now the agent's count (`Outcome.Turns`), which is what the worker stores: a turn the client refused before any I/O (context too large, an invalid request, spend unavailable, the slot) is not a planner turn. The old loop counted every `PlanTurn` call except `concurrency_limited`. No fake case has such a turn, so the reports did not change. A latency is measured only for a planner turn, so `turn_ms` keeps one entry per planner turn.
+
+### M2. Tests added or changed (tests first)
+
+| Test | What it holds | Red before the fix |
+|---|---|---|
+| `TestTheSealHolds` (changed: more, never fewer, checks) | The seal also reads `internal/aigraph/investigator`, `internal/investigator` and `internal/ai/investigator`, and sees `einomodel`'s `PlanTurn` (not vacuous) | `the seal saw no "internal/aigraph/einomodel PlanTurn"`; with `PlanTurn` sealed: `internal/aievals/investigator.go:376: PlanTurn` |
+| `TestTheSealFindsAPlantedName` (4 rows added) | A planted `PlanTurn` is found, once, in the file it was planted in: the reviewer's `h.cfg.Planner.PlanTurn(...)` in `internal/investigator/handler.go`, a call in `internal/aievals/investigator.go`, a method value in the agent, a method expression in `cmd/worker/main.go` | `found [], want PlanTurn` (4 rows); with `PlanTurn` sealed and the eval unchanged, every row (the eval's own call is a second finding) |
+| `TestTheSealLetsPass` (2 rows added) | The planner adapter's own `PlanTurn` and a test's pass | (passes either way: what the seal lets pass) |
+| `TestInvestigatorEvalCountsTurnsAsTheWorker` (new, `internal/aievals`) | The eval runs on the agent: a turn the client refuses before any I/O (a brief over a 1 KiB prompt bound) ends the case `ai_failed` `AI_CONTEXT_TOO_LARGE` with 0 planner turns, 0 steps, no call and no latency, fake and live | `planner turns 1` (fake), `planner turns 1 ... latencies 1` (live) |
+
+### M3. Commands and results
+
+Toolchain go1.27.3; Python from `.venv` (symlinked from the main checkout, not committed). No live AI call; no `.env` value or key read. The database: a PostgreSQL 16.15 cluster started for this round by `initdb` in the session scratchpad (trust auth, TCP 127.0.0.1:56300 only, `unix_socket_directories=''`, `fsync=off`), database `dt_test_h061_seal`; dropped and stopped afterwards.
+
+| Command | Exit | Result |
+|---|---|---|
+| Red: `go test -count=1 -run 'TestTheSeal\|TestInvestigatorEvalCountsTurnsAsTheWorker' ./internal/aigraph/ ./internal/aievals/` (tests written, nothing else changed) | 1 | `TestTheSealHolds` (no `einomodel PlanTurn` seen), `TestTheSealFindsAPlantedName` (the 4 new rows: `found []`), `TestInvestigatorEvalCountsTurnsAsTheWorker` (`planner turns 1`, live `latencies 1`) FAIL |
+| Red: `go test -count=1 -run TestTheSeal ./internal/aigraph/` with `PlanTurn` sealed, the eval unchanged | 1 | every seal test FAILs on `internal/aievals/investigator.go:376: PlanTurn` |
+| `go test -count=1 ./internal/aievals/ ./internal/aigraph/...` after the eval's move | 0 | 7 packages `ok`; the seal lets pass `einomodel PlanTurn:1` and no other `PlanTurn` |
+| `go test -race -count=1 ./internal/aievals/ ./internal/aigraph/... ./internal/investigator/ ./cmd/ai-eval-live/` | 0 | 9 packages `ok` |
+| Mutation probes (one line changed, its tests run, the file restored from a copy): the eval counts a planner turn per asked turn (`o.PlannerTurns += r.runTurns`); a latency for a turn refused before I/O; `PlanTurn` dropped from `modelMethods` | 1 each | `TestInvestigatorEvalCountsTurnsAsTheWorker`; the same and `TestTheInvestigatorSuiteRuns`; `TestTheSealHolds` and the 4 new `TestTheSealFindsAPlantedName` rows |
+| `make ai-eval`, then `sha256sum -c` over the four fake reports taken before any change | 0 | TestFakeProviderEval, TestReviewEval, TestAnalystEval, TestInvestigatorEval PASS; `fake-analyst.json`, `fake-investigator.json`, `fake-provider.json`, `fake-review.json` OK (byte-identical) |
+| `go list -deps` of `./cmd/ai-eval-live`, `./cmd/worker`, `./cmd/api` | 0 | 25 Eino packages (2 ADK), 25 (2 ADK), 0 |
+| `make architecture-check` | 0 | `PASS architecture: 115 packages, 41 rules, 16 build configurations` |
+| `.venv/bin/python scripts/gen_ts_contracts.py --check` | 0 | `PASS_TS_CONTRACTS_FRESH` (17 files, 165 types) |
+| `gofmt -l internal cmd prompts scripts`; `go build ./...` | 0 | clean |
+| `make backend-test` (gofmt, `go vet`, `go test -timeout 30m`) | 0 | 103 packages `ok`, 12 without tests, no FAIL (packages whose inputs did not change were served from Go's test cache) |
+| `make integration-test` (`DATABASE_URL`, `GEMINUS_TEST_DATABASE_URL` the disposable database, `DT_ALLOW_DB_TESTS=yes`) | 0 | `DB migration smoke up/down/up completed`; `db-go-test` (`GEMINUS_REQUIRE_DB_TESTS=1`, `-race -p 1`): 45 packages `ok`, `internal/investigator`, `internal/investigations`, `internal/investigations/executor`, `internal/proposals/generator`, `internal/analyses/analyzer`, `cmd/api` and `cmd/worker` among them |
+| `PATH=.venv/bin:$PATH make spec-check` (after this report was written) | 0 | contracts `PASS_LIMITED_SPEC_CHECKS` (125 positive and 227 negative fixtures, 222 with an exact path; 48 operations), planning `PASS` (57 tasks), docs `PASS` (189 Markdown files, 400 relative links), SQL inventory, reference arithmetic, engine vectors, decisions (shape only), TS contracts fresh (17 files, 165 types), independent hashes, DB tests fresh (18 files), deploy `PASS_STATIC_DEPLOY_CHECKS`; no generated `checks/*.json` changed |
+| `DROP DATABASE dt_test_h061_seal`; `pg_ctl stop -m fast` | 0 | the disposable database dropped and the cluster stopped |
+
+### M4. NOT RUN
+
+- Any live AI call, and so the live planner eval (`bin/ai-eval-live -suite investigator`, A9's) on the agent path it now runs.
+- `make frontend-test`: no web file changed in the merge or this round.
+- `make backend-race` in full (the touched packages ran with `-race`, above), `make e2e-test`.
+- An independent review of this round.
+
+### M5. PROPOSED
+
+- None new. The eval's `planner_turns` now counts as the worker does (M1); offered for the reviewer's agreement.
+
+### M6. Risks
+
+- **The eval's environment is still a stand-in** for the API's executor (A5 §6); only the planner's path is now the worker's.
+- **The seal reads names.** A `PlanTurn` reached by reflection, or a planner loop over `einomodel.Planner.Generate` that skips the agent, would not be seen; `TestInvestigatorEvalCountsTurnsAsTheWorker` holds the eval to the agent's turn count.

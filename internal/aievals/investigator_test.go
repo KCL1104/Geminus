@@ -187,6 +187,41 @@ func TestInvestigatorGatesFail(t *testing.T) {
 	}
 }
 
+// The suite runs the worker's planner path (H-056 §6.4: the live eval
+// measures the production path; H-061 §5.3): ADK runs of the investigator
+// agent over einomodel.Planner, so it counts planner turns as the worker
+// stores them (the agent's Outcome.Turns). A turn the client refuses before
+// any I/O (here a brief over the client's prompt bound) is no planner turn;
+// the case ends ai_failed with the client's code, and no latency is
+// measured for it.
+func TestInvestigatorEvalCountsTurnsAsTheWorker(t *testing.T) {
+	cfg := fakeConfig(t)
+	cfg.Cases = cfg.Cases[:1]
+	small := plannerBudget()
+	small.MaxPromptBytes = 1 << 10
+	asked := 0
+	cfg.ClientFor = func(InvestigatorCase) (*provider.Client, error) {
+		asked++
+		return provider.New(fake.New(), small)
+	}
+	for _, live := range []bool{false, true} {
+		cfg.Live = live
+		r, err := RunInvestigator(context.Background(), cfg)
+		if err != nil {
+			t.Fatal(err)
+		}
+		o := r.Outcomes[0]
+		if o.End != "ai_failed" || o.ErrorCode != "AI_CONTEXT_TOO_LARGE" || o.PlannerTurns != 0 || o.Steps != 0 || len(o.TurnMillis) != 0 ||
+			len(o.Calls) != 0 {
+			t.Errorf("live %v: end %s, code %s, planner turns %d, steps %d, latencies %d, calls %v", live, o.End, o.ErrorCode, o.PlannerTurns,
+				o.Steps, len(o.TurnMillis), o.Calls)
+		}
+	}
+	if asked != 2 {
+		t.Errorf("%d clients", asked)
+	}
+}
+
 // The environment is the executor's stand-in: only the investigation's own
 // resources, the caps, and the refusal codes the planner reacts to.
 func TestInvestigatorEnvironment(t *testing.T) {

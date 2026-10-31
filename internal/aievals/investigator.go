@@ -18,6 +18,8 @@ import (
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/investigator"
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/aigraph/einomodel"
+	agent "github.com/kcl1104/geminus/internal/aigraph/investigator"
 	"github.com/kcl1104/geminus/internal/domainpack"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/model/validate"
@@ -27,14 +29,16 @@ import (
 // The investigator suite (H-061 §14, slice A5): six synthetic cases on the
 // electronics line template (testdata/investigator/cases), in a simulated
 // tool environment built from recorded results, so that only the planner's
-// turns reach a model. Each case runs the planner loop as the worker will
-// (H-061 §5, §7, §13): a transcript built from the ledger, one
-// provider.Client.PlanTurn a turn, every call decoded strictly and carried
-// out by the environment (the executor's stand-in: the investigation's own
-// IDs only, the caps, the refusal codes), an invalid turn recorded or not,
-// two invalid turns or three refused steps in a row end it with
-// invalid_answer, 20 planner turns or the 14 steps limit_reached, finish
-// finished_by_ai, a written draft draft_written.
+// turns reach a model. Each case runs the worker's planner path (H-061 §5,
+// §7, §13; slice A6): ADK runs of the investigator agent
+// (internal/aigraph/investigator) over einomodel.Planner, the only caller
+// of provider.Client.PlanTurn (the E6 seal), each turn's transcript built
+// from the ledger, every call decoded strictly and carried out by the
+// environment as the agent's Env (the executor's stand-in: the
+// investigation's own IDs only, the caps, the refusal codes), an invalid
+// turn recorded or not, two invalid turns or three refused steps in a row
+// end it with invalid_answer, 20 planner turns or the 14 steps
+// limit_reached, finish finished_by_ai, a written draft draft_written.
 //
 // With the fake (make ai-eval, checks/ai-evals/fake-investigator.json) each
 // case's scripted turns are the planner and the gates are exact: the end,
@@ -316,10 +320,32 @@ func RunInvestigator(ctx context.Context, cfg InvestigatorConfig) (*Investigator
 	return r, nil
 }
 
-// runInvestigation runs one case's planner loop.
+// runInvestigation runs one case on the worker's planner path (H-061 §5.3,
+// §5.5; H-056 §6.4: the live eval measures the production path): ADK runs
+// of the investigator agent (internal/aigraph/investigator) over
+// einomodel.Planner and the case's client, as internal/investigator runs
+// them, with the simulated environment as the agent's Env (evalRun) and,
+// around the runs, the loop the worker keeps (internal/investigator's
+// session.loop): an invalid turn is recorded or not and a new run starts
+// from the digest; two invalid turns or three refused steps in a row end it
+// invalid_answer; 20 planner turns or the 14 steps limit_reached; finish
+// finished_by_ai; a written draft draft_written; concurrency_limited waits
+// 1 s (nothing reserved); a failed turn is asked again at most twice. Its
+// planner turns are the agent's count, which the worker stores: a turn the
+// client refused before any I/O is none. Where the worker's job would be
+// retried or failed, the eval's case ends: ai_failed with the client's code.
 func runInvestigation(ctx context.Context, cfg InvestigatorConfig, c InvestigatorCase) (o InvestigatorOutcome, err error) {
 	o = InvestigatorOutcome{ID: c.ID, Mode: string(c.Mode), InvalidKinds: map[string]int{}, Calls: []CallRecord{}}
 	client, err := cfg.ClientFor(c)
+	if err != nil {
+		return o, err
+	}
+	planner, err := einomodel.NewPlanner(client)
+	if err != nil {
+		return o, err
+	}
+	// The mode's tools, finish included, as the worker registers them.
+	tools, err := investigator.ProviderTools(investigator.ToolsOf(c.Mode))
 	if err != nil {
 		return o, err
 	}
@@ -353,8 +379,7 @@ func runInvestigation(ctx context.Context, cfg InvestigatorConfig, c Investigato
 			o.CostNanoUSD = cfg.Spent() - spentBefore
 		}
 	}()
-	invalidRow, refusedRow, retries := 0, 0, 0
-	loc := cfg.Locale
+	r := &evalRun{cfg: cfg, env: env, tr: tr, o: &o, attr: attr}
 	for {
 		b := env.budget()
 		switch {
@@ -368,99 +393,164 @@ func runInvestigation(ctx context.Context, cfg InvestigatorConfig, c Investigato
 			o.End = "limit_reached"
 			return o, nil
 		}
-		pc, err := tr.Next(evalOrg, attr, cfg.Planner, b)
-		if err != nil {
-			return o, err
+		r.runTurns, r.carried, r.asked = 0, 0, time.Time{}
+		out := agent.Run(ictx, agent.Config{Planner: planner, Tools: tools, StepsLeft: b.StepsLeft, Env: r})
+		o.PlannerTurns += out.Turns
+		// The run's last turn, asked and not carried out (an invalid or
+		// failed turn), when it is a planner turn.
+		if cfg.Live && !r.asked.IsZero() && out.Turns > r.carried {
+			o.TurnMillis = append(o.TurnMillis, time.Since(r.asked).Milliseconds())
 		}
-		start := time.Now()
-		res, err := client.PlanTurn(ictx, pc)
-		o.PlannerTurns++
-		if cfg.Live {
-			o.TurnMillis = append(o.TurnMillis, time.Since(start).Milliseconds())
+		if r.err != nil {
+			return o, r.err
 		}
-		if err != nil {
-			if res.Invalid != nil {
-				o.InvalidTurns++
-				o.InvalidKinds[string(res.Invalid.Kind)]++
-				if res.Invalid.Kind == provider.InvalidTruncated {
-					o.Truncated++
-				}
-				// A recorded one is the worker's refused invalid_call step,
-				// observed before the next turn (H-061 §5.6, migration 0019).
-				var step *investigator.LedgerStep
-				if res.Invalid.Recorded() {
-					seq := env.record()
-					var serr error
-					if step, serr = investigator.InvalidStep(seq, *res.Invalid, env.budget()); serr != nil {
-						return o, serr
-					}
-				}
-				if err := tr.Invalid(step); err != nil {
-					return o, err
-				}
-				invalidRow++
-				if step != nil {
-					o.Calls = append(o.Calls, CallRecord{Seq: step.Seq, Tool: step.Tool, Status: string(step.Status), Code: string(step.Error.Code)})
-					o.RefusedSteps++
-					refusedRow++
-				}
-				if invalidRow >= 2 || refusedRow >= 3 {
-					o.End = "invalid_answer"
-					return o, nil
-				}
-				continue
+		switch out.Kind {
+		case agent.Finished:
+			o.End = "finished_by_ai"
+			var a investigator.FinishArguments
+			if json.Unmarshal(out.Finish.Call.Input, &a) == nil {
+				o.Outcome = string(a.Outcome)
 			}
-			switch code := provider.CodeOf(err); {
+			return o, nil
+		case agent.Ended:
+			o.End = out.End.Reason
+			return o, nil
+		case agent.LimitReached:
+			o.End = "limit_reached"
+			return o, nil
+		case agent.Invalid:
+			it := out.Invalid
+			o.InvalidTurns++
+			o.InvalidKinds[string(it.Kind)]++
+			if it.Kind == provider.InvalidTruncated {
+				o.Truncated++
+			}
+			// A recorded one is the worker's refused invalid_call step,
+			// observed before the next turn (H-061 §5.6, migration 0019).
+			var step *investigator.LedgerStep
+			if it.Recorded() {
+				seq := env.record()
+				var serr error
+				if step, serr = investigator.InvalidStep(seq, *it, env.budget()); serr != nil {
+					return o, serr
+				}
+			}
+			if err := tr.Invalid(step); err != nil {
+				return o, err
+			}
+			r.invalidRow++
+			if step != nil {
+				o.Calls = append(o.Calls, CallRecord{Seq: step.Seq, Tool: step.Tool, Status: string(step.Status), Code: string(step.Error.Code)})
+				o.RefusedSteps++
+				r.refusedRow++
+			}
+			if r.invalidRow >= 2 || r.refusedRow >= 3 {
+				o.End = "invalid_answer"
+				return o, nil
+			}
+		case agent.Failed, agent.Cancelled:
+			switch code := provider.CodeOf(out.Err); {
 			case code == provider.CodeQuotaExceeded:
 				o.End = "spend_cap"
 				return o, nil
 			case code == provider.CodeConcurrencyLimited:
 				// Nothing was asked or reserved: wait 1 s and ask again.
-				o.PlannerTurns--
 				_ = cfg.Sleep(ictx, time.Second)
-				continue
 			case (code == provider.CodeTimeout || code == provider.CodeUnavailable || code == provider.CodeRateLimited ||
-				code == provider.CodeSpendUnavailable) && retries < maxTurnRetries:
-				retries++
-				continue
-			case code == provider.CodeCancelled || code == provider.CodeTimeout && ictx.Err() != nil:
-				continue // the loop's checks end it
+				code == provider.CodeSpendUnavailable) && r.retries < maxTurnRetries:
+				r.retries++
+			case (code == provider.CodeCancelled || code == provider.CodeTimeout) && ictx.Err() != nil:
+				// The loop's checks end it.
 			default:
 				o.End, o.ErrorCode = "ai_failed", "AI_"+strings.ToUpper(string(code))
 				return o, nil
 			}
-		}
-		retries, invalidRow = 0, 0
-		o.ValidCalls++
-		o.Garbled += garbled(res.Note, loc)
-		step, end := env.apply(res.Call, &o)
-		if err := tr.Record(res, step); err != nil {
-			return o, err
-		}
-		rec := CallRecord{Seq: step.Seq, Tool: step.Tool, Status: string(step.Status)}
-		if step.Error != nil {
-			rec.Code = string(step.Error.Code)
-			o.RefusedSteps++
-			refusedRow++
-		} else {
-			refusedRow = 0
-		}
-		o.Calls = append(o.Calls, rec)
-		if end != "" {
-			o.End = end
-			if end == "finished_by_ai" {
-				var a investigator.FinishArguments
-				if json.Unmarshal(step.Arguments, &a) == nil {
-					o.Outcome = string(a.Outcome)
-				}
-			}
-			return o, nil
-		}
-		if refusedRow >= 3 {
-			o.End = "invalid_answer"
-			return o, nil
+		default:
+			return o, fmt.Errorf("aievals: the investigator agent's run failed: %w", out.Err)
 		}
 	}
+}
+
+// evalRun is the agent's environment (agent.Env) in the worker's place: Next
+// is the transcript's turn, with the budget's tools; Carry hands the turn's
+// call to the simulated environment, records the step in the transcript
+// and in the outcome, and ends the run as the worker's carry does. Eino
+// calls them one after another while runInvestigation waits for the run.
+type evalRun struct {
+	cfg  InvestigatorConfig
+	env  *env
+	tr   *investigator.Transcript
+	o    *InvestigatorOutcome
+	attr provider.Attribution
+	// runTurns are the turns this run asked for (Next), carried the turns
+	// it carried out (Carry), asked when it asked for its latest.
+	runTurns, carried int
+	asked             time.Time
+	// retries are the failed turns asked again since the last carried
+	// call; invalidRow and refusedRow the invalid turns and refused steps
+	// in a row (H-061 §7).
+	retries, invalidRow, refusedRow int
+	// err is the transcript's failure, which ends the case with an error.
+	err error
+}
+
+var _ agent.Env = (*evalRun)(nil)
+
+// Next is the turn's context, from the transcript, with the budget's tools;
+// the 14 steps or the 20 turns end the run (limit_reached).
+func (r *evalRun) Next(ctx context.Context) (*provider.PlanContext, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	b := r.env.budget()
+	if b.StepsLeft <= 0 || r.o.PlannerTurns+r.runTurns >= maxPlannerTurns {
+		return nil, &agent.End{Reason: "limit_reached"}
+	}
+	r.runTurns++
+	pc, err := r.tr.Next(evalOrg, r.attr, r.cfg.Planner, b)
+	if err != nil {
+		r.err = err
+		return nil, err
+	}
+	r.asked = time.Now()
+	return &pc, nil
+}
+
+// Carry carries out the turn's call (checked and decoded by the client) in
+// the simulated environment.
+func (r *evalRun) Carry(_ context.Context, res provider.PlanResult) (agent.Observed, error) {
+	o := r.o
+	r.carried++
+	if r.cfg.Live {
+		o.TurnMillis = append(o.TurnMillis, time.Since(r.asked).Milliseconds())
+	}
+	r.retries, r.invalidRow = 0, 0
+	o.ValidCalls++
+	o.Garbled += garbled(res.Note, r.cfg.Locale)
+	step, end := r.env.apply(res.Call, o)
+	if err := r.tr.Record(res, step); err != nil {
+		r.err = err
+		return agent.Observed{}, err
+	}
+	rec := CallRecord{Seq: step.Seq, Tool: step.Tool, Status: string(step.Status)}
+	if step.Error != nil {
+		rec.Code = string(step.Error.Code)
+		o.RefusedSteps++
+		r.refusedRow++
+	} else {
+		r.refusedRow = 0
+	}
+	o.Calls = append(o.Calls, rec)
+	switch {
+	case end == "finished_by_ai":
+		// The agent returns directly after finish (Outcome Finished).
+		return agent.Observed{}, nil
+	case end != "":
+		return agent.Observed{}, &agent.End{Reason: end}
+	case r.refusedRow >= 3:
+		return agent.Observed{}, &agent.End{Reason: "invalid_answer"}
+	}
+	return agent.Observed{Content: string(step.Observation), IsError: step.Status != investigator.StepDone}, nil
 }
 
 // briefInput is a case's brief: the electronics template's model in the

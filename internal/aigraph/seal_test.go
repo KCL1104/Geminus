@@ -2,18 +2,24 @@ package aigraph
 
 // H-059 (slice E6; design §6.6, H-061 §5.3): the seal over the roles' move
 // onto Eino. Every AI role runs on its Eino graph and reaches a model only
-// through the metered ChatModel (einomodel.Metered), so no second pipeline
-// is left, and none of Eino's features the design keeps out is used:
+// through the metered ChatModel (einomodel.Metered), the investigator only
+// through its own (einomodel.Planner, the ADK agent's model), so no second
+// pipeline is left, and none of Eino's features the design keeps out is
+// used:
 //
-//   - In non-test code, only internal/aigraph/einomodel (the adapter) and
+//   - In non-test code, only internal/aigraph/einomodel (the adapters) and
 //     internal/ai/provider (the metered client) name a client's model
 //     method: provider.LLMProvider's role methods GenerateModelProposal,
-//     AnalyzeSimulation and ProposeImportMapping, and the client's tool turn
-//     Turn (H-060). Any selector counts, so a method value or a method
-//     expression does too. The one exception is repair.Once's own second
-//     call: Once is H-057's reviewed repair around a direct call, kept as
-//     the reference its tests and the graphs' parity tests hold the graphs
-//     to; no non-test code uses it, outside internal/ai/repair or in it.
+//     AnalyzeSimulation and ProposeImportMapping, the client's tool turn
+//     Turn (H-060) and its planner turn PlanTurn (H-061 §9, slice A5: the
+//     investigator role's only path to a model, which only
+//     einomodel.Planner calls; the worker's investigation handler and the
+//     investigator eval both run the ADK agent over it). Any selector
+//     counts, so a method value or a method expression does too. The one
+//     exception is repair.Once's own second call: Once is H-057's reviewed
+//     repair around a direct call, kept as the reference its tests and the
+//     graphs' parity tests hold the graphs to; no non-test code uses it,
+//     outside internal/ai/repair or in it.
 //   - Nowhere, tests included: Eino's checkpoint stores (the rows are the
 //     state, design §6.5): a graph's (WithCheckPointStore), an ADK runner's
 //     (RunnerConfig's CheckPointStore field) and the ADK turn loop's
@@ -89,6 +95,7 @@ var modelMethods = map[string]string{
 	"AnalyzeSimulation":     "provider.LLMProvider's explanation call, made only through the metered Eino ChatModel (einomodel.Metered) on the analysis graph",
 	"ProposeImportMapping":  "provider.LLMProvider's import-mapping call: the importer's future job calls it through the metered Eino ChatModel on a graph (design §6.4)",
 	"Turn":                  "the client's tool turn (provider.Client.Turn, H-060), made only through the metered Eino ChatModel",
+	"PlanTurn":              "the client's planner turn (provider.Client.PlanTurn, H-061 §9), made only through the investigator's Eino ChatModel (einomodel.Planner) on the ADK agent (internal/aigraph/investigator)",
 }
 
 // modelCallers are the directories whose non-test code may name them.
@@ -302,6 +309,7 @@ func TestTheSealHolds(t *testing.T) {
 		"internal/aigraph/einomodel", "internal/aigraph/analysis", "internal/aigraph/proposal", "internal/aigraph/photo",
 		"internal/ai/provider", "internal/ai/repair", "internal/ai/photopipeline", "internal/proposals/generator",
 		"internal/analyses/analyzer", "internal/aievals", "cmd/worker", "cmd/ai-eval-live", "cmd/api", "internal/aigraph",
+		"internal/aigraph/investigator", "internal/investigator", "internal/ai/investigator",
 	} {
 		if !r.dirs[dir] {
 			t.Errorf("the seal did not read %s", dir)
@@ -312,7 +320,7 @@ func TestTheSealHolds(t *testing.T) {
 	}
 	for _, k := range []string{
 		"internal/aigraph/einomodel GenerateModelProposal", "internal/aigraph/einomodel AnalyzeSimulation",
-		"internal/aigraph/einomodel Turn", "internal/ai/provider Turn",
+		"internal/aigraph/einomodel Turn", "internal/ai/provider Turn", "internal/aigraph/einomodel PlanTurn",
 	} {
 		if r.allowed[k] == 0 {
 			t.Errorf("the seal saw no %q: the check would be vacuous", k)
@@ -364,6 +372,17 @@ func TestTheSealFindsAPlantedName(t *testing.T) {
 			"func zzPlanted(c provider.LLMProvider) any { return c.GenerateModelProposal }", false, "GenerateModelProposal"},
 		{"a tool turn in the photo graph", "internal/aigraph/photo/photo.go",
 			"func zzPlanted(ctx context.Context, c *provider.Client) { c.Turn(ctx, provider.TurnContext{}) }", false, "Turn"},
+		// The merge of H-061 A5 and A6 with E6: the planner turn
+		// (provider.Client.PlanTurn) is a model method too, named only by
+		// einomodel.Planner.
+		{"a planner turn in the investigation handler", "internal/investigator/handler.go",
+			"func zzPlanted(ctx context.Context, h *Handler) { h.cfg.Planner.PlanTurn(ctx, provider.PlanContext{}) }", false, "PlanTurn"},
+		{"a planner turn in the investigator eval", "internal/aievals/investigator.go",
+			"func zzPlanted(ctx context.Context, c *provider.Client) { c.PlanTurn(ctx, provider.PlanContext{}) }", false, "PlanTurn"},
+		{"a planner turn in the agent", "internal/aigraph/investigator/agent.go",
+			"func zzPlanted(p einomodel.PlanTurner) any { return p.PlanTurn }", false, "PlanTurn"},
+		{"a method expression of the planner turn in the worker's main", "cmd/worker/main.go",
+			"var zzPlanted = (*provider.Client).PlanTurn", false, "PlanTurn"},
 		{"a direct call in the proposal graph", "internal/aigraph/proposal/proposal.go",
 			"func zzPlanted(ctx context.Context, c provider.LLMProvider) { c.GenerateModelProposal(ctx, provider.ProposalContext{}) }", false, "GenerateModelProposal"},
 		{"a direct call in a provider adapter", "internal/ai/provider/meta/meta.go",
@@ -462,6 +481,10 @@ func TestTheSealLetsPass(t *testing.T) {
 			"func zzPlanted(ctx context.Context, c provider.LLMProvider) { c.GenerateModelProposal(ctx, provider.ProposalContext{}); c.Turn(ctx) }", false},
 		{"the adapter's call", "internal/aigraph/einomodel/zz_planted.go",
 			"package einomodel\n\nfunc zzPlanted(c provider.LLMProvider) any { return c.ProposeImportMapping }\n", true},
+		{"the planner adapter's turn", "internal/aigraph/einomodel/zz_planted.go",
+			"package einomodel\n\nfunc zzPlanted(ctx context.Context, p PlanTurner) { p.PlanTurn(ctx, provider.PlanContext{}) }\n", true},
+		{"a test's planner turn", "internal/investigator/zz_planted_test.go",
+			"package investigator\n\nfunc zzPlanted(ctx context.Context, c *provider.Client) { c.PlanTurn(ctx, provider.PlanContext{}) }\n", true},
 		{"the client's call", "internal/ai/provider/provider.go",
 			"func zzPlanted(ctx context.Context, c LLMProvider) { c.AnalyzeSimulation(ctx, AnalysisContext{}) }", false},
 		{"sync.Once in the repair package", "internal/ai/repair/repair.go",
