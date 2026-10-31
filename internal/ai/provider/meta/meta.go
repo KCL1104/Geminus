@@ -82,6 +82,30 @@
 // (model_not_approved). The context window bound below is Muse Spark's; Meta
 // states none for Muse Wonder that this build has read, so its quotes use the
 // same bound (a reservation, as for research, not a ceiling).
+//
+// Plain JSON (H-068): live, under the strict json_schema output format, whose
+// projection asks each JSON Patch value as a JSON text in a string, Muse
+// Wonder 1.0 wrote a string without its quotes and garbled text for a number,
+// so every patch value was refused, its repair's too; the same request
+// without the format answered clean JSON with native values (the
+// coordinator's probe, 2026-10-31). So a proposal request that asks a model
+// of plainJSONModels (Muse Wonder 1.0: an edit, a scenario, research mode, a
+// photo and its count, H-057's repair) sends no output_config; the sealed
+// system text is followed, in the same one system block, by the plainjson
+// template (prompts/plainjson: one JSON object and nothing around it, every
+// value written as itself) and the answer's JSON Schema with native values
+// (structured.Projection.Native: the same projection of the same canonical
+// schema, the encoded places asking for any JSON value). Its answer is read
+// by structured.Projection.DecodeNative (exactly one strict JSON object, no
+// value written as a JSON text in a string, Decode's bounds), which returns
+// what Decode returns for the same answer in the projection's form; a
+// failure is the same invalid_output with JSON Pointer issues, so H-057's
+// repair applies. The text request is quoted with the bytes of what it adds
+// to the system text instead of the projected schema's. The sealed prompt,
+// its input hash, metering, the Standard-mode model check, the no-store rule
+// and H-065's budgets are unchanged; Muse Spark 1.3's requests and decoding
+// are byte for byte what they were (testdata/requests). NOT RUN live: that
+// Muse Wonder answers this request as the probe's did.
 package meta
 
 import (
@@ -103,6 +127,7 @@ import (
 	"github.com/kcl1104/geminus/internal/config/aiapproval"
 	"github.com/kcl1104/geminus/internal/model"
 	"github.com/kcl1104/geminus/internal/secret"
+	"github.com/kcl1104/geminus/prompts"
 )
 
 // productionURL is the provider's API ("Base URL | https://api.meta.ai",
@@ -142,7 +167,18 @@ const (
 	// webSearchTool is the built-in tool's type and the name of its steps
 	// (server_tool_use.name).
 	webSearchTool = "web_search"
+	// plainJSONTemplate is the versioned instruction a plain-JSON request
+	// adds to the system text before the native schema (H-068).
+	plainJSONTemplate = "plainjson"
 )
+
+// plainJSONModels are the models a proposal request asks for plain JSON
+// instead of the strict output format (H-068): Muse Wonder 1.0 only.
+var plainJSONModels = map[string]bool{"muse-wonder-1.0": true}
+
+// plainJSON reports whether a request asking model is sent and read as
+// plain JSON (H-068).
+func plainJSON(model string) bool { return plainJSONModels[model] }
 
 // ErrNotApproved: New or NewSegmenter was given no recorded, complete
 // approval of the meta provider (or the record changed after the token was
@@ -277,10 +313,15 @@ func modelNotApproved() *provider.Error {
 	return provider.NewError(provider.CodeModelNotApproved, 0, "")
 }
 
-// projected is an output schema's projection and its size as sent.
+// projected is an output schema's projection and its size as sent, and
+// what a plain-JSON request (H-068) adds to the system text instead.
 type projected struct {
 	structured.Projection
 	size int
+	// answerFormat is the plainjson template and the native schema as one
+	// JSON line; "" when either is missing, and then no plain-JSON request
+	// is sent (invalid_request), while the strict format still is.
+	answerFormat string
 }
 
 // projection is the schema's projection (the one T-053's adapter sends,
@@ -301,10 +342,44 @@ func (b *Backend) projection(schema string) (projected, error) {
 	if err != nil {
 		return projected{}, err
 	}
-	pr := projected{Projection: p, size: len(data)}
+	pr := projected{Projection: p, size: len(data), answerFormat: answerFormat(p)}
 	b.projections.Store(schema, pr)
 	return pr, nil
 }
+
+// answerFormat is what a plain-JSON request adds after the sealed system
+// text (H-068): the plainjson template, then the native schema as one JSON
+// line (deterministic, so a golden pins it); "" when the projection has no
+// native schema or the template cannot be read.
+func answerFormat(p structured.Projection) string {
+	if p.Native == nil {
+		return ""
+	}
+	text, _, err := prompts.Template(plainJSONTemplate)
+	if err != nil {
+		return ""
+	}
+	native, err := json.Marshal(p.Native, json.Deterministic(true))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimRight(text, "\n") + "\n" + string(native)
+}
+
+// formatBytes are the bytes a request of modelID sends to say its answer's
+// format: the projected schema (output_config), or for plain JSON what it
+// adds to the system text (H-068); false when a plain-JSON request has
+// nothing to add.
+func (p projected) formatBytes(modelID string) (int, bool) {
+	if !plainJSON(modelID) {
+		return p.size, true
+	}
+	return len(plainJSONSeparator) + len(p.answerFormat), p.answerFormat != ""
+}
+
+// plainJSONSeparator goes between the sealed system text and what a
+// plain-JSON request adds to it, as the research rules follow a role's.
+const plainJSONSeparator = "\n"
 
 // Quote is the model and the most input tokens one attempt of req can be
 // billed for, never more than the context window:
@@ -332,6 +407,12 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 	if err != nil {
 		return provider.Quote{}, err
 	}
+	format, ok := proj.formatBytes(asked)
+	if !ok {
+		// A plain-JSON request with nothing to say its format (H-068): never
+		// sent, so never reserved.
+		return provider.Quote{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
+	}
 	if req.Prompt.Research {
 		// A research call (H-046 (2)): the pages the provider reads are
 		// input tokens of the call that this build never sees before it is
@@ -353,7 +434,9 @@ func (b *Backend) Quote(ctx context.Context, req provider.Request) (provider.Quo
 		return provider.Quote{Model: asked, MaxInputTokens: contextWindowTokens, MaxToolCalls: researchMaxToolCalls}, nil
 	}
 	if len(req.Prompt.Images) == 0 {
-		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+revisionBytes(req.Prompt)+proj.size) + quoteOverheadTokens
+		// format: the projected schema's bytes, or for plain JSON (H-068)
+		// those it adds to the system text.
+		n := int64(len(req.Prompt.System)+len(req.Prompt.User())+revisionBytes(req.Prompt)+format) + quoteOverheadTokens
 		return provider.Quote{Model: asked, MaxInputTokens: min(n, contextWindowTokens)}, nil
 	}
 	n, err := b.count(ctx, req, proj)
@@ -397,7 +480,7 @@ func (b *Backend) count(ctx context.Context, req provider.Request, proj projecte
 	if !ok {
 		return 0, modelNotApproved()
 	}
-	body, err := countBody(asked, req, proj.Schema)
+	body, err := countBody(asked, req, proj)
 	if err != nil {
 		return 0, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
@@ -454,7 +537,7 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
-	body, err := messagesBody(asked, req, proj.Schema)
+	body, err := messagesBody(asked, req, proj)
 	if err != nil {
 		return provider.Response{}, provider.NewError(provider.CodeInvalidRequest, 0, "")
 	}
@@ -496,12 +579,20 @@ func (b *Backend) Complete(ctx context.Context, req provider.Request) (provider.
 // reasons), no sampling, no metadata, no stop_sequences, top_k, container or
 // inference_geo (each a 400), no cache_control (caching is automatic), no
 // service_tier, no stream.
+//
+// A plain-JSON request (H-068: Muse Wonder 1.0) has no output_config: its
+// one system block is the sealed system text, a newline, the plainjson
+// template and the native schema (answerFormat); everything else is as
+// above, the user turn, a research call's tool and a repair's two turns
+// included. NOT RUN live: this exact body (the coordinator's probe sent the
+// scenario request without the format and with a shorter instruction).
 type messagesRequest struct {
-	Model        string        `json:"model"`
-	MaxTokens    int64         `json:"max_tokens"`
-	System       []textBlock   `json:"system"`
-	Messages     []userMessage `json:"messages"`
-	OutputConfig outputConfig  `json:"output_config"`
+	Model     string        `json:"model"`
+	MaxTokens int64         `json:"max_tokens"`
+	System    []textBlock   `json:"system"`
+	Messages  []userMessage `json:"messages"`
+	// OutputConfig is nil for a plain-JSON request only.
+	OutputConfig *outputConfig `json:"output_config,omitzero"`
 	Tools        []builtinTool `json:"tools,omitzero"`
 }
 
@@ -547,10 +638,22 @@ type countRequest struct {
 	Model        string        `json:"model"`
 	System       []textBlock   `json:"system"`
 	Messages     []userMessage `json:"messages"`
-	OutputConfig outputConfig  `json:"output_config"`
+	OutputConfig *outputConfig `json:"output_config,omitzero"`
 }
 
-func messagesOf(modelID string, req provider.Request, schema map[string]any) (messagesRequest, error) {
+// errNoAnswerFormat: a plain-JSON request whose projection has nothing to
+// say its format (H-068); never sent.
+var errNoAnswerFormat = errors.New("meta: no answer format for a plain-JSON request")
+
+func messagesOf(modelID string, req provider.Request, proj projected) (messagesRequest, error) {
+	system, oc := req.Prompt.System, &outputConfig{Format: jsonFormat{Type: "json_schema", Schema: proj.Schema}}
+	if plainJSON(modelID) {
+		// H-068: no output_config; the format is told after the sealed rules.
+		if proj.answerFormat == "" {
+			return messagesRequest{}, errNoAnswerFormat
+		}
+		system, oc = system+plainJSONSeparator+proj.answerFormat, nil
+	}
 	var content []any
 	for _, im := range req.Prompt.Images {
 		if im.Check() != nil {
@@ -560,8 +663,8 @@ func messagesOf(modelID string, req provider.Request, schema map[string]any) (me
 			Data: base64.StdEncoding.EncodeToString(im.Data)}})
 	}
 	content = append(content, textBlock{Type: "text", Text: req.Prompt.User()})
-	m := messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: req.Prompt.System}},
-		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: outputConfig{Format: jsonFormat{Type: "json_schema", Schema: schema}}}
+	m := messagesRequest{Model: modelID, MaxTokens: req.MaxOutputTokens, System: []textBlock{{Type: "text", Text: system}},
+		Messages: []userMessage{{Role: "user", Content: content}}, OutputConfig: oc}
 	if r := req.Prompt.Revision; r != nil {
 		// H-057: a repair goes on from the first request: the model's own
 		// previous answer as its assistant turn (the text it wrote, its
@@ -585,8 +688,8 @@ func revisionBytes(p provider.Prompt) int {
 	return 0
 }
 
-func messagesBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
-	m, err := messagesOf(modelID, req, schema)
+func messagesBody(modelID string, req provider.Request, proj projected) ([]byte, error) {
+	m, err := messagesOf(modelID, req, proj)
 	if err != nil {
 		return nil, err
 	}
@@ -595,8 +698,8 @@ func messagesBody(modelID string, req provider.Request, schema map[string]any) (
 
 // countBody is the body of the count of req: exactly what messagesBody
 // sends, but max_tokens.
-func countBody(modelID string, req provider.Request, schema map[string]any) ([]byte, error) {
-	m, err := messagesOf(modelID, req, schema)
+func countBody(modelID string, req provider.Request, proj projected) ([]byte, error) {
+	m, err := messagesOf(modelID, req, proj)
 	if err != nil {
 		return nil, err
 	}
@@ -714,7 +817,8 @@ func safeID(id string) string {
 
 // answer takes the text of a complete message from the model asked for
 // (resp.Model); reasoning blocks are dropped unread. The text's encoded places are
-// decoded (structured.Projection.Decode, fail closed). A research answer
+// decoded (structured.Projection.Decode, fail closed; for a plain-JSON model,
+// H-068, DecodeNative, which ends in Decode). A research answer
 // (H-046 (2)) has its web search steps read first, so they are billed
 // whatever becomes of the answer, and its answer is its last text block,
 // which must come after its last step; the narration before is dropped
@@ -794,12 +898,18 @@ func (b *Backend) researchAnswer(m message, resp provider.Response, proj structu
 	return b.decoded(resp, proj, m.Content[last].Text)
 }
 
-// decoded is resp with text, the answer, decoded from the projection. The
-// text as the model wrote it is resp.Answer either way (H-057: a repair
-// sends it back when the server refuses what it says).
+// decoded is resp with text, the answer, decoded from the projection: for a
+// plain-JSON model (H-068) from the native schema (DecodeNative), which gives
+// what Decode gives for the projection's form of the same answer. The text
+// as the model wrote it is resp.Answer either way (H-057: a repair sends it
+// back when the server refuses what it says).
 func (b *Backend) decoded(resp provider.Response, proj structured.Projection, text string) (provider.Response, error) {
 	resp.Answer = []byte(text)
-	decoded, issues := proj.Decode([]byte(text))
+	decode := proj.Decode
+	if plainJSON(resp.Model) {
+		decode = proj.DecodeNative
+	}
+	decoded, issues := decode([]byte(text))
 	if len(issues) > 0 {
 		e := provider.NewError(provider.CodeInvalidOutput, 0, b.c.label)
 		e.Issues = issues

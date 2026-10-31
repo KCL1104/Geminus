@@ -27,6 +27,12 @@ func TestTemplates(t *testing.T) {
 		// guess, and that it is the last chance.
 		"repair": {"FOLLOW_UP", "SERVER_REVIEW", "server_data", "issues_not_listed", "/changes", "same format", "complete JSON document",
 			"no web search", "needs_input", "last chance"},
+		// H-068: what the Meta adapter adds to a Muse Wonder 1.0 proposal
+		// request's system text, before the answer's schema with native
+		// values: one JSON object and nothing around it, every value
+		// written as itself, never a JSON text in a string.
+		"plainjson": {"ANSWER_FORMAT", "ANSWER_SCHEMA", "exactly one JSON object", "code fence", "second object", "as itself",
+			`"fct_tester"`, "Never write a value's JSON text inside a string", "refused", "the server checks"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {

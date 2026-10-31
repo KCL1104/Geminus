@@ -102,11 +102,95 @@ func (p Projection) Decode(text []byte) ([]byte, []model.ValidationIssue) {
 	return doc, nil
 }
 
+// DecodeNative is Decode for an answer written to the native schema
+// (Projection.Native, H-068): the encoded places hold the values themselves,
+// any JSON value, because the request sent no structured output format and
+// told the model the native schema instead. It returns exactly what Decode
+// returns for the same answer in the projection's form, under the same
+// bounds, so the server's checks, review, repair, storage and audit see an
+// answer as they see Muse Spark's: it writes each value at an encoded place
+// back as the JSON text in a string the projection asks for (the value's
+// text as the model wrote it), then decodes the result with Decode. No
+// lenient reading: the answer is checked by the same strict read, the same
+// places (by path and the alternatives' const members, never by what a
+// string looks like), Decode's bounds on each value, and then the client's
+// full-schema check and strict decoding (unknown members, types, sizes).
+//
+// It refuses, with no answer and an issue at the root: text that is not
+// exactly one strict JSON document (text, Markdown or a code fence around
+// it, a second document, duplicate member names anywhere, invalid UTF-8),
+// and a document that is not an object. White space around the object is
+// allowed (RFC 8259's ws). At an encoded place it refuses a string that is
+// exactly one strict JSON text of a string, an array or an object (e.g.
+// "\"fct_tester\"" or "{\"id\":\"node_1\"}"): the value written as a JSON
+// text where the value itself is due, which no value of a model is (an ID
+// cannot hold a quote, and no name is one JSON array or object). A string
+// that holds a number, true, false or null, or text that is not JSON, is a
+// string: in a native answer it cannot be told from a name or a label that
+// reads so, and the server's review checks the patched model against the
+// IR schema (a capacity written "4" is refused there). The issues are as
+// Decode's: the place's JSON Pointer, a fixed message, at most maxIssues.
+func (p Projection) DecodeNative(text []byte) ([]byte, []model.ValidationIssue) {
+	doc := jsontext.Value(text)
+	if !doc.IsValid(strict) || doc.Kind() != '{' {
+		return nil, []model.ValidationIssue{model.NewIssue(provider.OutputInvalid, "", "the answer is not exactly one JSON object", model.SeverityError)}
+	}
+	var issues []model.ValidationIssue
+	changed := false
+	for _, loc := range p.Encoded {
+		out, ch, err := rewriteWith(doc, loc.Steps, "", &issues, encodeNative)
+		if err != nil {
+			cannot := model.NewIssue(provider.OutputInvalid, "", "the answer cannot be decoded", model.SeverityError)
+			return nil, append(issues[:min(len(issues), maxIssues-1)], cannot)
+		}
+		if ch {
+			doc, changed = out, true
+		}
+	}
+	if len(issues) > 0 {
+		return nil, issues[:min(len(issues), maxIssues)]
+	}
+	if !changed {
+		return text, nil // no encoded place applies: nothing to decode
+	}
+	return p.Decode(doc)
+}
+
+// encodeNative is the native value v at an encoded place written as the
+// JSON text in a string the projection asks for, or a fixed reason it is
+// not a value written as itself.
+func encodeNative(v jsontext.Value) (jsontext.Value, string) {
+	if v.Kind() == '"' {
+		var s string
+		if err := json.Unmarshal(v, &s, strict); err != nil {
+			return nil, "the string does not decode"
+		}
+		if inner := jsontext.Value(s); inner.IsValid(strict) {
+			switch inner.Kind() {
+			case '"', '[', '{':
+				return nil, "the value is a JSON text in a string; the value itself is due here"
+			}
+		}
+	}
+	quoted, err := jsontext.AppendQuote(nil, []byte(v))
+	if err != nil {
+		return nil, "the value cannot be written as a JSON text"
+	}
+	return quoted, ""
+}
+
 // rewrite applies the rest of a location's steps to v, found at ptr: at
 // the end of the steps v is decoded. It reports whether v changed.
 func rewrite(v jsontext.Value, steps []Step, ptr string, issues *[]model.ValidationIssue) (jsontext.Value, bool, error) {
+	return rewriteWith(v, steps, ptr, issues, decodeText)
+}
+
+// rewriteWith is rewrite with at, what becomes of the value at the end of
+// the steps (decodeText; encodeNative for DecodeNative).
+func rewriteWith(v jsontext.Value, steps []Step, ptr string, issues *[]model.ValidationIssue,
+	at func(jsontext.Value) (jsontext.Value, string)) (jsontext.Value, bool, error) {
 	if len(steps) == 0 {
-		decoded, msg := decodeText(v)
+		decoded, msg := at(v)
 		if msg != "" {
 			*issues = append(*issues, model.NewIssue(provider.OutputInvalid, ptr, msg, model.SeverityError))
 			return v, false, nil
@@ -124,7 +208,7 @@ func rewrite(v jsontext.Value, steps []Step, ptr string, issues *[]model.Validat
 		}
 		changed := false
 		for i := range items {
-			out, ch, err := rewrite(items[i], steps[1:], ptr+"/"+strconv.Itoa(i), issues)
+			out, ch, err := rewriteWith(items[i], steps[1:], ptr+"/"+strconv.Itoa(i), issues, at)
 			if err != nil {
 				return nil, false, err
 			}
@@ -156,7 +240,7 @@ func rewrite(v jsontext.Value, steps []Step, ptr string, issues *[]model.Validat
 	if !ok {
 		return v, false, nil
 	}
-	out, ch, err := rewrite(member, steps[1:], ptr+"/"+escapeToken(st.Member), issues)
+	out, ch, err := rewriteWith(member, steps[1:], ptr+"/"+escapeToken(st.Member), issues, at)
 	if err != nil || !ch {
 		return v, false, err
 	}

@@ -38,14 +38,32 @@ func roleSealed(t *testing.T, role provider.Role, name, text string, images ...p
 // written from the code before E1 changed it (GEMINUS_WRITE_REQUEST_GOLDENS=1
 // on that commit); a change to any of them is a change to a role's request
 // and needs its own decision (H-059: behaviour unchanged).
+//
+// H-068 is such a decision, for Muse Wonder 1.0 only: its proposal requests
+// send no output_config and end the system text with the plainjson template
+// and the native schema. So scenario-chosen-model (a Muse Wonder scenario)
+// was written again on H-068's code, and the wonder-* goldens are new (an
+// edit, research mode, a photo and its count, a repair); every Muse Spark
+// golden, the analyst's and the importer's are E1's, unchanged.
 func TestRoleRequestGoldens(t *testing.T) {
 	refused := `{"status":"proposed","summary":"Raise it.","assumptions":[],"risk_level":"low","confidence":0.9,` +
 		`"changes":[{"op":"test","path":"/resources/0/id","value":"\"ict_tester\""},{"op":"replace","path":"/resources/0/capacity","value":"three"}],` +
+		`"expected_effects":["The queue may fall; simulate to know."],"requires_confirmation":true}`
+	// refusedNative is a Muse Wonder answer the adapter refuses (H-068): its
+	// test's value is a JSON text in a string, where the value itself is due.
+	refusedNative := `{"status":"proposed","summary":"Raise it.","assumptions":[],"risk_level":"low","confidence":0.9,` +
+		`"changes":[{"op":"test","path":"/resources/0/id","value":"\"ict_tester\""},{"op":"replace","path":"/resources/0/capacity","value":3}],` +
 		`"expected_effects":["The queue may fall; simulate to know."],"requires_confirmation":true}`
 	proposal := func(mode provider.Mode, p provider.Prompt, model string) func(*testing.T, *provider.Client, *meta.Backend) {
 		return func(t *testing.T, c *provider.Client, _ *meta.Backend) {
 			_, _ = c.GenerateModelProposal(context.Background(), provider.ProposalContext{OrganizationID: org, Mode: mode, Prompt: p,
 				Attribution: attribution, Model: model})
+		}
+	}
+	onWonder := func(mode provider.Mode, p provider.Prompt) func(*testing.T, *provider.Client, *meta.Backend) {
+		return func(t *testing.T, c *provider.Client, b *meta.Backend) {
+			meta.SetModels(b, "muse-wonder-1.0")
+			proposal(mode, p, "muse-wonder-1.0")(t, c, b)
 		}
 	}
 	cases := []struct {
@@ -76,6 +94,21 @@ func TestRoleRequestGoldens(t *testing.T) {
 		{"importer", []reply{ok(answerJ)}, func(t *testing.T, c *provider.Client, _ *meta.Backend) {
 			_, _ = c.ProposeImportMapping(context.Background(), provider.MappingContext{OrganizationID: org,
 				Prompt: roleSealed(t, provider.RoleImporter, "COLUMN_NAMES", "station"), Attribution: attribution})
+		}},
+		// H-068: Muse Wonder 1.0's proposal requests.
+		{"wonder-modeler", []reply{fromWonder(ok(answerJ))}, onWonder(provider.ModeEdit, roleSealed(t, provider.RoleModeler, "USER_INTENT", "raise the ICT tester capacity"))},
+		{"wonder-research", []reply{fromWonder(ok(answerJ))}, onWonder(provider.ModeScenario, researchSealed(t, provider.RoleScenario))},
+		{"wonder-modeler-image", []reply{fromWonder(ok(answerJ))}, onWonder(provider.ModeEdit,
+			roleSealed(t, provider.RoleModeler, "USER_INTENT", "the line in the photo", pngImage(t, 8, 8)))},
+		{"wonder-modeler-repair", []reply{fromWonder(ok(refusedNative)), fromWonder(ok(answerJ))}, func(t *testing.T, c *provider.Client, b *meta.Backend) {
+			meta.SetModels(b, "muse-wonder-1.0")
+			p := roleSealed(t, provider.RoleModeler, "USER_INTENT", "raise the ICT tester capacity")
+			first, _ := c.GenerateModelProposal(context.Background(), provider.ProposalContext{OrganizationID: org, Mode: provider.ModeEdit, Prompt: p,
+				Attribution: attribution, Model: "muse-wonder-1.0"})
+			if !first.Prior.Present() {
+				t.Fatal("no prior answer to repair")
+			}
+			proposal(provider.ModeEdit, reviseSealed(t, p, first.Prior), "muse-wonder-1.0")(t, c, b)
 		}},
 	}
 	for _, tc := range cases {
