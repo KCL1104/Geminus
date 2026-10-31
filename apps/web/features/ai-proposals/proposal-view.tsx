@@ -49,6 +49,7 @@ import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
 import { ChangeList } from "./change-list";
 import { loadProposalPage, type ProposalPage } from "./load";
+import { InvestigationLink } from "../investigations/ai-mark";
 import { ProposalPhoto } from "./proposal-photo";
 import { Sources } from "./sources";
 import { visible } from "./shown";
@@ -261,6 +262,14 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
           {t("proposal.revisedAfterCheck")}
         </p>
       )}
+      {p.investigation && p.status !== "applied" && (
+        // H-061 A8: an AI investigation asked for it; while it is ready the AI may save it next, unless a person decides first.
+        <p className={styles.meta} data-by-ai>
+          {p.status === "ready" && !stale ? t("proposal.byAi.ready") : t("proposal.byAi.other")}
+          {gap}
+          <InvestigationLink id={p.investigation.id} />
+        </p>
+      )}
       {p.status === "generating" && <p>{t("proposal.generatingHint")}</p>}
       {approvable && (
         <p>{t(p.mode === "edit" ? "proposal.effect.edit" : "proposal.effect.scenario", { version: String(p.mode === "edit" ? baseVersion + 1 : baseVersion) })}</p>
@@ -355,6 +364,16 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
             </p>
           )}
           <Comment text={p.decision_comment} />
+        </section>
+      )}
+      {p.status === "applied" && (
+        // H-061 A8: the AI acted on its own ready proposal for the person who asked; never an approval.
+        <section className={styles.section} data-decided="applied">
+          <p>{p.mode === "scenario" ? t("proposal.applied.scenario") : t("proposal.applied.edit", { revision: String(p.applied_draft_revision ?? "") })}</p>
+          <p className={styles.appliedLinks}>
+            {p.mode === "scenario" && p.scenario_id && <Link href={hrefs.scenario(p.scenario_id)}>{t("proposal.outcome.openScenario")}</Link>}
+            {p.investigation && <InvestigationLink id={p.investigation.id} />}
+          </p>
         </section>
       )}
       {outcome?.kind !== "rejected" && p.status === "rejected" && (

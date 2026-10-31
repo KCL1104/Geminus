@@ -42,12 +42,14 @@ type Section = (typeof sections)[number];
 const icons: Record<Section, () => ReactNode> = { canvas: CanvasIcon, scenarios: BranchIcon, proposals: AskIcon, runs: RunsIcon };
 const href = (model: string, s: Section) => (s === "canvas" ? `/models/${model}` : `/models/${model}/${s}`);
 
-/** The section a path belongs to: its own page, or a scenario's, its results' or a proposal's. */
+/** The section a path belongs to: its own page, or a scenario's, its results', a proposal's or an investigation's. */
 function sectionOf(path: string, model: string): Section | null {
   if (path === `/models/${model}`) return "canvas";
   for (const s of sections) if (s !== "canvas" && path.startsWith(`/models/${model}/${s}`)) return s;
   if (path.startsWith("/scenarios/")) return "scenarios";
   if (path.startsWith("/proposals/")) return "proposals";
+  // H-061 A8: an AI investigation is filed with the model's AI proposals (H-056 §14).
+  if (path.startsWith("/investigations/")) return "proposals";
   return null;
 }
 

@@ -21,9 +21,12 @@
 // sample's validation and risk are written in samples.ts. H-049: a request
 // that names a model (model in the body, or the photo's model part) is
 // answered as written by that model of Meta (generated_by.model), as the e2e
-// fake API does; nothing ran it.
+// fake API does; nothing ran it. H-061 A8: createInvestigation answers 202
+// with a new investigation's ID (no agent runs), and aiEdit gives the draft
+// and its version the labels of a change an AI investigation wrote.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
-import type { Approval, Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
+import type { Approval, Draft, InvestigationRequest, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
+import { investigationId } from "../investigation/samples";
 import { applyPatch } from "../../../features/model-editor/patch";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
 import { samplePhotoBytes } from "./sample-photo";
@@ -49,6 +52,8 @@ export type ProposalStandInOptions = {
   missing?: boolean;
   /** Fields of the sample proposal replaced (tests: other names, words or changes on the same sample). */
   proposal?: Partial<Proposal>;
+  /** H-061 A8: the draft holds a change an AI investigation wrote, and the version it is on includes one (Draft.ai_edit, ModelVersion.ai_edit). */
+  aiEdit?: { investigation: string; proposal: string };
 };
 
 export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
@@ -127,9 +132,12 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     return v;
   };
   addVersion(sampleLine, null, USER);
+  if (opts.aiEdit) versions[0] = { ...versions[0]!, ai_edit: { proposal_id: opts.aiEdit.proposal, investigation_id: opts.aiEdit.investigation } };
+  let investigations = 0;
 
-  // The draft: the latest version's IR, or (dirty) one saved change on it.
-  let draft = { ir: opts.dirtyDraft ? patched(sampleLine, [{ op: "replace", path: "/name", value: `${sampleLine.name}, draft` }]) : sampleLine, revision: 3, base: versionId(1), changed: !!opts.dirtyDraft };
+  // The draft: the latest version's IR, or (dirty) one saved change on it, or (aiEdit) the AI's one change on it.
+  const saved = opts.dirtyDraft ? `${sampleLine.name}, draft` : opts.aiEdit ? `${sampleLine.name}, AI change` : null;
+  let draft = { ir: saved !== null ? patched(sampleLine, [{ op: "replace", path: "/name", value: saved }]) : sampleLine, revision: 3, base: versionId(1), changed: saved !== null };
   /** A new latest version: a clean draft moves to it, a changed one stays and is out of date (D-003). */
   const moveDraft = (v: ModelVersion) => {
     if (!draft.changed) draft = { ir: v.ir, revision: draft.revision + 1, base: v.id, changed: false };
@@ -152,7 +160,10 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     draft: { revision: draft.revision, base_version_id: draft.base, out_of_date: draft.base !== latest().id },
     latest_version: { id: latest().id, version: latest().version }, created_at: "2026-10-26T00:00:00Z",
   });
-  const draftBody = (): Draft => ({ model_id: SAMPLE_MODEL_ID, base_version_id: draft.base, revision: draft.revision, ir: draft.ir, hash: fakeHash(draft.ir), out_of_date: draft.base !== latest().id, issues: [] });
+  const draftBody = (): Draft => ({
+    model_id: SAMPLE_MODEL_ID, base_version_id: draft.base, revision: draft.revision, ir: draft.ir, hash: fakeHash(draft.ir), out_of_date: draft.base !== latest().id, issues: [],
+    ...(opts.aiEdit ? { ai_edit: { proposal_id: opts.aiEdit.proposal, investigation_id: opts.aiEdit.investigation, revision: draft.revision, operations: 1 } } : {}),
+  });
 
   const json = (status: number, body: unknown, etag?: string) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "X-Request-ID": REQUEST, ...(etag ? { ETag: etag } : {}) } });
@@ -212,6 +223,17 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true };
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
+      });
+    }
+    // H-061 A8: createInvestigation as openapi.yaml answers it (202 with the investigation's ID); the stand-in runs no agent.
+    if (method === "POST" && path === `${m}/investigations`) {
+      const no = refused();
+      if (no) return no;
+      const req = body as InvestigationRequest;
+      return once(key, `investigation:${canonical(req)}`, () => {
+        if ("base_version_id" in req && req.base_version_id !== latest().id) return { status: 409, body: { error: { code: "MODEL_VERSION_CONFLICT", message: "base_version_id is not the model's latest version", details: [{ path: "/base_version_id", reason: "not the model's latest version" }], request_id: REQUEST } }, keep: false };
+        investigations += 1;
+        return { status: 202, body: { investigation_id: investigationId(investigations), status: "running" }, keep: true };
       });
     }
     if (method === "POST" && path === `${m}/ai-proposals/image`) {

@@ -41,8 +41,13 @@ function domainName(domain: string, t: (k: MessageKey) => string): string {
   return Object.hasOwn(en, k) ? t(k as MessageKey) : domain;
 }
 
-/** onProposal: where a proposal the AI was asked for goes (the route's navigation); without it the page offers no request. */
-export function ModelView({ modelId, onProposal }: { modelId: string; onProposal?: (proposalId: string) => void }) {
+/**
+ * onProposal: where a proposal the AI was asked for goes (the route's
+ * navigation); without it the page offers no request. onInvestigation (H-061
+ * A8): where an AI investigation goes once started; without it the request
+ * offers none.
+ */
+export function ModelView({ modelId, onProposal, onInvestigation }: { modelId: string; onProposal?: (proposalId: string) => void; onInvestigation?: (investigationId: string) => void }) {
   const api = useApi();
   const { role } = useAuth();
   const { t } = useI18n();
@@ -88,6 +93,8 @@ export function ModelView({ modelId, onProposal }: { modelId: string; onProposal
                       onCreated={onProposal}
                       onReload={reloadPage}
                       photo={PHOTO_DOMAINS.includes(page.model.domain)}
+                      onInvestigation={onInvestigation}
+                      timeUnit={page.session.remote.ir.time_unit}
                     />
                   </>
                 )

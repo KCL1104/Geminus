@@ -30,6 +30,13 @@ export type Auth = {
   role: Role | null;
   /** The bootstrap, when the app mounted it; absent for a fixed session (tests, the editor preview) and outside any provider. */
   account?: Account;
+  /**
+   * The signed-in user's ID as /me gave it (D-045), once an organization is
+   * chosen; null or absent while unknown. Like the role it only shapes the
+   * UI (H-061: whether this reader started an investigation, so may stop
+   * it); the API authorizes every request.
+   */
+  userId?: string | null;
 };
 
 const AuthContext = createContext<Auth>({ session: null, role: null });

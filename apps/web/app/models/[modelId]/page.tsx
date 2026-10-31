@@ -9,8 +9,8 @@ export default function ModelPageRoute({ params }: { params: Promise<{ modelId: 
   const router = useRouter();
   return (
     <RequireSession>
-      {/* A proposal the AI was asked for opens on its own page (T-031). */}
-      <ModelView modelId={modelId} onProposal={(id) => router.push(`/proposals/${id}`)} />
+      {/* A proposal the AI was asked for opens on its own page (T-031); an AI investigation on its own (H-061 A8). */}
+      <ModelView modelId={modelId} onProposal={(id) => router.push(`/proposals/${id}`)} onInvestigation={(id) => router.push(`/investigations/${id}`)} />
     </RequireSession>
   );
 }

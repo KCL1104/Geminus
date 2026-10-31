@@ -11,6 +11,7 @@ import { useRemote } from "../../app/_components/use-remote";
 import { useApi } from "../../lib/api/provider";
 import type { Scenario } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
+import { AiMark } from "../investigations/ai-mark";
 import styles from "./simulations.module.css";
 
 type Listed = { items: { scenario: Scenario; version: number }[]; more: boolean };
@@ -47,6 +48,8 @@ export function ScenarioList({ modelId, latestVersionId, empty = null }: { model
               {items.map(({ scenario, version }) => (
                 <li key={scenario.id}>
                   <Link href={`/scenarios/${scenario.id}`}>{scenario.name}</Link>
+                  {/* H-061 A8: a scenario an AI investigation saved for the person who asked. */}
+                  {scenario.made_by_ai && <AiMark kind="saved" />}
                   <span className={styles.status}>{t("model.scenarios.version", { version: String(version) })}</span>
                 </li>
               ))}

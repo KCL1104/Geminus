@@ -68,6 +68,8 @@ Recorded evidence:
 - Four live photo smoke runs on 2026-10-27 (SAM 3.1 + Muse Spark): one `needs_input`, two `failed`, one `ready` ([checks/ai-evals/](checks/ai-evals/)).
 - Live analyst checks on the deployed demo: [checks/T-030_VALIDATION.md](checks/T-030_VALIDATION.md).
 
+**AI investigations (H-056, H-060, H-061; being built, off everywhere).** On a person's request the AI tests ideas by itself: Muse Spark picks each step (propose a what-if, save it, run it, ask for an explanation, or write one change into a clean draft), and the server carries out each step in that person's name under fixed caps, labelled as the AI's; it never publishes or approves ([docs/design/H-061_BACKGROUND_INVESTIGATOR.md](docs/design/H-061_BACKGROUND_INVESTIGATOR.md)). The web's part (slice A8, [checks/H-061_A8_VALIDATION.md](checks/H-061_A8_VALIDATION.md)) is built behind `NEXT_PUBLIC_GEMINUS_INVESTIGATIONS` (off unless the build sets it): "Let the AI act on it" in Ask AI, "Let the AI test these" under an explanation, the investigation page at `/investigations/<id>`, the labels on what the AI made, and the revised Guardrails on the landing. The API's `GEMINUS_INVESTIGATIONS` and the worker's agent are other slices; the coordinator turns the flags on only after every slice is reviewed and the closed-loop live checks pass.
+
 **In progress (H-043, not merged yet).** Two features are being built and are not part of this commit:
 
 - The UI shows which Meta model produced each proposal and each explanation.

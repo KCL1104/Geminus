@@ -15,7 +15,15 @@ const nextConfig: NextConfig = {
   // variable would change only the server's half). The image's build never
   // sets it (the deploy check allows no build arguments), so Muse Wonder is
   // hidden on the deployment; offering it again is a code change here.
-  env: { NEXT_PUBLIC_GEMINUS_OFFER_WONDER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER ?? "" },
+  // H-061 A8 (PROPOSED): AI investigations and Muse Wonder 1.0 as their
+  // planner, each off unless the build sets it, fixed the same way; the
+  // image's build sets neither, so both stay off on the deployment until
+  // the coordinator turns them on (H-061 §14, §18 A9).
+  env: {
+    NEXT_PUBLIC_GEMINUS_OFFER_WONDER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER ?? "",
+    NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? "",
+    NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER ?? "",
+  },
   ...(process.env.GEMINUS_NEXT_STANDALONE === "1" ? { output: "standalone" as const } : {}),
 };
 

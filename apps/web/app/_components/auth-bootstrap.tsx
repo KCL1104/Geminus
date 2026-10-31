@@ -10,6 +10,7 @@
 // read: the chosen organization as the session, its role, and the account.
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import type { Result } from "../../lib/api/client";
+import { isID } from "../../lib/api/ids";
 import { unauthenticatedProblem } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
 import { type Bootstrap, bootstrapFrom } from "../../lib/auth/bootstrap";
@@ -44,6 +45,8 @@ export function AuthBootstrap({ signedIn, organization, navigate, children }: {
   // One session object per organization: a new one (a switch) makes every page load again.
   const session = useMemo(() => (organizationId === null ? null : { organizationId }), [organizationId]);
   const role = ready?.role ?? null;
+  // H-061 A8: who is signed in, for the UI only (the API authorizes); only a contract-shaped ID, only with an organization.
+  const userId = ready !== null && me.state === "loaded" && typeof me.data.user_id === "string" && isID("usr", me.data.user_id) ? me.data.user_id : null;
 
   const choose = useCallback((id: string) => {
     const org = parseOrganization(id);
@@ -63,6 +66,6 @@ export function AuthBootstrap({ signedIn, organization, navigate, children }: {
     [navigate],
   );
   const account = useMemo<Account>(() => ({ bootstrap, choose, retry, signOut: end }), [bootstrap, choose, retry, end]);
-  const value = useMemo<Auth>(() => ({ session, role, account }), [session, role, account]);
+  const value = useMemo<Auth>(() => ({ session, role, account, userId }), [session, role, account, userId]);
   return <AuthProvider value={value}>{children}</AuthProvider>;
 }

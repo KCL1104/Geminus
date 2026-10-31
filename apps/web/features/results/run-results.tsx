@@ -19,6 +19,7 @@ import { ShownStatus, StatusRegion } from "../../ui/status";
 import { checkPair, pairPhase } from "../simulations/run-pair";
 import { LineKey, RunPairStatus, type RunSide } from "../simulations/run-status";
 import { useRunPair } from "../simulations/use-run-pair";
+import { MadeFor } from "../investigations/ai-mark";
 import { loadResults } from "./load";
 import { ResultsView } from "./results-view";
 
@@ -71,7 +72,11 @@ export function RunResults({ scenarioId, baselineId, scenarioRunId, pollMs, anal
           <PageHeader
             trail={[{ href: `/scenarios/${s.id}`, label: t("runs.back") }]}
             title={s.name}
-            facts={phase === "completed" && pair.baseline && pair.scenario && !pair.refused ? [runFact("baseline", pair.baseline), runFact("scenario", pair.scenario)] : []}
+            facts={[
+              ...(phase === "completed" && pair.baseline && pair.scenario && !pair.refused ? [runFact("baseline", pair.baseline), runFact("scenario", pair.scenario)] : []),
+              // H-061 A8: a run an AI investigation started for the person who asked (H-056 §13: "Run by the AI for <person>").
+              ...(pair.scenario?.made_by_ai && !pair.refused ? [{ label: t("aiMark.startedBy"), value: <MadeFor made={pair.scenario.made_by_ai} /> }] : []),
+            ]}
           />
           {pair.refused ? (
             <ProblemView problem={pair.refused} />

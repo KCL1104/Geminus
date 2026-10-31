@@ -26,6 +26,7 @@
 import type { MessageKey, Translator } from "../../lib/i18n/translate";
 import shell from "../../ui/shell.module.css";
 import { offeredModels } from "../ai-proposals/proposal-models";
+import { investigationsOffered } from "../investigations/flags";
 import { templateName } from "../models/templates";
 import { LandingAction } from "./cta";
 import styles from "./landing.module.css";
@@ -128,6 +129,20 @@ const safety: [MessageKey, MessageKey][] = [
   ["landing.safe.synthetic", "landing.safe.synthetic.body"],
 ];
 
+/**
+ * H-061 A8 (H-056, H-060: the Guardrails revised): in a build with AI
+ * investigations on, the AI may act for the person who asks, so "only
+ * suggests" and "a person approves" would no longer be the whole truth; the
+ * first and third rules say what it may do and what it never does.
+ */
+const safetyActing: [MessageKey, MessageKey][] = [
+  ["landing.safe.acts", "landing.safe.acts.body"],
+  ["landing.safe.checks", "landing.safe.checks.body"],
+  ["landing.safe.publishes", "landing.safe.publishes.body"],
+  ["landing.safe.versions", "landing.safe.versions.body"],
+  ["landing.safe.synthetic", "landing.safe.synthetic.body"],
+];
+
 export function Landing({ t }: { t: Translator }) {
   return (
     <div className={styles.landing}>
@@ -192,7 +207,7 @@ export function Landing({ t }: { t: Translator }) {
       <section className={styles.section} aria-labelledby="landing-safe">
         <h2 id="landing-safe">{t("landing.safe.title")}</h2>
         <dl className={styles.facts}>
-          {safety.map(([term, body]) => (
+          {(investigationsOffered() ? safetyActing : safety).map(([term, body]) => (
             <div key={term} className={styles.pair}>
               <dt>{t(term)}</dt>
               <dd>{t(body)}</dd>

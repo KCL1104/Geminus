@@ -10,6 +10,16 @@ export const proposalPreviews = [
   "/ui-gallery/proposal", "/ui-gallery/proposal?state=scenario", "/ui-gallery/proposal?state=new-steps", "/ui-gallery/proposal?state=photo", "/ui-gallery/proposal?state=needs_input",
   "/ui-gallery/proposal?state=invalid", "/ui-gallery/proposal?state=failed", "/ui-gallery/proposal?state=stale", "/ui-gallery/proposal?state=conflicted",
 ];
+/**
+ * The AI investigation page's review page (H-061 A8, gallery only), one
+ * address per sample. The gallery renders it whatever the build's
+ * NEXT_PUBLIC_GEMINUS_INVESTIGATIONS says; the product's
+ * /investigations/<id> is not found in this build (it is off, as in production).
+ */
+export const investigationPreviews = [
+  "/ui-gallery/investigation", "/ui-gallery/investigation?state=planning", "/ui-gallery/investigation?state=refused", "/ui-gallery/investigation?state=finished",
+  "/ui-gallery/investigation?state=stopped", "/ui-gallery/investigation?state=edit", "/ui-gallery/investigation?state=hostile", "/ui-gallery/investigation?state=viewer",
+];
 export const locales: Locale[] = ["en", "zh-Hant"];
 
 /** The system colour schemes the app follows when the reader chose no theme (H-013). */
@@ -28,6 +38,8 @@ export const routes = [
   // T-031: a proposal (signed out), and the proposal review's review page in its samples.
   "/proposals/aip_01M4YDQK00TA00000000000001",
   ...proposalPreviews,
+  // H-061 A8: the AI investigation page's review page in its samples.
+  ...investigationPreviews,
 ];
 
 /** Opens a route in a language, and in a remembered theme if one is given (else the system's). */

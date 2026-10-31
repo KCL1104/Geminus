@@ -454,3 +454,22 @@ ul.words {
 .askRow p {
   margin: 0;
 }
+
+/* H-061 A8: an applied proposal's effect and its investigation, one link each, spaced as targets (WCAG 2.5.8). */
+.appliedLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+}
+
+/* H-061 A8: the AI acts on it (Let the AI act on it): the run settings and the aim, under the box. */
+.act {
+  display: grid;
+  gap: var(--gm-space-sm);
+}
+
+.actFields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  column-gap: var(--gm-space-md);
+}
