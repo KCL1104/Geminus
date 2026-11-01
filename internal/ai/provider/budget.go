@@ -15,7 +15,7 @@ type Budget struct {
 	// is also an upper bound on input tokens.
 	MaxPromptBytes int
 	// MaxOutputTokens is the provider's max_tokens (a request with images
-	// has its own: ImageMaxOutputTokens).
+	// and the analyst's have their own: ImageMaxOutputTokens).
 	MaxOutputTokens int64
 	// MaxOutputBytes bounds the answer the server reads and validates.
 	MaxOutputBytes int

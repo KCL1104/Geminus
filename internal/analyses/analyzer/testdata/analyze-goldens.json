@@ -72,7 +72,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "783ad00ea0cefccd0055931f28e5e4b341d5d6267c3211cba922b28e9868a1f7",
         "user_sha256": "1df04d8bd25043ef0f51855b4e3f6595feb5d9f568c463286c457c403e676192",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -151,7 +151,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -233,7 +233,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "charges": [
@@ -242,7 +242,7 @@
         "role": "analyst",
         "model": "muse-spark-1.3",
         "target": "ai_analysis:ana_01M4YDQK00FGZZWH0PP15XPNFC:req_01M4YDQK00FGZZWH0PP15XPNFD",
-        "nano_usd": 179448000
+        "nano_usd": 483000000
       }
     ],
     "settled": [
@@ -313,7 +313,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -379,7 +379,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -493,7 +493,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -559,7 +559,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [
@@ -624,7 +624,7 @@
         "schema": "analysis-output.schema.json",
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
-        "max_output_tokens": 8192
+        "max_output_tokens": 32000
       }
     ],
     "logs": [

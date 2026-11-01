@@ -1082,7 +1082,7 @@
           "then": {
             "properties": {
               "hint": {
-                "const": "A service the server needed stayed unavailable through its retries, so the call did not complete; it was not the call's fault."
+                "const": "A service the server needed stayed unavailable through its retries, so the call did not complete (not the call's fault); do not call that tool again: use another offered tool or finish."
               }
             }
           }
@@ -1108,7 +1108,7 @@
           "then": {
             "properties": {
               "hint": {
-                "const": "The server could not store the run's data through its retries, so the call did not complete; it was not the call's fault."
+                "const": "The server could not store the run's data through its retries, so the call did not complete (not the call's fault); do not call that tool again: use another offered tool or finish."
               }
             }
           }
@@ -1134,7 +1134,7 @@
           "then": {
             "properties": {
               "hint": {
-                "const": "The server failed while carrying out the call; it was not the call's fault."
+                "const": "The server failed while carrying out the call (not the call's fault); do not call that tool again: use another offered tool or finish."
               }
             }
           }

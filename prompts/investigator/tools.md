@@ -1,4 +1,4 @@
-# Investigation Planner tools — prompt_template_version: investigator-0.2.0
+# Investigation Planner tools — prompt_template_version: investigator-0.4.0
 
 ## propose_what_if
 Scenario mode. Ask for the next what-if on the investigation's model: describe one change in words (idea: one paragraph without line breaks, at most 2000 characters). When the idea is your own, leave from_suggestion out, and never write it as the string null. Only to take an earlier explanation's suggested experiment, set from_suggestion to its analysis_id and index (the server then writes the request from that suggestion), with idea saying why. The proposal pipeline turns it into a reviewed scenario proposal; its result says whether it is ready, needs input, is invalid or failed. At most 3 what-ifs; refused with LIMIT_REACHED after that, BASE_MOVED when the model has a newer version.

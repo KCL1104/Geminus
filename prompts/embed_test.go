@@ -42,7 +42,7 @@ func TestTemplates(t *testing.T) {
 			"talk to the person", "budget", "finish", "Never state a result figure", "untrusted data",
 			// H-061 A9: a refusal's hint is the server's own sentence; an
 			// unused member is left out, never the string null.
-			"hint", "Never repeat a refused call unchanged", "leave out a member you do not use", "string null"},
+			"hint", "Never repeat a refused or failed call unchanged", "leave out a member you do not use", "string null"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {
@@ -75,7 +75,7 @@ func TestToolDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, want, _ := Template("investigator"); version != want || version != "investigator-0.2.0" {
+	if _, want, _ := Template("investigator"); version != want || version != "investigator-0.4.0" {
 		t.Errorf("version %q", version)
 	}
 	tools := []string{"propose_what_if", "save_scenario", "run_what_if", "explain_results", "propose_model_edit", "write_to_draft", "finish"}

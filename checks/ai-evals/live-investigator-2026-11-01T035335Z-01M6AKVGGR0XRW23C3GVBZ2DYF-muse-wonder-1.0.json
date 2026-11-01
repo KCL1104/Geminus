@@ -1,0 +1,366 @@
+{
+	"suite": "investigator",
+	"kind": "live",
+	"provider": "meta",
+	"approval": "H-029",
+	"planner_model": "muse-wonder-1.0",
+	"transcript": "digest",
+	"prompt_template_version": "investigator-0.3.0",
+	"run_id": "01M6AKVGGR0XRW23C3GVBZ2DYF",
+	"started_at": "2026-11-01T03:53:35Z",
+	"cap_usd": "4.00",
+	"cost_usd": "1.1557856",
+	"cases_run": 6,
+	"cases_passed": 5,
+	"gate_failures": {
+		"expectations": 0,
+		"forbidden_calls": 0,
+		"garbled_texts": 0,
+		"truncated_turns": 0
+	},
+	"complete": true,
+	"cases": [
+		{
+			"id": "INV-001",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "improvement_found",
+			"steps": 9,
+			"planner_turns": 9,
+			"valid_calls": 9,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 1,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "explain_results",
+					"status": "done"
+				},
+				{
+					"seq": 5,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 6,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 7,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 8,
+					"tool": "propose_what_if",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 9,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true,
+			"turn_ms": [
+				9085,
+				2298,
+				2553,
+				5825,
+				3465,
+				4107,
+				2491,
+				10447,
+				8925
+			],
+			"cost_nano_usd": 347547200
+		},
+		{
+			"id": "INV-002",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "no_improvement",
+			"steps": 7,
+			"planner_turns": 7,
+			"valid_calls": 7,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 2,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 5,
+					"tool": "explain_results",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 6,
+					"tool": "propose_what_if",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 7,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true,
+			"turn_ms": [
+				3882,
+				5575,
+				10298,
+				3237,
+				4982,
+				17590,
+				11118
+			],
+			"cost_nano_usd": 289703200
+		},
+		{
+			"id": "INV-003",
+			"mode": "scenario",
+			"end": "finished_by_ai",
+			"ai_outcome": "improvement_found",
+			"steps": 6,
+			"planner_turns": 6,
+			"valid_calls": 6,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 2,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "explain_results",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 5,
+					"tool": "propose_what_if",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 6,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true,
+			"turn_ms": [
+				3298,
+				1731,
+				1881,
+				2778,
+				2215,
+				2587
+			],
+			"cost_nano_usd": 191076000
+		},
+		{
+			"id": "INV-004",
+			"mode": "edit",
+			"end": "draft_written",
+			"steps": 2,
+			"planner_turns": 2,
+			"valid_calls": 2,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_model_edit",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "write_to_draft",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true,
+			"turn_ms": [
+				1983,
+				21145
+			],
+			"cost_nano_usd": 60848000
+		},
+		{
+			"id": "INV-005",
+			"mode": "edit",
+			"end": "finished_by_ai",
+			"ai_outcome": "needs_person",
+			"steps": 2,
+			"planner_turns": 2,
+			"valid_calls": 2,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 0,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_model_edit",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "finish",
+					"status": "done"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": true,
+			"turn_ms": [
+				5874,
+				4370
+			],
+			"cost_nano_usd": 76992000
+		},
+		{
+			"id": "INV-006",
+			"mode": "scenario",
+			"end": "invalid_answer",
+			"steps": 6,
+			"planner_turns": 6,
+			"valid_calls": 6,
+			"invalid_turns": 0,
+			"invalid_kinds": {},
+			"refused_steps": 3,
+			"calls": [
+				{
+					"seq": 1,
+					"tool": "propose_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 2,
+					"tool": "save_scenario",
+					"status": "done"
+				},
+				{
+					"seq": 3,
+					"tool": "run_what_if",
+					"status": "done"
+				},
+				{
+					"seq": 4,
+					"tool": "explain_results",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 5,
+					"tool": "propose_what_if",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				},
+				{
+					"seq": 6,
+					"tool": "propose_what_if",
+					"status": "failed",
+					"code": "SERVICE_UNAVAILABLE"
+				}
+			],
+			"forbidden_calls": 0,
+			"garbled_texts": 0,
+			"truncated_turns": 0,
+			"passed": false,
+			"failures": [
+				"end"
+			],
+			"turn_ms": [
+				5711,
+				2249,
+				2203,
+				4833,
+				8712,
+				9419
+			],
+			"cost_nano_usd": 189619200
+		}
+	],
+	"pass_bar": {
+		"valid_call_ratio": 1,
+		"valid_calls_at_least_95_percent": true,
+		"no_truncated_turn": true,
+		"no_invalid_answer_end": false,
+		"no_garbled_text": true,
+		"median_turn_ms": 4370,
+		"p95_turn_ms": 17590,
+		"max_turn_ms": 21145,
+		"latency_within_bounds": true,
+		"cost_at_most_usd_1_per_case": true,
+		"ends_finished_or_limit": false,
+		"finish_rubric": "NOT_COMPUTED",
+		"passed": false
+	}
+}

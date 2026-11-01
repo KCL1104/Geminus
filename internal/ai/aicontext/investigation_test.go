@@ -138,7 +138,7 @@ func TestInvestigationContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Role != provider.RoleInvestigator || p.TemplateVersion != "investigator-0.2.0" || p.OrganizationID != orgA || p.Verify() != nil {
+	if p.Role != provider.RoleInvestigator || p.TemplateVersion != "investigator-0.4.0" || p.OrganizationID != orgA || p.Verify() != nil {
 		t.Fatalf("prompt %+v", p)
 	}
 	if !strings.Contains(p.System, "## Server rules (planner-rules-1)") || !strings.Contains(p.System, "DOMAIN_CONTEXT") ||

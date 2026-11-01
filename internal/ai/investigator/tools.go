@@ -117,9 +117,9 @@ var hints = map[Code]string{
 	ModeMismatch:         "That tool belongs to the other mode of investigation; call only a tool this turn offers.",
 	UnknownTool:          "That is not a tool this turn offers; call exactly one of the tools offered.",
 	InvalidArguments:     "The call does not match the tool's input schema at this path (an empty path is the whole call); leave out a member you do not use, and never write it as the string null.",
-	ServiceUnavailable:   "A service the server needed stayed unavailable through its retries, so the call did not complete; it was not the call's fault.",
-	DatasetStorageFailed: "The server could not store the run's data through its retries, so the call did not complete; it was not the call's fault.",
-	Internal:             "The server failed while carrying out the call; it was not the call's fault.",
+	ServiceUnavailable:   "A service the server needed stayed unavailable through its retries, so the call did not complete (not the call's fault); do not call that tool again: use another offered tool or finish.",
+	DatasetStorageFailed: "The server could not store the run's data through its retries, so the call did not complete (not the call's fault); do not call that tool again: use another offered tool or finish.",
+	Internal:             "The server failed while carrying out the call (not the call's fault); do not call that tool again: use another offered tool or finish.",
 }
 
 // Hint is code c's hint: the one fixed English sentence a refused or

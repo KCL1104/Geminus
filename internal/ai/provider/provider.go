@@ -407,7 +407,12 @@ func (c *Client) call(ctx context.Context, org string, role Role, p Prompt, attr
 		meta.InputHash, req.Tools, req.Steps = tt.hash, tt.tools, tt.steps
 	}
 	timeout := c.budget.Timeout
-	if len(p.Images) > 0 {
+	if len(p.Images) > 0 || role == RoleAnalyst {
+		// The analyst's reasoning counts toward max_tokens as an image's does:
+		// live (2026-11-01, Muse Spark 1.3, about 37k input tokens) four
+		// explanations an investigation asked for used all of 8192 and were
+		// truncated, and one a person asked for used 6,649. So it gets the
+		// same output bound and timeouts; the reservation follows (meter.go).
 		req.MaxOutputTokens, req.AttemptTimeout, timeout = ImageMaxOutputTokens, c.budget.ImageTimeout(req.AttemptTimeout), c.budget.ImageTimeout(timeout)
 	}
 	if p.Research || (p.Revision != nil && p.Revision.Researched) {

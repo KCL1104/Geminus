@@ -332,7 +332,7 @@ A4 extracts each effect from the person's own Create path, and each Create keeps
 - text with no tool_use;
 - a truncated answer.
 
-Each is recorded by the worker as a refused `invalid_call` step (UNKNOWN_TOOL or INVALID_ARGUMENTS; the arguments are not stored), or, when there is no tool_use at all, as an unrecorded invalid turn. A new ADK run then starts from the digest. Two invalid turns in a row, or three refused steps in a row, end the investigation with invalid_answer.
+Each is recorded by the worker as a refused `invalid_call` step (UNKNOWN_TOOL or INVALID_ARGUMENTS; the arguments are not stored), or, when there is no tool_use at all, as an unrecorded invalid turn. A new ADK run then starts from the digest. Two invalid turns in a row, or three refused or failed steps in a row, end the investigation with invalid_answer.
 
 **InvestigationToolCode** is a closed enum, not an HTTP ErrorCode: LIMIT_REACHED, BASE_MOVED, DRAFT_CHANGED, PROPOSAL_NOT_READY, PROPOSAL_DECIDED, RECHECK_FAILED, RUN_NOT_COMPLETED, ALREADY_RUN, NOT_IN_INVESTIGATION, MODE_MISMATCH, UNKNOWN_TOOL, INVALID_ARGUMENTS, SERVICE_UNAVAILABLE, DATASET_STORAGE_FAILED, INTERNAL.
 
@@ -1181,7 +1181,7 @@ The statements are pinned by a source test and by an architecture rule. EndLost 
 - Seven tools: propose_what_if, save_scenario, run_what_if, explain_results, propose_model_edit, write_to_draft, finish.
 - An invalid_call step records invalid model output.
 - InvestigationToolCode is a closed enum and is not an HTTP ErrorCode.
-- Two invalid turns in a row, or three refused steps in a row, end the investigation with invalid_answer.
+- Two invalid turns in a row, or three refused or failed steps in a row, end the investigation with invalid_answer.
 - PROPOSED: the revised InvestigationReason values: finished_by_ai, draft_written, limit_reached, time_limit, spend_cap, invalid_answer, ai_failed, role_lost, stopped_by_person. The finish tool's outcome is stored as ai_outcome and shown only as the AI's claim, next to the server's ranking and closing line.
 - PROPOSED: a person may still approve or reject the AI's ready proposal. This no longer ends the investigation; the AI's later save of that proposal is refused with PROPOSAL_DECIDED. check_proposal_effect accepts a person's approval of an AI proposal, so TEST-008 holds.
 - PROPOSED: the proposal generator and the analyzer fail fast, with the existing JOB_CANCELLED code and before the paid call, once a labelled row's investigation is no longer running.

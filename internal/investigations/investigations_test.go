@@ -22,10 +22,10 @@ import (
 
 // The version stored with each new investigation is the planner's
 // template's (prompts/investigator, its tool descriptions included), so a
-// template change cannot leave it behind (H-061 A9: investigator-0.2.0).
+// template change cannot leave it behind (H-061 A9: investigator-0.4.0).
 func TestPromptTemplateVersionIsTheTemplates(t *testing.T) {
 	_, v, err := prompts.Template(string(investigator.Role))
-	if err != nil || v != PromptTemplateVersion || PromptTemplateVersion != "investigator-0.2.0" {
+	if err != nil || v != PromptTemplateVersion || PromptTemplateVersion != "investigator-0.4.0" {
 		t.Errorf("stored %q, the template's %q (%v)", PromptTemplateVersion, v, err)
 	}
 }

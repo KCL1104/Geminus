@@ -127,8 +127,9 @@ func (e *NotApprovedError) Error() string {
 // H-061 §9; its tool descriptions included), stored with each
 // investigation: the template's version (investigations_test.go holds them
 // equal). investigator-0.2.0 (H-061 A9): optional members left out, a
-// refusal's hint.
-const PromptTemplateVersion = "investigator-0.2.0"
+// refusal's hint; investigator-0.4.0: a failed step's tool is not called
+// again, and the prompt says what ends an investigation.
+const PromptTemplateVersion = "investigator-0.4.0"
 
 // Ceiling is an investigation's spend (H-060): USD 2.50, settled and open,
 // its planner turns', proposals' and explanations' together (the database's

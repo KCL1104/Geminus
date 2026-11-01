@@ -373,3 +373,22 @@ func TestHints(t *testing.T) {
 		t.Errorf("the fixture %s", b)
 	}
 }
+
+// H-061 A9 (the live planner suite, 2026-11-01): Muse Spark 1.3 called
+// explain_results again after it failed SERVICE_UNAVAILABLE, three times in
+// a row, and three cases ended invalid_answer where they should have
+// finished. The server already retried a failed call: its hint says not to
+// repeat it, and the prompt's rule covers failed calls as well as refused
+// ones, and says what ends an investigation (investigator-0.4.0).
+func TestAFailedCallIsNotRepeated(t *testing.T) {
+	for _, code := range []investigator.Code{investigator.ServiceUnavailable, investigator.DatasetStorageFailed, investigator.Internal} {
+		if h := investigator.Hint(code); !strings.HasSuffix(h, "; do not call that tool again: use another offered tool or finish.") {
+			t.Errorf("%s: %q", code, h)
+		}
+	}
+	text, version, err := prompts.Template(string(investigator.Role))
+	if err != nil || version != "investigator-0.4.0" || !strings.Contains(text, "Never repeat a refused or failed call unchanged.") ||
+		!strings.Contains(text, "three refused or failed steps in a row, end the investigation") {
+		t.Errorf("%s %v", version, err)
+	}
+}
