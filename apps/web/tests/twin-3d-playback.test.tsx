@@ -26,6 +26,8 @@ function fakeView() {
     setPalette: () => {},
     setSelected: () => {},
     setOccupancy: (counts, run) => occupancy.push(`${run}:${JSON.stringify(counts)}`),
+    setPlayback: () => {},
+    setTime: () => {},
     stepAt: () => null,
     orbit: () => {},
     zoom: () => {},
