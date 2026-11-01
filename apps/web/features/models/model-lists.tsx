@@ -2,6 +2,8 @@
 // A model's sections beside its canvas (H-042, the rail): its scenarios,
 // the AI's proposals and the runs, each a list on the APIs that already
 // existed (listVersions + listScenarios, listProposals, listSimulations).
+// The scenarios are ranked by the server's comparisons (H-073, scenario-list.tsx);
+// a what-if run opens its results.
 // The model's name is a pill in the header, not a link: the rail's Canvas
 // is the way back to it (H-027: no two links to the same place).
 import Link from "next/link";
@@ -14,6 +16,8 @@ import list from "../../ui/list.module.css";
 import { MorePages, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
 import { ScenarioList } from "../simulations/scenario-list";
+import { resultsHref } from "../simulations/load";
+import { baselinesOf } from "../simulations/run-pair";
 import { visible } from "../ai-proposals/shown";
 import { AiMark } from "../investigations/ai-mark";
 
@@ -117,6 +121,18 @@ export function ProposalsPage({ modelId }: { modelId: string }) {
 
 const runTone: Readonly<Record<Run["status"], string>> = { queued: "neutral", running: "busy", completed: "ok", failed: "error", cancelled: "neutral" };
 
+/**
+ * A run's name (H-073): a what-if run's opens its results beside the baseline
+ * started with it (run-pair.ts), or, without one on this page, its
+ * scenario's page. A baseline's is not a link: its results are its what-if
+ * run's row's link, and a second link to the same place is one too many
+ * (H-027).
+ */
+function RunName({ run, baseline }: { run: Run; baseline: Run | undefined }) {
+  if (run.scenario_id === null) return <span className={list.name}>{run.name}</span>;
+  return <Link href={baseline ? resultsHref(run.scenario_id, baseline.id, run.id) : `/scenarios/${run.scenario_id}`}>{run.name}</Link>;
+}
+
 export function RunsPage({ modelId }: { modelId: string }) {
   const api = useApi();
   const { t, dateTime } = useI18n();
@@ -126,15 +142,15 @@ export function RunsPage({ modelId }: { modelId: string }) {
       {(model) => (
         <Section model={model} title={t("runs.list.title")}>
           <RemoteView remote={remote} what="runs" onRetry={retry} headingLevel={2}>
-            {(page) =>
-              page.items.length === 0 ? (
-                <p className={list.empty}>{t("runs.list.empty")}</p>
-              ) : (
+            {(page) => {
+              if (page.items.length === 0) return <p className={list.empty}>{t("runs.list.empty")}</p>;
+              const baselines = baselinesOf(page.items);
+              return (
                 <>
                   <ul className={list.list}>
                     {page.items.map((r) => (
                       <li key={r.id}>
-                        {r.scenario_id === null ? <span className={list.name}>{r.name}</span> : <Link href={`/scenarios/${r.scenario_id}`}>{r.name}</Link>}
+                        <RunName run={r} baseline={baselines.get(r.id)} />
                         {/* H-061 A8: a run an AI investigation started for the person who asked. */}
                         {r.made_by_ai && <AiMark kind="started" />}
                         <span className={list.pill} data-tone={runTone[r.status]}>
@@ -149,8 +165,8 @@ export function RunsPage({ modelId }: { modelId: string }) {
                   </ul>
                   <MorePages cursor={page.next_cursor} shown={page.items.length} what="runs" />
                 </>
-              )
-            }
+              );
+            }}
           </RemoteView>
         </Section>
       )}

@@ -492,10 +492,12 @@ describe("the labels on what the AI made (H-056 §13)", () => {
     const scenario = (id: string, over: Partial<Scenario>): Scenario => ({ id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: version.id, name: "S", patch: [], patch_hash: `sha256:${"0".repeat(64)}`, source_proposal_id: null, created_by: USER, created_at: "2026-11-01T06:00:26Z", ...over });
     const ai = scenario("scn_01M4YDQK00E1ECTR0N1C550001", { name: "Second ICT tester", source_proposal_id: "aip_01M4YDQK00E1ECTR0N1C5A0001", made_by_ai: made });
     const person = scenario("scn_01M4YDQK00E1ECTR0N1C550002", { name: "Faster AOI" });
-    const client = answering({ [`/api/v1/models/${SAMPLE_MODEL_ID}/versions`]: { items: [version], next_cursor: null }, [`/api/v1/model-versions/${version.id}/scenarios`]: { items: [ai, person], next_cursor: null } });
+    const client = answering({ [`/api/v1/models/${SAMPLE_MODEL_ID}/versions`]: { items: [version], next_cursor: null }, [`/api/v1/model-versions/${version.id}/scenarios`]: { items: [ai, person], next_cursor: null },
+      // The list ranks the scenarios by their runs' comparisons (H-073): none here.
+      [`/api/v1/models/${SAMPLE_MODEL_ID}/simulations`]: { items: [], next_cursor: null } });
     const el = await mount(<ApiProvider client={client}><ScenarioList modelId={SAMPLE_MODEL_ID} latestVersionId={version.id} /></ApiProvider>);
-    await waitFor(() => el.querySelectorAll("li").length === 2, "the list");
-    const [first, second] = [...el.querySelectorAll("li")];
+    await waitFor(() => el.querySelectorAll("tbody tr").length === 2, "the list");
+    const [first, second] = [...el.querySelectorAll("tbody tr")];
     expect(text(first!.querySelector("[data-ai-mark]"))).toBe(t("aiMark.saved"));
     expect(second!.querySelector("[data-ai-mark]")).toBeNull();
     expect(await violations()).toEqual([]);
