@@ -19,7 +19,7 @@ import { zhHant } from "../messages/zh-Hant";
 import { BASELINE_RUN, SCENARIO_RUN, boardBaselineRun, boardComparison, boardResults, boardScenarioRun, boardVersion } from "../features/results/fixtures/board-line";
 import { keyMetrics } from "../features/results/metrics";
 import { SavedExplanation } from "../features/results/saved-explanation";
-import { mount, press, settle, violations } from "./ui-harness";
+import { mount, press, settle, unmountAll, violations } from "./ui-harness";
 
 const nav = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), useRouter: () => ({ push: nav.push, refresh: () => {} }) }));
@@ -59,7 +59,7 @@ function fakeApi(table: Record<string, Answer | Answer[]>) {
 const lead = boardComparison.metrics.find((m) => m.metric_path === "/metrics/lead_time_minutes/p50")!;
 const saved = (over: Partial<AnalysisRecord> = {}): AnalysisRecord => ({
   id: ANA, organization_id: ORG, run_id: SCENARIO_RUN, baseline_run_id: BASELINE_RUN, status: "completed",
-  created_at: "2026-11-01T06:00:46Z", error: null, generated_by: { provider: "meta", model: "muse-spark-1.3" },
+  created_at: "2026-11-01T06:00:46Z", error: null, generated_by: { provider: "meta", model: "muse-spark-1.3" }, output_locale: "en",
   analysis: {
     baseline: { summary: "One ICT fixture held boards back." },
     scenario: { summary: "A second ICT fixture shortened the lead time." },
@@ -72,6 +72,21 @@ const saved = (over: Partial<AnalysisRecord> = {}): AnalysisRecord => ({
   ...over,
 });
 const page = (items: AnalysisRecord[], next: string | null = null) => json(200, { items, next_cursor: next });
+/** The same explanation as written in Traditional Chinese (a request with output_locale zh-Hant), saved later. */
+const inChinese = (over: Partial<AnalysisRecord> = {}): AnalysisRecord =>
+  saved({
+    id: OLD, output_locale: "zh-Hant", created_at: "2026-11-01T07:00:00Z",
+    analysis: {
+      baseline: { summary: "一台 ICT 治具讓板子等待。" },
+      scenario: { summary: "第二台 ICT 治具縮短了前置時間。" },
+      delta: [{ metric_path: lead.metric_path, absolute_delta: lead.absolute_delta, relative_delta: lead.relative_delta, reason: "ICT 前的等待變少。" }],
+      bottleneck: [{ statement: "ICT 是最忙的工作站。", kind: "observation", evidence: [{ run: "baseline", metric_path: "/metrics/resources/ict_fixture" }] }],
+      assumptions: ["測試時間維持模型設定。"],
+      uncertainty: ["5 次重複仍有一些變異。"],
+      suggested_next_experiments: [{ name: "更快的 AOI", hypothesis: "AOI 可能成為下一個限制。", requires_confirmation: true }],
+    },
+    ...over,
+  });
 
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ");
 const button = (el: Element, name: string) => [...el.querySelectorAll("button")].find((b) => text(b).trim() === name);
@@ -115,8 +130,8 @@ describe("a finished comparison's saved explanation (H-073 slice 1)", () => {
     await waitFor(() => text(section(el) ?? el).includes("A second ICT fixture"), "the saved explanation");
     const s = section(el)!;
     expect(s.querySelector("h2")?.textContent).toBe(en["analysis.title"]);
-    // One read of the pair, for one item: no POST, no poll of the analysis.
-    expect(api.calls).toEqual([{ method: "GET", path: listPath, query: { baseline_run_id: BASELINE_RUN, limit: "1" }, body: undefined }]);
+    // One read of the pair's newest few (to find one in the reader's language): no POST, no poll of the analysis.
+    expect(api.calls).toEqual([{ method: "GET", path: listPath, query: { baseline_run_id: BASELINE_RUN, limit: "10" }, body: undefined }]);
     // Labelled with the model that wrote it and when it was saved, the exact instant in <time>.
     expect(text(s)).toContain(`Written by Muse Spark 1.3 (Meta) from these results. ${en["analysis.checked"]}`);
     const when = s.querySelector("time")!;
@@ -212,6 +227,46 @@ describe("a finished comparison's saved explanation (H-073 slice 1)", () => {
     await press(button(section(el)!, en.retry));
     await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the saved explanation");
     expect(section(el)!.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  // H-073 review (WCAG 3.1.2): an explanation is written in the language it was asked in.
+  it("prefers the newest one in the reader's language, else shows the newest", async () => {
+    // Newest first: the Chinese one, then the English one.
+    const both = () => fakeApi({ [`GET ${listPath}`]: page([inChinese(), saved()]) });
+    const english = await panel(both());
+    await waitFor(() => text(section(english.el) ?? english.el).includes("A second ICT fixture"), "the English explanation");
+    expect(text(section(english.el)!)).not.toContain("第二台");
+    unmountAll();
+    const chinese = await panel(both(), { locale: "zh-Hant" });
+    await waitFor(() => text(section(chinese.el) ?? chinese.el).includes("第二台 ICT 治具"), "the Chinese explanation");
+    expect(text(section(chinese.el)!)).not.toContain("A second ICT fixture");
+    expect(section(chinese.el)!.querySelector("[lang]")).toBeNull();
+    unmountAll();
+    // None in the reader's language: the newest, whatever its language.
+    const only = await panel(fakeApi({ [`GET ${listPath}`]: page([inChinese()]) }));
+    await waitFor(() => text(section(only.el) ?? only.el).includes("第二台 ICT 治具"), "the newest explanation");
+  });
+
+  it("marks an explanation in another language than the page's with its language, and only the AI's text", async () => {
+    const { el } = await panel(fakeApi({ [`GET ${listPath}`]: page([inChinese()]) }));
+    await waitFor(() => text(section(el) ?? el).includes("第二台 ICT 治具"), "the explanation");
+    const s = section(el)!;
+    const marked = [...s.querySelectorAll("[lang]")];
+    expect(new Set(marked.map((m) => m.getAttribute("lang")))).toEqual(new Set(["zh-Hant"]));
+    // Each piece the AI wrote is inside an element marked zh-Hant.
+    const written = ["第二台 ICT 治具縮短了前置時間。", "一台 ICT 治具讓板子等待。", "ICT 前的等待變少。", "ICT 是最忙的工作站。", "測試時間維持模型設定。", "5 次重複仍有一些變異。", "更快的 AOI", "AOI 可能成為下一個限制。"];
+    for (const w of written) expect(marked.some((m) => text(m).trim() === w), w).toBe(true);
+    // The page's own words stay in the page's language: no heading, label or note is marked.
+    for (const m of marked) expect(m.querySelector("h2, h3, summary, [data-kind], button")).toBeNull();
+    expect([...s.querySelectorAll("h2, h3, summary, [data-kind]")].some((h) => h.closest('[lang="zh-Hant"]'))).toBe(false);
+    expect(text(s)).toContain(en["analysis.baseline"].replace("{summary}", "一台 ICT 治具讓板子等待。"));
+    expect(await violations()).toEqual([]);
+  });
+
+  it("marks nothing when the explanation is in the page's language", async () => {
+    const { el } = await panel(fakeApi({ [`GET ${listPath}`]: page([saved()]) }));
+    await waitFor(() => text(section(el) ?? el).includes("A second ICT fixture"), "the explanation");
+    expect(section(el)!.querySelector("[lang]")).toBeNull();
   });
 
   it("follows the analysis in the address instead, without reading the list", async () => {

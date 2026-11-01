@@ -2,21 +2,25 @@
 // A finished comparison's saved explanation (H-073 slice 1). The AI
 // explanation of a scenario beside its baseline costs a provider call and a
 // wait; once one is stored, the page shows it again instead of asking anew.
-// With no analysis in the address, this asks the server for the newest
-// completed analysis of the pair (listAnalyses, one item) and shows it in
+// With no analysis in the address, this asks the server for the pair's
+// newest completed analyses (listAnalyses, one page of SAVED_READ) and shows
+// the newest written in the reader's language, else the newest of all, in
 // the explanation's own view, labelled with the model that wrote it (from
-// the server's generated_by) and when it was saved. An editor can still ask
-// again: the form it always was. With none saved, or an analysis in the
-// address, it is the Analysis panel unchanged.
+// the server's generated_by) and when it was saved. One in another language
+// has its text marked with that language (lang, WCAG 3.1.2; H-073 review);
+// one in the reader's language older than the page read is not looked for.
+// An editor can still ask again: the form it always was. With none saved,
+// or an analysis in the address, it is the Analysis panel unchanged.
 //
 // A drop-in for <Analysis>, with the same props: results-view.tsx mounts it
-// in Analysis's place (H-073's mount note). Every figure is the server's.
+// in Analysis's place. Every figure is the server's.
 import { useEffect, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import type { Problem } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
 import type { Analyses } from "../../lib/contracts";
+import type { Locale } from "../../lib/i18n/locale";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { StatusRegion } from "../../ui/status";
@@ -35,29 +39,41 @@ export type Saved =
   | { state: "found"; record: SavedRecord }
   | { state: "failed"; problem: Problem };
 
+/** How many of the pair's newest completed analyses are read to find one in the reader's language. */
+export const SAVED_READ = 10;
+
+/** The newest of records in the reader's language, else the newest (records are newest first). */
+export function preferred(records: readonly SavedRecord[], locale: Locale): SavedRecord | undefined {
+  return records.find((r) => r.output_locale === locale) ?? records[0];
+}
+
 /**
  * The newest completed analysis of run `runId` beside baseline run
- * `baselineRunId`, and a retry for when the read failed. An item that is
- * not a completed analysis of exactly this pair is not shown here (as the
+ * `baselineRunId`, in the reader's language when one of the newest
+ * SAVED_READ is, and a retry for when the read failed. An item that is not
+ * a completed analysis of exactly this pair is not shown here (as the
  * address's analysis of other runs is not; T-030 review r1 M2).
  */
-export function useSavedAnalysis(runId: string, baselineRunId: string): [Saved, () => void] {
+export function useSavedAnalysis(runId: string, baselineRunId: string, locale: Locale): [Saved, () => void] {
   const api = useApi();
   const [attempt, setAttempt] = useState(0);
   const key = `${runId} ${baselineRunId} ${attempt}`;
-  const [answer, setAnswer] = useState<{ key: string; saved: Saved } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; records: SavedRecord[] } | { key: string; problem: Problem } | null>(null);
   useEffect(() => {
     const ctl = new AbortController();
-    void api.listAnalyses(runId, baselineRunId, { limit: 1, signal: ctl.signal }).then((r) => {
+    void api.listAnalyses(runId, baselineRunId, { limit: SAVED_READ, signal: ctl.signal }).then((r) => {
       if (ctl.signal.aborted) return;
-      if (!r.ok) return setAnswer({ key, saved: { state: "failed", problem: r.problem } });
-      const item = r.data.items[0];
-      const ours = item !== undefined && item.status === "completed" && item.analysis != null && item.run_id === runId && item.baseline_run_id === baselineRunId;
-      setAnswer({ key, saved: ours ? { state: "found", record: item } : { state: "none" } });
+      if (!r.ok) return setAnswer({ key, problem: r.problem });
+      const ours = r.data.items.filter((i) => i.status === "completed" && i.analysis != null && i.run_id === runId && i.baseline_run_id === baselineRunId);
+      setAnswer({ key, records: ours });
     });
     return () => ctl.abort();
   }, [api, runId, baselineRunId, key]);
-  const saved: Saved = answer?.key === key ? answer.saved : { state: "loading" };
+  let saved: Saved = { state: "loading" };
+  if (answer?.key === key) {
+    const record = "records" in answer ? preferred(answer.records, locale) : undefined;
+    saved = "problem" in answer ? { state: "failed", problem: answer.problem } : record ? { state: "found", record } : { state: "none" };
+  }
   return [saved, () => setAttempt((n) => n + 1)];
 }
 
@@ -76,8 +92,8 @@ export function SavedExplanation(props: Props) {
 function SavedOrAsk({ onAsk, ...props }: Props & { onAsk: () => void }) {
   const { baseline, scenario, rows } = props;
   const { role } = useAuth();
-  const { t, dateTime } = useI18n();
-  const [saved, retry] = useSavedAnalysis(scenario.id, baseline.id);
+  const { t, dateTime, locale } = useI18n();
+  const [saved, retry] = useSavedAnalysis(scenario.id, baseline.id, locale);
   if (saved.state === "none") return <Analysis {...props} />;
   const editor = canEdit(role);
   return (
@@ -97,8 +113,9 @@ function SavedOrAsk({ onAsk, ...props }: Props & { onAsk: () => void }) {
               time: <time dateTime={saved.record.created_at}>{dateTime(saved.record.created_at)}</time>,
             })}
           </p>
+          {/* Written in another language than the page's: its text says so (WCAG 3.1.2). */}
           <Explained analysis={saved.record.analysis} rows={rows} generatedBy={saved.record.generated_by} modelId={editor ? scenario.model_id : null}
-            analysisId={saved.record.id} baseline={baseline} />
+            analysisId={saved.record.id} baseline={baseline} lang={saved.record.output_locale !== undefined && saved.record.output_locale !== locale ? saved.record.output_locale : undefined} />
           {editor && <Button onPress={onAsk}>{t("analysis.again")}</Button>}
         </>
       )}

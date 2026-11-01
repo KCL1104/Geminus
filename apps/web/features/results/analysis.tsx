@@ -17,6 +17,7 @@ import { errorCodeStatus, type Problem, problemFromResponse } from "../../lib/ap
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
 import type { AnalysisOutput, AnalysisRecord, ErrorCode, GeneratedBy, ProposalModel, ProposalRequest, Run } from "../../lib/contracts";
+import type { Locale } from "../../lib/i18n/locale";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { AskIcon, SendIcon } from "../../ui/icons";
@@ -31,7 +32,7 @@ import { StatusRegion } from "../../ui/status";
 import { EvidenceCite, linkedCites } from "./evidence-link";
 import { formatAbsolute, formatRelative } from "./format";
 import type { MetricRow } from "./metrics";
-import { MetricName } from "./metrics-table";
+import { MetricName, withNodes } from "./metrics-table";
 import styles from "./results.module.css";
 
 const POLL_MS = 2000;
@@ -229,10 +230,21 @@ function ProposeNext({ modelId, name, intent, aiModel }: { modelId: string; name
   );
 }
 
-function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline }: { analysis: AnalysisOutput; rows: MetricRow[]; generatedBy?: GeneratedBy; modelId: string | null; analysisId: string; baseline: Run }) {
+function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline, lang }: {
+  analysis: AnalysisOutput;
+  rows: MetricRow[];
+  generatedBy?: GeneratedBy;
+  modelId: string | null;
+  analysisId: string;
+  baseline: Run;
+  /** The language the AI wrote in, when it is not the page's (a saved explanation, H-073 review): its text is marked with it (WCAG 3.1.2). */
+  lang?: Locale;
+}) {
   const i18n = useI18n();
   const { t } = i18n;
   const writer = useWriter(generatedBy);
+  // What the AI wrote, marked with its language when that is not the page's; the page's own words never are.
+  const written = (s: string) => (lang === undefined ? s : <span lang={lang}>{s}</span>);
   // H-049: the model that writes a suggestion up as a scenario; the explanation itself stays on the deployment's.
   const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const byPath = new Map(rows.map((r) => [r.path, r]));
@@ -243,7 +255,9 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
         <h3>{heading}</h3>
         <ul className={styles.explained}>
           {items.map((s, i) => (
-            <li key={i}>{s}</li>
+            <li key={i} lang={lang}>
+              {s}
+            </li>
           ))}
         </ul>
       </>
@@ -264,8 +278,10 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
       {/* The summaries and what changed say again what the table shows: one click away (H-039). */}
       <details className={styles.details}>
         <summary>{t("analysis.summaries")}</summary>
-        <p className={styles.summary}>{analysis.scenario.summary}</p>
-        {analysis.baseline && <p>{t("analysis.baseline", { summary: analysis.baseline.summary })}</p>}
+        <p className={styles.summary} lang={lang}>
+          {analysis.scenario.summary}
+        </p>
+        {analysis.baseline && <p>{withNodes(t("analysis.baseline", { summary: "\u0000summary\u0000" }), { summary: written(analysis.baseline.summary) })}</p>}
         {analysis.delta.length > 0 && (
           <>
             <h3>{t("analysis.changed")}</h3>
@@ -289,7 +305,11 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
                         (<data value={d.relative_delta}>{formatRelative(i18n, d.relative_delta)}</data>)
                       </>
                     )}
-                    {d.reason && <span className={styles.reasonText}>{d.reason}</span>}
+                    {d.reason && (
+                      <span className={styles.reasonText} lang={lang}>
+                        {d.reason}
+                      </span>
+                    )}
                   </li>
                 );
               })}
@@ -306,7 +326,7 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
                 <span className={styles.kind} data-kind={b.kind}>
                   {t(`analysis.kind.${b.kind}`)}
                 </span>{" "}
-                {b.statement}
+                {written(b.statement)}
                 <span className={styles.evidence}>
                   {t("analysis.evidence")}{" "}
                   {/* H-073 (4): each piece links to the table row it was checked against, the first time that row is cited. */}
@@ -332,7 +352,7 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
           <ul className={styles.explained}>
             {analysis.suggested_next_experiments.map((x, i) => (
               <li key={i}>
-                <strong>{x.name}</strong>: {x.hypothesis}
+                <strong lang={lang}>{x.name}</strong>: {written(x.hypothesis)}
                 {modelId !== null && <ProposeNext modelId={modelId} name={x.name} intent={`${x.name}: ${x.hypothesis}`} aiModel={aiModel} />}
               </li>
             ))}
