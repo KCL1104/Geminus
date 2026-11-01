@@ -223,6 +223,8 @@ elif cmd == "tcp-proxy" and a[1] == "create":
         st["vars"]["Postgres"]["DATABASE_PUBLIC_URL"] = "postgresql://postgres:REHEARSALADMINPW@shuttle.proxy.rlwy.net:41234/railway"
     proxy = {"id": "tcp_1", "domain": "shuttle.proxy.rlwy.net", "proxyPort": 41234, "applicationPort": 5432,
              "endpoint": "shuttle.proxy.rlwy.net:41234", "syncStatus": "ACTIVE"}
+    if os.environ.get("REHEARSAL_CREATE_FAILS_AFTER"):  # made, then exits 1 (a live --apply, 2026-11-01)
+        fail("error: could not reach Railway")
     # The CLI prints "proxy": null when the proxy is not available yet.
     out = {"applicationPort": 5432, "staged": False, "committed": True, "proxy": None if os.environ.get("REHEARSAL_CREATE_NO_ID") else proxy}
 elif cmd == "tcp-proxy" and a[1] == "delete":
@@ -875,6 +877,12 @@ def main() -> int:
         shown.append(("P4 create prints no id", res + f" (proxies left: {state(name)['proxies']})"))
         if res != "done" or state(name)["proxies"]:
             failures.append(f"P4 (no id from create) must find and remove the proxy: {res[:300]} {state(name)['proxies']}")
+        # P4b: `tcp-proxy create` makes the proxy, then exits 1: the run fails, and removes the proxy.
+        name = scenario("p4b", base)
+        _, out, res = apply(REHEARSAL_CREATE_FAILS_AFTER="1")
+        shown.append(("P4b create fails after making the proxy", res + f" (proxies left: {state(name)['proxies']})"))
+        if not res.startswith("FAIL: `railway tcp-proxy") or state(name)["proxies"] or "removing this run's TCP proxy" not in out:
+            failures.append(f"P4b (create fails after making it) must fail and remove the proxy: {res[:300]} {state(name)['proxies']}")
         # P5: the proxies cannot be listed at the end: not knowing is a failure.
         name = scenario("p5", base)
         _, out, res = apply(REHEARSAL_PROXY_LIST_FAILS_LATE="1")

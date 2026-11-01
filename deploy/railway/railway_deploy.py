@@ -1196,7 +1196,15 @@ class Run:
             self.proxies_before = before
             self.say(f"   a TCP proxy was open before this run ({', '.join(before)}): used, not removed; reported at the end")
             return
-        made = self.rw("tcp-proxy", "create", "--port", "5432", "--service", self.spec["database"], *self.env(), "--json")
+        try:
+            made = self.rw("tcp-proxy", "create", "--port", "5432", "--service", self.spec["database"], *self.env(), "--json")
+        except Failed:
+            # The CLI exited 1 once after Railway had made the proxy (a live --apply, 2026-11-01):
+            # find it by listing, so that the end of the run removes it.
+            now = self.proxy_ids(self.rw("tcp-proxy", "list", "--service", self.spec["database"], *self.env(), "--json",
+                                         check=False)) or []
+            self.proxy_created = next((p for p in now if p not in before), None)
+            raise
         if self.dry:
             self.proxy_created = "<proxy id>"
             return
