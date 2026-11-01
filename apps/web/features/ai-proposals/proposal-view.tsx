@@ -29,7 +29,11 @@
 // A proposal asked for with a photo shows the photo and the boxes the
 // segmenter found in it (H-052, proposal-photo.tsx). While a proposal whose
 // request named Muse Wonder 1.0 is generating (requested_model, the
-// server's), a note says it can take several minutes (H-065).
+// server's), a note says it can take several minutes (H-065). H-073 (5): an
+// approved photo proposal that added stations offers, as its next step, to
+// look up their typical times: the model page's Ask AI opens with the
+// request filled in and research ticked, and sends nothing until the person
+// does (station-research-offer.tsx; onAsk is the route's way to the model).
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { ProblemView, validationKey } from "../../app/_components/problem-view";
@@ -54,6 +58,7 @@ import { loadProposalPage, type ProposalPage } from "./load";
 import { InvestigationLink } from "../investigations/ai-mark";
 import { ProposalPhoto } from "./proposal-photo";
 import { Sources } from "./sources";
+import { StationResearchOffer } from "./station-research-offer";
 import { visible } from "./shown";
 import { data, useRich, Words } from "./words";
 import styles from "./proposal.module.css";
@@ -62,13 +67,17 @@ import styles from "./proposal.module.css";
 export type ProposalHrefs = { model: (modelId: string) => string; scenario: (scenarioId: string) => string };
 const productHrefs: ProposalHrefs = { model: (id) => `/models/${id}`, scenario: (id) => `/scenarios/${id}` };
 
-/** Loads the proposal page and shows it. */
-export function ProposalRoute({ proposalId, pollMs = 1500, hrefs = productHrefs }: { proposalId: string; pollMs?: number; hrefs?: ProposalHrefs }) {
+/**
+ * Loads the proposal page and shows it. onAsk (H-073 (5)): opens the model
+ * page's Ask AI (the route's navigation); without it the page offers no
+ * follow-up request.
+ */
+export function ProposalRoute({ proposalId, pollMs = 1500, hrefs = productHrefs, onAsk }: { proposalId: string; pollMs?: number; hrefs?: ProposalHrefs; onAsk?: (modelId: string) => void }) {
   const api = useApi();
   const [remote, retry] = useRemote((signal) => loadProposalPage(api, proposalId, signal), api, proposalId);
   return (
     <RemoteView remote={remote} what="proposal" onRetry={retry}>
-      {(page) => <ProposalView key={page.proposal.proposal_id} initial={page} pollMs={pollMs} hrefs={hrefs} />}
+      {(page) => <ProposalView key={page.proposal.proposal_id} initial={page} pollMs={pollMs} hrefs={hrefs} onAsk={onAsk} />}
     </RemoteView>
   );
 }
@@ -93,7 +102,7 @@ function refusedBy(problem: Problem): Refused {
   return null;
 }
 
-function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollMs: number; hrefs: ProposalHrefs }) {
+function ProposalView({ initial, pollMs, hrefs, onAsk }: { initial: ProposalPage; pollMs: number; hrefs: ProposalHrefs; onAsk: ((modelId: string) => void) | undefined }) {
   const api = useApi();
   const { role } = useAuth();
   const { t, dateTime, number, gap } = useI18n();
@@ -370,6 +379,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
             </p>
           )}
           <Comment text={p.decision_comment} />
+          <StationResearchOffer proposal={p} base={page.base.ir} onAsk={onAsk} />
         </section>
       )}
       {p.status === "applied" && (
@@ -409,6 +419,7 @@ function ProposalView({ initial, pollMs, hrefs }: { initial: ProposalPage; pollM
               <h2 id={`${id}-outcome`}>{t("proposal.outcome.edit", { version: String(outcome.approval.version) })}</h2>
               <p>{t("proposal.outcome.editBody", { version: String(outcome.approval.version), base: String(baseVersion) })}</p>
               {outcome.approval.draft_out_of_date && <p>{t("proposal.outcome.draftKept")}</p>}
+              <StationResearchOffer proposal={p} base={page.base.ir} onAsk={onAsk} />
             </>
           ) : (
             <>
