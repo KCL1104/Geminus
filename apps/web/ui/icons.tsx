@@ -95,6 +95,14 @@ export function PlayIcon() {
   );
 }
 
+export function PauseIcon() {
+  return (
+    <svg {...common}>
+      <path d="M5.5 3.5v9M10.5 3.5v9" {...line} />
+    </svg>
+  );
+}
+
 export function CloseIcon() {
   return (
     <svg {...common}>
