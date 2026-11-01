@@ -19,7 +19,8 @@ import { useApi } from "../../lib/api/provider";
 import type { ComparisonWarning } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { AiMark } from "../investigations/ai-mark";
-import { formatAbsolute, formatRelative, formatValue } from "../results/format";
+import { Figure } from "../results/figure";
+import { formatAbsolute, formatRelative } from "../results/format";
 import { MAX_RUN_PAGES, resultsHref } from "./load";
 import { loadRanking, MAX_COMPARISONS, type RankedScenario, warningsOf } from "./ranking";
 import { LineKey } from "./run-status";
@@ -99,7 +100,7 @@ function Figures({ standing }: { standing: Extract<RankedScenario["standing"], {
   if (m === null) return <Why words={t("compare.reason.missing")} span={4} />;
   const reason = m.reason ? t(`compare.reason.${m.reason}`) : t("compare.unavailable");
   const median = (v: number | null) =>
-    v === null ? <span className={ranking.why}>{t("compare.unavailable")}</span> : <data value={String(v)} className={ranking.figure}>{formatValue(i18n, v, "minute")}</data>;
+    v === null ? <span className={ranking.why}>{t("compare.unavailable")}</span> : <Figure value={v} unit="minute" className={ranking.figure} />;
   return (
     <>
       <td role="cell" className={ranking.num}>

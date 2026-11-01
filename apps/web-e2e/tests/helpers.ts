@@ -161,13 +161,15 @@ export async function focusIsVisible(page: Page): Promise<boolean> {
 /**
  * Table cells whose content is wider than the cell: "overlaps" paint over
  * the next cell, "clipped" are cut off by the cell (only the row's text
- * value has all of it).
+ * value has all of it). Every cell role counts: a table laid out as grids
+ * on a phone states its roles, and its figures sit in role=cell (H-073
+ * review: those were not looked at).
  */
 export async function cellOverflow(page: Page): Promise<{ overlaps: string[]; clipped: string[] }> {
   return page.evaluate(() => {
     const overlaps: string[] = [];
     const clipped: string[] = [];
-    for (const cell of document.querySelectorAll<HTMLElement>("[role=gridcell], [role=rowheader], [role=columnheader]")) {
+    for (const cell of document.querySelectorAll<HTMLElement>("[role=cell], [role=gridcell], [role=rowheader], [role=columnheader]")) {
       if (cell.scrollWidth <= cell.clientWidth + 1) continue;
       const text = (cell.textContent ?? "").trim();
       (getComputedStyle(cell).overflowX === "visible" ? overlaps : clipped).push(text);

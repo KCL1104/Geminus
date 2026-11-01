@@ -101,8 +101,12 @@
   white-space: nowrap;
 }
 
-/* Under its row, as wide as the row, above the rows that follow. */
-.hash:hover .full,
+/* Under its row, as wide as the row, above the rows that follow. Open while
+   it has the focus, or while the pointer is anywhere on its cell, which
+   reaches down to the row's edge where the chip begins, or on the chip (a
+   part of the cell): so the pointer can move from the fingerprint onto the
+   whole value without it closing on the way (WCAG 1.4.13 hoverable). */
+.cell:hover .full,
 .hash:focus .full {
   z-index: 1;
   inset-inline: 0;
@@ -124,7 +128,7 @@
 
 /* Escape hides it again, opened on hover or on focus, until neither the
    pointer nor the focus is on it (WCAG 1.4.13; the listeners are in proof.tsx). */
-.hash[data-dismissed]:hover .full,
+.cell:hover .hash[data-dismissed] .full,
 .hash[data-dismissed]:focus .full {
   width: 1px;
   height: 1px;

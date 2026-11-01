@@ -96,6 +96,8 @@
   vertical-align: top;
 }
 
+/* A figure is never broken across lines; a time's hours follow it as their
+   own part and may go under it in a narrow cell (results/figure.tsx). */
 .table data {
   white-space: nowrap;
 }

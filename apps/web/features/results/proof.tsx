@@ -3,8 +3,9 @@
 // Result's (reproducibility: the pinned and the effective model, the
 // settings, the datasets' manifest, the result digest), in Geist Mono,
 // shortened to eight hex digits for the eye; the whole value is in the page
-// for a screen reader and for copying, and shows on hover or focus (Escape
-// hides it again, whether it opened on hover or on focus: WCAG 1.4.13).
+// for a screen reader and for copying, and shows on hover or focus, staying
+// open while the pointer moves onto it (Escape hides it again, whether it
+// opened on hover or on focus: WCAG 1.4.13).
 // Under them, for each run, how many of the model's other completed runs
 // with the same inputs gave the same result digest, read from the server
 // (reruns.ts) with capped reads that say what they left out. Nothing here
@@ -26,14 +27,17 @@ import styles from "./proof.module.css";
 const FIELDS = ["model_hash", "effective_model_hash", "config_hash", "dataset_manifest_hash", "result_digest"] as const satisfies readonly (keyof SimulationResult["reproducibility"])[];
 
 /**
- * A fingerprint: eight hex digits on screen, the whole value in the page and on hover or focus.
- * The whole value opens over the rows below, so Escape hides it (WCAG 1.4.13). A browser sends
- * the key to the focused element: when the fingerprint has the focus, its own handler takes it;
- * when it is only under the pointer, a listener on the document does, for as long as the chip
- * shows. That Escape closes the chip and nothing else. Hidden, it stays hidden until neither the
- * pointer nor the focus is on it, so that one leaving does not open it again through the other.
+ * A fingerprint's cell: eight hex digits on screen, the whole value in the page and on hover or
+ * focus. The whole value opens under the row, over the rows below, so the pointer must be able
+ * to move onto it, and Escape hides it (WCAG 1.4.13). The pointer anywhere on the cell, which
+ * reaches down to the chip, or on the chip itself, holds it open (proof.module.css), so the cell
+ * is what the pointer listeners watch. A browser sends the key to the focused element: when the
+ * fingerprint has the focus, its own handler takes it; when it is only under the pointer, a
+ * listener on the document does, for as long as the chip shows. That Escape closes the chip and
+ * nothing else. Hidden, it stays hidden until neither the pointer nor the focus is on it, so that
+ * one leaving does not open it again through the other.
  */
-function Hash({ value }: { value: string }) {
+function HashCell({ value }: { value: string }) {
   const [dismissed, setDismissed] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -49,32 +53,37 @@ function Hash({ value }: { value: string }) {
     return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [hovered, dismissed]);
   return (
-    <span
-      className={styles.hash}
-      tabIndex={0}
-      data-dismissed={dismissed ? "" : undefined}
-      onKeyDown={(e) => {
-        if (e.key !== "Escape" || dismissed || e.nativeEvent.isComposing) return;
-        e.stopPropagation();
-        setDismissed(true);
-      }}
-      onFocus={() => setFocused(true)}
-      onBlur={() => {
-        setFocused(false);
-        if (!hovered) setDismissed(false);
-      }}
+    <td
+      role="cell"
+      className={styles.cell}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
         if (!focused) setDismissed(false);
       }}
     >
-      {/* Data, not words: the whole fingerprint is its machine-readable value (and in the <code> below for a screen reader). */}
-      <data aria-hidden="true" value={value}>
-        {hex.slice(0, 8)}…
-      </data>
-      <code className={styles.full}>{value}</code>
-    </span>
+      <span
+        className={styles.hash}
+        tabIndex={0}
+        data-dismissed={dismissed ? "" : undefined}
+        onKeyDown={(e) => {
+          if (e.key !== "Escape" || dismissed || e.nativeEvent.isComposing) return;
+          e.stopPropagation();
+          setDismissed(true);
+        }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => {
+          setFocused(false);
+          if (!hovered) setDismissed(false);
+        }}
+      >
+        {/* Data, not words: the whole fingerprint is its machine-readable value (and in the <code> below for a screen reader). */}
+        <data aria-hidden="true" value={value}>
+          {hex.slice(0, 8)}…
+        </data>
+        <code className={styles.full}>{value}</code>
+      </span>
+    </td>
   );
 }
 
@@ -141,9 +150,7 @@ export function ResultProof({ baseline, scenario, limits = RERUN_LIMITS }: { bas
                 {t(`proof.${f}`)}
               </th>
               {sides.map(([side, c]) => (
-                <td key={side} role="cell">
-                  <Hash value={c.result.reproducibility[f]} />
-                </td>
+                <HashCell key={side} value={c.result.reproducibility[f]} />
               ))}
             </tr>
           ))}

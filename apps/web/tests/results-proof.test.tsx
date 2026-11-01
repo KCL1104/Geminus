@@ -159,6 +159,22 @@ describe("the run pair's fingerprints (H-073)", () => {
     }
   });
 
+  // WCAG 1.4.13 (hoverable), H-073 review: the chip opens under the fingerprint's row, so the pointer crosses the rest
+  // of the cell to reach it. The whole cell holds the chip open (proof.module.css), so the pointer anywhere on it, or
+  // on the chip, is the pointer on the fingerprint: Escape closes the chip from there.
+  it("takes the pointer anywhere on the fingerprint's cell, or on its chip, as on the fingerprint", async () => {
+    const el = await proof(fakeApi({ [LIST]: page([baseline.run, scenario.run]) }));
+    const cell = el.querySelector<HTMLElement>("tbody td")!;
+    const hash = cell.querySelector<HTMLElement>("[tabindex='0']")!;
+    for (const target of [cell, cell.querySelector("code")!]) {
+      await hover(target);
+      await key(document.body, "Escape");
+      expect(hash.hasAttribute("data-dismissed"), target.tagName).toBe(true);
+      await unhover(target);
+      expect(hash.hasAttribute("data-dismissed"), target.tagName).toBe(false);
+    }
+  });
+
   it("keeps a value hidden after Escape until neither the pointer nor the focus is on it", async () => {
     const el = await proof(fakeApi({ [LIST]: page([baseline.run, scenario.run]) }));
     const hash = el.querySelector<HTMLElement>("td [tabindex='0']")!;

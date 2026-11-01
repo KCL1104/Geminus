@@ -1,0 +1,7 @@
+/* A time's hours beside its minutes (figure.tsx, H-073 review): never broken
+   inside, as the figure itself is not (each table's `data` rule); the line may
+   break only between the two, so a narrow cell sets the hours under the
+   minutes. */
+.whole {
+  white-space: nowrap;
+}

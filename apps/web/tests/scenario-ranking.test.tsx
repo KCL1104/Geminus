@@ -19,6 +19,8 @@ import type { Locale } from "../lib/i18n/locale";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
 import { boardBaselineRun, boardComparison, boardScenario, boardScenarioRun, boardVersion } from "../features/results/fixtures/board-line";
+import { electronicsComparison } from "../features/results/fixtures/electronics-line";
+import { figureParts } from "./figure-parts";
 import { mount, press, settle, violations } from "./ui-harness";
 
 vi.mock("next/navigation", async (orig) => ({ ...(await orig<typeof import("next/navigation")>()), usePathname: () => "/models/x/scenarios", useRouter: () => ({ refresh: () => {}, push: () => {} }) }));
@@ -392,6 +394,28 @@ describe("the Scenarios page ranks what the server compared (H-073)", () => {
     await press([...el.querySelectorAll("button")].find((b) => text(b) === en.retry));
     await waitFor(() => el.querySelector("table") !== null, "the retried ranking");
     expect(shape(rows(el)[0]!)[0]).toBe("1");
+  });
+
+  // H-073 review: the electronics demo's medians are about 1,000 min, written
+  // with their hours; on a phone each figure's cell is about 127 px and
+  // "1,028.79 min (17.1 h)" is 145 px ("1,028.79 分鐘（17.1 小時）" 188 px), so
+  // on one unbroken line it ran under the scenario's cell and off the card.
+  // The minutes stay one unbroken figure in their <data>; the hours follow
+  // outside it, whole, after a place where a narrow cell may break the line.
+  it.each([
+    ["en", "min", " (", " h)", "space"],
+    ["zh-Hant", "分鐘", "（", " 小時）", "wbr"],
+  ] as const)("keeps a median of two hours or more and its hours each whole, free to go on two lines (%s)", async (locale, unit, open, close, gap) => {
+    const fct = scenario(30, "Fourth FCT tester");
+    const theRuns = [baseline(70, 0), whatIf(71, fct, 1)];
+    // The demo's own comparison: the electronics line beside its "Fourth FCT tester" what-if (features/results/fixtures).
+    const lead = electronicsComparison.metrics.find((m) => m.metric_path === P50)!;
+    const el = await scenariosPage(fakeApi(modelAnswers([fct], theRuns, [comparison(theRuns[0]!, theRuns[1]!, lead)])), locale);
+    const [b, s] = [...rows(el)[0]!.querySelectorAll("td")].slice(1, 3);
+    expect(figureParts(b!)).toEqual({ value: String(lead.baseline), data: `1,028.79 ${unit}`, gap, after: `${open.trim()}17.1${close}` });
+    expect(figureParts(s!)).toEqual({ value: String(lead.scenario), data: `978.28 ${unit}`, gap, after: `${open.trim()}16.3${close}` });
+    // The words read as before: the minutes, then their hours.
+    expect(text(b)).toBe(`1,028.79 ${unit}${open}17.1${close}`.replace(/\s+/g, " "));
   });
 
   it("says there are none whatever the runs read answers, since it needs no runs then", async () => {
