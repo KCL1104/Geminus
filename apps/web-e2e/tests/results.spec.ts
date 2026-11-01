@@ -92,7 +92,9 @@ for (const locale of locales) {
     const t = catalogs[locale];
     await open(page, "/ui-gallery/results", locale);
     const proof = page.locator("section").filter({ has: page.getByRole("heading", { level: 2, name: t["proof.title"], exact: true }) });
-    await expect(proof.getByText(t["proof.reruns.none"], { exact: true })).toBeVisible();
+    // One line for each run: neither has another run with its inputs.
+    await expect(proof.getByText(t["proof.reruns.none"], { exact: true })).toHaveCount(2);
+    for (const line of await proof.getByText(t["proof.reruns.none"], { exact: true }).all()) await expect(line).toBeVisible();
     await expect(proof.getByRole("table", { name: t["proof.caption"] })).toBeVisible();
     await expect(page.getByRole("alert")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: t["constraint.title"], exact: true })).toHaveCount(0);

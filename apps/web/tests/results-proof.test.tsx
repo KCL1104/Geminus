@@ -108,6 +108,9 @@ describe("the run pair's fingerprints (H-073)", () => {
       // The short form is the first 8 hex digits, for the eye only; the whole value is what is read and copied.
       const short = cells.map((c) => c.querySelector("[aria-hidden=true]")?.textContent);
       expect(short).toEqual(cells.map((c) => `${c.querySelector("code")!.textContent!.slice(7, 15)}…`));
+      // The short form is data, not words (strings.spec reads only the catalog's words): a <data> whose value is the whole fingerprint.
+      expect(cells.map((c) => { const d = c.querySelector("[aria-hidden=true]")!; return [d.tagName, d.getAttribute("value")]; }))
+        .toEqual(cells.map((c) => ["DATA", c.querySelector("code")!.textContent]));
       for (const c of cells) expect(c.querySelector("[tabindex='0']")).not.toBeNull();
     });
     expect(await violations()).toEqual([]);

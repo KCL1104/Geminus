@@ -69,7 +69,10 @@ function Hash({ value }: { value: string }) {
         if (!focused) setDismissed(false);
       }}
     >
-      <span aria-hidden="true">{hex.slice(0, 8)}…</span>
+      {/* Data, not words: the whole fingerprint is its machine-readable value (and in the <code> below for a screen reader). */}
+      <data aria-hidden="true" value={value}>
+        {hex.slice(0, 8)}…
+      </data>
       <code className={styles.full}>{value}</code>
     </span>
   );
