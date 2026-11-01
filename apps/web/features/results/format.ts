@@ -14,12 +14,25 @@ const minutes = { style: "unit", unit: "minute", unitDisplay: "short" } as const
 const percent = { style: "percent", maximumFractionDigits: 1 } as const satisfies Intl.NumberFormatOptions;
 const signed = { signDisplay: "exceptZero" } as const satisfies Intl.NumberFormatOptions;
 
-/** A negative number's sign as a minus (U+2212) rather than a hyphen, as a screen reader also reads it. */
-const minus = (s: string) => s.replace("-", "\u2212");
+/** From two hours on, a time in minutes also says its hours (H-073: 1,010.96 min is about 16.8 h). */
+const HOURS_FROM_MINUTES = 120;
 
-export function formatValue(i18n: I18n, value: number, unit: MetricUnit): string {
+/**
+ * A negative number's sign as a minus (U+2212) rather than a hyphen, as a
+ * screen reader also reads it; and no sign on a figure whose digits are
+ * all zero (H-073: a −0 from the server, or a small negative share shown
+ * as 0%, is never written −0 or −0%).
+ */
+const minus = (s: string) => (/\d/.test(s) && !/[1-9]/.test(s) ? s.replace(/[-−+]/, "") : s.replace("-", "−"));
+
+/** A value with its unit; minutes of two hours or more also with their hours, unless `hours` is false (an interval's bounds). */
+export function formatValue(i18n: I18n, value: number, unit: MetricUnit, { hours = true }: { hours?: boolean } = {}): string {
   if (unit === "ratio") return minus(i18n.number(value, percent));
-  if (unit === "minute") return minus(i18n.number(value, { ...precise, ...minutes }));
+  if (unit === "minute") {
+    const shown = minus(i18n.number(value, { ...precise, ...minutes }));
+    if (!hours || !(Math.abs(value) >= HOURS_FROM_MINUTES)) return shown;
+    return i18n.t("compare.hours", { minutes: shown, hours: minus(i18n.number(value / 60, { maximumFractionDigits: 1 })) });
+  }
   return minus(i18n.number(value, precise));
 }
 

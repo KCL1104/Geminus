@@ -21,7 +21,8 @@
 //
 // A step added with a canvas position (as a photo proposal, T-056, adds
 // them) is one "added" line that says it is placed; positions of steps
-// that were there before are one "layout" line.
+// that were there before are one "layout" line. A connection replaced as a
+// whole reads as what changes in it, as ops on its fields read (H-073).
 import type { Distribution, JsonPatch, ModelIR } from "../../lib/contracts";
 import type { NodeType } from "../model-editor/edits";
 import { applyPatch, parsePointer } from "../model-editor/patch";
@@ -295,6 +296,37 @@ function readField(field: Field, v: unknown, format: "plain" | "percent" | "time
 
 const CATALOGS = new Set(["nodes", "flows", "resources", "calendars", "entity_types", "metrics", "constraints"]);
 
+const FLOW_MEMBERS = new Set(["id", "from", "to", "routing"]);
+const ROUTING_MEMBERS = new Set(["type", "probability"]);
+const only = (v: Record<string, unknown>, members: ReadonlySet<string>) => Object.keys(v).every((k) => members.has(k));
+
+/**
+ * A connection replaced as a whole (H-073: the AI puts a new step on a
+ * connection this way, and it read as raw JSON). With the same ID: what
+ * changes in it, field by field, as the op on each field reads (its ends by
+ * the steps' names, its probability as a percentage). With another ID: the
+ * old one removed and the new one added. Null, so the caller keeps the
+ * whole value, when either holds anything a connection does not, an end is
+ * not an ID, or nothing changes.
+ */
+function replacedFlow(before: unknown, after: unknown, subject: Subject, names: Namer): Change[] | null {
+  if (!isRecord(before) || !isRecord(after) || !only(before, FLOW_MEMBERS) || !only(after, FLOW_MEMBERS)) return null;
+  if ([before.from, before.to, after.from, after.to].some((end) => typeof end !== "string")) return null;
+  const was = before.routing;
+  const is = after.routing;
+  if (!isRecord(was) || !isRecord(is) || !only(was, ROUTING_MEMBERS) || !only(is, ROUTING_MEMBERS) || was.type !== is.type) return null;
+  if (before.id !== after.id) {
+    const added = subjectOf("flows", after, names);
+    return added === null ? null : [{ kind: "removed", subject }, { kind: "added", subject: added, placed: false, holds: holdsOf("flows", after, names) }];
+  }
+  const out: Change[] = [];
+  for (const key of ["from", "to"] as const) {
+    if (before[key] !== after[key]) out.push({ kind: "changed", subject, field: { key }, before: readField({ key }, before[key], "plain", names), after: readField({ key }, after[key], "plain", names) });
+  }
+  if (was.probability !== is.probability) out.push({ kind: "changed", subject, field: { key: "probability" }, before: read(was.probability, "percent"), after: read(is.probability, "percent") });
+  return out.length > 0 ? out : null;
+}
+
 /** What a new step, resource or connection holds, read as the fields of a change read. */
 function holdsOf(catalog: string, element: unknown, names: Namer): Holds[] {
   if (!isRecord(element)) return [];
@@ -402,7 +434,9 @@ function describeOp(
       }
       const subject = subjectOf(catalog, before, names);
       if (subject === null) return void out.push({ kind: "other", path: op.path, before: read(before), after: read(after) });
-      if (op.op === "remove") out.push({ kind: "removed", subject });
+      if (op.op === "remove") return void out.push({ kind: "removed", subject });
+      const replaced = catalog === "flows" ? replacedFlow(before, after, subject, names) : null;
+      if (replaced !== null) out.push(...replaced);
       else out.push({ kind: "changed", subject, field: { key: "whole" }, before: read(before), after: read(after) });
       return;
     }

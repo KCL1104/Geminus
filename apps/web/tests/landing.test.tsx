@@ -123,6 +123,28 @@ describe("the landing's content (H-048)", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // H-073 (the audit's quick fixes): the landing said SAM 3.1 "finds the
+  // machines and conveyors". What happens: SAM 3.1 boxes what is drawn or
+  // seen (the pack's concepts, among them a floor plan's rectangles and
+  // arrows), the Muse model reads the labels and proposes the stations, and
+  // a person approves. The loop's step, the Meta list and the photo
+  // template's description say so.
+  it.each(["en", "zh-Hant"] as const)("%s: says what SAM 3.1 does with a photo, and that a person approves the stations", async (locale) => {
+    const c = catalogs[locale];
+    const el = await page(auth.signedOut, locale);
+    expect(text([...el.querySelectorAll("dl")[0]!.querySelectorAll("dd")][1]!)).toBe(c["landing.meta.sam"]);
+    expect(text([...el.querySelectorAll("ol > li")][1]!)).toContain(c["landing.step.propose.body"]);
+    const said = [c["landing.step.propose.body"], c["landing.meta.sam"], c["template.photo_start.description"]];
+    const [boxes, reads, approves, finds] =
+      locale === "en" ? [/boxes what is drawn or seen/i, /reads the labels/, /approve/, /finds the machines/i] : [/框出/, /讀標示/, /批准/, /找出.*機台/];
+    for (const s of said) {
+      expect(s).toMatch(boxes);
+      expect(s).not.toMatch(finds);
+      expect(s).toMatch(reads);
+    }
+    for (const s of [c["landing.meta.sam"], c["template.photo_start.description"]]) expect(s).toMatch(approves);
+  });
+
   it.each(["en", "zh-Hant"] as const)("%s, without Muse Wonder on offer (H-051, the production build): the Meta models are Muse Spark 1.3 and SAM 3.1, and web search", async (locale) => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
     const c = catalogs[locale];

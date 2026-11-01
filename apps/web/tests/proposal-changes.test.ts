@@ -244,3 +244,58 @@ describe("which entities a change names with their ID", () => {
     expect(out[1]).toMatchObject({ subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in"), true) });
   });
 });
+
+// H-073 (the audit's quick fixes): the AI sometimes replaces a whole
+// connection to put a new step on it (replace /flows/N with the same ID and
+// a new end). That read as raw JSON ("All of it: {"from":"smt",...}"); it
+// now reads as what changes in the connection, field by field, by the
+// steps' names, as an op on one of its fields reads. A connection replaced
+// by one with another ID reads as removed and added. Anything else in it
+// (a member a connection does not have) is not guessed at: the whole value.
+describe("a connection replaced as a whole", () => {
+  const f = flow("smt_q_aoi");
+  const whole = (value: unknown): JsonPatch => [
+    { op: "test", path: `/flows/${f}/id`, value: "smt_q_aoi" },
+    { op: "replace", path: `/flows/${f}`, value },
+  ];
+  const smtToAoi = connection("smt_q_aoi", ref("smt", "SMT"), ref("q_aoi", "Before AOI"));
+  const node = (id: string, name: string, showId = false) => ({ kind: "ref", ref: ref(id, name, showId) });
+
+  it("reads a new end by the steps' names, with a new step's ID, as the op on that field would", () => {
+    const out = described([
+      { op: "add", path: "/nodes/-", value: { id: "node_01xray", type: "process", name: "X-ray", service_time: { distribution: { type: "constant", value: 2 } } } },
+      ...whole({ id: "smt_q_aoi", from: "smt", to: "node_01xray", routing: { type: "probability", probability: 1 } }),
+      { op: "add", path: "/flows/-", value: { id: "flow_01x", from: "node_01xray", to: "q_aoi", routing: { type: "probability", probability: 1 } } },
+    ]);
+    expect(out[1]).toEqual({ kind: "changed", subject: smtToAoi, field: { key: "to" }, before: node("q_aoi", "Before AOI"), after: node("node_01xray", "X-ray", true) });
+    expect(out).toHaveLength(3);
+    // The same as the op on the field itself.
+    const one = described([{ op: "replace", path: `/flows/${f}/to`, value: "q_ict" }]);
+    expect(described(whole({ id: "smt_q_aoi", from: "smt", to: "q_ict", routing: { type: "probability", probability: 1 } }))).toEqual(one);
+  });
+
+  it("reads each field that changes as its own line: both ends and the probability, in that order", () => {
+    const g = flow("ict_result_q_burn_in");
+    expect(described([
+      { op: "replace", path: `/flows/${g}`, value: { id: "ict_result_q_burn_in", from: "aoi_result", to: "q_pack", routing: { type: "probability", probability: 0.9 } } },
+    ])).toEqual([
+      { kind: "changed", subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in")), field: { key: "from" }, before: node("ict_result", "ICT result"), after: node("aoi_result", "AOI result") },
+      { kind: "changed", subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in")), field: { key: "to" }, before: node("q_burn_in", "Before burn-in"), after: node("q_pack", "Before packing") },
+      { kind: "changed", subject: connection("ict_result_q_burn_in", ref("ict_result", "ICT result"), ref("q_burn_in", "Before burn-in")), field: { key: "probability" }, before: num(0.95, "percent"), after: num(0.9, "percent") },
+    ]);
+  });
+
+  it("reads a connection replaced by one with another ID as removed and added", () => {
+    expect(described(whole({ id: "flow_01new", from: "smt", to: "q_ict", routing: { type: "probability", probability: 1 } }))).toEqual([
+      { kind: "removed", subject: smtToAoi },
+      { kind: "added", subject: connection("flow_01new", ref("smt", "SMT"), ref("q_ict", "Before ICT")), placed: false, holds: [] },
+    ]);
+  });
+
+  it("keeps the whole value when the connection holds something it has no words for, or nothing changes", () => {
+    const odd = { id: "smt_q_aoi", from: "smt", to: "q_ict", routing: { type: "probability", probability: 1 }, label: "fast lane" };
+    const before = sampleLine.flows[f];
+    expect(described(whole(odd))).toEqual([{ kind: "changed", subject: smtToAoi, field: { key: "whole" }, before: { kind: "json", value: before }, after: { kind: "json", value: odd } }]);
+    expect(described(whole(before))).toEqual([{ kind: "changed", subject: smtToAoi, field: { key: "whole" }, before: { kind: "json", value: before }, after: { kind: "json", value: before } }]);
+  });
+});
