@@ -1,6 +1,6 @@
 // H-061 A8 (PROPOSED): whether this build offers AI investigations at all,
-// and which planners it offers. Both are off unless the build sets them:
-// NEXT_PUBLIC_GEMINUS_INVESTIGATIONS=1 shows the entry points and the
+// and which planners it offers. NEXT_PUBLIC_GEMINUS_INVESTIGATIONS=1 (the
+// default of next.config.ts since A9 passed) shows the entry points and the
 // investigation page (the API answers 503 INVESTIGATIONS_OFF while its own
 // GEMINUS_INVESTIGATIONS is off, whatever the web says);
 // NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER=1 offers Muse Wonder 1.0 as the

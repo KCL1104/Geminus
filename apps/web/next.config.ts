@@ -18,12 +18,13 @@ const nextConfig: NextConfig = {
   // H-065, H-069: on in production builds since Muse Wonder passed its live
   // tests (after H-068); "" builds the app without it. The unit tests
   // (vitest.config.ts) and the browser checks (GEMINUS_E2E_OFFER_WONDER,
-  // apps/web-e2e) run with it on and off. H-061 A8: AI investigations and
-  // Muse Wonder 1.0 as their planner, each off unless the build sets it,
-  // fixed the same way; the coordinator turns them on (H-061 §14, §18 A9).
+  // apps/web-e2e) run with it on and off. H-061 A8: AI investigations, on
+  // in production builds since the closed-loop live checks passed (A9,
+  // 2026-11-01; "" builds the app without them), and Muse Wonder 1.0 as
+  // their planner, off unless the build sets it; both fixed the same way.
   env: {
     NEXT_PUBLIC_GEMINUS_OFFER_WONDER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER ?? "1",
-    NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? "",
+    NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? "1",
     NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER ?? "",
   },
   ...(process.env.GEMINUS_NEXT_STANDALONE === "1" ? { output: "standalone" as const } : {}),

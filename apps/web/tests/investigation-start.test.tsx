@@ -157,7 +157,7 @@ describe("the build flags (H-061 A8, H-061 §14)", () => {
 
   it("are fixed at build time even when unset, like H-051's", () => {
     const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
-    expect(config).toContain('NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? ""');
+    expect(config).toContain('NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? "1"');
     expect(config).toContain('NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER ?? ""');
   });
 });

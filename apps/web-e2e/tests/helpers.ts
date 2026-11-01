@@ -21,7 +21,7 @@ export const proposalPreviews = [
  * The AI investigation page's review page (H-061 A8, gallery only), one
  * address per sample. The gallery renders it whatever the build's
  * NEXT_PUBLIC_GEMINUS_INVESTIGATIONS says; the product's
- * /investigations/<id> is not found in this build (it is off, as in production).
+ * /investigations/<id> is on in this build, as in production.
  */
 export const investigationPreviews = [
   "/ui-gallery/investigation", "/ui-gallery/investigation?state=planning", "/ui-gallery/investigation?state=refused", "/ui-gallery/investigation?state=finished",

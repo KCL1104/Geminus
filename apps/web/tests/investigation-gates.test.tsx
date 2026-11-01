@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // H-061 A8 review round 1: what keeps AI investigations hidden while the
-// build's flag is off (NEXT_PUBLIC_GEMINUS_INVESTIGATIONS, off in production)
+// build's flag is off (NEXT_PUBLIC_GEMINUS_INVESTIGATIONS="", a build without them)
 // and the labels on what the AI made, which show whatever the flag. The
 // product's /investigations/<id> is not found unless the flag is "1"; the
 // review page /ui-gallery/investigation is not found unless the gallery is
