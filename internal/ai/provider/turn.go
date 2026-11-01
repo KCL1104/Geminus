@@ -35,7 +35,7 @@ import (
 //     PlannerTurnTimeout per turn, a slow model (Muse Wonder 1.0) included,
 //     instead of its proposal bounds;
 //   - the request asks for exactly one call (Request.OneCall: Meta's
-//     tool_choice any with disable_parallel_tool_use, H-061's probe P2);
+//     tool_choice auto with disable_parallel_tool_use: live, Meta refuses any, H-061 A9);
 //   - the answer is exactly one tool_use whose name is a tool the turn
 //     offered and whose input the registry's strict decoder takes
 //     (ToolDecoder: internal/ai/investigator, the decoder the API's executor

@@ -172,7 +172,7 @@ func (m *Planner) generate(ctx context.Context, input []*schema.Message, opts ..
 	if o.Temperature != nil || o.Model != nil || o.TopP != nil || o.MaxTokens != nil || len(o.Stop) > 0 || len(o.AllowedToolNames) > 0 ||
 		len(o.DeferredTools) > 0 || o.ToolSearchTool != nil || o.AgenticToolChoice != nil ||
 		(o.ToolChoice != nil && *o.ToolChoice != schema.ToolChoiceAllowed) {
-		// What is sent is the client's (one call: tool_choice any, H-061 §9),
+		// What is sent is the client's (one call: tool_choice auto, H-061 §9, A9),
 		// never an option's (H-049, H-055).
 		return nil, none, tripped()
 	}

@@ -31,8 +31,8 @@ import (
 // content: the server's result as JSON text, is_error when true}, and tools,
 // each {name, description, input_schema}. Nothing else: no output_config
 // (the answer is calls or text, checked by the client against the tools), no
-// tool_choice (the API's default, auto: the model decides; H-061's any is
-// its probe P2), no thinking, effort or sampling (H-055), no built-in tool,
+// tool_choice (the API's default, auto: the model decides; a planner turn
+// sends auto with disable_parallel_tool_use, below), no thinking, effort or sampling (H-055), no built-in tool,
 // no stream. The model's reasoning blocks are dropped unread and never sent
 // back (H-061's probe P1 is whether the API takes a replay without them).
 //
@@ -81,7 +81,8 @@ type turnRequest struct {
 	ToolChoice *toolChoice    `json:"tool_choice,omitzero"`
 }
 
-// toolChoice is a planner turn's: exactly one call (H-061 §9, probe P2).
+// toolChoice is a planner turn's: one call at most (H-061 §9; auto, as
+// Meta refuses any live, A9).
 type toolChoice struct {
 	Type                   string `json:"type"`
 	DisableParallelToolUse bool   `json:"disable_parallel_tool_use"`

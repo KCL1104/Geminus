@@ -17,7 +17,7 @@ import (
 	"github.com/kcl1104/geminus/internal/secret"
 )
 
-// H-061 §9 (A5): a planner turn is the tool turn of E1 with tool_choice any
+// H-061 §9 (A5): a planner turn is the tool turn of E1 with tool_choice auto (any is a live 400, A9)
 // and no parallel calls, max_tokens 8,192 whatever the budget says, and its
 // answer's content kept, opaque, for the next turn of the run to send back
 // as returned (reasoning blocks included) in place of the rebuilt step.

@@ -380,7 +380,7 @@ It cannot widen the tools, the settings, the caps, the organization or the time.
   - DIGEST.
 - The tool descriptions are prompt text, versioned with the template.
 - The output is tool calls only:
-  - tool_choice {type: any, disable_parallel_tool_use: true} (P2);
+  - tool_choice {type: auto, disable_parallel_tool_use: true} (P2 resolved live in A9: Meta answers any with 400 "only auto is supported for tool_choice"; an answer without a call is an invalid turn);
   - no output_config;
   - no thinking, effort or output-budget change (H-055);
   - max_tokens is the DefaultBudget's 8192.
@@ -880,7 +880,7 @@ Architecture rules (negative probe tests first, future:true where a package does
 Live probes (synthetic data, at most USD 0.10 per model, on muse-spark-1.3 and muse-wonder-1.0):
 - P1: the assistant turn replayed as returned (redacted_thinking, text, tool_use), then a tool_result, then a second tool_use;
 - P1b: the same with thinking dropped (informational);
-- P2: tool_choice any with disable_parallel_tool_use;
+- P2: tool_choice any with disable_parallel_tool_use (A9, 2026-11-01: refused live with 400; auto is used instead);
 - P3: an is_error tool_result;
 - P4: strict:true acceptance and the shape of the input;
 - P5: the digest shape, a fresh request carrying a digest.
@@ -971,7 +971,7 @@ Provider:
   - thinking kept opaque in memory only; no-store.
 - meta.Backend.Turn, using A1's request shapes:
   - tools from the registry;
-  - tool_choice any with disable_parallel_tool_use;
+  - tool_choice auto with disable_parallel_tool_use (any refused live, A9);
   - no output_config;
   - the model-ID check;
   - max_tokens mapped to truncated;

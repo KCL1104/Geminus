@@ -186,7 +186,7 @@ type Request struct {
 	Tools []Tool
 	Steps []ToolStep
 	// OneCall: a planner turn (H-061 §9, Client.PlanTurn) asks for exactly
-	// one tool call (Meta: tool_choice any with disable_parallel_tool_use),
+	// one tool call (Meta: tool_choice auto with disable_parallel_tool_use; any is a live 400, H-061 A9),
 	// and its backend returns the answer's content as Response.Replay. False
 	// for every other request.
 	OneCall bool
