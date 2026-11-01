@@ -1,12 +1,12 @@
 package investigator
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"path/filepath"
 	"strings"
@@ -81,7 +81,21 @@ type fixture struct {
 	h    *Handler
 	mu   sync.Mutex
 	naps []time.Duration
+	logs syncBuffer
 }
+
+// syncBuffer is the handler's log, read by a test after the attempt.
+type syncBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+func (b *syncBuffer) String() string { b.mu.Lock(); defer b.mu.Unlock(); return b.buf.String() }
 
 func newFixture(t *testing.T, mode inv.Mode, answers ...fake.ToolAnswer) *fixture {
 	t.Helper()
@@ -108,7 +122,7 @@ func newFixture(t *testing.T, mode inv.Mode, answers ...fake.ToolAnswer) *fixtur
 		t.Fatal(err)
 	}
 	fx := &fixture{l: l, f: f}
-	h, err := New(Config{Planner: client, Packs: registry, Actor: "worker-1:agent1", Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	h, err := New(Config{Planner: client, Packs: registry, Actor: "worker-1:agent1", Log: slog.New(slog.NewJSONHandler(&fx.logs, nil)),
 		Poll: time.Millisecond, ChildPoll: time.Millisecond, Sleep: func(ctx context.Context, d time.Duration) error {
 			fx.mu.Lock()
 			fx.naps = append(fx.naps, d)
@@ -485,6 +499,24 @@ func TestPlannerFailures(t *testing.T) {
 		}
 		if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.AIFailed {
 			t.Fatalf("end %+v", end)
+		}
+	})
+	// H-061 A9: live, Meta refused the planner's first turn (400) and the
+	// log said only AI_REQUEST_REJECTED; it now says the status and type.
+	t.Run("refused by the provider", func(t *testing.T) {
+		refused := provider.NewError(provider.CodeRejected, 400, "meta")
+		refused.ErrorType = "invalid_request_error"
+		fx := newFixture(t, inv.Scenario, fake.ToolAnswer{Err: refused})
+		if err := fx.attempt(t, context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if _, end := fx.l.snapshot(); end == nil || end.Reason != inv.AIFailed {
+			t.Fatalf("end %+v", end)
+		}
+		out := fx.logs.String()
+		if !strings.Contains(out, `"msg":"an investigation's planner turn failed"`) || !strings.Contains(out, `"provider_status":400`) ||
+			!strings.Contains(out, `"provider_error_type":"invalid_request_error"`) || !strings.Contains(out, `"code":"AI_REQUEST_REJECTED"`) {
+			t.Errorf("the log: %s", out)
 		}
 	})
 	t.Run("not approved", func(t *testing.T) {

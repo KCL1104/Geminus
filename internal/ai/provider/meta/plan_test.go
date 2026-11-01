@@ -63,7 +63,8 @@ func TestPlanTurnRequestShape(t *testing.T) {
 	if keys := slices.Sorted(maps.Keys(body)); !slices.Equal(keys, []string{"max_tokens", "messages", "model", "system", "tool_choice", "tools"}) {
 		t.Errorf("top-level fields %v", keys)
 	}
-	if want := map[string]any{"type": "any", "disable_parallel_tool_use": true}; !reflect.DeepEqual(body["tool_choice"], want) {
+	// H-061 A9: Meta takes only auto (any is a live 400).
+	if want := map[string]any{"type": "auto", "disable_parallel_tool_use": true}; !reflect.DeepEqual(body["tool_choice"], want) {
 		t.Errorf("tool_choice %v", body["tool_choice"])
 	}
 	if body["model"] != model || body["max_tokens"] != float64(provider.PlannerMaxOutputTokens) {

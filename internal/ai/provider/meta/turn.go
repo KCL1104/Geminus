@@ -42,8 +42,12 @@ import (
 // refuses every other role's turn before any I/O (policy_not_approved).
 //
 // A planner turn (provider.Client.PlanTurn, Request.OneCall; H-061 §9) adds
-// tool_choice {"type":"any","disable_parallel_tool_use":true} (H-061's probe
-// P2, NOT RUN live: Meta's Messages page lists any), and its answer's
+// tool_choice {"type":"auto","disable_parallel_tool_use":true}: live
+// (H-061 A9, 2026-11-01) Meta refuses any with 400 invalid_request_error
+// ("only "auto" is supported for tool_choice"), though its Messages page
+// lists any. With auto the model may answer without a call; PlanTurn then
+// reports InvalidNoCall and the investigator records an invalid step, as
+// for any other invalid turn. Its answer's
 // content array as returned (reasoning blocks, text and tool_use) comes back
 // as Response.Replay, for the next turn of the same run to send as the
 // assistant message in its place (Meta's schema: redacted_thinking is
@@ -122,7 +126,7 @@ func turnBody(modelID string, req provider.Request) ([]byte, error) {
 		m.Tools = append(m.Tools, functionTool{Name: t.Name, Description: t.Description, InputSchema: t.InputSchema})
 	}
 	if req.OneCall {
-		m.ToolChoice = &toolChoice{Type: "any", DisableParallelToolUse: true}
+		m.ToolChoice = &toolChoice{Type: "auto", DisableParallelToolUse: true}
 	}
 	for _, s := range req.Steps {
 		var calls []any

@@ -480,8 +480,14 @@ func (s *session) failed(ctx context.Context, err error) (again bool, _ error) {
 	}
 	// Not configured, not approved, refused by the policy, or a request
 	// the server should not have built: the investigation cannot go on.
-	s.h.cfg.Log.WarnContext(ctx, "an investigation's planner turn failed", "organization_id", s.inv.OrganizationID,
-		"investigation_id", s.inv.ID, "code", "AI_"+strings.ToUpper(string(code)))
+	attrs := []any{"organization_id", s.inv.OrganizationID, "investigation_id", s.inv.ID, "code", "AI_" + strings.ToUpper(string(code))}
+	// As the role calls' lines (T-053 schema follow-up): a planner turn the
+	// provider answered with an error status says which, never its message.
+	var pe *provider.Error
+	if errors.As(err, &pe) && pe.Status != 0 {
+		attrs = append(attrs, "provider_status", pe.Status, "provider_error_type", pe.ErrorType)
+	}
+	s.h.cfg.Log.WarnContext(ctx, "an investigation's planner turn failed", attrs...)
 	return false, s.finish(ctx, Ending{Reason: inv.AIFailed})
 }
 
