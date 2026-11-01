@@ -130,6 +130,8 @@ describe("the evidence's links on the results page", () => {
     [`GET ${v1}/simulations/${BASELINE_RUN}/results`]: json(200, { ...boardResults.baseline, trace: { ...boardResults.baseline.trace, available: false } }),
     [`GET ${v1}/simulations/${SCENARIO_RUN}/results`]: json(200, { ...boardResults.scenario, trace: { ...boardResults.scenario.trace, available: false } }),
     [`GET ${v1}/analyses/${ANA}`]: json(200, record),
+    // H-073 (4): the reproducibility card reads the model's runs.
+    [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [], next_cursor: null }),
   });
 
   it("go to the row each was checked against, once per row", async () => {

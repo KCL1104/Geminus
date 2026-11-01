@@ -27,6 +27,8 @@ import {
   boardTraces,
   boardVersion,
 } from "../features/results/fixtures/board-line";
+import { boardBaselineRunOf, boardScenarioOf, boardScenarioRunOf, boardVersionOf } from "../features/results/fixtures/board-line-objects";
+import { electronicsComparison, electronicsModel, electronicsResults } from "../features/results/fixtures/electronics-line";
 import { mount, press, settle } from "./ui-harness";
 
 const jar = vi.hoisted(() => ({ locale: undefined as string | undefined }));
@@ -113,6 +115,29 @@ const results = (comparison: Comparison = boardComparison) => ({
   [`GET ${v1}/simulations/${SCENARIO_RUN}/trace`]: () => json(200, boardTraces.scenario),
 });
 const runs = (b: Run, s: Run) => ({ [`GET ${v1}/simulations/${BASELINE_RUN}`]: () => json(200, b), [`GET ${v1}/simulations/${SCENARIO_RUN}`]: () => json(200, s) });
+// H-073: the electronics line (real engine output), whose results have the line-constraint card, and
+// the pair's saved explanation; the model's runs are only this pair, so the proof finds no other.
+const line = { scenario: boardScenarioOf(electronicsModel), version: boardVersionOf(electronicsModel), baseline: boardBaselineRunOf(electronicsModel), run: boardScenarioRunOf(electronicsModel) };
+const savedExplanation = {
+  id: "ana_01M4YDQK00TA0000000000H073", organization_id: ORG, run_id: SCENARIO_RUN, baseline_run_id: BASELINE_RUN, status: "completed", created_at: "2026-11-01T06:00:46Z", error: null,
+  generated_by: { provider: "meta", model: "muse-spark-1.3" }, output_locale: "en",
+  analysis: {
+    baseline: { summary: "FCT was the busiest station." }, scenario: { summary: "A fourth FCT tester shortened the lead time." }, delta: [],
+    bottleneck: [{ statement: "FCT worked most of its shift.", kind: "observation", evidence: [{ run: "baseline", metric_path: "/metrics/domain/work_ratio.fct/mean" }] }],
+    assumptions: ["Test times stay as modeled."], uncertainty: ["5 replications leave some spread."],
+    suggested_next_experiments: [{ name: "Faster AOI", hypothesis: "AOI may become the next constraint.", requires_confirmation: true }],
+  },
+};
+const lineAnswers = {
+  [`GET ${v1}/scenarios/${line.scenario.id}`]: () => json(200, line.scenario),
+  [`GET ${v1}/model-versions/${line.version.id}`]: () => json(200, line.version),
+  [`GET ${v1}/models/${electronicsModel.model_id}/simulations`]: () => json(200, { items: [line.baseline, line.run], next_cursor: null }),
+  ...runs(line.baseline, line.run),
+  [`GET ${v1}/simulation-comparisons`]: () => json(200, electronicsComparison),
+  [`GET ${v1}/simulations/${BASELINE_RUN}/results`]: () => json(200, { ...electronicsResults.baseline, trace: { ...electronicsResults.baseline.trace, available: false } }),
+  [`GET ${v1}/simulations/${SCENARIO_RUN}/results`]: () => json(200, { ...electronicsResults.scenario, trace: { ...electronicsResults.scenario.trace, available: false } }),
+  [`GET ${v1}/simulations/${SCENARIO_RUN}/analyses`]: () => json(200, { items: [savedExplanation], next_cursor: null }),
+};
 const progress = (revision: number, done: number) => ({ completed_replications: done, total_replications: 5, events_processed: 0, revision });
 const failedRun = boardScenarioRun({ status: "failed", progress: progress(4, 2), error: { error: { code: "INTERNAL_ERROR", message: "x", request_id: REQ } } });
 const incomparable: Comparison = {
@@ -150,6 +175,12 @@ async function resultsView() {
   return <RunResults scenarioId={boardScenario.id} baselineId={BASELINE_RUN} scenarioRunId={SCENARIO_RUN} pollMs={60_000} />;
 }
 
+/** The results as the route shows them: with the AI explanation's place in the side panel, no analysis in the address. */
+async function lineResults() {
+  const { RunResults } = await import("../features/results/run-results");
+  return <RunResults scenarioId={line.scenario.id} baselineId={BASELINE_RUN} scenarioRunId={SCENARIO_RUN} pollMs={60_000} analysis={{ id: null, onChange: () => {} }} />;
+}
+
 const has = (sel: string) => (el: HTMLElement) => el.querySelector(sel) !== null;
 const says = (text: string) => (el: HTMLElement) => (el.textContent ?? "").includes(text);
 
@@ -168,6 +199,10 @@ for (const locale of locales) {
       ["both cancelled", resultsView, editor, { ...scenarioAnswers, ...runs(boardBaselineRun({ status: "cancelled" }), boardScenarioRun({ status: "cancelled" })) }, says(t["runs.noComparison"]), [t["runs.back"]]],
       ["the results", resultsView, editor, { ...scenarioAnswers, ...runs(boardBaselineRun(), boardScenarioRun()), ...results() }, has("svg[role=img]"), [t["runs.back"]]],
       ["results that cannot be compared", resultsView, editor, { ...scenarioAnswers, ...runs(boardBaselineRun(), boardScenarioRun()), ...results(incomparable) }, has("table"), [t["runs.back"]]],
+      // H-073: the line constraint, the saved explanation and the reproducibility, all on the page.
+      ["the results with their constraint, saved explanation and proof", lineResults, editor, lineAnswers,
+        (el) => has("[data-reruns=done]")(el) && says(t["constraint.title"])(el) && says("A fourth FCT tester")(el), [t["runs.back"], t["analysis.again"]]],
+      ["the same, for a viewer", lineResults, viewer, lineAnswers, (el) => has("[data-reruns=done]")(el) && says(t["constraint.title"])(el) && says("A fourth FCT tester")(el), [t["runs.back"]]],
       ["a failed poll", resultsView, editor, { ...scenarioAnswers, [`GET ${v1}/simulations/${BASELINE_RUN}`]: unavailable, [`GET ${v1}/simulations/${SCENARIO_RUN}`]: unavailable }, has("[role=alert]"), [t.retry]],
     ];
 

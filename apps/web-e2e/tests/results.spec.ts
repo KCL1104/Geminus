@@ -83,6 +83,25 @@ for (const locale of locales) {
   });
 }
 
+// H-073 (3) and (4), mounted: the reproducibility card in the side panel
+// reads the model's runs from the review page's stand-in (the page's own two
+// runs, so no other), and shows that, not a problem; the board line is a
+// Software Delivery model, which has no work ratio, so no constraint card.
+for (const locale of locales) {
+  test(`${locale}: the results show their reproducibility, in a real state, and no constraint card for this pack`, async ({ page }) => {
+    const t = catalogs[locale];
+    await open(page, "/ui-gallery/results", locale);
+    const proof = page.locator("section").filter({ has: page.getByRole("heading", { level: 2, name: t["proof.title"], exact: true }) });
+    await expect(proof.getByText(t["proof.reruns.none"], { exact: true })).toBeVisible();
+    await expect(proof.getByRole("table", { name: t["proof.caption"] })).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 2, name: t["constraint.title"], exact: true })).toHaveCount(0);
+    // The run settings come before it in the side panel.
+    const facts = page.getByRole("heading", { level: 2, name: t["facts.title"], exact: true });
+    expect((await facts.boundingBox())!.y).toBeLessThan((await proof.boundingBox())!.y);
+  });
+}
+
 // T-034: the 3D playback of the sampled traces, on the same steps as 2D.
 test.describe("the results page's 3D playback", () => {
   test.use({ viewport: { width: 1280, height: 900 } });

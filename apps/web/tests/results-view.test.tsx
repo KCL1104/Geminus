@@ -26,6 +26,8 @@ import {
   boardTraces,
   boardVersion,
 } from "../features/results/fixtures/board-line";
+import { boardBaselineRunOf, boardScenarioRunOf, boardVersionOf } from "../features/results/fixtures/board-line-objects";
+import { electronicsComparison, electronicsModel, electronicsResults } from "../features/results/fixtures/electronics-line";
 import type { ResultsData } from "../features/results/load";
 import { mount, press, settle, violations } from "./ui-harness";
 
@@ -337,8 +339,10 @@ describe("the AI explanation of the results (T-030)", () => {
       suggested_next_experiments: [{ name: "Faster AOI", hypothesis: "AOI may become the next constraint.", requires_confirmation: true }],
     },
   });
+  // H-073 slice 1: with no analysis in the address, the panel first asks for the pair's saved one; none here.
   const completedRuns = { ...scenarioAnswers, [`GET ${v1}/simulations/${BASELINE_RUN}`]: json(200, boardBaselineRun()),
-    [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun()), ...resultAnswers() };
+    [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun()), ...resultAnswers(),
+    [`GET ${v1}/simulations/${SCENARIO_RUN}/analyses`]: json(200, { items: [], next_cursor: null }) };
 
   async function page(api: ReturnType<typeof fakeApi>, initial: string | null, auth: Auth = editor, locale: Locale = "en") {
     const { RunResults } = await import("../features/results/run-results");
@@ -522,8 +526,110 @@ describe("the AI explanation of the results (T-030)", () => {
     await waitFor(() => text(section(el)!).includes("A second ICT fixture"), "the explanation");
     expect(section(el)!.querySelector("h2")?.textContent).toBe(zhHant["analysis.title"]);
     expect(button(section(el)!, zhHant["analysis.again"])).toBeUndefined();
-    const none = await page(fakeApi(completedRuns), null, viewer);
+    const noneApi = fakeApi(completedRuns);
+    const none = await page(noneApi, null, viewer);
+    // Once the server has said the pair has no saved explanation, a viewer has nothing here.
+    await waitFor(() => noneApi.calls.some((c) => c.path.startsWith(`${v1}/simulations/${SCENARIO_RUN}/analyses`)), "the saved explanation's read");
+    await settle();
     expect(section(none.el)).toBeNull();
+  });
+
+  // H-073 slice 1, mounted: a finished comparison shows its saved explanation, and the AI is not asked again.
+  it("shows the pair's saved explanation instead of the form, labelled, and asks the AI nothing", async () => {
+    const saved = { ...explained, created_at: "2026-11-01T06:00:46Z", generated_by: { provider: "meta", model: "muse-spark-1.3" }, output_locale: "en" };
+    const api = fakeApi({ ...completedRuns, [`GET ${v1}/simulations/${SCENARIO_RUN}/analyses`]: json(200, { items: [saved], next_cursor: null }) });
+    const { el, seen } = await page(api, null);
+    await waitFor(() => text(section(el) ?? el).includes("A second ICT fixture"), "the saved explanation");
+    const s = section(el)!;
+    expect(text(s)).toContain(`Written by Muse Spark 1.3 (Meta) from these results. ${en["analysis.checked"]}`);
+    expect(s.querySelector("time")?.getAttribute("datetime")).toBe("2026-11-01T06:00:46Z");
+    expect(button(s, en["analysis.ask"])).toBeUndefined();
+    expect(button(s, en["analysis.again"])).toBeDefined();
+    expect(api.calls.filter((c) => c.method === "POST")).toEqual([]);
+    expect(api.calls.some((c) => c.path.startsWith(`${v1}/analyses/`))).toBe(false);
+    expect(seen).toEqual([]);
+    expect(await violations()).toEqual([]);
+  });
+});
+
+// H-073 (3) and (4), mounted: the line-constraint card in the main column
+// after the key metrics and before the 3D view; the reproducibility card in
+// the side panel after the run settings. The electronics line's real engine
+// output (fixtures/electronics-line.ts), as the server compares it.
+describe("the results' line constraint and reproducibility (H-073)", () => {
+  const version = boardVersionOf(electronicsModel);
+  const baselineRun = boardBaselineRunOf(electronicsModel);
+  const scenarioRun = boardScenarioRunOf(electronicsModel);
+  const data: ResultsData = {
+    comparison: electronicsComparison,
+    version,
+    baseline: { run: baselineRun, result: electronicsResults.baseline, trace: { state: "none" } },
+    scenario: { run: scenarioRun, result: electronicsResults.scenario, trace: { state: "none" } },
+  };
+  const answers = {
+    // The model's runs are only this pair: no other run with the same inputs.
+    [`GET ${v1}/models/${electronicsModel.model_id}/simulations`]: json(200, { items: [baselineRun, scenarioRun], next_cursor: null }),
+    [`GET ${v1}/simulations/${SCENARIO_RUN}/analyses`]: json(200, { items: [], next_cursor: null }),
+  };
+  async function view(api: ReturnType<typeof fakeApi>, opts: { auth?: Auth; locale?: Locale; analysis?: boolean } = {}) {
+    const { ResultsView } = await import("../features/results/results-view");
+    const el = await mount(
+      <AuthProvider value={opts.auth ?? editor}>
+        <ApiProvider client={api.client}>
+          <ResultsView data={data} analysis={opts.analysis === false ? undefined : { id: null, onChange: () => {} }} />
+        </ApiProvider>
+      </AuthProvider>,
+      opts.locale ?? "en",
+    );
+    await settle();
+    await waitFor(() => el.querySelector("[data-reruns=done], [data-reruns=failed]") !== null, "the reruns' check");
+    await settle();
+    return el;
+  }
+  const heading = (el: Element, name: string) => [...el.querySelectorAll("h2")].find((h) => text(h) === name);
+  /** The part of the page (a direct child of its column) that holds el. */
+  const part = (column: Element, el: Element) => [...column.children].find((c) => c.contains(el))!;
+
+  for (const locale of ["en", "zh-Hant"] as const) {
+    it(`${locale}: puts the constraint after the key metrics and before the 3D view, and the proof after the run settings, with no violation`, async () => {
+      const t = catalogs[locale];
+      const el = await view(fakeApi(answers), { locale });
+      const metrics = heading(el, t["compare.title"])!;
+      const constraint = heading(el, t["constraint.title"])!;
+      const proof = heading(el, t["proof.title"])!;
+      const facts = heading(el, t["facts.title"])!;
+      const explanation = heading(el, t["analysis.title"])!;
+      expect([metrics, constraint, proof, facts, explanation].every(Boolean)).toBe(true);
+      const main = part(el.firstElementChild!, metrics);
+      const side = part(el.firstElementChild!, facts);
+      expect(main).not.toBe(side);
+      // The main column: the key metrics, the line constraint, the 3D view, the chart.
+      const order = [...main.children];
+      const threeD = order.find((c) => c.matches("details") && text(c.querySelector("summary")!) === t["twin3d.results"])!;
+      expect(order.indexOf(part(main, constraint))).toBe(order.indexOf(part(main, metrics)) + 1);
+      expect(order.indexOf(threeD)).toBe(order.indexOf(part(main, constraint)) + 1);
+      expect(text(part(main, constraint))).toContain(t["constraint.rule"]);
+      // The side panel: the explanation, the run settings, then the proof.
+      expect([...side.children].map((c) => [explanation, facts, proof].findIndex((h) => c.contains(h)))).toEqual([0, 1, 2]);
+      expect(text(part(side, proof))).toContain(t["proof.reruns.none"]);
+      expect(await violations()).toEqual([]);
+    });
+  }
+
+  it("asks for nothing more than the saved explanation and the model's runs, and the proof needs no analysis", async () => {
+    const api = fakeApi(answers);
+    const el = await view(api, { analysis: false });
+    expect(heading(el, en["analysis.title"])).toBeUndefined();
+    expect(heading(el, en["proof.title"])).toBeDefined();
+    expect(api.calls.map((c) => `${c.method} ${c.path.split("?")[0]}`)).toEqual([`GET ${v1}/models/${electronicsModel.model_id}/simulations`]);
+  });
+
+  it("shows no constraint card for a pack without the rule's measure (the board line)", async () => {
+    const api = fakeApi({ ...scenarioAnswers, [`GET ${v1}/simulations/${BASELINE_RUN}`]: json(200, boardBaselineRun()), [`GET ${v1}/simulations/${SCENARIO_RUN}`]: json(200, boardScenarioRun()), ...resultAnswers() });
+    const el = await runResults(api);
+    await waitFor(() => el.querySelector("[data-reruns=done]") !== null, "the proof");
+    expect(heading(el, en["constraint.title"])).toBeUndefined();
+    expect(heading(el, en["proof.title"])).toBeDefined();
   });
 });
 

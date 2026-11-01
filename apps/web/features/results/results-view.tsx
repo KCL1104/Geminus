@@ -1,19 +1,25 @@
 "use client";
 // The results of a scenario beside its baseline (T-032, H-029): whether
 // the server could compare them (D-088), its warnings, the median lead time
-// in one sentence, the key metrics, the Marey chart of the sampled traces
-// and the settings both runs were frozen with (DESIGN.md The Provenance
-// Always Rule). Presentational: everything comes from ResultsData.
+// in one sentence, the key metrics, the line constraint by its stated rule
+// (H-073 (3)), the Marey chart of the sampled traces, and in the side panel
+// the AI explanation (the pair's saved one when there is one, H-073 (1)),
+// the settings both runs were frozen with (DESIGN.md The Provenance Always
+// Rule) and their reproducibility (H-073 (4)). Everything comes from
+// ResultsData, except what the saved explanation and the proof read for
+// themselves (the pair's analyses, the model's other runs).
 import { Fragment, useState } from "react";
 import type { Duration, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
 import { formatValue } from "./format";
+import { LineConstraint } from "./line-constraint";
 import type { ResultsData } from "./load";
-import { Analysis } from "./analysis";
 import { MareyChart } from "./marey-chart";
 import { keyMetrics, leadTimeSummary } from "./metrics";
 import { MetricsTable, withNodes } from "./metrics-table";
+import { ResultProof } from "./proof";
+import { SavedExplanation } from "./saved-explanation";
 import { Playback } from "../twin-3d/playback/playback";
 import styles from "./results.module.css";
 
@@ -134,6 +140,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
           <MetricsTable rows={rows} />
         </div>
       </section>
+      <LineConstraint rows={rows} />
       <LineIn3D data={data} />
       <MareyChart
         ir={version.ir}
@@ -142,8 +149,9 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
       />
       </div>
       <div className={styles.side}>
-        {analysis && <Analysis baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
+        {analysis && <SavedExplanation baseline={baseline.run} scenario={scenario.run} rows={rows} analysisId={analysis.id} onAnalysis={analysis.onChange} />}
         <Facts baseline={baseline.run} scenario={scenario.run} version={version.version} />
+        <ResultProof baseline={baseline} scenario={scenario} />
       </div>
     </div>
   );

@@ -10,10 +10,8 @@
 // (reruns.ts) with capped reads that say what they left out. Nothing here
 // is claimed beyond what was read.
 //
-// Mount (not yet: results-view.tsx belongs to another slice): in
-// ResultsView's side panel, right after <Facts />, as
-// <ResultProof baseline={baseline} scenario={scenario} /> with the page's
-// RunData (each has run and result).
+// Mounted in ResultsView's side panel, right after the run settings, with
+// the page's RunData (each has run and result).
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { useRemote } from "../../app/_components/use-remote";

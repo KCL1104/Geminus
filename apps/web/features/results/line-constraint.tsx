@@ -7,10 +7,8 @@
 // and the rule itself in the caption. It claims no cause. A pack without a work ratio per station gets
 // nothing; a baseline without one, the rule and "unavailable".
 //
-// Mount (not yet: results-view.tsx belongs to another slice): in the main
-// column of ResultsView, right after the Key metrics section and before the
-// 3D view, as <LineConstraint rows={rows} />, with the same rows the
-// metrics table gets.
+// Mounted in the main column of ResultsView, right after the Key metrics
+// section and before the 3D view, with the same rows the metrics table gets.
 import { useId } from "react";
 import { useI18n } from "../../lib/i18n/provider";
 import { lineConstraint, type BlockedChange, type StationRow } from "./constraint";

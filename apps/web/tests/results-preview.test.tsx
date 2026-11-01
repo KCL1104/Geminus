@@ -6,9 +6,21 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
 import { boardLine } from "../features/results/fixtures/board-line";
 import { en } from "../messages/en";
+import { zhHant } from "../messages/zh-Hant";
 import { mount, press, settle, violations } from "./ui-harness";
+
+async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise<void> {
+  const until = Date.now() + ms;
+  while (!check()) {
+    if (Date.now() > until) throw new Error(`timed out waiting for ${what}`);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+    });
+  }
+}
 
 vi.mock("../lib/i18n/server", () => ({ requestLocale: async () => "en" }));
 vi.setConfig({ testTimeout: 120_000 });
@@ -58,15 +70,28 @@ describe("the results review page", () => {
     ["results", "zh-Hant"], ["running", "zh-Hant"],
   ] as const)("renders %s (%s) with no axe violation", async (state, locale) => {
     const { ResultsPreview } = await import("../app/ui-gallery/results/preview");
+    // No API is called: what the page reads, it reads from its stand-in.
+    const fetched = vi.spyOn(globalThis, "fetch");
     const el = await mount(<ResultsPreview state={state} data={boardLine} />, locale);
     await settle();
     if (state === "results" || state === "incomparable") {
       expect(el.querySelector("svg[role=img]")).not.toBeNull();
       expect(el.querySelector("table")).not.toBeNull();
+      // H-073 (4): the proof reads the model's runs from the page's stand-in, not the API: a real state, no problem.
+      const t = locale === "zh-Hant" ? zhHant : en;
+      await waitFor(() => el.querySelector("[data-reruns=done], [data-reruns=failed]") !== null, "the reruns' check");
+      expect(el.querySelector("[data-reruns=done]")?.textContent).toContain(t["proof.reruns.none"]);
+      expect(el.querySelector("[role=alert]")).toBeNull();
+      // H-073 (3): the board line is a Software Delivery model, which has no work ratio: no constraint card.
+      const headings = [...el.querySelectorAll("h2")].map((h) => h.textContent);
+      expect(headings).not.toContain(t["constraint.title"]);
+      expect(headings).toContain(t["proof.title"]);
     }
     if (state === "running") expect(el.querySelectorAll("[role=progressbar]")).toHaveLength(2);
     if (state === "failed") expect(el.querySelector("[role=alert]")?.getAttribute("data-problem")).toBe("invalid");
     expect(await violations()).toEqual([]);
+    expect(fetched).not.toHaveBeenCalled();
+    fetched.mockRestore();
   });
 
   it("cancels its running runs when asked", async () => {

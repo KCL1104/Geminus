@@ -520,6 +520,8 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
     [`GET ${v1}/analyses/${ANA}`]: json(200, explained),
     [`GET ${v1}/models/${model.id}`]: json(200, model),
     [`GET ${v1}/models/${model.id}/investigations`]: json(200, { items: [], next_cursor: null }),
+    // H-073 (4): the results' reproducibility card reads the model's runs.
+    [`GET ${v1}/models/${model.id}/simulations`]: json(200, { items: [], next_cursor: null }),
     ...over,
   });
   const editor: Auth = { session: { organizationId: ORG }, role: "editor", userId: ME };

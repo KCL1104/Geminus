@@ -431,8 +431,10 @@
 }
 
 /* The frozen settings under the explanation: reference, not a card of its own (H-042: one focal card per column). */
+/* The run settings, then (H-073 (4)) the reproducibility card 20 px below
+   them, as the cards stand apart. */
 .settings {
-  margin: 0;
+  margin: 0 0 var(--gm-space-section);
   padding: var(--gm-space-xs) var(--gm-space-xs) 0;
 }
 
