@@ -67,6 +67,86 @@
   line-height: var(--gm-line-height-label);
 }
 
+.hint[hidden],
+.selected[hidden],
+.cap[hidden] {
+  display: none;
+}
+
+/* The line in motion (H-072): "+N not drawn" in the stage's top right corner,
+   over the scene like the canvas chrome (DESIGN.md: 16 px in from the edges). */
+.cap {
+  position: absolute;
+  top: var(--gm-space-gutter);
+  right: var(--gm-space-gutter);
+  padding: 0 var(--gm-space-xs);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* The key to the station lights, one Label line that wraps: each state's
+   light as the stage draws it (Ink busy, Ink 4 idle, Warning Mark held or
+   changing over; The Trace Motion Rule), then what the lights can show. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.lightsLabel {
+  color: var(--gm-color-ink);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.lights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lights li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-xs);
+}
+
+.lamp {
+  display: inline-block;
+  flex: none;
+  width: var(--gm-space-md);
+  height: var(--gm-space-md);
+  border-radius: var(--gm-radius-full);
+}
+
+.busy {
+  background: var(--gm-color-ink);
+}
+
+.idle {
+  background: var(--gm-color-ink-4);
+}
+
+.held {
+  background: var(--gm-color-warning-mark);
+}
+
+.caveat {
+  flex-basis: 100%;
+}
+
 /* Playback (T-034): the run, Play and the time slider on one row that wraps. */
 .playback {
   display: grid;
