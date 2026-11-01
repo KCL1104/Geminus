@@ -5,10 +5,11 @@
 // (H-073 (3)), the Marey chart of the sampled traces, and in the side panel
 // the AI explanation (the pair's saved one when there is one, H-073 (1)),
 // the settings both runs were frozen with (DESIGN.md The Provenance Always
-// Rule) and their reproducibility (H-073 (4)). Everything comes from
-// ResultsData, except what the saved explanation and the proof read for
-// themselves (the pair's analyses, the model's other runs).
-import { Fragment, useState } from "react";
+// Rule) and their reproducibility (H-073 (4)); under them the line in motion
+// (H-072). Everything comes from ResultsData, except what the saved
+// explanation and the proof read for themselves (the pair's analyses, the
+// model's other runs).
+import { Fragment } from "react";
 import type { Duration, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
@@ -61,23 +62,26 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
   );
 }
 
-/** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
 /**
- * The line in 3D with a run's utilization and queues (T-033) and the
- * playback of its sampled trace (T-034), one click away (H-027);
- * PlayCanvas loads only when it is opened.
+ * The line in motion (H-072, replacing T-034's closed "See the line in 3D"):
+ * the two runs' stages, Baseline above Scenario, under one playback bar,
+ * playing once their traces are here (The Trace Motion Rule). A run without
+ * a trace stands still in its results' colours (T-033) and says why. The
+ * card takes the page's whole width, under the comparison and its side
+ * panel (H-072 review): a long line is drawn at a scale where its boards
+ * and its pile before a station can be seen, each station above its twin.
  */
-function LineIn3D({ data }: { data: ResultsData }) {
+function LineInMotion({ data }: { data: ResultsData }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   return (
-    <details className={styles.card3d} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>{t("twin3d.results")}</summary>
-      {open && <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />}
-    </details>
+    <section aria-labelledby="motion-heading" className={`${styles.section} ${styles.wide}`}>
+      <h2 id="motion-heading">{t("playback.stage")}</h2>
+      <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />
+    </section>
   );
 }
 
+/** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
 export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: { id: string | null; onChange: (id: string | null) => void } }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -107,8 +111,11 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
   const { replications: br } = baseline.run.config;
   const caption = br === scenario.run.config.replications ? t("compare.summary.caption", { count: br }) : t("compare.summary.captionMixed");
 
-  // H-040: the comparison on the left, the AI's explanation and the frozen settings in the side panel.
+  // H-040: the comparison on the left, the AI's explanation and the frozen settings in the side panel;
+  // H-072: the line in motion under both, the page's whole width (out of their grid, so the sticky
+  // side panel ends with the comparison and never covers it).
   return (
+    <>
     <div className={styles.layout}>
       <div className={styles.main}>
       {!comparison.comparable && (
@@ -141,7 +148,6 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
         </div>
       </section>
       <LineConstraint rows={rows} />
-      <LineIn3D data={data} />
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}
@@ -154,5 +160,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
         <ResultProof baseline={baseline} scenario={scenario} />
       </div>
     </div>
+    <LineInMotion data={data} />
+    </>
   );
 }

@@ -505,19 +505,30 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(seen).toEqual([null]);
   });
 
-  it("keeps the line in 3D closed, and loads it only when opened (T-033)", async () => {
+  // H-072 replaced T-033's closed "See the line in 3D": the two runs' stages are open on the page and play on one clock.
+  it("shows the line in motion: both runs' stages under one playback bar; without WebGL each says so and the rest stays", async () => {
     const api = fakeApi(completedRuns);
     const { el } = await page(api, null, viewer);
-    const details = [...el.querySelectorAll("details")].find((d) => text(d.querySelector("summary")!) === en["twin3d.results"])!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector("canvas, [role=img]")).toBeNull();
-    await act(async () => {
-      details.open = true;
-      details.dispatchEvent(new Event("toggle"));
-    });
-    // No WebGL here: the view says so, and the rest of the page stays.
-    await waitFor(() => text(details).includes(en["twin3d.unavailable"]), "the 3D view's answer");
+    const motion = el.querySelector<HTMLElement>('section[aria-labelledby="motion-heading"]')!;
+    expect(motion.querySelector("h2")?.textContent).toBe(en["playback.stage"]);
+    expect([...motion.querySelectorAll("h3")].map(text)).toEqual([en["runs.baseline"], en["runs.scenario"]]);
+    expect(motion.querySelectorAll('[role="group"]')).toHaveLength(1);
+    expect(motion.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe(en["playback.bar"]);
+    expect(el.querySelector("details summary")?.textContent).not.toBe("See the line in 3D and play back its runs");
+    // H-072 review: the card follows the comparison (the table, the Marey chart) and its side panel,
+    // out of their two columns, not in the comparison's column beside the panel, where each stage
+    // was 312 px wide; the browser checks measure it (motion.spec.ts).
+    const facts = el.querySelector<HTMLElement>('section[aria-labelledby="facts-heading"]')!;
+    const layout = facts.parentElement!.parentElement!;
+    expect(layout.contains(motion)).toBe(false);
+    expect(motion.parentElement).toBe(layout.parentElement);
+    expect(layout.compareDocumentPosition(motion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(layout.contains(el.querySelector('svg[role="img"]'))).toBe(true);
+    // No WebGL here: each stage says so, and the rest of the page stays.
+    await waitFor(() => motion.querySelectorAll('[data-stage] [data-tone="info"]').length === 2, "the 3D views' answer");
+    expect(text(motion)).toContain(en["twin3d.unavailable"]);
     expect(el.querySelector("table")).not.toBeNull();
+    expect(el.querySelector('svg[role="img"]')).not.toBeNull();
   });
 
   it("shows a viewer an analysis in the address and nothing to ask with; and nothing without one", async () => {
@@ -591,23 +602,27 @@ describe("the results' line constraint and reproducibility (H-073)", () => {
   const part = (column: Element, el: Element) => [...column.children].find((c) => c.contains(el))!;
 
   for (const locale of ["en", "zh-Hant"] as const) {
-    it(`${locale}: puts the constraint after the key metrics and before the 3D view, and the proof after the run settings, with no violation`, async () => {
+    it(`${locale}: puts the constraint after the key metrics and before the chart, the proof after the run settings, and the line in motion under both, with no violation`, async () => {
       const t = catalogs[locale];
       const el = await view(fakeApi(answers), { locale });
       const metrics = heading(el, t["compare.title"])!;
       const constraint = heading(el, t["constraint.title"])!;
+      const chart = heading(el, t["marey.title"])!;
       const proof = heading(el, t["proof.title"])!;
       const facts = heading(el, t["facts.title"])!;
       const explanation = heading(el, t["analysis.title"])!;
-      expect([metrics, constraint, proof, facts, explanation].every(Boolean)).toBe(true);
+      const motion = heading(el, t["playback.stage"])!;
+      expect([metrics, constraint, chart, proof, facts, explanation, motion].every(Boolean)).toBe(true);
       const main = part(el.firstElementChild!, metrics);
       const side = part(el.firstElementChild!, facts);
       expect(main).not.toBe(side);
-      // The main column: the key metrics, the line constraint, the 3D view, the chart.
+      // The main column: the key metrics, the line constraint, the chart.
       const order = [...main.children];
-      const threeD = order.find((c) => c.matches("details") && text(c.querySelector("summary")!) === t["twin3d.results"])!;
       expect(order.indexOf(part(main, constraint))).toBe(order.indexOf(part(main, metrics)) + 1);
-      expect(order.indexOf(threeD)).toBe(order.indexOf(part(main, constraint)) + 1);
+      expect(order.indexOf(part(main, chart))).toBe(order.indexOf(part(main, constraint)) + 1);
+      // The line in motion: under both columns, the page's whole width (H-072, H-075).
+      expect(el.firstElementChild!.contains(motion)).toBe(false);
+      expect(el.firstElementChild!.nextElementSibling!.contains(motion)).toBe(true);
       expect(text(part(main, constraint))).toContain(t["constraint.rule"]);
       // The side panel: the explanation, the run settings, then the proof.
       expect([...side.children].map((c) => [explanation, facts, proof].findIndex((h) => c.contains(h)))).toEqual([0, 1, 2]);

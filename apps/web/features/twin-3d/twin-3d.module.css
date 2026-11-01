@@ -21,11 +21,12 @@
   background: var(--gm-color-sheet);
 }
 
+/* A vertical swipe scrolls the page past the stage; a sideways drag turns the scene (H-072 review). */
 .canvas {
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .canvas:focus-visible {
@@ -67,35 +68,92 @@
   line-height: var(--gm-line-height-label);
 }
 
-/* Playback (T-034): the run, Play and the time slider on one row that wraps. */
-.playback {
-  display: grid;
+.hint[hidden],
+.selected[hidden],
+.cap[hidden] {
+  display: none;
+}
+
+/* The controls under another stage of the page: read with the canvas, not shown twice (H-039). */
+.unseen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The line in motion (H-072): "+N not drawn" in the stage's top right corner,
+   over the scene like the canvas chrome (DESIGN.md: 16 px in from the edges). */
+.cap {
+  position: absolute;
+  top: var(--gm-space-gutter);
+  right: var(--gm-space-gutter);
+  padding: 0 var(--gm-space-xs);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* The key to the station lights, one Label line that wraps: each state's
+   light as the stage draws it (Ink busy, Ink 4 idle, Warning Mark held or
+   changing over; The Trace Motion Rule), then what the lights can show. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.lightsLabel {
+  color: var(--gm-color-ink);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.lights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lights li {
+  display: inline-flex;
+  align-items: center;
   gap: var(--gm-space-xs);
 }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-sm);
+.lamp {
+  display: inline-block;
+  flex: none;
+  width: var(--gm-space-md);
+  height: var(--gm-space-md);
+  border-radius: var(--gm-radius-full);
 }
 
-.time {
-  display: flex;
-  flex: 1 1 16rem;
-  align-items: center;
-  gap: var(--gm-space-sm);
-  min-width: 0;
-  font-size: var(--gm-font-size-label);
+.busy {
+  background: var(--gm-color-ink);
 }
 
-.time input {
-  flex: 1;
-  min-width: 0;
-  accent-color: var(--gm-color-ink);
+.idle {
+  background: var(--gm-color-ink-4);
 }
 
-.clock {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.held {
+  background: var(--gm-color-warning-mark);
+}
+
+.caveat {
+  flex-basis: 100%;
 }

@@ -1,0 +1,73 @@
+/* The playback bar of the line in motion (H-072; DESIGN.md, The Trace Motion
+   Rule, and the Marey strip's header): Pause/Play as a 32 px icon key, the
+   slider with the run's time on its playhead as an Ink flag (12 px 600 On
+   Ink), the speed segment, and the sampling note in Label under them. The
+   flag is moved by the clock (playback-bar.tsx), never by a CSS animation. */
+.bar {
+  display: grid;
+  gap: var(--gm-space-xs);
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gm-space-md);
+  min-width: 0;
+}
+
+/* DESIGN.md button-icon: 32 px square, the icon alone; the name is its
+   aria-label. Inside .controls, so it wins over the key's padding whatever
+   order the stylesheets load in. */
+.controls .toggle {
+  flex: none;
+  width: var(--gm-control-height);
+  padding: 0;
+}
+
+.scrub {
+  display: grid;
+  flex: 1 1 auto;
+  gap: var(--gm-space-hair);
+  min-width: 0;
+}
+
+.flag {
+  justify-self: start;
+  padding: 0 var(--gm-space-sm);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-ink);
+  color: var(--gm-color-on-ink);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-label);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The flag holds its line before the first time is written into it. */
+.flag:empty::before {
+  content: "\00a0";
+}
+
+.slider {
+  width: 100%;
+  min-width: 0;
+  height: var(--gm-control-height);
+  margin: 0;
+  accent-color: var(--gm-color-ink);
+  cursor: pointer;
+}
+
+.slider:focus-visible {
+  outline: var(--gm-focus-ring);
+  outline-offset: var(--gm-focus-offset);
+}
+
+.note {
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}

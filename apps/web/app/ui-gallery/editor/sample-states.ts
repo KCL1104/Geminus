@@ -6,11 +6,16 @@
 // "clean": the sample with a change since version 1, so it can be
 // published. "conflict": someone else renames SMT just before the first
 // save, which then gets a 409. "viewer": the clean sample, read-only.
+// H-072: "motion" is the electronics line template (not the sample line)
+// with its baseline run through the engine (one day, seed 1, sampled
+// trace), which the model page plays; "still" is the same paused at Day 1,
+// 22:00 (StillPlayback, preview.tsx). The other states have no run.
 import type { ModelIR } from "../../../lib/contracts";
-import { sampleLine } from "./sample-line";
+import { type ElectronicsLineData, lineBaselineRunOf } from "../../../features/results/fixtures/electronics-line-objects";
+import { SAMPLE_MODEL_ID, sampleLine } from "./sample-line";
 import type { StandInOptions } from "./stand-in";
 
-export const states = ["problems", "clean", "conflict", "viewer"] as const;
+export const states = ["problems", "clean", "conflict", "viewer", "motion", "still"] as const;
 export type SampleState = (typeof states)[number];
 
 export function parseState(v: string | undefined): SampleState {
@@ -25,8 +30,15 @@ function withProblems(): ModelIR {
   return ir;
 }
 
-export function standInFor(state: SampleState): Omit<StandInOptions, "modelId"> {
+/** line: the electronics line's engine output, which "motion" and "still" need (without it they show the sample line, with no run). */
+export function standInFor(state: SampleState, line?: ElectronicsLineData): Omit<StandInOptions, "modelId"> {
   switch (state) {
+    case "motion":
+    case "still": {
+      if (!line) return { ir: sampleLine, changed: true };
+      const ir: ModelIR = { ...line.model, model_id: SAMPLE_MODEL_ID };
+      return { ir, runs: [{ run: lineBaselineRunOf(ir), result: line.results.baseline, trace: line.traces.baseline }] };
+    }
     case "problems":
       return {
         ir: withProblems(),

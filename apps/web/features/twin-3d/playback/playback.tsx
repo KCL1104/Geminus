@@ -1,150 +1,99 @@
 "use client";
-// 3D playback of a run's sampled trace (T-034; REQ-017, REQ-023): play,
-// pause and a time slider over the run, the baseline or the scenario, and a
-// column on each step for the sampled work items there (occupancy.ts). The
-// trace is the one the results page already loaded with the run's
-// authorization; without one there is nothing to play and nothing is made
-// up. The view redraws at most every UPDATE_MS while playing, and the page
-// only re-renders when the shown time changes.
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ModelIR, Result } from "../../../lib/contracts";
+// The results page's line in motion (H-072; docs/design/H-072_TRACE_ANIMATION.md
+// §2, §6; DESIGN.md, The Trace Motion Rule). It replaces T-034's column per
+// step: the baseline and the scenario play one above the other, Baseline
+// first, each a 3D stage as wide as the page's card and titled with its run's
+// pill, under one playback bar and on one clock, so a pile of boards that
+// drains in one run and not in the other is seen at the same moment, each
+// station right above its twin (H-072 review: side by side, each stage was
+// 312 px wide and its boards about 1 px). Selecting a step in either stage
+// selects it in both (shared IDs); the controls are said once, under the last.
+//
+// Each run's boards come from its own sampled trace, built once into its
+// motion (motion.ts) on the model that run ran: the scenario's stage is its
+// version with the scenario's patch, so a fourth FCT tester stands there as
+// a fourth cabinet. A run without a trace (none recorded, or it failed to
+// load) stands still with its results' colours and says why; with no trace
+// at all there is no bar. It plays once the traces are there (autoplay),
+// paused instead under reduced motion; Pause is the bar's first control.
+import { useId, useMemo, useState } from "react";
+import type { ModelIR, Result, Run } from "../../../lib/contracts";
 import { useI18n } from "../../../lib/i18n/provider";
-import { formatDuration } from "../../../lib/i18n/translate";
-import type { Locale } from "../../../lib/i18n/locale";
-import { Button } from "../../../ui/button";
-import { Segmented } from "../../../ui/segmented";
+import { motion } from "../../playback/motion";
+import { type BarTrace, PlaybackBar } from "../../playback/playback-bar";
+import { playableTrace, runModel, type RunSide, stillReason } from "../../playback/run";
+import { usePageClock } from "../../playback/still";
 import type { TraceState } from "../../results/load";
-import { type LoadView, Twin3D } from "../viewer";
-import styles from "../twin-3d.module.css";
-import { timeline } from "./occupancy";
+import { LineKey } from "../../simulations/run-status";
+import { type LoadView, type Stage, Twin3D } from "../viewer";
+import styles from "./playback.module.css";
 
-type Side = "baseline" | "scenario";
-export type PlaybackRun = { result: Result; trace: TraceState };
+/** A completed run on this page: what it is, its Result (the horizon, the colours of a still line) and its trace as loaded. */
+export type PlaybackRun = { run: Run; result: Result; trace: TraceState };
 
-/** A whole run plays in this many seconds; the slider reaches any time directly. */
-const PLAY_SECONDS = 30;
-const UPDATE_MS = 100;
-const SLIDER_STEPS = 1000;
+const SIDES = ["baseline", "scenario"] as const;
 
-// Ticks are milliseconds (SIMULATION_SPEC §1). The run's length picks one
-// unit for both times, named in words ("5 hours of 10 hours"), to a tenth.
-const units = [["day", 86_400_000], ["hour", 3_600_000], ["minute", 60_000], ["second", 1_000]] as const;
-
-/** The time and the run's end in the largest unit the end has at least 2 of. */
-export function clock(locale: Locale, ticks: number, end: number): { time: string; end: string } {
-  const [unit, ms] = units.find(([, ms]) => end >= 2 * ms) ?? units[3];
-  const say = (t: number) => formatDuration(locale, Math.round((t / ms) * 10) / 10, unit);
-  return { time: say(ticks), end: say(end) };
+/** The stage a run plays on, or null when it has nothing to play. */
+function useStage(side: RunSide, model: ModelIR, run: PlaybackRun): Stage | null {
+  const trace = playableTrace(run.trace);
+  const horizon = run.result.measurement_window.horizon_ticks;
+  return useMemo(() => (trace === null ? null : { side, trace, motion: motion(trace, model, horizon) }), [side, trace, model, horizon]);
 }
 
-const playable = (s: TraceState) => (s.state === "loaded" && s.trace.events.length > 0 ? s.trace : null);
-
-export function Playback({ ir, runs, loadView }: { ir: ModelIR; runs: Record<Side, PlaybackRun>; loadView?: LoadView }) {
-  const { t, locale } = useI18n();
-  const sides = (["baseline", "scenario"] as const).filter((s) => playable(runs[s].trace) !== null);
-  const [run, setRun] = useState<Side>(sides.includes("scenario") ? "scenario" : (sides[0] ?? "scenario"));
+/** ir: the version both runs ran (the scenario's base); each run's own patch is applied to it here. */
+export function Playback({ ir, runs, loadView }: { ir: ModelIR; runs: Record<RunSide, PlaybackRun>; loadView?: LoadView }) {
+  const { t } = useI18n();
+  const baselineTitle = useId();
+  const scenarioTitle = useId();
+  const titles = { baseline: baselineTitle, scenario: scenarioTitle };
   const [selected, setSelected] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const nodes = useMemo(() => new Set(ir.nodes.map((n) => n.id)), [ir]);
-  const trace = playable(runs[run].trace);
-  const horizon = runs[run].result.measurement_window.horizon_ticks;
-  const tl = useMemo(() => (trace === null ? null : timeline(trace, nodes, horizon)), [trace, nodes, horizon]);
-  const end = tl?.end ?? 0;
-  // Another run's trace may end sooner (truncated): the time shown stays inside this one (review L4).
-  const shownTick = Math.min(tick, end);
-  const counts = useMemo(() => (end > 0 ? (tl?.at(shownTick) ?? null) : null), [tl, shownTick, end]);
-  const occupancy = useMemo(() => (counts === null ? null : { counts, run }), [counts, run]);
+  const bRun = runs.baseline.run;
+  const sRun = runs.scenario.run;
+  const models = useMemo(() => ({ baseline: runModel(ir, bRun), scenario: runModel(ir, sRun) }), [ir, bRun, sRun]);
+  const stages: Record<RunSide, Stage | null> = {
+    baseline: useStage("baseline", models.baseline, runs.baseline),
+    scenario: useStage("scenario", models.scenario, runs.scenario),
+  };
+  const playing = SIDES.filter((s) => stages[s] !== null);
+  const still = SIDES.filter((s) => stages[s] === null);
+  // One clock over the longer run: a run shorter than the other holds at its end.
+  const duration = playing.length === 0 ? null : Math.max(...playing.map((s) => runs[s].result.measurement_window.horizon_ticks));
+  const clock = usePageClock(duration);
+  const traces: BarTrace[] = playing.map((s) => ({ side: s, trace: stages[s]!.trace, end: stages[s]!.motion.end }));
 
-  // Playing: time advances with the clock, the shown time at most every UPDATE_MS; it stops at the end.
-  const from = useRef({ tick: 0, at: 0 });
-  useEffect(() => {
-    if (!playing || end === 0) return;
-    from.current = { tick: tick >= end ? 0 : tick, at: performance.now() };
-    let frame = 0;
-    let shown = 0;
-    const advance = (now: number) => {
-      // A frame's timestamp can be a little before the effect's performance.now() (review L5).
-      const next = Math.min(end, from.current.tick + (Math.max(0, now - from.current.at) / (PLAY_SECONDS * 1000)) * end);
-      if (next >= end) {
-        setTick(end);
-        setPlaying(false);
-        return;
-      }
-      if (now - shown >= UPDATE_MS) {
-        shown = now;
-        setTick(next);
-      }
-      frame = requestAnimationFrame(advance);
-    };
-    frame = requestAnimationFrame(advance);
-    return () => cancelAnimationFrame(frame);
-    // The start is read once per press of Play; the ticks it sets must not restart it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, end]);
-
-  const total = counts === null ? 0 : Object.values(counts).reduce((a, b) => a + b, 0);
-  const name = (id: string) => ir.nodes.find((n) => n.id === id)?.name ?? id;
-  const at = clock(locale, shownTick, end);
-  // Why a run cannot be played: its trace failed to load, or none was recorded (review M2).
-  const unplayable = (["baseline", "scenario"] as const).filter((s) => !sides.includes(s));
-  const why =
-    sides.length === 0 && unplayable.every((s) => runs[s].trace.state !== "failed")
-      ? [t("playback.none")]
-      : unplayable.map((s) => (runs[s].trace.state === "failed" ? t(`marey.failed.${s}`) : t(`playback.missing.${s}`)));
   return (
-    <div className={styles.twin}>
-      <Twin3D ir={ir} results={runs[run].result} selected={selected} onSelect={setSelected} occupancy={occupancy} loadView={loadView} />
-      {why.length > 0 && <p className={styles.hint}>{why.join(" ")}</p>}
-      {trace === null || end === 0 ? null : (
-        <div className={styles.playback}>
-          <div className={styles.controls}>
-            {sides.length > 1 && (
-              <Segmented
-                label={t("playback.run")}
-                items={sides.map((s) => ({ id: s, label: t(`compare.${s}`) }))}
-                value={run}
-                onChange={(s) => {
-                  setPlaying(false);
-                  setRun(s);
-                }}
+    <div className={styles.motion}>
+      {clock && traces.length > 0 && <PlaybackBar clock={clock} unit={ir.time_unit} domain={ir.domain} traces={traces} />}
+      <div className={styles.stages}>
+        {SIDES.map((side) => {
+          const stage = stages[side];
+          // The key to what a stage shows sits under one stage of each kind (the lights, or a still line's colours).
+          const legend = side === (stage ? playing.at(-1) : still.at(-1));
+          return (
+            <section key={side} aria-labelledby={titles[side]} className={styles.stage} data-stage={side}>
+              <h3 id={titles[side]} className={styles.title}>
+                <span className={styles.pill}>
+                  <LineKey side={side} />
+                  {t(`runs.${side}`)}
+                </span>
+              </h3>
+              {stage === null && <p className={styles.caption}>{t(stillReason(runs[side].trace))}</p>}
+              <Twin3D
+                ir={models[side]}
+                results={runs[side].result}
+                selected={selected}
+                onSelect={setSelected}
+                stage={stage}
+                clock={stage ? clock : null}
+                label={stage ? t(`playback.stage.${side}`) : undefined}
+                legend={legend}
+                controls={side === SIDES.at(-1)}
+                loadView={loadView}
               />
-            )}
-            <Button onPress={() => setPlaying((p) => !p)}>{playing ? t("playback.pause") : t("playback.play")}</Button>
-            <label className={styles.time}>
-              <span>{t("playback.time")}</span>
-              <input
-                type="range"
-                min={0}
-                max={SLIDER_STEPS}
-                value={Math.round((shownTick / end) * SLIDER_STEPS)}
-                aria-valuetext={t("playback.at", at)}
-                onChange={(e) => {
-                  setPlaying(false);
-                  setTick((Number(e.currentTarget.value) / SLIDER_STEPS) * end);
-                }}
-              />
-              {/* Not an <output>: a status region would announce every update while playing; the slider's value text says it (review M1). */}
-              <span className={styles.clock} aria-hidden="true">
-                {t("playback.at", at)}
-              </span>
-            </label>
-          </div>
-          <p className={styles.hint}>
-            {t("playback.total", { count: total })}{" "}
-            {selected !== null && t("playback.here", { name: name(selected), count: counts?.[selected] ?? 0 })}
-          </p>
-          <p className={styles.hint}>
-            {t("playback.legend")} {t("marey.sampling", { replication: trace.replication_index + 1, every: Math.round(1 / trace.sampling.rate) })}
-            {trace.truncated && (
-              <>
-                {" "}
-                {t("playback.truncated")}
-              </>
-            )}
-          </p>
-        </div>
-      )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }

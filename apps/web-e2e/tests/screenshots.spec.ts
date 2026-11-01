@@ -4,8 +4,9 @@
 // container; elsewhere rendering differs, so this runs only with
 // E2E_SCREENSHOTS=1 and reports NOT RUN otherwise (README.md).
 // Besides the signed-out pages: a ready proposal and the results (their
-// review pages), and signed in as the editor, the projects, the canvas and
-// a list of the model's (H-042), on the fake API's data as it starts.
+// review pages; the results held still, H-072), and signed in as the
+// editor, the projects, the canvas and a list of the model's (H-042), on
+// the fake API's data as it starts.
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "./fixtures";
@@ -15,7 +16,8 @@ const enabled = process.env.E2E_SCREENSHOTS === "1";
 // Before the first baselines are accepted there is nothing to compare with.
 // Once there are, a missing one fails: a new screen needs a person's look.
 const accepted = existsSync(join(import.meta.dirname, "__screenshots__", "screenshots.spec.ts"));
-const shots = ["/", "/projects", "/no-such-page", "/ui-gallery", "/ui-gallery/proposal?state=scenario", "/ui-gallery/results"];
+// H-072: the results play the line in motion, so their picture is the review page's state held still at Day 1, 22:00.
+const shots = ["/", "/projects", "/no-such-page", "/ui-gallery", "/ui-gallery/proposal?state=scenario", "/ui-gallery/results?state=still"];
 const signedIn = [["projects-signed-in", "/projects"], ["canvas", `/models/${tenant.MODEL}`], ["scenarios", `/models/${tenant.MODEL}/scenarios`]];
 const file = (route: string) => (route === "/" ? "home" : route.slice(1).replace(/[/?=]/g, "-"));
 

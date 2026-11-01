@@ -3,8 +3,9 @@
 // type sizes, spacing, corners, shadows and motion from the tokens; nothing
 // is decorated (no gradient but the canvas's dot grid, no keyframe
 // animation, no shadow but the three shadow tokens and two state rings
-// (H-041), no border thicker than a hairline, so no side stripe); and no
-// component writes a colour inline. The rules that need a
+// (H-041), no border thicker than a hairline, so no side stripe); no
+// component writes a colour inline; and nothing moves continuously but a
+// run's trace playback (The Trace Motion Rule, H-072). The rules that need a
 // rendered page (one primary action per view, no duplicate controls,
 // visible focus) are checked in tests/simplicity.test.tsx and in the
 // browser (apps/web-e2e/tests/simplicity.spec.ts).
@@ -88,6 +89,22 @@ describe("simplicity rules (H-027) in the stylesheets", () => {
     const transitions = all.filter((d) => d.prop === "transition");
     expect(transitions.length).toBeGreaterThan(0);
     for (const t of transitions) expect(t.value.split(",").every((p) => /^\s*[a-z-]+ var\(--gm-motion\)\s*$/.test(p)), where(t)).toBe(true);
+  });
+
+  it("moves nothing continuously but a run's trace playback (The Trace Motion Rule, H-072)", () => {
+    // A frame loop hands requestAnimationFrame a named callback that asks for the next frame; a one-off
+    // focus after a render passes an arrow (model-editor.tsx). The Web Animations API is not used at all.
+    const loop = /requestAnimationFrame\(\s*[A-Za-z_$][\w$]*\s*\)/;
+    const animate = /\.animate\(/;
+    const rel = (f: string) => relative(root, f);
+    const loops = sources.filter((f) => loop.test(readFileSync(f, "utf8"))).map(rel).sort();
+    // The playback clock that drives every stage (H-072: the results page's two stages and the model page's 2D and 3D are on it).
+    expect(loops).toEqual(["features/playback/clock.ts"]);
+    expect(sources.filter((f) => animate.test(readFileSync(f, "utf8"))).map(rel)).toEqual([]);
+    // The clock honours reduced motion (it starts paused and does not slide), and the bar's first control pauses it.
+    const clock = readFileSync(join(root, "features/playback/clock.ts"), "utf8");
+    expect(clock).toContain('"(prefers-reduced-motion: reduce)"');
+    expect(readFileSync(join(root, "features/playback/playback-bar.tsx"), "utf8")).toMatch(/t\("playback\.pause"\)/);
   });
 
   it("casts shadows only from the three shadow tokens, besides the invalid-field and selected-step rings (H-041)", () => {

@@ -8,6 +8,7 @@ import { join, relative } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { boardLine } from "../features/results/fixtures/board-line";
+import { readElectronicsLine } from "./fixtures/electronics-line";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
 import { mount, press, settle, violations } from "./ui-harness";
@@ -43,8 +44,14 @@ describe("the results review page", () => {
     const states = await Promise.all(["running", "nonsense", ["failed"]].map(async (state) => ((await Page({ searchParams: Promise.resolve({ state }) })) as { props: { state: string } }).props.state));
     expect(states).toEqual(["running", "results", "results"]);
     // It hands the engine output over as read from its files, number for number.
-    const page = (await Page({ searchParams: Promise.resolve({}) })) as { props: { data: typeof boardLine } };
+    const page = (await Page({ searchParams: Promise.resolve({}) })) as { props: { data: typeof boardLine; line?: unknown } };
     expect(page.props.data).toEqual(boardLine);
+    expect(page.props.line).toBeUndefined();
+    // H-072: the electronics line's states get its engine output too, as read from its files.
+    for (const state of ["line", "still"]) {
+      const p = (await Page({ searchParams: Promise.resolve({ state }) })) as { props: { state: string; line?: unknown } };
+      expect([p.props.state, p.props.line]).toEqual([state, readElectronicsLine()]);
+    }
   });
 
   // The minifier of a production build rewrote a bundled JSON number to
@@ -92,6 +99,25 @@ describe("the results review page", () => {
     expect(await violations()).toEqual([]);
     expect(fetched).not.toHaveBeenCalled();
     fetched.mockRestore();
+  });
+
+  // H-072: the electronics line template's baseline beside a fourth FCT tester, in motion, and held at Day 1, 22:00.
+  it.each([["line", "en"], ["still", "en"], ["still", "zh-Hant"]] as const)("renders the electronics line %s (%s) with its two stages, with no axe violation", async (state, locale) => {
+    const { ResultsPreview } = await import("../app/ui-gallery/results/preview");
+    const el = await mount(<ResultsPreview state={state} data={boardLine} line={readElectronicsLine()} />, locale);
+    await settle();
+    expect([...el.querySelectorAll("section[data-stage]")].map((s) => s.getAttribute("data-stage"))).toEqual(["baseline", "scenario"]);
+    expect(el.querySelectorAll("[role=group]")).toHaveLength(1);
+    const toggle = el.querySelector("[role=group] button")!;
+    const spoken = el.querySelector("input[type=range]")!.getAttribute("aria-valuetext");
+    if (state === "still") {
+      expect(toggle.getAttribute("aria-label")).toBe(locale === "en" ? en["playback.play"] : "播放");
+      expect(spoken).toBe(locale === "en" ? "Day 1, 22:00 of 1 day" : "第 1 天 22:00／1 天");
+    } else {
+      expect(toggle.getAttribute("aria-label")).toBe(en["playback.pause"]);
+    }
+    expect(el.querySelector("svg[role=img]")).not.toBeNull();
+    expect(await violations()).toEqual([]);
   });
 
   it("cancels its running runs when asked", async () => {
