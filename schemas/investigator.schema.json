@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://twin.example/spec/0.1/investigator.schema.json",
   "title": "investigator",
-  "$comment": "H-061 §7 (PROPOSED, pending the owner's confirmation of the D-008 amendment and ADR-032; behind GEMINUS_INVESTIGATIONS): the seven tools an AI investigation's planner may call, their arguments, the server-written results it is shown (observations), its budget and the closed refusal codes. This file is the single source: the provider's input_schema, the Go strict decoders (internal/ai/investigator) and the TS types are generated from it or contract-tested against it. Arguments are what the model wrote: every member required (null where optional), no other member, AI text without control characters (and in NFC, which the Go decoder checks), IDs of D-001. The model never supplies the organization, the user, the version, the run settings, names or limits. Schema-valid is not authorized: the API's executor checks every call again, under the requester's scope and current role, before it has any effect (H-061 §6.2).",
+  "$comment": "H-061 §7 (PROPOSED, pending the owner's confirmation of the D-008 amendment and ADR-032; behind GEMINUS_INVESTIGATIONS): the seven tools an AI investigation's planner may call, their arguments, the server-written results it is shown (observations), its budget and the closed refusal codes. This file is the single source: the provider's input_schema, the Go strict decoders (internal/ai/investigator) and the TS types are generated from it or contract-tested against it. Arguments are what the model wrote: every member required (null where optional), no other member, AI text without control characters (and in NFC, which the Go decoder checks), IDs of D-001. The input_schema the planner is shown leaves a member that may be null out of its required list and describes it (omit it when unused); the strict decoder of a planner turn adds such a member as null when the model left it out, before it decodes against these definitions, so the canonical arguments, the ledger and every later check hold every member as here (H-061 A9, live 2026-11-01). The model never supplies the organization, the user, the version, the run settings, names or limits. Schema-valid is not authorized: the API's executor checks every call again, under the requester's scope and current role, before it has any effect (H-061 §6.2).",
   "$defs": {
     "InvestigatorTool": {
       "type": "string",
@@ -723,13 +723,19 @@
     },
     "ErrorObservation": {
       "type": "object",
-      "description": "The result of a refused or failed call (sent as an is_error tool result).",
+      "description": "The result of a refused or failed call (sent as an is_error tool result): its code and path, the code's hint and the budget after the step. The only shape of a refused or failed row's observation (H-061 §5.6).",
       "properties": {
         "is_error": {
           "const": true
         },
         "error": {
           "$ref": "#/$defs/ToolError"
+        },
+        "hint": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300,
+          "description": "H-061 A9: one fixed English sentence the server writes for the error's code (the allOf pins each code's), saying why the call was refused or failed and what to change; never the model's or a person's text."
         },
         "budget": {
           "$ref": "#/$defs/Budget"
@@ -738,9 +744,402 @@
       "required": [
         "is_error",
         "error",
+        "hint",
         "budget"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "LIMIT_REACHED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "This tool's cap for the investigation is used up, so the call had no effect; use another offered tool or finish."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "BASE_MOVED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The model has a newer version than this investigation's base, so no what-if or edit can be proposed, saved or written on that base."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "DRAFT_CHANGED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The model's draft holds a person's changes or has moved, so nothing was written into it."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "PROPOSAL_NOT_READY"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "Only a ready proposal of this investigation can be saved or written, and that one is not ready."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "PROPOSAL_DECIDED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "A person already approved or rejected that proposal, so it can no longer be saved or written."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "RECHECK_FAILED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The server checked that proposal again against the model and refused it, so it was not saved or written."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "RUN_NOT_COMPLETED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "Only a completed what-if run of this investigation can be explained, and that run did not complete."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "ALREADY_RUN"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "That scenario has already been run in this investigation; its result is in an earlier step."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "NOT_IN_INVESTIGATION"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "That ID is not one this investigation's results gave you; use only the IDs from its earlier results."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "MODE_MISMATCH"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "That tool belongs to the other mode of investigation; call only a tool this turn offers."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "UNKNOWN_TOOL"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "That is not a tool this turn offers; call exactly one of the tools offered."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "INVALID_ARGUMENTS"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The call does not match the tool's input schema at this path (an empty path is the whole call); leave out a member you do not use, and never write it as the string null."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "SERVICE_UNAVAILABLE"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "A service the server needed stayed unavailable through its retries, so the call did not complete; it was not the call's fault."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "DATASET_STORAGE_FAILED"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The server could not store the run's data through its retries, so the call did not complete; it was not the call's fault."
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "error": {
+                "properties": {
+                  "code": {
+                    "const": "INTERNAL"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            },
+            "required": [
+              "error"
+            ]
+          },
+          "then": {
+            "properties": {
+              "hint": {
+                "const": "The server failed while carrying out the call; it was not the call's fault."
+              }
+            }
+          }
+        }
+      ]
     },
     "ToolObservation": {
       "oneOf": [

@@ -171,7 +171,8 @@ func clone(s LedgerStep) LedgerStep {
 // none for invalid_call, a resolved status, an error exactly when refused or
 // failed (invalid_call: refused with UNKNOWN_TOOL or INVALID_ARGUMENTS), and
 // an observation for every step but finish: a refused or failed step's is
-// its error observation (H-061 §5.6), with the step's own code and path; a
+// its error observation (H-061 §5.6), with the step's own code and path and
+// that code's hint (H-061 A9); a
 // done step's is a JSON object that is not an error's.
 func (t *Transcript) check(s LedgerStep) error {
 	fail := func(why string) error { return fmt.Errorf("investigator: ledger step %d: %s", s.Seq, why) }
@@ -235,7 +236,7 @@ func isErrorObservation(o []byte, e ToolError) bool {
 	if err := json.Unmarshal(o, &v, json.RejectUnknownMembers(true)); err != nil {
 		return false
 	}
-	return v.IsError && v.Error == e
+	return v.IsError && v.Error == e && v.Hint == Hint(e.Code)
 }
 
 // Next is the turn the planner is asked now: the run's prompt (a fresh
@@ -341,6 +342,7 @@ func InvalidStep(seq int, inv provider.InvalidTurn, left Budget) (*LedgerStep, e
 type errorObservation struct {
 	IsError bool      `json:"is_error"`
 	Error   ToolError `json:"error"`
+	Hint    string    `json:"hint"`
 	Budget  Budget    `json:"budget"`
 }
 
@@ -348,11 +350,12 @@ const errorObservationSchema = "investigator.schema.json#/$defs/ErrorObservation
 
 // ErrorObservation is the result a refused or failed step (invalid_call
 // included) is shown, as the worker stores it (H-061 §5.6): {is_error: true,
-// error {code, path}, budget} with left, the budget after the step, in RFC
-// 8785 form. A code, path or budget the schema's ErrorObservation refuses is
-// an error.
+// error {code, path}, hint, budget} with the code's fixed hint (Hint, H-061
+// A9) and left, the budget after the step, in RFC 8785 form. It holds
+// nothing a call held: the path names only the tool's own members. A code,
+// path or budget the schema's ErrorObservation refuses is an error.
 func ErrorObservation(e ToolError, left Budget) ([]byte, error) {
-	raw, err := json.Marshal(errorObservation{IsError: true, Error: e, Budget: left})
+	raw, err := json.Marshal(errorObservation{IsError: true, Error: e, Hint: Hint(e.Code), Budget: left})
 	if err != nil {
 		return nil, err
 	}

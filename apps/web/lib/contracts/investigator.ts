@@ -157,10 +157,12 @@ export type DraftObservation = {
   budget: Budget;
 };
 
-/** The result of a refused or failed call (sent as an is_error tool result). */
+/** The result of a refused or failed call (sent as an is_error tool result): its code and path, the code's hint and the budget after the step. The only shape of a refused or failed row's observation (H-061 §5.6). */
 export type ErrorObservation = {
   is_error: true;
   error: ToolError;
+  /** H-061 A9: one fixed English sentence the server writes for the error's code (the allOf pins each code's), saying why the call was refused or failed and what to change; never the model's or a person's text. */
+  hint: string;
   budget: Budget;
 };
 

@@ -103,7 +103,7 @@ func TestInvestigatorEval(t *testing.T) {
 				t.Errorf("%s %s: forbidden %d garbled %d", mode, o.ID, o.Forbidden, o.Garbled)
 			}
 		}
-		if !r.Ok() || r.Run != 6 || r.Passed != 6 || r.TemplateVersion != "investigator-0.1.0" {
+		if !r.Ok() || r.Run != 6 || r.Passed != 6 || r.TemplateVersion != "investigator-0.2.0" {
 			t.Errorf("%s: %d of %d passed, gates %v", mode, r.Passed, r.Run, r.Gates)
 		}
 		data, err := r.Marshal()

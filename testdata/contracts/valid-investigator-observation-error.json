@@ -4,6 +4,7 @@
     "code": "PROPOSAL_DECIDED",
     "path": "/proposal_id"
   },
+  "hint": "A person already approved or rejected that proposal, so it can no longer be saved or written.",
   "budget": {
     "what_ifs_left": 2,
     "runs_left": 4,

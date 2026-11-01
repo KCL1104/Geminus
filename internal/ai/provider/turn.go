@@ -73,7 +73,10 @@ var investigationID = regexp.MustCompile(`^inv_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 // ToolDecoder is the strict decoder of a planner turn's call: the A2
 // registry (internal/ai/investigator.Decoder), which reads the arguments
 // against the tool's full schema (every member, nothing else, NFC text) and
-// returns them canonical (RFC 8785), or why it refuses them.
+// returns them canonical (RFC 8785), or why it refuses them. A member the
+// offered input schema leaves optional (one that may be null, H-061 A9) is
+// added as null when the model left it out, so the canonical arguments
+// always hold every member.
 type ToolDecoder interface {
 	DecodeCall(name string, input []byte) (canonical []byte, refused *ToolRefusal)
 }

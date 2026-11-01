@@ -4,6 +4,7 @@
     "code": "LIFECYCLE_CONFLICT",
     "path": ""
   },
+  "hint": "The model has a newer version than this investigation's base, so no what-if or edit can be proposed, saved or written on that base.",
   "budget": {
     "what_ifs_left": 2,
     "runs_left": 4,

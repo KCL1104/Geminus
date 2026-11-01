@@ -17,7 +17,18 @@ import (
 	"github.com/kcl1104/geminus/internal/results/compare"
 	"github.com/kcl1104/geminus/internal/storage/idempotency"
 	store "github.com/kcl1104/geminus/internal/storage/investigations"
+	"github.com/kcl1104/geminus/prompts"
 )
+
+// The version stored with each new investigation is the planner's
+// template's (prompts/investigator, its tool descriptions included), so a
+// template change cannot leave it behind (H-061 A9: investigator-0.2.0).
+func TestPromptTemplateVersionIsTheTemplates(t *testing.T) {
+	_, v, err := prompts.Template(string(investigator.Role))
+	if err != nil || v != PromptTemplateVersion || PromptTemplateVersion != "investigator-0.2.0" {
+		t.Errorf("stored %q, the template's %q (%v)", PromptTemplateVersion, v, err)
+	}
+}
 
 // The investigation routes are the contract's: method, path and roles
 // (planning/api-operations.json, from openapi.yaml).

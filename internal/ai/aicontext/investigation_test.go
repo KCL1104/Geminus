@@ -138,7 +138,7 @@ func TestInvestigationContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Role != provider.RoleInvestigator || p.TemplateVersion != "investigator-0.1.0" || p.OrganizationID != orgA || p.Verify() != nil {
+	if p.Role != provider.RoleInvestigator || p.TemplateVersion != "investigator-0.2.0" || p.OrganizationID != orgA || p.Verify() != nil {
 		t.Fatalf("prompt %+v", p)
 	}
 	if !strings.Contains(p.System, "## Server rules (planner-rules-1)") || !strings.Contains(p.System, "DOMAIN_CONTEXT") ||
@@ -201,9 +201,10 @@ func TestInvestigationContext(t *testing.T) {
 		digest[2]["arguments"] != nil || digest[1]["error"].(map[string]any)["code"] != "PROPOSAL_DECIDED" {
 		t.Errorf("digest %v", digest)
 	}
-	// The invalid turn's result is the error it was shown, with the budget.
+	// The invalid turn's result is the error it was shown, with the code's
+	// fixed hint (H-061 A9) and the budget.
 	if res, ok := digest[2]["result"].(map[string]any); !ok || res["is_error"] != true || res["error"].(map[string]any)["code"] != "UNKNOWN_TOOL" ||
-		res["budget"].(map[string]any)["steps_left"] != float64(11) {
+		res["budget"].(map[string]any)["steps_left"] != float64(11) || res["hint"] != investigator.Hint(investigator.UnknownTool) {
 		t.Errorf("the invalid turn's result %v", digest[2]["result"])
 	}
 	if !strings.Contains(string(blocks(t, p4)["DIGEST"].Content), aipI) {

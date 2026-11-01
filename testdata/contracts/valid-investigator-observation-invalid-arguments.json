@@ -1,0 +1,14 @@
+{
+  "is_error": true,
+  "error": {
+    "code": "INVALID_ARGUMENTS",
+    "path": "/from_suggestion"
+  },
+  "hint": "The call does not match the tool's input schema at this path (an empty path is the whole call); leave out a member you do not use, and never write it as the string null.",
+  "budget": {
+    "what_ifs_left": 2,
+    "runs_left": 4,
+    "explanations_left": 4,
+    "steps_left": 12
+  }
+}
