@@ -49,7 +49,8 @@
   border-collapse: collapse;
 }
 
-/* A figure is never broken across lines. */
+/* A figure is never broken across lines; a time's hours follow it as their
+   own part and may go under it in a narrow cell (figure.tsx). */
 .table data {
   white-space: nowrap;
 }

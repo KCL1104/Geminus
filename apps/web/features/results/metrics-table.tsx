@@ -9,6 +9,7 @@
 import { Fragment, type ReactNode } from "react";
 import { useI18n } from "../../lib/i18n/provider";
 import { LineKey } from "../simulations/run-status";
+import { Figure } from "./figure";
 import { formatAbsolute, formatRelative, formatValue, type MetricUnit } from "./format";
 import type { Interval, MetricGroup, MetricLabel, MetricRow } from "./metrics";
 import { metricRowId } from "./row-id";
@@ -54,9 +55,7 @@ function Value({ value, unit, ci }: { value: number | null; unit: MetricUnit; ci
   const bound = (v: number) => <data value={String(v)}>{formatValue(i18n, v, unit, { hours: false })}</data>;
   return (
     <>
-      <data value={String(value)} className={styles.figure}>
-        {formatValue(i18n, value, unit)}
-      </data>
+      <Figure value={value} unit={unit} className={styles.figure} />
       {ci && (
         <span className={styles.ci}>
           {withNodes(i18n.t("compare.ci", { lower: "\u0000lower\u0000", upper: "\u0000upper\u0000" }), { lower: bound(ci.lower), upper: bound(ci.upper) })}

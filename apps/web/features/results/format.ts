@@ -25,15 +25,30 @@ const HOURS_FROM_MINUTES = 120;
  */
 const minus = (s: string) => (/\d/.test(s) && !/[1-9]/.test(s) ? s.replace(/[-−+]/, "") : s.replace("-", "−"));
 
+/** Where the minutes go in the hours message, so its own words around them can be set apart. */
+const MINUTES = "\u0000minutes\u0000";
+
+/**
+ * formatValue in its parts: `shown`, the value with its unit, and the hours
+ * message's words before and after it ("" when there are no hours). A cell
+ * sets them apart (figure.tsx), so a narrow one can put the hours under the
+ * minutes without breaking either (H-073 review).
+ */
+export function formatValueParts(i18n: I18n, value: number, unit: MetricUnit, { hours = true }: { hours?: boolean } = {}): { before: string; shown: string; after: string } {
+  const only = (shown: string) => ({ before: "", shown, after: "" });
+  if (unit === "ratio") return only(minus(i18n.number(value, percent)));
+  if (unit !== "minute") return only(minus(i18n.number(value, precise)));
+  const shown = minus(i18n.number(value, { ...precise, ...minutes }));
+  if (!hours || !(Math.abs(value) >= HOURS_FROM_MINUTES)) return only(shown);
+  const words = i18n.t("compare.hours", { minutes: MINUTES, hours: minus(i18n.number(value / 60, { maximumFractionDigits: 1 })) });
+  const at = words.indexOf(MINUTES);
+  return at < 0 ? only(words) : { before: words.slice(0, at), shown, after: words.slice(at + MINUTES.length) };
+}
+
 /** A value with its unit; minutes of two hours or more also with their hours, unless `hours` is false (an interval's bounds). */
-export function formatValue(i18n: I18n, value: number, unit: MetricUnit, { hours = true }: { hours?: boolean } = {}): string {
-  if (unit === "ratio") return minus(i18n.number(value, percent));
-  if (unit === "minute") {
-    const shown = minus(i18n.number(value, { ...precise, ...minutes }));
-    if (!hours || !(Math.abs(value) >= HOURS_FROM_MINUTES)) return shown;
-    return i18n.t("compare.hours", { minutes: shown, hours: minus(i18n.number(value / 60, { maximumFractionDigits: 1 })) });
-  }
-  return minus(i18n.number(value, precise));
+export function formatValue(i18n: I18n, value: number, unit: MetricUnit, opts: { hours?: boolean } = {}): string {
+  const { before, shown, after } = formatValueParts(i18n, value, unit, opts);
+  return before + shown + after;
 }
 
 /** scenario − baseline as the server computed it; a ratio's difference is in percentage points. */

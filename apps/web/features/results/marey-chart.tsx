@@ -12,7 +12,7 @@ import type { ModelIR, TraceArtifact } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { ProblemView } from "../../app/_components/problem-view";
 import { LineKey, type RunSide } from "../simulations/run-status";
-import { formatValue } from "./format";
+import { Figure } from "./figure";
 import type { TraceState } from "./load";
 import { entityPaths, mareyLayout, rowResolver, stepRows, traceSummary, type StepSummary } from "./marey";
 import styles from "./results.module.css";
@@ -147,7 +147,7 @@ function TraceTable({ rows, summaries }: { rows: string[]; summaries: Record<Run
   const { t, number } = i18n;
   const id = useId();
   const sides = (["baseline", "scenario"] as const).filter((s) => summaries[s] !== null);
-  const wait = (ticks: number | null) => (ticks === null ? t("marey.table.none") : <data value={String(ticks / 60_000)}>{formatValue(i18n, ticks / 60_000, "minute")}</data>);
+  const wait = (ticks: number | null) => (ticks === null ? t("marey.table.none") : <Figure value={ticks / 60_000} unit="minute" />);
   // One row per step; each run's three columns under its name, so every
   // cell has a row header and two column headers (WCAG 1.3.1). Like the
   // metrics, it scrolls in its own region on a phone.

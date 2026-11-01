@@ -38,7 +38,8 @@ import { StatusRegion } from "../../ui/status";
 import { useWriter } from "../ai-proposals/generated-by";
 import { visible } from "../ai-proposals/shown";
 import { data, useRich, Words } from "../ai-proposals/words";
-import { formatAbsolute, formatRelative, formatValue, type MetricUnit } from "../results/format";
+import { Figure } from "../results/figure";
+import { formatAbsolute, formatRelative, type MetricUnit } from "../results/format";
 import { RunPairStatus } from "../simulations/run-status";
 import { useRunPair } from "../simulations/use-run-pair";
 import { AiMark } from "./ai-mark";
@@ -478,8 +479,9 @@ function CandidateRow({ c, inv, hrefs, i18n }: { c: InvestigationCandidate; inv:
       </td>
       {o ? (
         <>
-          <td role="cell">{figure(o.baseline, (n) => formatValue(i18n, n, unit))}</td>
-          <td role="cell">{figure(o.scenario, (n) => formatValue(i18n, n, unit))}</td>
+          {/* Each run's figure, its hours free to go under it in a phone's narrow cell (results/figure.tsx). */}
+          <td role="cell">{o.baseline === null ? t("compare.unavailable") : <Figure value={o.baseline} unit={unit} />}</td>
+          <td role="cell">{o.scenario === null ? t("compare.unavailable") : <Figure value={o.scenario} unit={unit} />}</td>
           <td role="cell">
             {figure(o.absolute_delta, (n) => formatAbsolute(i18n, n, unit))}
             {o.relative_delta !== null && (

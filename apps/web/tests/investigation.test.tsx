@@ -36,6 +36,8 @@ import type { Locale } from "../lib/i18n/locale";
 import { createTranslator, formatTime } from "../lib/i18n/translate";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
+import { electronicsComparison } from "../features/results/fixtures/electronics-line";
+import { figureParts } from "./figure-parts";
 import { mount, press, settle, violations } from "./ui-harness";
 
 const nav = vi.hoisted(() => ({ pathname: "/projects", push: vi.fn() }));
@@ -224,6 +226,25 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
     expect(text(row)).toContain(t("investigation.best"));
     expect(row.querySelector('a[href*="/results?baseline=sim_"]')).not.toBeNull();
     expect(await violations()).toEqual([]);
+  });
+
+  // H-073 review: a lead time of two hours or more is written with its hours, and on a phone the baseline and the
+  // what-if's figure share a row of two cells of about 150 px, where "1,028.79 分鐘（17.1 小時）" (188 px) on one unbroken
+  // line ran under the next cell. The minutes stay one unbroken figure in their <data>; the hours follow outside it,
+  // whole, after a place where a narrow cell may break the line.
+  it.each([
+    ["en", "min", "(17.1 h)", "(16.3 h)", "space"],
+    ["zh-Hant", "分鐘", "（17.1 小時）", "（16.3 小時）", "wbr"],
+  ] as const)("keeps a candidate's lead time of two hours or more and its hours each whole, free to go on two lines (%s)", async (locale, unit, bh, sh, gap) => {
+    const finished = sampleInvestigation("finished");
+    // The electronics demo's own median lead times (features/results/fixtures), as the server compares them.
+    const lead = electronicsComparison.metrics.find((m) => m.metric_path === "/metrics/lead_time_minutes/p50")!;
+    const [first, ...rest] = finished.candidates;
+    const investigation = { ...finished, candidates: [{ ...first!, comparison: { ...first!.comparison!, objective: lead, metrics: [lead] } }, ...rest] };
+    const { el } = await page({ investigation, locale });
+    const [, b, s] = [...el.querySelectorAll("[data-candidates] [data-candidate='1'] td")];
+    expect(figureParts(b!)).toEqual({ value: String(lead.baseline), data: `1,028.79 ${unit}`, gap, after: bh });
+    expect(figureParts(s!)).toEqual({ value: String(lead.scenario), data: `978.28 ${unit}`, gap, after: sh });
   });
 
   // Review round 1: on a phone the rows are laid out as grids (investigation.module.css), so the table states its roles, as

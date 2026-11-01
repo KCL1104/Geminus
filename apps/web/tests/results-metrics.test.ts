@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { Comparison, ModelIR, Result as SimulationResult } from "../lib/contracts";
 import { i18nFor } from "../lib/i18n/provider";
-import { formatAbsolute, formatRelative, formatValue } from "../features/results/format";
+import { formatAbsolute, formatRelative, formatValue, formatValueParts } from "../features/results/format";
 import { keyMetrics, leadTimeSummary, metricKeys } from "../features/results/metrics";
 import boardModel from "../features/results/fixtures/board-line-model.json";
 import boardComparison from "../features/results/fixtures/board-line-comparison.json";
@@ -252,5 +252,23 @@ describe("numbers in the reader's language (TEST-031), the value itself unchange
     // A difference, and an interval's bounds (asked for without), stay in minutes.
     expect(formatAbsolute(en, -314, "minute")).toBe("−314 min");
     expect(formatValue(en, 1004.87, "minute", { hours: false })).toBe("1,004.87 min");
+  });
+
+  // H-073 review: a cell sets the minutes and the hours apart (results/figure.tsx), so the hours can go under the
+  // minutes on a phone; the parts are the message's own words around the minutes and join to formatValue's.
+  it("give a time's minutes and the words of its hours apart, which join to the same text", () => {
+    expect(formatValueParts(en, 1010.96, "minute")).toEqual({ before: "", shown: "1,010.96 min", after: " (16.8 h)" });
+    expect(formatValueParts(zh, 1010.96, "minute")).toEqual({ before: "", shown: "1,010.96 分鐘", after: "（16.8 小時）" });
+    expect(formatValueParts(en, 119.99, "minute")).toEqual({ before: "", shown: "119.99 min", after: "" });
+    expect(formatValueParts(en, 1010.96, "minute", { hours: false })).toEqual({ before: "", shown: "1,010.96 min", after: "" });
+    expect(formatValueParts(en, 0.25, "ratio")).toEqual({ before: "", shown: "25%", after: "" });
+    for (const i18n of [en, zh]) {
+      for (const v of [-0, 0.0004, 29.138691666666666, 119.99, 120, -150.5, 1028.792175, 10080, 17953.687723333333]) {
+        for (const unit of ["count", "minute", "ratio", "number"] as const) {
+          const p = formatValueParts(i18n, v, unit);
+          expect(p.before + p.shown + p.after, `${i18n.locale} ${unit} ${v}`).toBe(formatValue(i18n, v, unit));
+        }
+      }
+    }
   });
 });
