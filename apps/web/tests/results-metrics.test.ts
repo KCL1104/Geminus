@@ -205,4 +205,52 @@ describe("numbers in the reader's language (TEST-031), the value itself unchange
     expect(formatRelative(en, -0.11)).toBe("−11%");
     expect(formatRelative(zh, 0)).toBe("0%");
   });
+
+  // H-073 (the audit's quick fixes): a zero is never written with a sign.
+  // The server can send −0 (Go writes a negative zero as -0), and a small
+  // negative share rounds to 0% on screen.
+  it("never write a zero with a sign: no −0, −0% or −0 pp", () => {
+    expect(formatValue(en, -0, "count")).toBe("0");
+    expect(formatValue(en, -0, "number")).toBe("0");
+    expect(formatValue(en, -0, "minute")).toBe("0 min");
+    expect(formatValue(zh, -0, "minute")).toBe("0 分鐘");
+    expect(formatValue(en, -0, "ratio")).toBe("0%");
+    expect(formatValue(en, -0.0001, "ratio")).toBe("0%");
+    expect(formatAbsolute(en, -0, "minute")).toBe("0 min");
+    expect(formatAbsolute(en, -0.0000001, "ratio")).toBe("0 pp");
+    expect(formatRelative(en, -0)).toBe("0%");
+    expect(formatRelative(en, -0.0004)).toBe("0%");
+    const signedZero = (s: string) => /[−+-]/.test(s) && !/[1-9]/.test(s);
+    const units = ["count", "minute", "ratio", "number"] as const;
+    for (const i18n of [en, zh]) {
+      for (const v of [-0, 0, -0.0001, -0.00049, 0.0004]) {
+        for (const unit of units) {
+          expect(signedZero(formatValue(i18n, v, unit)), `${i18n.locale} ${unit} ${v}`).toBe(false);
+          expect(signedZero(formatAbsolute(i18n, v, unit)), `${i18n.locale} ${unit} ${v}`).toBe(false);
+        }
+        expect(signedZero(formatRelative(i18n, v)), `${i18n.locale} ${v}`).toBe(false);
+      }
+    }
+    // A small value that is not zero keeps its sign and its digits.
+    expect(formatValue(en, -0.0003094456601021152, "minute")).toBe("−0.000309 min");
+  });
+
+  // H-073: 1,010.96 min is easier to read as about 16.8 hours. The minutes
+  // stay the server's; the hours are the same value divided by 60, rounded
+  // to one decimal, and a difference stays in minutes.
+  it("write a time of 2 hours or more in minutes and hours", () => {
+    expect(formatValue(en, 1010.96, "minute")).toBe("1,010.96 min (16.8 h)");
+    expect(formatValue(zh, 1010.96, "minute")).toBe("1,010.96 分鐘（16.8 小時）");
+    expect(formatValue(en, 1481.66, "minute")).toBe("1,481.66 min (24.7 h)");
+    expect(formatValue(en, 120, "minute")).toBe("120 min (2 h)");
+    expect(formatValue(en, 10080, "minute")).toBe("10,080 min (168 h)");
+    expect(formatValue(en, 119.99, "minute")).toBe("119.99 min");
+    expect(formatValue(en, 29.138691666666666, "minute")).toBe("29.14 min");
+    // Only minutes get hours.
+    expect(formatValue(en, 1010.96, "count")).toBe("1,010.96");
+    expect(formatValue(en, 1010.96, "number")).toBe("1,010.96");
+    // A difference, and an interval's bounds (asked for without), stay in minutes.
+    expect(formatAbsolute(en, -314, "minute")).toBe("−314 min");
+    expect(formatValue(en, 1004.87, "minute", { hours: false })).toBe("1,004.87 min");
+  });
 });

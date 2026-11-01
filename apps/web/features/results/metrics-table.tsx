@@ -50,7 +50,8 @@ export function withNodes(text: string, nodes: Record<string, ReactNode>): React
 function Value({ value, unit, ci }: { value: number | null; unit: MetricUnit; ci: Interval | null }) {
   const i18n = useI18n();
   if (value === null) return <span className={styles.missing}>{i18n.t("compare.unavailable")}</span>;
-  const bound = (v: number) => <data value={String(v)}>{formatValue(i18n, v, unit)}</data>;
+  // The interval's bounds stay in minutes: the value above them already says its hours (H-073).
+  const bound = (v: number) => <data value={String(v)}>{formatValue(i18n, v, unit, { hours: false })}</data>;
   return (
     <>
       <data value={String(value)} className={styles.figure}>

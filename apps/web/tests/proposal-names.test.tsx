@@ -141,6 +141,34 @@ describe("the diff never makes a real change read as no change (M1)", () => {
   });
 });
 
+// H-073 (the audit's quick fixes): a connection the AI replaced as a whole
+// read "All of it: {"from":"smt",...} → {...}". It reads by the steps'
+// names now, as a change to one of its ends does, in both languages; the
+// exact JSON stays one click away in the patch.
+describe("a connection replaced as a whole reads by the steps' names", () => {
+  const f = flowAt("smt_q_aoi");
+  const changes: JsonPatch = [
+    { op: "add", path: "/nodes/-", value: { id: "node_01xray", type: "process", name: "X-ray", service_time: { distribution: { type: "constant", value: 2 } } } },
+    { op: "test", path: `/flows/${f}/id`, value: "smt_q_aoi" },
+    { op: "replace", path: `/flows/${f}`, value: { id: "smt_q_aoi", from: "smt", to: "node_01xray", routing: { type: "probability", probability: 1 } } },
+  ];
+
+  for (const [locale, t] of [["en", en], ["zh-Hant", zh]] as const) {
+    it(`in ${locale}: the connection, its new end and no JSON`, async () => {
+      const el = await list(changes, sampleLine, locale);
+      const shown = lines(el);
+      expect(shown).toHaveLength(2);
+      expect(shown[1]).toBe(
+        `${t("proposal.change.connection", { from: "SMT", to: "Before AOI" })} ${t("proposal.change.value", { field: t("proposal.field.to"), before: quoted(t, "Before AOI"), after: quoted(t, "X-ray", "node_01xray") })}`,
+      );
+      expect(shown.join("\n")).not.toContain("{");
+      expect(shown.join("\n")).not.toContain(t("proposal.field.whole"));
+      expect(el.querySelector("pre")!.textContent).toContain('"to": "node_01xray"');
+      expect(await violations()).toEqual([]);
+    });
+  }
+});
+
 type Opts = Omit<ProposalStandInOptions, "sample">;
 async function page(sample: SampleState, opts: Opts) {
   const api = createProposalStandIn({ sample, ...opts });
