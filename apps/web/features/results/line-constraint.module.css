@@ -1,0 +1,85 @@
+/* H-073 (3): the line-constraint card, a card on the page like the
+   results' other parts (H-041): the named station at Title, its figures as
+   label and value pairs (values at 15 px: The Fifteen-Pixel Figure Rule),
+   the scenario's in green at 600 (Two Inks; the order and the arrow are the
+   first cue), the rule in a Label caption. */
+.card {
+  margin: 0 0 var(--gm-space-section);
+  padding: var(--gm-space-section);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-sheet);
+  box-shadow: var(--gm-shadow-card);
+}
+
+.card > h2:first-child {
+  margin: 0 0 var(--gm-space-gutter);
+}
+
+.named {
+  margin: 0 0 var(--gm-space-lg);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.station {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: minmax(120px, 240px) minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin: 0 0 var(--gm-space-gutter);
+}
+
+.figures dt {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.figures dd {
+  margin: 0;
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  overflow-wrap: anywhere;
+}
+
+/* A figure is never broken across lines. */
+.figures data {
+  white-space: nowrap;
+}
+
+.scenario {
+  color: var(--gm-color-scenario);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.delta {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.missing {
+  color: var(--gm-color-ink-2);
+}
+
+.rule {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+/* A phone: each label above its value. */
+@media (max-width: 720px) {
+  .figures {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--gm-space-xs);
+  }
+
+  .figures dd + dt {
+    margin-top: var(--gm-space-sm);
+  }
+}

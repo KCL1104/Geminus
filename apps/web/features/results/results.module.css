@@ -138,6 +138,12 @@
   font-weight: var(--gm-font-weight-strong);
 }
 
+/* H-073 (4): the row the AI's evidence led to takes Selected Row Tint while
+   it has the focus; the scenario cell keeps its wash. */
+.table tbody tr:focus {
+  background: var(--gm-color-selection-tint);
+}
+
 .table .num,
 .table .delta {
   text-align: right;

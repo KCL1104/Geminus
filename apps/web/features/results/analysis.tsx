@@ -28,6 +28,7 @@ import { investigationsOffered } from "../investigations/flags";
 import { TestThese } from "../investigations/test-these";
 import { TextField } from "../../ui/field";
 import { StatusRegion } from "../../ui/status";
+import { EvidenceCite, linkedCites } from "./evidence-link";
 import { formatAbsolute, formatRelative } from "./format";
 import type { MetricRow } from "./metrics";
 import { MetricName } from "./metrics-table";
@@ -175,12 +176,6 @@ function Failed({ record }: { record: AnalysisRecord }) {
   return problem && <ProblemView problem={problem} headingLevel={3} />;
 }
 
-/** The metrics table's name of a path the AI cited: its own row, or the row of a statistic under it; else the path. */
-function Cited({ path, rows }: { path: string; rows: MetricRow[] }) {
-  const row = rows.find((r) => r.path === path) ?? rows.find((r) => r.path.startsWith(`${path}/`));
-  return row ? <MetricName label={row.label} /> : <code>{path}</code>;
-}
-
 /**
  * H-043: one suggested next experiment, asked of the AI as a scenario
  * proposal on the model's latest version, in the reader's language; the
@@ -241,6 +236,7 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
   // H-049: the model that writes a suggestion up as a scenario; the explanation itself stays on the deployment's.
   const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const byPath = new Map(rows.map((r) => [r.path, r]));
+  const linked = linkedCites(analysis.bottleneck, rows);
   const list = (heading: string, items: string[]) =>
     items.length > 0 && (
       <>
@@ -313,9 +309,10 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
                 {b.statement}
                 <span className={styles.evidence}>
                   {t("analysis.evidence")}{" "}
+                  {/* H-073 (4): each piece links to the table row it was checked against, the first time that row is cited. */}
                   {b.evidence.map((e, j) => (
                     <span key={j} className={styles.cite}>
-                      <Cited path={e.metric_path} rows={rows} /> · {t(`analysis.run.${e.run}`)}
+                      <EvidenceCite path={e.metric_path} rows={rows} run={e.run} link={linked.has(`${i}/${j}`)} />
                     </span>
                   ))}
                 </span>
