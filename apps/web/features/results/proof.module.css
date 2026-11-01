@@ -122,7 +122,8 @@
   overflow-wrap: anywhere;
 }
 
-/* Escape hides it again until the pointer or the focus leaves (WCAG 1.4.13). */
+/* Escape hides it again, opened on hover or on focus, until neither the
+   pointer nor the focus is on it (WCAG 1.4.13; the listeners are in proof.tsx). */
 .hash[data-dismissed]:hover .full,
 .hash[data-dismissed]:focus .full {
   width: 1px;

@@ -55,6 +55,17 @@ const resultOf = (base: SimulationResult, id: string, repro: Partial<SimulationR
 const results = (id: string, r: SimulationResult) => ({ [`GET ${v1}/simulations/${id}/results`]: json(200, r) });
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
 const reads = (api: ReturnType<typeof fakeApi>) => api.calls.filter((c) => c.path.endsWith("/results")).map((c) => c.path.split("/")[4]);
+// The pointer comes from, and goes back to, the page around it (React reads enter and leave from over and out).
+const hover = (el: Element) =>
+  act(async () => {
+    el.dispatchEvent(new PointerEvent("pointerover", { bubbles: true, relatedTarget: document.body, pointerType: "mouse" }));
+    el.dispatchEvent(new MouseEvent("mouseover", { bubbles: true, relatedTarget: document.body }));
+  });
+const unhover = (el: Element) =>
+  act(async () => {
+    el.dispatchEvent(new PointerEvent("pointerout", { bubbles: true, relatedTarget: document.body, pointerType: "mouse" }));
+    el.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
+  });
 
 // Generous: these run beside other suites on a shared machine.
 async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise<void> {
@@ -110,6 +121,60 @@ describe("the run pair's fingerprints (H-073)", () => {
     await key(hash, "Escape");
     expect(hash.hasAttribute("data-dismissed")).toBe(true);
     await act(async () => hash.blur());
+    expect(hash.hasAttribute("data-dismissed")).toBe(false);
+  });
+
+  // WCAG 1.4.13: the chip opens over the rows below it, so a pointer that only
+  // rests on a fingerprint must be able to close it without moving. A browser
+  // sends the key to the focused element (here the page), not to the hovered one.
+  it("hides a value opened by hover on Escape, wherever the key goes, and lets other Escapes through", async () => {
+    const el = await proof(fakeApi({ [LIST]: page([baseline.run, scenario.run]) }));
+    const hash = el.querySelector<HTMLElement>("td [tabindex='0']")!;
+    const seen: string[] = [];
+    const listener = (e: KeyboardEvent) => seen.push(e.key);
+    document.addEventListener("keydown", listener);
+    try {
+      // Not hovered: the page's Escape is not the chip's.
+      await key(document.body, "Escape");
+      expect(hash.hasAttribute("data-dismissed")).toBe(false);
+      expect(seen).toEqual(["Escape"]);
+      await hover(hash);
+      expect(document.activeElement).not.toBe(hash);
+      await key(document.body, "Escape");
+      expect(hash.hasAttribute("data-dismissed")).toBe(true);
+      // That Escape closed the chip and nothing else; the next one is the page's again.
+      expect(seen).toEqual(["Escape"]);
+      await key(document.body, "Escape");
+      expect(seen).toEqual(["Escape", "Escape"]);
+      await unhover(hash);
+      expect(hash.hasAttribute("data-dismissed")).toBe(false);
+      // Once the pointer has left, Escape is the page's again.
+      await key(document.body, "Escape");
+      expect(seen).toEqual(["Escape", "Escape", "Escape"]);
+    } finally {
+      document.removeEventListener("keydown", listener);
+    }
+  });
+
+  it("keeps a value hidden after Escape until neither the pointer nor the focus is on it", async () => {
+    const el = await proof(fakeApi({ [LIST]: page([baseline.run, scenario.run]) }));
+    const hash = el.querySelector<HTMLElement>("td [tabindex='0']")!;
+    await hover(hash);
+    await act(async () => hash.focus());
+    await key(hash, "Escape");
+    expect(hash.hasAttribute("data-dismissed")).toBe(true);
+    // Still focused: the chip must not open again through focus when the pointer leaves.
+    await unhover(hash);
+    expect(hash.hasAttribute("data-dismissed")).toBe(true);
+    await act(async () => hash.blur());
+    expect(hash.hasAttribute("data-dismissed")).toBe(false);
+    // And the other way round: still hovered when the focus leaves.
+    await hover(hash);
+    await act(async () => hash.focus());
+    await key(hash, "Escape");
+    await act(async () => hash.blur());
+    expect(hash.hasAttribute("data-dismissed")).toBe(true);
+    await unhover(hash);
     expect(hash.hasAttribute("data-dismissed")).toBe(false);
   });
 });
