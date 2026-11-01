@@ -298,6 +298,10 @@ type Record struct {
 	// investigation that asked for the analysis; nil, and left out, for a
 	// person's, so its body is byte for byte as before.
 	InvestigationID *string `json:"investigation_id,omitzero"`
+	// OutputLocale is the language the analysis was asked in (H-073
+	// review): set on listAnalyses' items only (listed), left out of
+	// getAnalysis, whose body stays byte for byte as before.
+	OutputLocale string `json:"output_locale,omitzero"`
 }
 
 // Get returns analysis id.

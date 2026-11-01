@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"time"
 
 	store "github.com/kcl1104/geminus/internal/storage/analyses"
@@ -36,7 +37,8 @@ type Page struct {
 }
 
 // List returns one page of the completed analyses of run runID beside
-// baseline run baselineID, newest first, each as Get shows it. Both runs
+// baseline run baselineID, newest first, each as Get shows it and then its
+// output locale (listed). Both runs
 // must be the organization's (a RunError naming the parameter otherwise,
 // the run first); a run that is not completed has none.
 func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, runID, baselineID, cursor string, limit int) (Page, error) {
@@ -74,7 +76,7 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, runID, b
 			rows = rows[:limit]
 		}
 		for _, a := range rows {
-			r, err := public(a, requestID)
+			r, err := listed(a, requestID)
 			if err != nil {
 				return err
 			}
@@ -86,6 +88,21 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, runID, b
 		return Page{}, err
 	}
 	return page, nil
+}
+
+// listed is a listAnalyses item: the record as getAnalysis shows it, then
+// the language it was asked in (its request's output_locale, H-073 review),
+// one the contract has (0018's check holds the row to en or zh-Hant).
+func listed(a store.Analysis, requestID string) (Record, error) {
+	r, err := public(a, requestID)
+	if err != nil {
+		return Record{}, err
+	}
+	if a.OutputLocale != "en" && a.OutputLocale != "zh-Hant" {
+		return Record{}, fmt.Errorf("analyses: analysis %s: output locale %q is not one the contract has", a.ID, a.OutputLocale)
+	}
+	r.OutputLocale = a.OutputLocale
+	return r, nil
 }
 
 // cursor is the position after which a page starts, bound to the

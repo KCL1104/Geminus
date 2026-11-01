@@ -234,6 +234,8 @@ export type AnalysisRecord = {
   generated_by?: GeneratedBy;
   /** H-061 (PROPOSED): present only on an analysis an AI investigation asked for. */
   investigation_id?: InvestigationID;
+  /** H-073 (PROPOSED): the language the analysis was asked in (its request's output_locale; en when the request named none). listAnalyses' items state it; getAnalysis leaves it out. */
+  output_locale?: Locale;
 };
 
 export type Analyses = {
@@ -242,6 +244,7 @@ export type Analyses = {
     baseline_run_id?: RunID;
     analysis?: AnalysisOutput;
     error?: null;
+    output_locale: Locale;
   })[];
   next_cursor: string | null;
 };

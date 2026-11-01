@@ -320,7 +320,8 @@ func TestAnalysisListOfAPair(t *testing.T) {
 	older := ask(editor.Subject, "ana-list-1", scen, pair)
 	failed := ask(editor.Subject, "ana-list-2", scen, `{"baseline_run_id":"`+base+`","question":"Invent something"}`)
 	drain(t, e.analysisLoop(t, f), time.Minute)
-	newer := ask(owner.Subject, "ana-list-3", scen, pair)
+	// H-073 review: asked in Traditional Chinese, so its item says so (output_locale).
+	newer := ask(owner.Subject, "ana-list-3", scen, `{"baseline_run_id":"`+base+`","output_locale":"zh-Hant"}`)
 	alone := ask(editor.Subject, "ana-list-4", scen, `{}`)
 	drain(t, e.analysisLoop(t, f), time.Minute)
 	generating := ask(editor.Subject, "ana-list-5", scen, pair) // never run
@@ -331,8 +332,10 @@ func TestAnalysisListOfAPair(t *testing.T) {
 	}
 	events := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1`, e.a.ID)
 
-	// Any member: the two completed analyses of the pair, newest first, each as getAnalysis shows it.
+	// Any member: the two completed analyses of the pair, newest first, each as getAnalysis shows it
+	// and then the language it was asked in (output_locale, H-073 review: en when the request named none).
 	q := "?baseline_run_id=" + base
+	locales := []string{"zh-Hant", "en"}
 	for _, m := range []dbtest.Member{owner, editor, viewer} {
 		page, listed := e.pairPage(t, m.Subject, scen, q)
 		if !slices.Equal(listed, []string{newer, older}) || page.NextCursor != nil {
@@ -340,8 +343,12 @@ func TestAnalysisListOfAPair(t *testing.T) {
 		}
 		for i, item := range page.Items {
 			got := e.do("GET", "/v1/analyses/"+listed[i], m.Subject, e.a.ID, nil, "")
-			if string(item) != string(got.body) {
-				t.Errorf("listed %s, getAnalysis %s", item, got.body)
+			if strings.Contains(string(got.body), "output_locale") {
+				t.Errorf("getAnalysis %s names its output locale; only listAnalyses' items do", got.body)
+			}
+			want := strings.TrimSuffix(strings.TrimSpace(string(got.body)), "}") + `,"output_locale":"` + locales[i] + `"}`
+			if string(item) != want {
+				t.Errorf("listed %s, want getAnalysis and its locale %s", item, want)
 			}
 		}
 	}

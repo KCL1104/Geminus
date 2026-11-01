@@ -902,6 +902,10 @@
         "investigation_id": {
           "$ref": "common.schema.json#/$defs/InvestigationID",
           "description": "H-061 (PROPOSED): present only on an analysis an AI investigation asked for."
+        },
+        "output_locale": {
+          "$ref": "common.schema.json#/$defs/Locale",
+          "description": "H-073 (PROPOSED): the language the analysis was asked in (its request's output_locale; en when the request named none). listAnalyses' items state it; getAnalysis leaves it out."
         }
       },
       "required": [
@@ -917,7 +921,7 @@
       "additionalProperties": false
     },
     "Analyses": {
-      "$comment": "H-073 slice 1 (PROPOSED): listAnalyses' page: the completed analyses of one run beside one baseline run, newest first (created_at, then ID), each as getAnalysis shows it.",
+      "$comment": "H-073 slice 1 (PROPOSED): listAnalyses' page: the completed analyses of one run beside one baseline run, newest first (created_at, then ID), each as getAnalysis shows it and then the language it was asked in (output_locale, H-073 review).",
       "type": "object",
       "properties": {
         "items": {
@@ -940,8 +944,14 @@
                   },
                   "error": {
                     "type": "null"
+                  },
+                  "output_locale": {
+                    "$ref": "common.schema.json#/$defs/Locale"
                   }
-                }
+                },
+                "required": [
+                  "output_locale"
+                ]
               }
             ]
           },

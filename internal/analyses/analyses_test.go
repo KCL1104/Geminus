@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,3 +124,41 @@ func TestRefused(t *testing.T) {
 }
 
 func base64URL(s string) string { return base64.RawURLEncoding.EncodeToString([]byte(s)) }
+
+// H-073 review: a listed analysis names the language it was asked in
+// (output_locale, the request's), so the page can prefer one in the
+// reader's language and mark another's; getAnalysis stays byte for byte as
+// before, without it.
+func TestOutputLocaleIsListed(t *testing.T) {
+	base := "sim_01M4YDQK00FGZZWH0PP15XPNFA"
+	a := store.Analysis{ID: "ana_01M4YDQK00B8S5WQXJ3TQ7ZK61", OrganizationID: "org_01M4YDQK00Y5H2929M9WWZWTVH", RunID: "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+		BaselineRunID: &base, Status: store.Completed, OutputLocale: "zh-Hant", Analysis: []byte(`{"scenario":{"summary":"x"}}`), ProviderMetadata: []byte(`{}`),
+		CreatedAt: time.Date(2026, 11, 1, 6, 0, 46, 0, time.UTC)}
+	got, err := public(a, "req_01M4YDQK00V6H8S0ST4F7510KR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shown, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(shown), "output_locale") {
+		t.Errorf("getAnalysis shows %s", shown)
+	}
+	item, err := listed(a, "req_01M4YDQK00V6H8S0ST4F7510KR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(item)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := strings.TrimSuffix(string(shown), "}") + `,"output_locale":"zh-Hant"}`; string(data) != want {
+		t.Errorf("listed %s, want %s", data, want)
+	}
+	// A row's locale is one the contract has (0018's check); anything else is not listed as if it were.
+	a.OutputLocale = "fr"
+	if _, err := listed(a, "req_01M4YDQK00V6H8S0ST4F7510KR"); err == nil {
+		t.Error("an output locale outside the contract was listed")
+	}
+}

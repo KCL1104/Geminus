@@ -479,8 +479,9 @@ export function createApiClient(cfg: ClientConfig) {
     },
     /**
      * H-073: the completed analyses of run `runId` beside baseline run
-     * `baselineRunId`, newest first, each as getAnalysis shows it; with
-     * limit 1, the pair's saved explanation, if it has one.
+     * `baselineRunId`, newest first, each as getAnalysis shows it and with
+     * the language it was asked in (output_locale): the pair's saved
+     * explanations, if it has any.
      */
     async listAnalyses(runId: string, baselineRunId: string, opts: { cursor?: string; limit?: number; signal?: AbortSignal } = {}): Promise<Result<Analyses>> {
       if (!isID("sim", runId)) return notFound("The run");

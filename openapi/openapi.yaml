@@ -3892,7 +3892,9 @@ paths:
       description: 'H-073 slice 1 (PROPOSED; the owner''s choice of 2026-11-01): a finished comparison shows its saved
         explanation instead of asking the AI again. Any member lists the completed analyses of run {id} beside the baseline
         run baseline_run_id (an analysis createAnalysis queued with that baseline), newest first (created_at, then ID),
-        each as getAnalysis shows it, an AI investigation''s with its label. An analysis still generating, a failed one,
+        each as getAnalysis shows it, an AI investigation''s with its label, and then output_locale, the language it was
+        asked in (its request''s; en when the request named none; H-073 review), so a page can prefer one in its reader''s
+        language and mark the language of another''s text. An analysis still generating, a failed one,
         one of {id} without a baseline or with another baseline, and one of the pair the other way round are not listed;
         a run that is not completed has none (200 with no items). baseline_run_id must be given once as a simulation run
         ID other than {id} (400 naming baseline_run_id otherwise). In one snapshot after the caller''s role: a run of
@@ -3965,6 +3967,7 @@ paths:
                       generated_by:
                         provider: meta
                         model: muse-spark-1.3
+                      output_locale: en
                     next_cursor: null
         '400':
           description: 'baseline_run_id is missing, repeated, not a simulation run ID or the same run as {id}; {id} is
