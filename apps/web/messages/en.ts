@@ -778,6 +778,12 @@ export const en = {
   "ask.modelHint.muse-spark-1.3": "Faster, and costs less. The default.",
   "ask.modelHint.muse-wonder-1.0": "For harder changes. It thinks longer: several minutes, costs more.",
   "ask.model.unavailable": "This deployment does not offer the model you chose. Choose Muse Spark 1.3 and send again.",
+  // H-073 (5): Ask AI filled in from an approved photo proposal, for the typical times of the stations it added.
+  "ask.prefill.stationTimes.intent": {
+    one: "A photo added the station {stations}. A photo shows no times, so its service time uses numbers already in the model. Look up the typical service time for this station on the web, and set it to a published typical value.",
+    other: "A photo added {count} stations: {stations}. A photo shows no times, so their service times use numbers already in the model. Look up typical service times for these stations on the web, and set each one to a published typical value.",
+  },
+  "ask.prefill.stationTimes.note": "Filled in from the approved photo proposal, with web research on. Check the request, then send it.",
   "photo.hint": "A photo or floor plan of the line: PNG or JPEG up to 5 MB, demo images only.",
   "photo.choose": "Propose from a photo…",
   "photo.sending": "Sending the photo to the AI…",
@@ -935,6 +941,10 @@ export const en = {
   "proposal.outcome.rejected": "Rejected. The model is unchanged.",
   "proposal.decided.version": "It created version {version}.",
   "proposal.decided.comment": "Comment:",
+  // H-073 (5): after a photo proposal is approved, look up typical times for the stations it added.
+  "proposal.stationTimes.offer": "Look up typical times for the new stations",
+  "proposal.stationTimes.why": "A photo shows no times, so the service times of {stations} use numbers already in the model.",
+  "proposal.stationTimes.opens": "This opens “{form}” on the model page with the request filled in and web research on. Nothing is sent until you send it.",
   "proposal.conflict.title": "Not applied: the model changed",
   "proposal.conflict.body": "This proposal was made on version {base}, but version {latest} became the model's latest before it was approved. Nothing was applied, and the proposal is not moved onto version {latest}.",
   "proposal.conflict.latest": "Version {latest} was created {date}.",

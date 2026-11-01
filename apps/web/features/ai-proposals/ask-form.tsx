@@ -37,8 +37,13 @@
 // offered then (no photo inside an investigation, H-056 §17). Ticked, the
 // form says nothing of a proposal's approval (review round 1): the intent's
 // hint, the mode's label and its hint say what the AI does and that only a
-// person publishes. Unticked, the form is what it was.
-import { useId, useRef, useState } from "react";
+// person publishes. Unticked, the form is what it was. H-073 (5): a request
+// an approved photo proposal's page left for this model (station-research.ts)
+// is taken once when the form opens: the field holds it and has the focus,
+// research is ticked, a change to the model is chosen, and a line above the
+// field (also the field's description) says where it came from; nothing is
+// sent until the person sends it. Without one, the form is what it was.
+import { useEffect, useId, useRef, useState } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
 import type { Problem } from "../../lib/api/problem";
@@ -58,6 +63,7 @@ import { type ActIssue, fromRequest, OBJECTIVES, parseActRunForm } from "../inve
 import { defaultRunForm, type RunField, type RunForm } from "../simulations/run-config";
 import { DEFAULT_MODEL, ModelChoice, modelField } from "./model-choice";
 import { PhotoForm } from "./photo-form";
+import { askPrefill, clearAskPrefill } from "./station-research";
 import styles from "./proposal.module.css";
 
 type Mode = ProposalRequest["mode"];
@@ -108,9 +114,13 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const noticeId = useId();
   const researchHintId = useId();
   const researchPhotoId = useId();
-  const [intent, setIntent] = useState("");
-  const [mode, setMode] = useState<Mode>("edit");
-  const [research, setResearch] = useState(false);
+  const prefillId = useId();
+  // H-073 (5): the request left for this model, read once when the form opens and then forgotten.
+  const [prefill] = useState(() => askPrefill(model.id));
+  useEffect(() => clearAskPrefill(model.id), [model.id]);
+  const [intent, setIntent] = useState(prefill?.intent ?? "");
+  const [mode, setMode] = useState<Mode>(prefill?.mode ?? "edit");
+  const [research, setResearch] = useState(prefill?.research ?? false);
   const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const [missing, setMissing] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -176,10 +186,17 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   return (
     <section className={styles.ask} data-ask aria-labelledby={headingId}>
       <h2 id={headingId}>{t("ask.title")}</h2>
+      {prefill !== null && (
+        <p id={prefillId} className={styles.hint} data-prefilled>
+          {t("ask.prefill.stationTimes.note")}
+        </p>
+      )}
       <TextField
         multiline
         rows={3}
         label={t("ask.intent")}
+        autoFocus={prefill !== null}
+        aria-describedby={prefill !== null ? prefillId : undefined}
         // H-061 A8 review round 1: while the AI acts on it, no word of a proposal's approval (REQ-019).
         description={t(acting ? "investigation.intentHint" : "ask.intentHint", { version: String(latest.version) })}
         notice={{ id: noticeId, text: t("ask.dataNotice") }}
