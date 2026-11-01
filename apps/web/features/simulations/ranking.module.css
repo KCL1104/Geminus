@@ -1,0 +1,168 @@
+/* Which what-if wins (H-073): the model's scenarios ranked by the server's
+   comparison, written as the results' Compare Table writes figures (DESIGN.md):
+   heads over an Edge rule with the line keys, rows on hairlines, the
+   scenario column in its wash with its figures green at 600, Δ and Δ % at
+   15 px 600, and no number under 15 px. */
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+}
+
+/* The rule the order follows is read before the rows. */
+.table caption {
+  padding-bottom: var(--gm-space-md);
+  caption-side: top;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  text-align: left;
+}
+
+.table th,
+.table td {
+  padding: var(--gm-space-md) var(--gm-space-sm);
+  border-bottom: 1px solid var(--gm-color-rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  border-bottom-color: var(--gm-color-edge);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+.table tbody th {
+  font-weight: var(--gm-font-weight-regular);
+}
+
+/* A figure is never broken across lines. */
+.table data {
+  white-space: nowrap;
+}
+
+.table .num {
+  text-align: right;
+}
+
+/* The rank: a figure in Ink, as wide as its column needs. */
+.rank {
+  width: 1%;
+  font-size: var(--gm-font-size-title);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-title);
+  white-space: nowrap;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--gm-font-size-title);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-title);
+}
+
+.marks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-xs) var(--gm-space-sm);
+  margin: var(--gm-space-xs) 0 0;
+}
+
+.figure,
+.delta {
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.delta {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* The scenario column: its wash, a green head and green figures at 600 (The Two Inks Rule). */
+.table .scenarioCol {
+  background: var(--gm-color-scenario-wash);
+}
+
+.table thead .scenarioCol,
+.table tbody .scenarioCol .figure {
+  color: var(--gm-color-scenario);
+}
+
+.table tbody .scenarioCol .figure {
+  font-weight: var(--gm-font-weight-strong);
+}
+
+/* Where there is no figure: the server's reason, or why there is none yet. */
+.why {
+  color: var(--gm-color-ink-2);
+}
+
+.table td.why {
+  font-size: var(--gm-font-size-body);
+}
+
+/* A phone (as the Compare Table, H-039): each row is a grid under heads laid
+   out the same way, the rank beside the name, the two runs side by side under
+   the name, then Δ and Δ %; every figure stays on screen, the page never
+   scrolls sideways, and the table states its roles (scenario-list.tsx). */
+@media (max-width: 720px) {
+  .table {
+    min-width: 0;
+  }
+
+  .table,
+  .table thead,
+  .table tbody,
+  .table caption {
+    display: block;
+  }
+
+  .table tr {
+    display: grid;
+    grid-template-columns: var(--gm-space-split) repeat(2, minmax(0, 1fr));
+    border-bottom: 1px solid var(--gm-color-rule);
+  }
+
+  .table th,
+  .table td {
+    border-bottom: 0;
+  }
+
+  .table thead tr {
+    border-bottom-color: var(--gm-color-edge);
+  }
+
+  .table tr > :nth-child(1) {
+    grid-column: 1;
+  }
+
+  .table tr > :nth-child(2) {
+    grid-column: 2 / -1;
+  }
+
+  .table tr > :nth-child(3),
+  .table tr > :nth-child(5) {
+    grid-column: 2;
+  }
+
+  .table tr > :nth-child(4),
+  .table tr > :nth-child(6) {
+    grid-column: 3;
+  }
+
+  .table tr > td[colspan] {
+    grid-column: 2 / -1;
+  }
+
+  .rank {
+    width: auto;
+  }
+}

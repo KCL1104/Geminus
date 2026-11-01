@@ -85,6 +85,13 @@ export function reducePair(s: PairState, e: PairEvent): PairState {
 
 export type RunPair = { baseline: Run; scenario: Run };
 
+const isBaseline = (r: Run) => r.scenario_id === null && r.scenario_patch.length === 0;
+
+/** Of baselines (oldest first), the one started beside scenario run s on version versionId: the latest created at or before it with the same config. */
+function baselineBeside(baselines: readonly Run[], s: Run, versionId: string): Run | undefined {
+  return baselines.filter((r) => r.model_version_id === versionId && r.config_hash === s.config_hash && Date.parse(r.created_at) <= Date.parse(s.created_at)).at(-1);
+}
+
 /**
  * The scenario's runs among runs (oldest first), newest first, each with the
  * baseline started beside it (SimulateView queues the baseline first): the
@@ -92,12 +99,34 @@ export type RunPair = { baseline: Run; scenario: Run };
  * an empty patch and the same config. A run without one is left out.
  */
 export function earlierPairs(runs: readonly Run[], scenario: Scenario): RunPair[] {
-  const baselines = runs.filter((r) => r.scenario_id === null && r.scenario_patch.length === 0 && r.model_version_id === scenario.base_version_id);
+  const baselines = runs.filter(isBaseline);
   return runs
     .filter((r) => r.scenario_id === scenario.id)
     .flatMap((s) => {
-      const b = baselines.filter((r) => r.config_hash === s.config_hash && Date.parse(r.created_at) <= Date.parse(s.created_at)).at(-1);
+      const b = baselineBeside(baselines, s, scenario.base_version_id);
       return b === undefined ? [] : [{ baseline: b, scenario: s }];
     })
     .reverse();
+}
+
+/** The newest of a scenario's pairs (newest first) whose two runs both completed, or null (H-073: what its ranking reads). */
+export function latestCompleted(pairs: readonly RunPair[]): RunPair | null {
+  return pairs.find((p) => p.baseline.status === "completed" && p.scenario.status === "completed") ?? null;
+}
+
+/**
+ * Each scenario run's baseline among runs (oldest first), by the scenario
+ * run's ID, found as earlierPairs finds it on the version the run ran (the
+ * server runs a scenario on its base version only). A run without one is
+ * not in the map.
+ */
+export function baselinesOf(runs: readonly Run[]): Map<string, Run> {
+  const baselines = runs.filter(isBaseline);
+  const found = new Map<string, Run>();
+  for (const s of runs) {
+    if (s.scenario_id === null) continue;
+    const b = baselineBeside(baselines, s, s.model_version_id);
+    if (b !== undefined) found.set(s.id, b);
+  }
+  return found;
 }

@@ -276,9 +276,10 @@ describe("the model page's scenarios (the way back to a scenario and its results
   const older = { ...boardScenario, id: "scn_01M4YDQK00TA0000000000T033", name: "Faster AOI", base_version_id: v2.id };
   const versionsPath = `GET ${v1}/models/${boardScenario.model_id}/versions`;
   const scenariosOf = (id: string) => `GET ${v1}/model-versions/${id}/scenarios`;
+  // The list ranks the scenarios by their runs' comparisons (H-073), so it reads the model's runs too: none here unless given.
   async function list(table: Record<string, Answer | Answer[]>) {
     const { ScenarioList } = await import("../features/simulations/scenario-list");
-    const api = fakeApi(table);
+    const api = fakeApi({ [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [], next_cursor: null }), ...table });
     const el = await mount(
       <AuthProvider value={viewer}>
         <ApiProvider client={api.client}>
@@ -295,8 +296,9 @@ describe("the model page's scenarios (the way back to a scenario and its results
 
   it("links every version's scenarios to their pages, newest version first, for anyone who can read the model (review r1 M5)", async () => {
     const el = await list({ [versionsPath]: page([boardVersion, v2]), [scenariosOf(boardVersion.id)]: page([boardScenario]), [scenariosOf(v2.id)]: page([older]) });
-    expect(el.querySelector("h2")?.textContent).toBe("Scenarios");
-    expect([...el.querySelectorAll("li")].map((li) => [li.querySelector("a")?.getAttribute("href"), text(li)])).toEqual([
+    expect(el.querySelector("h2")?.textContent).toBe(en["scenarios.ranking.title"]);
+    // Not run yet, each opens its scenario's page (scenario-ranking.test.tsx has the ranked ones).
+    expect([...el.querySelectorAll("tbody tr")].map((tr) => [tr.querySelector("a")?.getAttribute("href"), text(tr.querySelector("th")!)])).toEqual([
       [`/scenarios/${boardScenario.id}`, `${boardScenario.name}on version 3`],
       [`/scenarios/${older.id}`, "Faster AOIon version 2"],
     ]);
@@ -310,7 +312,7 @@ describe("the model page's scenarios (the way back to a scenario and its results
     const failed = await list({ [versionsPath]: page([boardVersion]), [scenariosOf(boardVersion.id)]: [problem(503, "SERVICE_UNAVAILABLE"), page([boardScenario])] });
     expect(failed.querySelector('[role="alert"]')).not.toBeNull();
     await press(button(failed, en.retry));
-    await waitFor(() => failed.querySelector("li a") !== null, "the retried list");
+    await waitFor(() => failed.querySelector("tbody a") !== null, "the retried list");
   });
 });
 

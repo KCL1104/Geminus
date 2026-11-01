@@ -229,7 +229,7 @@ describe("the model's list pages (H-042)", () => {
     expect(scenarios.textContent).toContain(en["scenarios.empty"]);
   });
 
-  it("lists the runs with their state and replications, a scenario's linked to it", async () => {
+  it("lists the runs with their state and replications, a what-if run's linked to its results beside its baseline (H-073)", async () => {
     answers[`GET /api/v1/models/${MODEL}`] = () => json(200, model);
     const scenarioRun = boardScenarioRun();
     answers[`GET /api/v1/models/${MODEL}/simulations`] = () => json(200, { items: [boardBaselineRun({ status: "running", progress: { completed_replications: 2, total_replications: 5 } as never }), scenarioRun], next_cursor: null });
@@ -238,7 +238,9 @@ describe("the model's list pages (H-042)", () => {
     const rows = [...el.querySelectorAll("li")];
     expect(rows).toHaveLength(2);
     expect(rows[0]!.textContent).toContain(en["runs.status.running"]);
-    expect(rows[1]!.querySelector("a")?.getAttribute("href")).toBe(`/scenarios/${scenarioRun.scenario_id}`);
+    expect(rows[1]!.querySelector("a")?.getAttribute("href")).toBe(`/scenarios/${scenarioRun.scenario_id}/results?baseline=${boardBaselineRun().id}&scenario=${scenarioRun.id}`);
+    // Its baseline's row is not a second link to the same results (H-027).
+    expect(rows[0]!.querySelector("a")).toBeNull();
     expect(await violations()).toEqual([]);
   });
 });
