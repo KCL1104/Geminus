@@ -53,9 +53,13 @@ test.describe("the results page's two stages, the electronics line", () => {
     const held = await playhead(b).textContent();
     await page.waitForTimeout(1000);
     await expect(playhead(b)).toHaveText(held!);
-    // Play from the keyboard (Space), then pause again (Enter).
+    // Play from the keyboard (Space), then pause again (Enter). The focus arrives from the keys
+    // (after a mouse click a focus moved by script shows no ring, as the browser decides).
     const play = b.getByRole("button", { name: en["playback.play"] });
     await play.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(play).toBeFocused();
     expect(await focusIsVisible(page)).toBe(true);
     await page.keyboard.press("Space");
     await expect(b.getByRole("button", { name: en["playback.pause"] })).toBeFocused();
@@ -247,7 +251,9 @@ for (const locale of locales) {
         return out;
       }, scope);
       expect(seen.length, `${path} has strings to check`).toBeGreaterThan(0);
-      for (const [text, whole] of seen) if (!known.some((re) => re.test(text) || re.test(whole))) unknown.add(text);
+      // A name the Marey chart cuts to its label column ("SMT line (printer, SPI…", marey.ts fitLabel) is still the model's.
+      const cut = (text: string) => text.endsWith("…") && names.some((n) => n.startsWith(text.slice(0, -1).trimEnd()));
+      for (const [text, whole] of seen) if (!known.some((re) => re.test(text) || re.test(whole)) && !cut(text)) unknown.add(text);
     }
     expect([...unknown].sort()).toEqual([]);
   });
