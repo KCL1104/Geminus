@@ -4,7 +4,7 @@
 // in one sentence, the key metrics, the Marey chart of the sampled traces
 // and the settings both runs were frozen with (DESIGN.md The Provenance
 // Always Rule). Presentational: everything comes from ResultsData.
-import { Fragment, useState } from "react";
+import { Fragment } from "react";
 import type { Duration, Run } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Callout } from "../../ui/callout";
@@ -55,23 +55,23 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
   );
 }
 
-/** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
 /**
- * The line in 3D with a run's utilization and queues (T-033) and the
- * playback of its sampled trace (T-034), one click away (H-027);
- * PlayCanvas loads only when it is opened.
+ * The line in motion (H-072, replacing T-034's closed "See the line in 3D"):
+ * the two runs' stages side by side under one playback bar, playing once
+ * their traces are here (The Trace Motion Rule). A run without a trace
+ * stands still in its results' colours (T-033) and says why.
  */
-function LineIn3D({ data }: { data: ResultsData }) {
+function LineInMotion({ data }: { data: ResultsData }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
   return (
-    <details className={styles.card3d} onToggle={(e) => setOpen(e.currentTarget.open)}>
-      <summary>{t("twin3d.results")}</summary>
-      {open && <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />}
-    </details>
+    <section aria-labelledby="motion-heading" className={styles.section}>
+      <h2 id="motion-heading">{t("playback.stage")}</h2>
+      <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />
+    </section>
   );
 }
 
+/** analysis: the AI explanation in the address and how to change it (T-030); without it the page offers none. */
 export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: { id: string | null; onChange: (id: string | null) => void } }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -130,7 +130,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
           <MetricsTable rows={rows} />
         </div>
       </section>
-      <LineIn3D data={data} />
+      <LineInMotion data={data} />
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}

@@ -4,19 +4,22 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { type BoardLineData, boardLineFiles } from "../../../features/results/fixtures/board-line-objects";
 import { galleryEnabled } from "../../../lib/gallery";
+import { readElectronicsLine } from "../electronics-line";
 import { requestLocale } from "../../../lib/i18n/server";
 import { createTranslator } from "../../../lib/i18n/translate";
 import { type PreviewState, ResultsPreview } from "./preview";
 
 // The results view for review (T-032), off unless GEMINUS_UI_GALLERY=1,
 // like the component gallery. One state per address: ?state=running,
-// failed or incomparable; the results otherwise. The engine output is read
+// failed or incomparable; the results otherwise. H-072: ?state=line is the
+// electronics line template's baseline beside a fourth FCT tester, in
+// motion; ?state=still is the same paused at Day 1, 22:00, for screenshots. The engine output is read
 // from its files at request time and handed over as data: bundled as a
 // module, its numbers could be rewritten by the minifier
 // (features/results/fixtures/board-line-objects.ts).
 export const dynamic = "force-dynamic";
 
-const states: readonly PreviewState[] = ["results", "incomparable", "running", "failed"];
+const states: readonly PreviewState[] = ["results", "incomparable", "running", "failed", "line", "still"];
 
 async function boardLine(): Promise<BoardLineData> {
   const read = async <T,>(name: string): Promise<T> => JSON.parse(await readFile(join(process.cwd(), "features/results/fixtures", name), "utf8")) as T;
@@ -40,5 +43,6 @@ export default async function ResultsPreviewPage({ searchParams }: { searchParam
   if (!galleryEnabled()) notFound();
   const asked = (await searchParams).state;
   const state = states.find((s) => s === asked) ?? "results";
-  return <ResultsPreview state={state} data={await boardLine()} />;
+  const line = state === "line" || state === "still" ? await readElectronicsLine() : undefined;
+  return <ResultsPreview state={state} data={await boardLine()} line={line} />;
 }

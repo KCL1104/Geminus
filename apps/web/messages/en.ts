@@ -340,7 +340,6 @@ export const en = {
   "domain.electronics_line.resource.generic": "Other resource",
   "domain.electronics_line.playback.sampled": "Sampled: 1 board in {every}, replication {replication}.",
   "domain.electronics_line.playback.statesSampled": "Station lights show only the sampled boards, so a station can look idle while it serves others.",
-  "domain.electronics_line.playback.total": { one: "{count} sampled board in the line at this time.", other: "{count} sampled boards in the line at this time." },
   "domain.electronics_line.metric.uph": "UPH (calendar hours)",
   "domain.electronics_line.metric.uph_scheduled": "UPH (scheduled hours)",
   "domain.electronics_line.metric.line_wip": "Line WIP",
@@ -448,24 +447,15 @@ export const en = {
   "twin3d.selected": "Selected: {name}.",
   "twin3d.loading": "Loading the 3D view…",
   "twin3d.unavailable": "The 3D view cannot run in this browser. The 2D view and the results work as usual.",
-  "twin3d.results": "See the line in 3D and play back its runs",
   "twin3d.legend": "Colour shows how busy each station's resources were in the run shown, from grey (idle) to amber (fully used); a queue rises with its mean length.",
   "twin3d.selected.station": { one: "Selected: {name}, {state}, {count} in service.", other: "Selected: {name}, {state}, {count} in service." },
   "twin3d.selected.queue": { one: "Selected: {name}, {count} waiting.", other: "Selected: {name}, {count} waiting." },
   "twin3d.lights": "Station lights",
   "twin3d.lights.held": "blocked or changing over",
-  "playback.none": "No sampled trace was recorded for these runs, so there is nothing to play back.",
-  "playback.missing.baseline": "No sampled trace was recorded for the baseline, so only the scenario plays.",
-  "playback.missing.scenario": "No sampled trace was recorded for the scenario, so only the baseline plays.",
-  "playback.run": "Run",
   "playback.play": "Play",
   "playback.pause": "Pause",
   "playback.time": "Time in the run",
   "playback.at": "{time} of {end}",
-  "playback.total": { one: "{count} sampled work item in the line at this time.", other: "{count} sampled work items in the line at this time." },
-  "playback.here": { one: "{name}: {count} of them here.", other: "{name}: {count} of them here." },
-  "playback.legend": "A column on a step rises with the sampled work items there.",
-  "playback.truncated": "This run's trace reached its event limit; playback ends where recording stopped.",
   // The line in motion (H-072): the playback bar, the stages' captions and
   // the assistive text of states. The sampled note and the counts have a
   // pack's own words where it has them (domain.<pack>.playback.*).
@@ -480,6 +470,7 @@ export const en = {
   "playback.noRun": "Run a simulation to see the line in motion.",
   "playback.noTrace": "This run recorded no sampled trace, so the line stands still.",
   "playback.traceFailed": "This run's trace could not be loaded, so the line stands still.",
+  "playback.runsFailed": "The runs of this version could not be loaded, so the line stands still.",
   "playback.caption.baseline": "In motion: the baseline run of {date}, seed {seed}.",
   "playback.caption.scenario": "In motion: the scenario run of {date}, seed {seed}.",
   "playback.stage": "The line in motion",
@@ -595,6 +586,8 @@ export const en = {
   "preview.state.clean": "Ready to publish",
   "preview.state.conflict": "Someone else saved",
   "preview.state.viewer": "Viewer",
+  "preview.state.motion": "A run in motion",
+  "preview.state.still": "A run paused at 22:00",
 
   "loading.scenario": "Loading the scenario…",
   "loading.runs": "Loading the runs…",
@@ -802,6 +795,7 @@ export const en = {
 
   "galleryResults.title": "Results view",
   "galleryResults.intro": "The simulation results view with a synthetic board line run through the engine, for review and the automated checks. Not part of the product; off unless the deployment turns it on.",
+  "galleryResults.introLine": "The simulation results view with the electronics line template run through the engine for one day, beside a scenario with a fourth FCT tester, for review and the automated checks. Not part of the product; off unless the deployment turns it on.",
 
   // Asking the AI for a change, on the model page.
   "ask.title": "Ask AI for a change",

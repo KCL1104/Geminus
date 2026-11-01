@@ -7,9 +7,12 @@
 // stale If-Match with 409; it does not validate the model. The issues it
 // returns are given to it (the sample's were computed by the server's
 // validator for that IR, see sample-states.ts) and follow their step as
-// indices shift; they never appear or go away by themselves.
+// indices shift; they never appear or go away by themselves. The model's
+// runs (H-072: the line in motion) are given to it too, completed runs of
+// version 1 with their Result and trace as the engine wrote them; it starts
+// none.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
-import type { Draft, JsonPatch, Model, ModelIR, ModelVersion, ValidationIssue } from "../../../lib/contracts";
+import type { Draft, JsonPatch, Model, ModelIR, ModelVersion, Result as SimulationResult, Run, TraceArtifact, ValidationIssue } from "../../../lib/contracts";
 import { applyPatch, parsePointer, pointer } from "../../../features/model-editor/patch";
 import { SAMPLE_PROPOSAL_ID } from "../proposal/samples";
 
@@ -18,6 +21,9 @@ const PROJECT = "prj_01M4YDQK00E1ECTR0N1C500000";
 const USER = "usr_01M4YDQK00E1ECTR0N1C500000";
 const REQUEST = "req_01M4YDQK00V6H8S0ST4F7510KR";
 const versionId = (n: number) => `mv_01M4YDQK00E1ECTR0N1C5000${String(n).padStart(2, "0")}`;
+
+/** A completed run of the model's version 1: what the API lists, its Result, and its sampled trace (null: none recorded). */
+export type StandInRun = { run: Run; result: SimulationResult; trace: TraceArtifact | null };
 
 /** An issue anchored on a node (by ID, with the rest of the path), or on a path of its own. */
 export type StandInIssue = Omit<ValidationIssue, "path"> & ({ node: string; suffix: string } | { path: string });
@@ -34,6 +40,8 @@ export type StandInOptions = {
   holdSaves?: boolean;
   /** The next save is refused as the server refuses a candidate that is not schema-valid (422, details into the candidate IR). */
   rejectNextSave?: { path: string; reason: string; code: string }[];
+  /** The model's runs (none by default). */
+  runs?: StandInRun[];
 };
 
 export type Call = { method: string; path: string; ifMatch: string | null; body: unknown };
@@ -70,6 +78,14 @@ export function createStandIn(opts: StandInOptions) {
   let otherSave = opts.otherSave;
   let reject = opts.rejectNextSave;
   let held: (() => void)[] = [];
+  // Each run is the model's and version 1's, whatever IDs its object came with.
+  const runs = (opts.runs ?? []).map((r) => ({
+    ...r,
+    run: { ...r.run, model_id: opts.modelId, model_version_id: versionId(1) },
+    result: { ...r.result, trace: { ...r.result.trace, available: r.trace !== null } },
+  }));
+  const runById = (id: string) => runs.find((r) => r.run.id === id);
+  const firstHash = baseHash;
 
   const issues = (): ValidationIssue[] =>
     anchored.flatMap((i) => {
@@ -88,6 +104,8 @@ export function createStandIn(opts: StandInOptions) {
     parent_version_id: version > 1 ? versionId(version - 1) : null, ir, hash: baseHash, dataset_bindings: [], comment: null,
     created_by: USER, created_at: "2026-10-26T00:00:00Z",
   });
+  // Version 1 as it was first given, for its runs once a later version is published.
+  const firstVersion = (): ModelVersion => ({ ...modelVersion(), id: versionId(1), version: 1, parent_version_id: null, ir: opts.ir, hash: firstHash });
 
   const json = (status: number, body: unknown, etag?: string) =>
     new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "X-Request-ID": REQUEST, ...(etag ? { ETag: etag } : {}) } });
@@ -101,6 +119,14 @@ export function createStandIn(opts: StandInOptions) {
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}`) return json(200, modelVersion());
     if (method === "GET" && path === `${base}/versions`) return json(200, { items: [modelVersion()], next_cursor: null });
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}/scenarios`) return json(200, { items: [], next_cursor: null });
+    if (method === "GET" && path === `/api/v1/model-versions/${versionId(1)}`) return json(200, firstVersion());
+    if (method === "GET" && path === `${base}/simulations`) return json(200, { items: runs.map((r) => r.run), next_cursor: null });
+    const sim = /^\/api\/v1\/simulations\/([^/]+)\/(results|trace)$/.exec(path);
+    if (method === "GET" && sim) {
+      const r = runById(sim[1]!);
+      if (r && sim[2] === "results") return json(200, r.result);
+      if (r && r.trace !== null) return json(200, r.trace);
+    }
     if (method === "PATCH" && path === `${base}/draft`) {
       if (otherSave !== undefined) {
         const theirs = applyPatch(ir, otherSave);

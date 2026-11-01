@@ -4,18 +4,23 @@
 // signed-in page cannot render in a browser; this page renders the same
 // components with the synthetic board line, handed over as data by the
 // page (features/results/fixtures). No API is called. Its one control
-// works: cancelling the running runs shows them cancelled.
-import { useState } from "react";
+// works: cancelling the running runs shows them cancelled. H-072: "line"
+// and "still" show the electronics line template's runs (a fourth FCT
+// tester), whose traces play in the line in motion; "still" holds it paused
+// at Day 1, 22:00 (StillPlayback), so its screenshot does not move.
+import { useMemo, useState } from "react";
 import type { Comparison, Run } from "../../../lib/contracts";
 import { useI18n } from "../../../lib/i18n/provider";
 import { type BoardLineData, boardBaselineRunOf, boardScenarioRunOf, boardVersionOf } from "../../../features/results/fixtures/board-line-objects";
+import { type ElectronicsLineData, lineBaselineRunOf, lineScenarioRunOf, lineVersionOf, STILL_AT } from "../../../features/results/fixtures/electronics-line-objects";
+import { StillPlayback } from "../../../features/playback/still";
 import type { ResultsData } from "../../../features/results/load";
 import { ResultsView } from "../../../features/results/results-view";
 import { RunPairStatus } from "../../../features/simulations/run-status";
 import { ShownStatus, StatusRegion } from "../../../ui/status";
 import styles from "../gallery.module.css";
 
-export type PreviewState = "results" | "incomparable" | "running" | "failed";
+export type PreviewState = "results" | "incomparable" | "running" | "failed" | "line" | "still";
 
 const progress = (revision: number, done: number) => ({ completed_replications: done, total_replications: 5, events_processed: done * 1300, revision });
 
@@ -38,7 +43,36 @@ function results(data: BoardLineData, comparison: Comparison, baseline: Run): Re
   };
 }
 
-export function ResultsPreview({ state, data }: { state: PreviewState; data: BoardLineData }) {
+function lineResults(line: ElectronicsLineData): ResultsData {
+  return {
+    comparison: line.comparison,
+    version: lineVersionOf(line.model),
+    baseline: { run: lineBaselineRunOf(line.model), result: line.results.baseline, trace: { state: "loaded", trace: line.traces.baseline } },
+    scenario: { run: lineScenarioRunOf(line.model), result: line.results.scenario, trace: { state: "loaded", trace: line.traces.scenario } },
+  };
+}
+
+/** line: the electronics line's engine output, for the "line" and "still" states. */
+export function ResultsPreview({ state, data, line }: { state: PreviewState; data: BoardLineData; line?: ElectronicsLineData }) {
+  const { t } = useI18n();
+  // Built once: the stages' motion is keyed on these runs and traces.
+  const results = useMemo(() => (line ? lineResults(line) : null), [line]);
+  if ((state === "line" || state === "still") && results) {
+    const view = <ResultsView data={results} />;
+    return (
+      <>
+        <h1>{t("galleryResults.title")}</h1>
+        <p className={styles.intro}>{t("galleryResults.introLine")}</p>
+        <RunPairStatus baseline={results.baseline.run} scenario={results.scenario.run} canCancel cancelling={false} cancelProblem={null} onCancel={() => {}} />
+        <StatusRegion message={t("runs.done")} quiet />
+        {state === "still" ? <StillPlayback at={STILL_AT}>{view}</StillPlayback> : view}
+      </>
+    );
+  }
+  return <BoardResults state={state} data={data} />;
+}
+
+function BoardResults({ state, data }: { state: PreviewState; data: BoardLineData }) {
   const { t } = useI18n();
   const [cancelled, setCancelled] = useState(false);
   const ir = data.model;

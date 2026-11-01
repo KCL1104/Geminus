@@ -55,6 +55,10 @@ export function PlaybackBar({ clock, unit, domain, traces }: { clock: PlaybackCl
     const input = slider.current;
     const label = flag.current;
     if (!input || !label) return;
+    // The run's length can change without a React render (a clock set up paused, as a still page's is):
+    // the slider's end follows it here, before the value, or the browser would clamp the value to the old end.
+    const end = String(clock.duration);
+    if (input.max !== end) input.max = end;
     input.value = String(tick);
     const text = at(tick);
     if (text !== s.text) {

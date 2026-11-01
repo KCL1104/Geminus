@@ -7,7 +7,7 @@
 // a phone one row across the top.
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { locales, open, routes, signedInViews, signInAs } from "./helpers";
+import { editorMotionPreviews, locales, open, routes, signedInViews, signInAs } from "./helpers";
 
 // Kept until the owner decides (T-045 re-skin report; H-028 kept it): the
 // start page's link to the projects goes where the rail's brand goes. Since
@@ -19,8 +19,9 @@ const askedAbout: Record<string, string[]> = {};
 // Publish while the draft has errors or unsaved edits: each stays focusable
 // as aria-disabled with its reason on screen beside it (DESIGN.md Buttons,
 // Disabled). That is a step of a shipped flow, not a disabled-forever
-// placeholder; the rule there is that every blocked control says why.
-const blockedWithReason = new Set(["/ui-gallery/editor"]);
+// placeholder; the rule there is that every blocked control says why. The
+// same editor with a run in motion (H-072) is held to the same rule.
+const blockedWithReason = new Set(["/ui-gallery/editor", ...editorMotionPreviews]);
 
 /** The visible controls of the page: links by where they go, buttons by name. */
 async function controls(page: Page) {

@@ -8,15 +8,27 @@
 // with its reason beside it, while the saved draft has errors or anything
 // is unsaved. One primary action (Publish); the step panel is the Add step
 // menu over the canvas; the properties panel is the one secondary panel.
+//
+// The line in motion (H-072; docs/design/H-072_TRACE_ANIMATION.md §5, §6):
+// the latest completed run of the version shown plays on the canvas (dots
+// on the links, counts and state rings) and in the 3D view, on one clock,
+// from once its trace is here (autoplay; paused under reduced motion). The
+// strip over the canvas names the run and holds the playback bar, Pause
+// first; without a completed run, or without its trace, the line stands
+// still and the strip says why. Editing pauses it (canvas.tsx, and edit()
+// here for the properties while 3D is shown); only Play resumes. On a phone
+// the editor is read-only, and a run with a trace plays on a read-only
+// canvas; the 3D view is not loaded there.
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ProblemView } from "../../app/_components/problem-view";
 import { ReadOnlyNotice } from "../../app/_components/states";
+import { useRemote } from "../../app/_components/use-remote";
 import { newIdempotencyKey } from "../../lib/api/client";
 import type { Problem } from "../../lib/api/problem";
 import { useApi } from "../../lib/api/provider";
 import { canEdit, useAuth } from "../../lib/auth/session";
-import type { Model, ModelIR } from "../../lib/contracts";
+import type { Model, ModelIR, TraceArtifact } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { canPublish, type DraftEvent, type DraftSession, nextSave, pendingOps } from "../../lib/state/draft";
 import { createSelectionStore } from "../../lib/state/selection";
@@ -36,8 +48,15 @@ import { locateIssues, type StepIssue, worst } from "./issues";
 import { applyPatch, type Op, reapplyPatch } from "./patch";
 import { Properties } from "./properties";
 import { Segmented } from "../../ui/segmented";
-import { Twin3D } from "../twin-3d/viewer";
+import { type Stage, Twin3D } from "../twin-3d/viewer";
 import { InvestigationLink } from "../investigations/ai-mark";
+import type { PlaybackClock } from "../playback/clock";
+import { motion as buildMotion } from "../playback/motion";
+import { PlaybackBar } from "../playback/playback-bar";
+import { type LatestRun, loadLatestRun, playableTrace, stillReason } from "../playback/run";
+import { usePageClock } from "../playback/still";
+import type { Remote } from "../../lib/state/remote";
+import type { CanvasPlayback } from "./canvas";
 
 const WIDE = "(min-width: 721px)";
 const subscribeWide = (cb: () => void) => {
@@ -58,6 +77,40 @@ function saveIssues(candidate: ModelIR, problem: Problem): StepIssue[] {
     candidate,
     problem.details.map((d) => ({ code: d.code ?? "", path: d.path, message: d.reason, severity: d.severity ?? "error" })),
   ).filter((i) => i.target !== null);
+}
+
+/** The run playing on the page (H-072): the run as loaded, its trace and motion, and the playback for each view. */
+type Playing = { latest: LatestRun; trace: TraceArtifact; clock: PlaybackClock; canvas: CanvasPlayback; stage: Stage };
+
+/**
+ * Over the canvas (H-072): which run plays, or why the line stands still,
+ * and the playback bar while it plays. Nothing while the runs load.
+ */
+function MotionStrip({ latest, playing }: { latest: Remote<LatestRun | null>; playing: Playing | null }) {
+  const { t, dateTime } = useI18n();
+  if (latest.state === "loading") return null;
+  const run = latest.state === "loaded" ? latest.data : null;
+  const caption =
+    latest.state === "failed"
+      ? t("playback.runsFailed")
+      : run === null
+        ? t("playback.noRun")
+        : playing === null
+          ? t(stillReason(run.trace))
+          : t(`playback.caption.${run.side}`, { date: dateTime(run.run.created_at), seed: String(run.run.config.seed) });
+  return (
+    <div className={styles.motion} data-motion={playing ? playing.latest.side : "still"}>
+      <p className={styles.motionCaption}>{caption}</p>
+      {playing && (
+        <PlaybackBar
+          clock={playing.clock}
+          unit={playing.latest.model.time_unit}
+          domain={playing.latest.model.domain}
+          traces={[{ side: null, trace: playing.trace, end: playing.canvas.motion.end }]}
+        />
+      )}
+    </div>
+  );
 }
 
 export function ModelEditor(props: EditorProps) {
@@ -102,6 +155,21 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
   // After a reload in a conflict the edits may no longer apply: the page then shows the server's draft.
   const working = applied.ok ? applied.doc : remote.ir;
   const editable = canEdit(role) && session.status !== "conflict";
+
+  // H-072: the latest completed run of the version shown, played on the canvas and in 3D on one clock.
+  const [latest] = useRemote((signal) => loadLatestRun(api, model.id, remote.base_version_id, signal), api, `${model.id} ${remote.base_version_id}`);
+  const latestRun = latest.state === "loaded" ? latest.data : null;
+  const runTrace = latestRun ? playableTrace(latestRun.trace) : null;
+  const runMotion = useMemo(
+    () => (latestRun && runTrace ? buildMotion(runTrace, latestRun.model, latestRun.result.measurement_window.horizon_ticks) : null),
+    [latestRun, runTrace],
+  );
+  const clock = usePageClock(latestRun && runMotion ? latestRun.result.measurement_window.horizon_ticks : null);
+  const playing = useMemo<Playing | null>(() => {
+    if (!latestRun || !runTrace || !runMotion || !clock) return null;
+    const side = latestRun.side;
+    return { latest: latestRun, trace: runTrace, clock, canvas: { clock, motion: runMotion, side }, stage: { side, trace: runTrace, motion: runMotion } };
+  }, [latestRun, runTrace, runMotion, clock]);
 
   const [store] = useState(() => createSelectionStore(working));
   useEffect(() => store.setModel(working), [store, working]);
@@ -148,6 +216,8 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
     if (!r.ok || r.ops.length === 0) return null;
     const next = applyPatch(working, r.ops);
     if (!next.ok) return null;
+    // Editing pauses the line in motion (the canvas pauses itself too; this covers the properties while 3D is shown).
+    clock?.pause();
     setOutcome(null);
     setPublishProblem(null);
     dispatch({ type: "edit", ops: r.ops });
@@ -310,6 +380,23 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
         {band()}
         {aiDraft}
         <Callout tone="info">{t("editor.narrow")}</Callout>
+        {/* H-072: a run with a trace plays on a read-only canvas; nothing else of the editor (no 3D) loads here. */}
+        {playing && (
+          <div className={styles.phoneMotion}>
+            <MotionStrip latest={latest} playing={playing} />
+            <Canvas
+              ir={working}
+              selected={selected}
+              severity={severity}
+              editable={false}
+              onSelect={(id) => store.select(id)}
+              onMove={() => {}}
+              onConnect={() => {}}
+              onDelete={() => {}}
+              playback={playing.canvas}
+            />
+          </div>
+        )}
         {/* A phone edits no topology, but the AI can still be asked (review M4). */}
         {ask}
       </section>
@@ -367,6 +454,8 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
 
       <div className={styles.stage}>
         <div className={styles.column}>
+          <MotionStrip latest={latest} playing={playing} />
+          <div className={styles.surface}>
           <div className={styles.toolbar}>
             {/* 3D is a read-only projection (T-033): no step is added or fitted there. */}
             {view === "2d" && (
@@ -387,7 +476,14 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
           </div>
           {view === "3d" ? (
             <div className={styles.twin3d}>
-              <Twin3D ir={working} selected={selected} onSelect={(id) => store.select(id)} />
+              <Twin3D
+                ir={working}
+                selected={selected}
+                onSelect={(id) => store.select(id)}
+                stage={playing?.stage ?? null}
+                clock={playing?.clock ?? null}
+                label={playing ? t(`playback.stage.${playing.latest.side}`) : undefined}
+              />
             </div>
           ) : (
           <div ref={canvasRef}>
@@ -404,9 +500,11 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
               onMove={(id, to) => edit(moveStep(working, id, to))}
               onConnect={connect}
               onDelete={(id) => setDialog({ kind: "delete", id })}
+              playback={playing?.canvas ?? null}
             />
           </div>
           )}
+          </div>
           <IssueList
             issues={draftIssues}
             revision={remote.revision}

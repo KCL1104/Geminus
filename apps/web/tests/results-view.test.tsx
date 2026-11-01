@@ -498,19 +498,21 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(seen).toEqual([null]);
   });
 
-  it("keeps the line in 3D closed, and loads it only when opened (T-033)", async () => {
+  // H-072 replaced T-033's closed "See the line in 3D": the two runs' stages are open on the page and play on one clock.
+  it("shows the line in motion: both runs' stages under one playback bar; without WebGL each says so and the rest stays", async () => {
     const api = fakeApi(completedRuns);
     const { el } = await page(api, null, viewer);
-    const details = [...el.querySelectorAll("details")].find((d) => text(d.querySelector("summary")!) === en["twin3d.results"])!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector("canvas, [role=img]")).toBeNull();
-    await act(async () => {
-      details.open = true;
-      details.dispatchEvent(new Event("toggle"));
-    });
-    // No WebGL here: the view says so, and the rest of the page stays.
-    await waitFor(() => text(details).includes(en["twin3d.unavailable"]), "the 3D view's answer");
+    const motion = el.querySelector<HTMLElement>('section[aria-labelledby="motion-heading"]')!;
+    expect(motion.querySelector("h2")?.textContent).toBe(en["playback.stage"]);
+    expect([...motion.querySelectorAll("h3")].map(text)).toEqual([en["runs.baseline"], en["runs.scenario"]]);
+    expect(motion.querySelectorAll('[role="group"]')).toHaveLength(1);
+    expect(motion.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe(en["playback.bar"]);
+    expect(el.querySelector("details summary")?.textContent).not.toBe("See the line in 3D and play back its runs");
+    // No WebGL here: each stage says so, and the rest of the page stays.
+    await waitFor(() => motion.querySelectorAll('[data-stage] [data-tone="info"]').length === 2, "the 3D views' answer");
+    expect(text(motion)).toContain(en["twin3d.unavailable"]);
     expect(el.querySelector("table")).not.toBeNull();
+    expect(el.querySelector('svg[role="img"]')).not.toBeNull();
   });
 
   it("shows a viewer an analysis in the address and nothing to ask with; and nothing without one", async () => {

@@ -98,8 +98,8 @@ describe("simplicity rules (H-027) in the stylesheets", () => {
     const animate = /\.animate\(/;
     const rel = (f: string) => relative(root, f);
     const loops = sources.filter((f) => loop.test(readFileSync(f, "utf8"))).map(rel).sort();
-    // The playback clock that drives every stage, and the T-034 3D playback until its stage moves onto that clock.
-    expect(loops).toEqual(["features/playback/clock.ts", "features/twin-3d/playback/playback.tsx"]);
+    // The playback clock that drives every stage (H-072: the results page's two stages and the model page's 2D and 3D are on it).
+    expect(loops).toEqual(["features/playback/clock.ts"]);
     expect(sources.filter((f) => animate.test(readFileSync(f, "utf8"))).map(rel)).toEqual([]);
     // The clock honours reduced motion (it starts paused and does not slide), and the bar's first control pauses it.
     const clock = readFileSync(join(root, "features/playback/clock.ts"), "utf8");

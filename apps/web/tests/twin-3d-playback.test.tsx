@@ -1,138 +1,212 @@
 // @vitest-environment happy-dom
-// T-034 (TEST-025, TEST-026): the results page's 3D playback. The view
-// shows the run chosen (its colours and its sampled items), the slider and
-// Play move through the run, the sampling is said, and a run without a
-// trace has nothing to play: no control and no column.
+// H-072 (replacing T-034's column playback; TEST-025, TEST-026): the results
+// page's line in motion (features/twin-3d/playback/playback.tsx). The
+// baseline and the scenario play side by side, Baseline first, each titled
+// with its run, under one playback bar and on one clock; the scenario's
+// stage is its version with the scenario's patch; a step selected in one is
+// selected in both; it plays once the traces are there and starts paused
+// under reduced motion; a run without a trace stands still and says why;
+// with none there is no bar; a review page can hold it still at a time.
+// PlayCanvas is replaced by a view per stage that records what it is asked.
 import { act } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ModelIR, Result, TraceArtifact } from "../lib/contracts";
-import { Playback, clock } from "../features/twin-3d/playback/playback";
-import { timeline } from "../features/twin-3d/playback/occupancy";
+import { StillPlayback } from "../features/playback/still";
+import { Playback, type PlaybackRun } from "../features/twin-3d/playback/playback";
+import type { Scene } from "../features/twin-3d/scene";
 import type { View } from "../features/twin-3d/viewer";
-import { boardLine } from "../features/results/fixtures/board-line";
+import type { TraceState } from "../features/results/load";
+import { boardBaselineRun, boardLine, boardScenarioRun } from "../features/results/fixtures/board-line";
 import { en } from "../messages/en";
-import { mount, press, settle } from "./ui-harness";
+import { zhHant } from "../messages/zh-Hant";
+import { mount, press, settle, violations } from "./ui-harness";
 
 const ir = boardLine.model as unknown as ModelIR;
+const HOUR = 3_600_000;
 const result = (s: "baseline" | "scenario") => boardLine.results[s] as unknown as Result;
 const trace = (s: "baseline" | "scenario") => boardLine.traces[s] as unknown as TraceArtifact;
-const loaded = (s: "baseline" | "scenario") => ({ result: result(s), trace: { state: "loaded" as const, trace: trace(s) } });
+const loaded = (s: "baseline" | "scenario"): TraceState => ({ state: "loaded", trace: trace(s) });
+const failed: TraceState = { state: "failed", problem: { kind: "internal", code: null, status: 500, message: "Bad gateway", requestId: null, details: [], retryAfterSeconds: null } };
+const runs = (b: TraceState = loaded("baseline"), s: TraceState = loaded("scenario")): Record<"baseline" | "scenario", PlaybackRun> => ({
+  baseline: { run: boardBaselineRun(), result: result("baseline"), trace: b },
+  scenario: { run: boardScenarioRun(), result: result("scenario"), trace: s },
+});
 
-function fakeView() {
-  const occupancy: string[] = [];
-  const scenes: number[] = [];
-  const view: View = {
-    setScene: (sc) => scenes.push(sc.nodes.length),
-    setPalette: () => {},
-    setSelected: () => {},
-    setOccupancy: (counts, run) => occupancy.push(`${run}:${JSON.stringify(counts)}`),
-    setPlayback: () => {},
-    setTime: () => {},
-    stepAt: () => null,
-    orbit: () => {},
-    zoom: () => {},
-    pan: () => {},
-    reset: () => {},
-    resize: () => {},
-    destroy: () => {},
+/** A recording view for each stage, named by the canvas it was made on. */
+function views() {
+  const made = new Map<string, { calls: string[]; scenes: Scene[] }>();
+  const loadView = async (canvas: HTMLCanvasElement): Promise<View> => {
+    const rec = { calls: [] as string[], scenes: [] as Scene[] };
+    made.set(canvas.getAttribute("aria-label") ?? "", rec);
+    return {
+      setScene: (sc) => void rec.scenes.push(sc),
+      setPalette: () => {},
+      setSelected: (id) => void rec.calls.push(`selected:${id}`),
+      setOccupancy: () => {},
+      setPlayback: (p) => void rec.calls.push(`playback:${p?.side ?? null}`),
+      setTime: (tick) => void rec.calls.push(`time:${tick}`),
+      stepAt: () => "ict",
+      orbit: () => {},
+      zoom: () => {},
+      pan: () => {},
+      reset: () => {},
+      resize: () => {},
+      destroy: () => {},
+    };
   };
-  return { view, occupancy, scenes };
+  return { made, loadView };
 }
+const lastTime = (calls: string[]) => calls.filter((c) => c.startsWith("time:")).at(-1);
 
-const valueText = (el: HTMLElement) => el.querySelector("input[type=range]")!.getAttribute("aria-valuetext");
-const slide = async (el: HTMLElement, value: number) => {
-  const input = el.querySelector<HTMLInputElement>("input[type=range]")!;
+function reducedMotion(on: boolean) {
+  vi.spyOn(window, "matchMedia").mockImplementation(
+    (q: string) => ({ matches: on && q.includes("reduce"), media: q, addEventListener: () => {}, removeEventListener: () => {} }) as unknown as MediaQueryList,
+  );
+}
+afterEach(() => vi.restoreAllMocks());
+
+const toggle = (el: HTMLElement) => el.querySelector<HTMLButtonElement>("[role=group] button");
+const slider = (el: HTMLElement) => el.querySelector<HTMLInputElement>("input[type=range]");
+const stages = (el: HTMLElement) => [...el.querySelectorAll<HTMLElement>("section[data-stage]")];
+const wait = (ms: number) => act(async () => void (await new Promise((r) => setTimeout(r, ms))));
+async function slide(el: HTMLElement, value: number) {
+  const input = slider(el)!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, String(value));
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await settle();
-};
+}
 
-describe("the 3D playback of the sampled traces", () => {
-  it("shows the scenario's items at the time on the slider, and the baseline's when it is chosen", async () => {
-    const { view, occupancy } = fakeView();
-    const el = await mount(<Playback ir={ir} runs={{ baseline: loaded("baseline"), scenario: loaded("scenario") }} loadView={async () => view} />);
+describe("the results page's line in motion", () => {
+  it("plays both runs side by side on one clock, Baseline first, each titled with its run, under one bar", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
     await settle();
-    const nodes = new Set(ir.nodes.map((n) => n.id));
-    const horizon = result("scenario").measurement_window.horizon_ticks;
-    // At the start nothing has arrived.
-    expect(occupancy.at(-1)).toBe("scenario:{}");
-    await slide(el, 500); // half way
-    const half = horizon / 2;
-    expect(occupancy.at(-1)).toBe(`scenario:${JSON.stringify(timeline(trace("scenario"), nodes, horizon).at(half))}`);
-    expect(valueText(el)).toBe("5 hours of 10 hours");
-    // The same time in the baseline.
-    await press([...el.querySelectorAll("button")].find((b) => b.textContent === en["compare.baseline"]));
+    expect(stages(el).map((s) => s.getAttribute("data-stage"))).toEqual(["baseline", "scenario"]);
+    expect(stages(el).map((s) => s.querySelector("h3")?.textContent)).toEqual([en["runs.baseline"], en["runs.scenario"]]);
+    expect(stages(el).map((s) => s.getAttribute("aria-labelledby") === s.querySelector("h3")?.id)).toEqual([true, true]);
+    expect([...el.querySelectorAll("canvas")].map((c) => c.getAttribute("aria-label"))).toEqual([en["playback.stage.baseline"], en["playback.stage.scenario"]]);
+    expect(el.querySelectorAll("[role=group]")).toHaveLength(1);
+    // The bar comes before the stages, Pause first (WCAG 2.2.2).
+    expect(el.firstElementChild?.firstElementChild?.getAttribute("role")).toBe("group");
+    expect(el.textContent).toContain("Sampled: 1 work item in 8, replication 1.");
+    const b = v.made.get(en["playback.stage.baseline"])!;
+    const s = v.made.get(en["playback.stage.scenario"])!;
+    expect(b.calls).toContain("playback:baseline");
+    expect(s.calls).toContain("playback:scenario");
+    // It plays once the traces are here (autoplay): Pause is offered, and time goes on in both.
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(en["playback.pause"]);
+    await wait(300);
+    expect(lastTime(b.calls)).not.toBe("time:0");
+    await press(toggle(el));
     await settle();
-    expect(occupancy.at(-1)).toBe(`baseline:${JSON.stringify(timeline(trace("baseline"), nodes, horizon).at(half))}`);
-    expect(el.textContent).toContain("Sampled trace of replication 1: about 1 in 8 work items.");
-  });
-
-  it("plays forward with the clock and pauses", async () => {
-    const { view } = fakeView();
-    const el = await mount(<Playback ir={ir} runs={{ baseline: loaded("baseline"), scenario: loaded("scenario") }} loadView={async () => view} />);
-    await settle();
-    const play = [...el.querySelectorAll("button")].find((b) => b.textContent === en["playback.play"]);
-    await press(play);
-    await act(async () => void (await new Promise((r) => setTimeout(r, 700))));
-    const pause = [...el.querySelectorAll("button")].find((b) => b.textContent === en["playback.pause"]);
-    expect(pause).toBeDefined();
-    await press(pause);
-    const shown = valueText(el);
-    // 30 s for the whole run: in 0.7 s about 14 of its 600 minutes.
-    expect(shown).not.toBe("0 hours of 10 hours");
-    await act(async () => void (await new Promise((r) => setTimeout(r, 300))));
-    expect(valueText(el)).toBe(shown);
-    // The time is said by the slider, not by a live region that would announce every update (review M1).
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(en["playback.play"]);
+    // One clock: a time on the slider is both stages' time.
+    await slide(el, 5 * HOUR);
+    expect([lastTime(b.calls), lastTime(s.calls)]).toEqual([`time:${5 * HOUR}`, `time:${5 * HOUR}`]);
+    expect(slider(el)?.getAttribute("aria-valuetext")).toBe("Day 1, 05:00 of 10 hours");
+    // Paused, it stays.
+    const held = [b.calls.length, s.calls.length];
+    await wait(200);
+    expect([b.calls.length, s.calls.length]).toEqual(held);
+    // Nothing is announced while it plays: the time is the slider's value.
     expect(el.querySelector("output, [role=status], [aria-live]")).toBeNull();
+    expect(await violations()).toEqual([]);
   });
 
-  it("offers nothing to play and draws no column without a trace", async () => {
-    const { view, occupancy } = fakeView();
-    const none = { result: result("scenario"), trace: { state: "none" as const } };
-    const el = await mount(<Playback ir={ir} runs={{ baseline: { ...none, result: result("baseline") }, scenario: none }} loadView={async () => view} />);
+  it("draws each run on the model it ran: the scenario's second ICT fixture is a second unit", async () => {
+    reducedMotion(false);
+    const v = views();
+    await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
     await settle();
-    expect(el.textContent).toContain(en["playback.none"]);
-    expect(el.querySelector("input[type=range]")).toBeNull();
-    expect([...el.querySelectorAll("button")].some((b) => b.textContent === en["playback.play"])).toBe(false);
-    expect(occupancy.length).toBeGreaterThan(0);
-    expect(occupancy.every((o) => o.endsWith(":null"))).toBe(true);
+    const units = (label: string) => v.made.get(label)!.scenes.at(-1)!.stations.ict!.units.length;
+    expect([units(en["playback.stage.baseline"]), units(en["playback.stage.scenario"])]).toEqual([1, 2]);
   });
 
-  it("plays the one run that has a trace, with no run to choose", async () => {
-    const { view, occupancy } = fakeView();
+  it("selects a step in both stages when it is picked in either", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
+    await settle();
+    const canvas = el.querySelectorAll("canvas")[1]!;
+    await act(async () => {
+      canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+      canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+    });
+    await settle();
+    for (const label of [en["playback.stage.baseline"], en["playback.stage.scenario"]]) expect(v.made.get(label)!.calls).toContain("selected:ict");
+  });
+
+  it("starts paused under reduced motion, at the run's start", async () => {
+    reducedMotion(true);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
+    await settle();
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(en["playback.play"]);
+    await wait(300);
+    expect(lastTime(v.made.get(en["playback.stage.scenario"])!.calls)).toBe("time:0");
+  });
+
+  it("holds still at the review page's time until Play", async () => {
+    reducedMotion(false);
+    const v = views();
     const el = await mount(
-      <Playback ir={ir} runs={{ baseline: { result: result("baseline"), trace: { state: "none" } }, scenario: loaded("scenario") }} loadView={async () => view} />,
+      <StillPlayback at={5 * HOUR}>
+        <Playback ir={ir} runs={runs()} loadView={v.loadView} />
+      </StillPlayback>,
     );
     await settle();
-    expect([...el.querySelectorAll("button")].some((b) => b.textContent === en["compare.baseline"])).toBe(false);
-    expect(occupancy.at(-1)).toBe("scenario:{}");
-    expect(el.textContent).toContain(en["playback.missing.baseline"]);
-  });
-
-  // Review M2: a trace that failed to load is not one that was never recorded.
-  it("says which run's trace failed to load", async () => {
-    const { view } = fakeView();
-    const failed = { state: "failed" as const, problem: { kind: "internal" as const, code: null, status: 500, message: "Bad gateway", requestId: null, details: [], retryAfterSeconds: null } };
-    const el = await mount(
-      <Playback ir={ir} runs={{ baseline: { result: result("baseline"), trace: failed }, scenario: loaded("scenario") }} loadView={async () => view} />,
-    );
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(en["playback.play"]);
+    expect(slider(el)?.getAttribute("aria-valuetext")).toBe("Day 1, 05:00 of 10 hours");
+    // The thumb is there too: the slider's end is the run's, though the paused clock rendered nothing new.
+    expect([slider(el)?.max, slider(el)?.value]).toEqual([String(10 * HOUR), String(5 * HOUR)]);
+    await wait(200);
+    expect(lastTime(v.made.get(en["playback.stage.baseline"])!.calls)).toBe(`time:${5 * HOUR}`);
+    await press(toggle(el));
     await settle();
-    expect(el.textContent).toContain(en["marey.failed.baseline"]);
-    expect(el.textContent).not.toContain(en["playback.none"]);
-    expect(el.textContent).not.toContain(en["playback.missing.baseline"]);
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(en["playback.pause"]);
   });
-});
 
-// Review M3: the time names its unit, the largest the run has at least 2 of, to a tenth.
-describe("the time shown", () => {
-  it("names its unit in the reader's language", () => {
-    expect(clock("en", 18_000_000, 36_000_000)).toEqual({ time: "5 hours", end: "10 hours" });
-    expect(clock("en", 45_000, 90_000)).toEqual({ time: "45 seconds", end: "90 seconds" });
-    expect(clock("en", 30_000, 59_000)).toEqual({ time: "30 seconds", end: "59 seconds" });
-    expect(clock("en", 2_700_000, 5_400_000)).toEqual({ time: "45 minutes", end: "90 minutes" });
-    expect(clock("en", 3 * 86_400_000 + 43_200_000, 7 * 86_400_000)).toEqual({ time: "3.5 days", end: "7 days" });
-    expect(clock("zh-Hant", 18_000_000, 36_000_000)).toEqual({ time: "5 小時", end: "10 小時" });
+  it("stands still without a trace: no bar, each run says why, its results' colours keyed once", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs({ state: "none" }, { state: "loaded", trace: { ...trace("scenario"), events: [] } })} loadView={v.loadView} />);
+    await settle();
+    expect(el.querySelector("[role=group], input[type=range]")).toBeNull();
+    expect(stages(el).map((s) => s.querySelector("h3 + p")?.textContent)).toEqual([en["playback.noTrace"], en["playback.noTrace"]]);
+    expect(el.textContent?.split(en["twin3d.legend"]).length).toBe(2);
+    for (const rec of v.made.values()) expect(rec.calls.filter((c) => c.startsWith("playback:") && c !== "playback:null")).toEqual([]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("plays the run that has a trace, and says the other's could not be loaded", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs(failed, loaded("scenario"))} loadView={v.loadView} />);
+    await settle();
+    expect(stages(el)[0]!.querySelector("h3 + p")?.textContent).toBe(en["playback.traceFailed"]);
+    expect(stages(el)[1]!.querySelector("h3 + p")).toBeNull();
+    expect(el.querySelectorAll("[role=group]")).toHaveLength(1);
+    expect(v.made.get(en["playback.stage.scenario"])!.calls).toContain("playback:scenario");
+    // The still stage keeps its default name; the lights' key is under the playing one, the colours' under the still one.
+    expect(el.querySelector("canvas")?.getAttribute("aria-label")).toMatch(/^3D view of the line: \d+ steps$/);
+    expect(stages(el)[1]!.textContent).toContain(en["twin3d.lights"]);
+    expect(stages(el)[0]!.textContent).toContain(en["twin3d.legend"]);
+  });
+
+  it("reads in Traditional Chinese", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />, "zh-Hant");
+    await settle();
+    expect(stages(el).map((s) => s.querySelector("h3")?.textContent)).toEqual([zhHant["runs.baseline"], zhHant["runs.scenario"]]);
+    expect([...el.querySelectorAll("canvas")].map((c) => c.getAttribute("aria-label"))).toEqual([zhHant["playback.stage.baseline"], zhHant["playback.stage.scenario"]]);
+    expect(toggle(el)?.getAttribute("aria-label")).toBe(zhHant["playback.pause"]);
+    await press(toggle(el));
+    await slide(el, 5 * HOUR);
+    expect(slider(el)?.getAttribute("aria-valuetext")).toBe("第 1 天 05:00／10 小時");
+    expect(await violations()).toEqual([]);
   });
 });

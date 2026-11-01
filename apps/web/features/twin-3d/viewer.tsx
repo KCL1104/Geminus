@@ -59,7 +59,7 @@ type Props = {
   clock?: PlaybackClock | null;
   /** The canvas's name (default: "3D view of the line: N steps"); a page with two stages names each. */
   label?: string;
-  /** The key to the station lights under a playing stage (default on; a page with two stages shows it under one). */
+  /** The key under the stage: the station lights while it plays, the results' colours while it stands still (default on; a page with two stages shows each under one). */
   legend?: boolean;
   loadView?: LoadView;
 };
@@ -317,7 +317,7 @@ export function Twin3D({ ir, results, selected, onSelect, occupancy = null, stag
         </div>
       )}
       {playing && <p ref={lost} className={styles.hint} hidden />}
-      {results && !playing && <p className={styles.hint}>{t("twin3d.legend")}</p>}
+      {results && !playing && legend && <p className={styles.hint}>{t("twin3d.legend")}</p>}
     </div>
   );
 }

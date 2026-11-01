@@ -10,8 +10,13 @@ export type Locale = "en" | "zh-Hant";
  */
 export const offersWonder = process.env.GEMINUS_E2E_OFFER_WONDER !== "0";
 
-/** The results view's review page (T-032, gallery only), one address per state. */
-export const resultsPreviews = ["/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed"];
+/** The results view's review page (T-032, gallery only), one address per state; H-072: the electronics line in motion, and still. */
+export const resultsPreviews = [
+  "/ui-gallery/results", "/ui-gallery/results?state=incomparable", "/ui-gallery/results?state=running", "/ui-gallery/results?state=failed",
+  "/ui-gallery/results?state=line", "/ui-gallery/results?state=still",
+];
+/** H-072: the model page's review page with a run in motion, and still (the line in motion, motion.spec.ts). */
+export const editorMotionPreviews = ["/ui-gallery/editor?state=motion", "/ui-gallery/editor?state=still"];
 /** The AI proposal review's review page (T-031, gallery only): the samples whose look differs (the others are in proposal.spec.ts). */
 export const proposalPreviews = [
   "/ui-gallery/proposal", "/ui-gallery/proposal?state=scenario", "/ui-gallery/proposal?state=new-steps", "/ui-gallery/proposal?state=photo", "/ui-gallery/proposal?state=needs_input",
@@ -38,6 +43,7 @@ export const sheet = { light: "rgb(250, 250, 250)", dark: "rgb(10, 10, 10)" } as
 /** The routes there are; pages that need a session show their signed-out state. */
 export const routes = [
   "/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/ui-gallery/editor", "/auth/error?reason=expired",
+  ...editorMotionPreviews,
   // T-032: a scenario and its runs' results (signed out), and the results view's review page in each state.
   "/scenarios/scn_01M4YDQK00TA00000000000001",
   "/scenarios/scn_01M4YDQK00TA00000000000001/results?baseline=sim_01M4YDQK00TA00000000000001&scenario=sim_01M4YDQK00TA00000000000002",
