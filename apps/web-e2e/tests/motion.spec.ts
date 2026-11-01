@@ -181,7 +181,7 @@ test.describe("the model page's line in motion, the electronics line", () => {
     // The machines wear their state from the trace; the strip keys the rings and says they show only the sampled boards.
     await expect(page.locator("[data-station]").first()).toBeAttached();
     await expect(strip.getByRole("list", { name: en["playback.rings"] })).toBeVisible();
-    await expect(strip.getByText(en["domain.electronics_line.playback.ringsSampled"])).toBeVisible();
+    await expect(strip.getByText(en["pack.electronics_line.playback.ringsSampled"])).toBeVisible();
     // Pause comes before the steps: from the keyboard, Enter pauses.
     await b.getByRole("button", { name: en["playback.pause"] }).focus();
     expect(await focusIsVisible(page)).toBe(true);

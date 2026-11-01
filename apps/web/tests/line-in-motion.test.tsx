@@ -195,7 +195,7 @@ describe("the model page's line in motion", () => {
     expect(caption(el)).toBe(`播放中：${runDate("zh-Hant")} 的基準執行，種子 1。`);
     expect(toggle(el)?.getAttribute("aria-label")).toBe(zhHant["playback.pause"]);
     expect(strip(el)?.textContent).toContain("抽樣：每 8 片電路板取 1 片，第 1 次重複。");
-    expect(strip(el)?.textContent).toContain(zhHant["domain.electronics_line.playback.ringsSampled"]);
+    expect(strip(el)?.textContent).toContain(zhHant["pack.electronics_line.playback.ringsSampled"]);
     expect(await violations()).toEqual([]);
   });
 
@@ -214,7 +214,7 @@ describe("the model page's line in motion", () => {
       name: en["playback.rings"],
       items: [["busy", en["playback.state.busy"]], ["idle", en["playback.state.idle"]], ["held", en["twin3d.lights.held"]]],
     });
-    expect(rings(el)?.textContent).toContain(en["domain.electronics_line.playback.ringsSampled"]);
+    expect(rings(el)?.textContent).toContain(en["pack.electronics_line.playback.ringsSampled"]);
     // Read with the bar before the steps, never announced.
     expect(rings(el)!.compareDocumentPosition(el.querySelector(".react-flow__node")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(rings(el)?.closest("[aria-live], [role=status]")).toBeNull();

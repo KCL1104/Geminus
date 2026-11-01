@@ -148,7 +148,7 @@ describe("a stage of the line in motion", () => {
     expect(list.getAttribute("aria-labelledby")).toBeTruthy();
     expect(el.querySelector(`[id="${list.getAttribute("aria-labelledby")}"]`)!.textContent).toBe(en["twin3d.lights"]);
     expect([...list.querySelectorAll("li")].map((li) => li.textContent)).toEqual([en["playback.state.busy"], en["playback.state.idle"], en["twin3d.lights.held"]]);
-    expect(el.textContent).toContain(en["domain.electronics_line.playback.statesSampled"]);
+    expect(el.textContent).toContain(en["pack.electronics_line.playback.statesSampled"]);
     expect(await violations()).toEqual([]);
     // A page with two stages keys them under one.
     await rerender(stageOf(s, { legend: false }));

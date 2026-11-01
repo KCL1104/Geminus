@@ -32,9 +32,13 @@ const THUMB = 16;
 /** While playing, the slider's spoken value changes at most this often. */
 const SPOKEN_MS = 1000;
 
-/** A pack's own words for a message (domain.<pack>.<key>), else the generic one. */
+/**
+ * A pack's own words for a message (pack.<pack>.<key>), else the generic one. Not under
+ * domain.<pack>.: that namespace holds only the pack's own vocabulary (its name, nodes,
+ * resources and metrics), which the Go pack checks against the catalogs.
+ */
 export function packKey(domain: string, key: MessageKey): MessageKey {
-  const k = `domain.${domain}.${key}`;
+  const k = `pack.${domain}.${key}`;
   return (Object.hasOwn(en, k) ? k : key) as MessageKey;
 }
 
