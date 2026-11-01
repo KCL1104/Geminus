@@ -368,7 +368,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 18 }, ok));
+    const f = fakeFetch(...Array.from({ length: 20 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -413,9 +413,15 @@ describe("model writes and versions (T-013)", () => {
     record("createAnalysis");
     await client.getAnalysis("ana_01M4YDQK00TA0000000000T030");
     record("getAnalysis");
+    // H-073: the pair's newest saved explanation, one item.
+    await client.listAnalyses(SCENARIO_RUN, BASELINE_RUN, { limit: 1 });
+    record("listAnalyses");
+    expect(Object.fromEntries(f.calls[seen.listAnalyses!]!.url.searchParams)).toEqual({ baseline_run_id: BASELINE_RUN, limit: "1" });
     // An ID of another kind is refused before any request.
     const before = f.calls.length;
     expect((await client.listSimulations(PROJECT)).ok).toBe(false);
+    expect((await client.listAnalyses(PROJECT, BASELINE_RUN)).ok).toBe(false);
+    expect((await client.listAnalyses(SCENARIO_RUN, PROJECT)).ok).toBe(false);
     expect(f.calls).toHaveLength(before);
     for (const [id, i] of Object.entries(seen)) {
       const op = operations.find((o) => o.operation_id === id);

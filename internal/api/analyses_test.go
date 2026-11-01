@@ -1,19 +1,26 @@
 package api_test
 
-// Integration tests of createAnalysis and getAnalysis (T-030) through the
-// whole stack: runs created through the API and run by the job loop as the
-// plain worker login, analyses asked for through the handler cmd/api
-// serves as the plain API login and written by the analysis job handler
-// with the deterministic fake provider (TEST-024's server side, TEST-009
-// for analyses; AI_SPEC §9, D-026, migration 0018).
+// Integration tests of createAnalysis, getAnalysis (T-030) and
+// listAnalyses (H-073 slice 1) through the whole stack: runs created
+// through the API and run by the job loop as the plain worker login,
+// analyses asked for through the handler cmd/api serves as the plain API
+// login and written by the analysis job handler with the deterministic
+// fake provider (TEST-024's server side, TEST-009 for analyses; AI_SPEC
+// §9, D-026, migration 0018).
 
 import (
+	"context"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"io"
 	"log/slog"
+	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/fake"
@@ -23,7 +30,10 @@ import (
 	"github.com/kcl1104/geminus/internal/domainpack/softwaredelivery"
 	"github.com/kcl1104/geminus/internal/proposals"
 	"github.com/kcl1104/geminus/internal/runs/runner"
+	analysisstore "github.com/kcl1104/geminus/internal/storage/analyses"
+	"github.com/kcl1104/geminus/internal/storage/dbtest"
 	"github.com/kcl1104/geminus/internal/storage/jobs"
+	"github.com/kcl1104/geminus/internal/storage/postgres"
 	"github.com/kcl1104/geminus/internal/tenant"
 	"github.com/kcl1104/geminus/internal/worker"
 	"github.com/kcl1104/geminus/internal/worker/handler"
@@ -241,5 +251,166 @@ func TestAnalysisRefusals(t *testing.T) {
 	r := off.analyze(off.a.Members[tenant.Editor].Subject, off.a.ID, "ana-off-1", s, `{}`)
 	if r.status != 503 || code(t, r) != "AI_PROVIDER_NOT_CONFIGURED" {
 		t.Errorf("AI off: %d %s", r.status, r.body)
+	}
+}
+
+// analysesPage is http.schema.json#/$defs/Analyses as the tests read it.
+type analysesPage struct {
+	Items      []jsontext.Value `json:"items"`
+	NextCursor *string          `json:"next_cursor"`
+}
+
+func (e *runEnv) listAnalyses(subject, org, run, query string) resp {
+	return e.do("GET", "/v1/simulations/"+run+"/analyses"+query, subject, org, nil, "")
+}
+
+// pairPage is one page of the pair's analyses, read as subject, with the
+// IDs it lists.
+func (e *runEnv) pairPage(t *testing.T, subject, run, query string) (analysesPage, []string) {
+	t.Helper()
+	r := e.listAnalyses(subject, e.a.ID, run, query)
+	if r.status != 200 {
+		t.Fatalf("list %s: %d %s", query, r.status, r.body)
+	}
+	valid(t, r, "http.schema.json#/$defs/Analyses")
+	page := decode[analysesPage](t, r)
+	var listed []string
+	for _, item := range page.Items {
+		var v analysisView
+		if err := json.Unmarshal(item, &v); err != nil {
+			t.Fatal(err)
+		}
+		listed = append(listed, v.ID)
+	}
+	return page, listed
+}
+
+// H-073 slice 1: a finished comparison finds its saved explanation. Any
+// member lists the completed analyses of a run beside one baseline, newest
+// first, each as getAnalysis shows it; an analysis still generating, a
+// failed one, one of the run alone and one of the pair the other way round
+// are not listed. The list pages by a cursor bound to the pair and writes
+// no audit event; another organization finds neither the pair nor its
+// analyses, through the API, the organization filter or RLS.
+func TestAnalysisListOfAPair(t *testing.T) {
+	e := setupRuns(t, api.WithAI(proposals.Available))
+	owner, editor, viewer := e.a.Members[tenant.Owner], e.a.Members[tenant.Editor], e.a.Members[tenant.Viewer]
+	_, base, scen := e.completedPair(t, "ana-list")
+	ask := func(subject, key, run, body string) string {
+		t.Helper()
+		r := e.analyze(subject, e.a.ID, key, run, body)
+		if r.status != 202 {
+			t.Fatalf("create %s: %d %s", key, r.status, r.body)
+		}
+		return decode[struct {
+			ID string `json:"id"`
+		}](t, r).ID
+	}
+	pair := `{"baseline_run_id":"` + base + `"}`
+	// An answer that invents a delta: the analysis fails and is not listed.
+	invented, err := json.Marshal(provider.AnalysisOutput{
+		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "Throughput rose by 4242.5."},
+		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
+		SuggestedNextExperiments: []provider.Experiment{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := fake.New()
+	f.Script(provider.RoleAnalyst, "Invent something", invented)
+	older := ask(editor.Subject, "ana-list-1", scen, pair)
+	failed := ask(editor.Subject, "ana-list-2", scen, `{"baseline_run_id":"`+base+`","question":"Invent something"}`)
+	drain(t, e.analysisLoop(t, f), time.Minute)
+	newer := ask(owner.Subject, "ana-list-3", scen, pair)
+	alone := ask(editor.Subject, "ana-list-4", scen, `{}`)
+	drain(t, e.analysisLoop(t, f), time.Minute)
+	generating := ask(editor.Subject, "ana-list-5", scen, pair) // never run
+	for id, want := range map[string]string{older: "completed", newer: "completed", alone: "completed", failed: "failed", generating: "generating"} {
+		if v := e.analysis(t, viewer.Subject, e.a.ID, id); v.Status != want {
+			t.Fatalf("analysis %s: %s, want %s", id, v.Status, want)
+		}
+	}
+	events := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1`, e.a.ID)
+
+	// Any member: the two completed analyses of the pair, newest first, each as getAnalysis shows it.
+	q := "?baseline_run_id=" + base
+	for _, m := range []dbtest.Member{owner, editor, viewer} {
+		page, listed := e.pairPage(t, m.Subject, scen, q)
+		if !slices.Equal(listed, []string{newer, older}) || page.NextCursor != nil {
+			t.Errorf("%s lists %v (next %v), want %v", m.Role, listed, page.NextCursor, []string{newer, older})
+		}
+		for i, item := range page.Items {
+			got := e.do("GET", "/v1/analyses/"+listed[i], m.Subject, e.a.ID, nil, "")
+			if string(item) != string(got.body) {
+				t.Errorf("listed %s, getAnalysis %s", item, got.body)
+			}
+		}
+	}
+	// One at a time: the cursor goes on from the last one listed, and is bound to the pair.
+	first, listed := e.pairPage(t, viewer.Subject, scen, q+"&limit=1")
+	if !slices.Equal(listed, []string{newer}) || first.NextCursor == nil {
+		t.Fatalf("first page %v, next %v", listed, first.NextCursor)
+	}
+	next := "&limit=1&cursor=" + url.QueryEscape(*first.NextCursor)
+	second, listed := e.pairPage(t, viewer.Subject, scen, q+next)
+	if !slices.Equal(listed, []string{older}) || second.NextCursor != nil {
+		t.Errorf("second page %v, next %v", listed, second.NextCursor)
+	}
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, base, "?baseline_run_id="+scen+next), 400, "INVALID_REQUEST", "cursor")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, q+"&cursor=not-a-cursor"), 400, "INVALID_REQUEST", "cursor")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, q+"&limit=0"), 400, "INVALID_REQUEST", "limit")
+	// The pair the other way round has none.
+	if page, listed := e.pairPage(t, viewer.Subject, base, "?baseline_run_id="+scen); len(listed) != 0 || page.Items == nil || page.NextCursor != nil {
+		t.Errorf("the other way round: %v %v", listed, page.NextCursor)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1`, e.a.ID); n != events {
+		t.Errorf("listing wrote %d audit events", n-events)
+	}
+
+	// What is refused: a pair that is not the organization's, a baseline missing or not a run, the same run twice.
+	missing := "sim_01M4YDQK00FGZZWH0PP15XPNFZ"
+	other := e.b.Members[tenant.Owner]
+	refusedWith(t, e.listAnalyses(other.Subject, e.b.ID, scen, q), 404, "NOT_FOUND", "id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, missing, q), 404, "NOT_FOUND", "id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, "?baseline_run_id="+missing), 404, "NOT_FOUND", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, ""), 400, "INVALID_REQUEST", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, "?baseline_run_id="), 400, "INVALID_REQUEST", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, q+"&baseline_run_id="+base), 400, "INVALID_REQUEST", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, "?baseline_run_id=mdl_01M4YDQK00FGZZWH0PP15XPNFZ"), 400, "INVALID_REQUEST", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, scen, "?baseline_run_id="+scen), 400, "INVALID_REQUEST", "baseline_run_id")
+	refusedWith(t, e.listAnalyses(viewer.Subject, e.a.ID, "mdl_01M4YDQK00FGZZWH0PP15XPNFZ", q), 400, "INVALID_REQUEST", "id")
+	// A member of a only, asking in b: 404 without details, as on every route (D-008); no token: 401.
+	if r := e.listAnalyses(viewer.Subject, e.b.ID, scen, q); r.status != 404 || code(t, r) != "NOT_FOUND" {
+		t.Errorf("a member of another organization: %d %s", r.status, r.body)
+	}
+	if r := e.listAnalyses("", e.a.ID, scen, q); r.status != 401 {
+		t.Errorf("no token: %d %s", r.status, r.body)
+	}
+	// A viewer lists and reads but still asks for none.
+	if r := e.analyze(viewer.Subject, e.a.ID, "ana-list-viewer", scen, pair); r.status != 403 || code(t, r) != "FORBIDDEN" {
+		t.Errorf("a viewer asks: %d %s", r.status, r.body)
+	}
+
+	// The organization filter by itself (as the provisioning superuser, past RLS) and RLS by itself (b's scope, a's ID).
+	ctx := context.Background()
+	if err := postgres.OpenPool(e.admin).Tx(ctx, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(ctx context.Context, tx pgx.Tx) error {
+		if got, err := analysisstore.ListCompleted(ctx, tx, e.a.ID, scen, base, nil, 10); err != nil || len(got) != 2 {
+			t.Errorf("a's pair in a: %d %v", len(got), err)
+		}
+		if got, err := analysisstore.ListCompleted(ctx, tx, e.b.ID, scen, base, nil, 10); err != nil || len(got) != 0 {
+			t.Errorf("a's pair in b: %d %v", len(got), err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	apiDB := tenant.New(dbtest.Pool(t, dbtest.LoginURL(t, dbtest.APILogin), 2, true))
+	if err := apiDB.Run(ctx, tenant.Scope{OrganizationID: e.b.ID, UserID: other.UserID}, tenant.ReadOnly, func(ctx context.Context, tx tenant.Tx, _ tenant.Membership) error {
+		got, err := analysisstore.ListCompleted(ctx, tx, e.a.ID, scen, base, nil, 10)
+		if err != nil || len(got) != 0 {
+			t.Errorf("under RLS, b's owner lists %d of a's analyses (%v)", len(got), err)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -916,6 +916,57 @@
       ],
       "additionalProperties": false
     },
+    "Analyses": {
+      "$comment": "H-073 slice 1 (PROPOSED): listAnalyses' page: the completed analyses of one run beside one baseline run, newest first (created_at, then ID), each as getAnalysis shows it.",
+      "type": "object",
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/AnalysisRecord"
+              },
+              {
+                "properties": {
+                  "status": {
+                    "const": "completed"
+                  },
+                  "baseline_run_id": {
+                    "$ref": "common.schema.json#/$defs/RunID"
+                  },
+                  "analysis": {
+                    "$ref": "analysis-output.schema.json"
+                  },
+                  "error": {
+                    "type": "null"
+                  }
+                }
+              }
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    },
     "SignedDownload": {
       "type": "object",
       "properties": {

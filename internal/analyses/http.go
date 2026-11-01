@@ -24,6 +24,7 @@ type Route struct {
 // the service requires.
 var Routes = []Route{
 	{"POST", "/v1/simulations/{id}/analyses", "createAnalysis", writeRoles},
+	{"GET", "/v1/simulations/{id}/analyses", "listAnalyses", readRoles},
 	{"GET", "/v1/analyses/{id}", "getAnalysis", readRoles},
 }
 
@@ -32,8 +33,11 @@ func Register(mux *http.ServeMux, log *slog.Logger, v auth.Verifier, users httpa
 	h := handlers{s: s}
 	for _, r := range Routes {
 		f := h.get
-		if r.OperationID == "createAnalysis" {
+		switch r.OperationID {
+		case "createAnalysis":
 			f = h.create
+		case "listAnalyses":
+			f = h.list
 		}
 		mux.Handle(r.Method+" "+r.Path, httpapi.Handler(log, httpapi.Scoped(v, users, f)))
 	}
@@ -82,6 +86,11 @@ func Refused(err error) error {
 			Details: []httpapi.Detail{{Path: "", Reason: run.Param}}}
 	case errors.Is(err, ErrNotFound):
 		return httpapi.Errorf(httpapi.NotFound, "not found")
+	case errors.Is(err, ErrInvalidCursor):
+		return httpapi.InvalidCursor()
+	case errors.Is(err, ErrInvalidLimit): // PageQuery bounds it first
+		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "limit must be one integer from 1 to 100",
+			Details: []httpapi.Detail{{Path: "", Reason: "limit"}}}
 	case errors.Is(err, idempotency.ErrConflict), errors.Is(err, idempotency.ErrInProgress):
 		return httpapi.Errorf(httpapi.IdempotencyKeyConflict, "this Idempotency-Key was used for a different request")
 	}
@@ -120,5 +129,37 @@ func (h handlers) get(w http.ResponseWriter, r *http.Request, sc tenant.Scope) e
 		return Refused(err)
 	}
 	httpapi.WriteJSON(w, 200, a)
+	return nil
+}
+
+// list is listAnalyses (H-073): baseline_run_id once, a simulation run ID
+// other than the path's (400 naming it otherwise), then the page.
+func (h handlers) list(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {
+	runID, err := pathID(r, runIDs, "simulation run")
+	if err != nil {
+		return err
+	}
+	q, err := httpapi.Query(r)
+	if err != nil {
+		return err
+	}
+	vs := q[BaselineQuery]
+	if len(vs) != 1 || !runIDs.MatchString(vs[0]) {
+		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "baseline_run_id must be one simulation run ID",
+			Details: []httpapi.Detail{{Path: "", Reason: BaselineQuery}}}
+	}
+	if vs[0] == runID {
+		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "baseline_run_id must name another run than the one analyzed",
+			Details: []httpapi.Detail{{Path: "", Reason: BaselineQuery}}}
+	}
+	cursor, limit, err := httpapi.PageQuery(r)
+	if err != nil {
+		return err
+	}
+	page, err := h.s.List(r.Context(), sc, httpapi.RequestID(r.Context()), runID, vs[0], cursor, limit)
+	if err != nil {
+		return Refused(err)
+	}
+	httpapi.WriteJSON(w, 200, page)
 	return nil
 }

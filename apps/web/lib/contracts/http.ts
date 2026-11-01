@@ -236,6 +236,16 @@ export type AnalysisRecord = {
   investigation_id?: InvestigationID;
 };
 
+export type Analyses = {
+  items: (AnalysisRecord & {
+    status?: "completed";
+    baseline_run_id?: RunID;
+    analysis?: AnalysisOutput;
+    error?: null;
+  })[];
+  next_cursor: string | null;
+};
+
 export type SignedDownload = {
   url: string;
   expires_at: string;
