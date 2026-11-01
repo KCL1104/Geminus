@@ -714,6 +714,8 @@ export const en = {
   "compare.summary.shorter": "Median lead time {baseline} → {scenario}: {percent} shorter.",
   "compare.summary.longer": "Median lead time {baseline} → {scenario}: {percent} longer.",
   "compare.summary.same": "Median lead time {baseline} in both runs.",
+  // H-073 review: a relative change that rounds to 0% at one decimal; limit is 0.1% as the locale writes it.
+  "compare.summary.tiny": "Median lead time {baseline} → {scenario}: a change under {limit}.",
   "compare.summary.caption": { one: "From {count} replication of each run. Where the server computed them, the table gives 95% intervals.", other: "From {count} replications of each run. Where the server computed them, the table gives 95% intervals." },
   "compare.summary.captionMixed": "The runs have different numbers of replications. Where the server computed them, the table gives 95% intervals.",
   "metric.throughput": "Completed work items (mean per replication)",

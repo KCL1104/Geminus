@@ -26,6 +26,7 @@ import {
   boardTraces,
   boardVersion,
 } from "../features/results/fixtures/board-line";
+import type { ResultsData } from "../features/results/load";
 import { mount, press, settle, violations } from "./ui-harness";
 
 const nav = vi.hoisted(() => ({ push: vi.fn() }));
@@ -861,6 +862,60 @@ describe("the runs, from queued to the results", () => {
     expect(el.querySelector('[aria-labelledby="runs-heading"]')).toBeNull();
     expect(text(el)).toContain("前置時間中位數 29.14 分鐘 → 19.77 分鐘：縮短 32.2%。");
     expect(await violations()).toEqual([]);
+  });
+});
+
+// H-073 review (Low): the headline never prints a signed or directional
+// zero. A relative change that rounds to 0% at one decimal is a change under
+// 0.1%, with both values; equal values are the same in both runs.
+describe("the median lead time sentence", () => {
+  const P50 = "/metrics/lead_time_minutes/p50";
+  const withLead = (baseline: number, scenario: number, relative: number): Comparison => ({
+    ...boardComparison,
+    metrics: boardComparison.metrics.map((m) => (m.metric_path === P50 ? { ...m, baseline, scenario, absolute_delta: scenario - baseline, relative_delta: relative } : m)),
+  });
+  async function headline(comparison: Comparison, locale: Locale = "en") {
+    const { ResultsView } = await import("../features/results/results-view");
+    const api = fakeApi({ [`GET ${v1}/models/${boardScenario.model_id}/simulations`]: json(200, { items: [], next_cursor: null }) });
+    const data: ResultsData = {
+      comparison, version: boardVersion,
+      baseline: { run: boardBaselineRun(), result: boardResults.baseline, trace: { state: "none" } },
+      scenario: { run: boardScenarioRun(), result: boardResults.scenario, trace: { state: "none" } },
+    };
+    const el = await mount(
+      <AuthProvider value={editor}>
+        <ApiProvider client={api.client}>
+          <ResultsView data={data} />
+        </ApiProvider>
+      </AuthProvider>,
+      locale,
+    );
+    await settle();
+    const p = el.querySelector("section h2#metrics-heading + p")!;
+    return { p, text: text(p).trim() };
+  }
+
+  it.each([
+    { kind: "shorter", b: 30, sc: 29.99, r: -0.000333 },
+    { kind: "longer", b: 30, sc: 30.01, r: 0.000333 },
+    { kind: "shorter (only just rounding to zero)", b: 1000, sc: 999.51, r: -0.00049 },
+  ] as const)("says a $kind change under a tenth of a percent as that, with both values, and no zero percent", async ({ b, sc, r }) => {
+    const { p, text: said } = await headline(withLead(b, sc, r));
+    expect(said).toBe(`Median lead time ${b === 1000 ? "1,000 min (16.7 h)" : `${b} min`} → ${sc === 999.51 ? "999.51 min (16.7 h)" : `${sc} min`}: a change under 0.1%.`);
+    expect(said).not.toMatch(/0% (shorter|longer)/);
+    // The scenario's exact value stays the server's, set apart as before.
+    expect(p.querySelector("data")?.getAttribute("value")).toBe(String(sc));
+  });
+
+  it("in Traditional Chinese too", async () => {
+    const { text: said } = await headline(withLead(30, 29.99, -0.000333), "zh-Hant");
+    expect(said).toBe("前置時間中位數 30 分鐘 → 29.99 分鐘：變化不到 0.1%。");
+  });
+
+  it("keeps a change of 0.1% or more as shorter or longer, and equal values as the same", async () => {
+    expect((await headline(withLead(30, 29.97, -0.001))).text).toBe("Median lead time 30 min → 29.97 min: 0.1% shorter.");
+    document.body.innerHTML = "";
+    expect((await headline(withLead(30, 30, 0))).text).toBe("Median lead time 30 min in both runs.");
   });
 });
 

@@ -681,6 +681,7 @@ export const zhHant: Catalog = {
   "compare.summary.shorter": "前置時間中位數 {baseline} → {scenario}：縮短 {percent}。",
   "compare.summary.longer": "前置時間中位數 {baseline} → {scenario}：增加 {percent}。",
   "compare.summary.same": "兩個執行的前置時間中位數都是 {baseline}。",
+  "compare.summary.tiny": "前置時間中位數 {baseline} → {scenario}：變化不到 {limit}。",
   "compare.summary.caption": { other: "每個執行重複 {count} 次。伺服器有計算的指標，95% 信賴區間列在下表。" },
   "compare.summary.captionMixed": "兩個執行的重複次數不同。伺服器有計算的指標，95% 信賴區間列在下表。",
   "metric.throughput": "完成的工作項目（每次重複的平均）",

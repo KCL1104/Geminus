@@ -83,9 +83,13 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
     if (lead === null) return null;
     const b = formatValue(i18n, lead.baseline, "minute");
     const s = formatValue(i18n, lead.scenario, "minute");
-    const percent = i18n.number(Math.abs(lead.relative), { style: "percent", maximumFractionDigits: 1 });
-    if (lead.relative === 0) return t("compare.summary.same", { baseline: b });
-    const text = t(lead.relative < 0 ? "compare.summary.shorter" : "compare.summary.longer", { baseline: b, scenario: "\u0000scenario\u0000", percent });
+    const shown = { style: "percent", maximumFractionDigits: 1 } as const;
+    const percent = i18n.number(Math.abs(lead.relative), shown);
+    if (lead.relative === 0 || lead.baseline === lead.scenario) return t("compare.summary.same", { baseline: b });
+    // H-073 review: a change that rounds to 0% at one decimal is said as under 0.1%, never as a directional 0%.
+    const text = /[1-9]/.test(percent)
+      ? t(lead.relative < 0 ? "compare.summary.shorter" : "compare.summary.longer", { baseline: b, scenario: "\u0000scenario\u0000", percent })
+      : t("compare.summary.tiny", { baseline: b, scenario: "\u0000scenario\u0000", limit: i18n.number(0.001, shown) });
     return withNodes(text, {
       scenario: (
         <data value={String(lead.scenario)} className={styles.pairScenario}>
