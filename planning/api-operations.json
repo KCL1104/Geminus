@@ -392,6 +392,17 @@
     },
     {
       "method": "GET",
+      "path": "/v1/simulations/{id}/analyses",
+      "operation_id": "listAnalyses",
+      "origin": "PROPOSED",
+      "roles": [
+        "owner",
+        "editor",
+        "viewer"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/v1/analyses/{id}",
       "operation_id": "getAnalysis",
       "origin": "PROPOSED",

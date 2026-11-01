@@ -643,6 +643,8 @@ export const en = {
   "analysis.ungrounded": "The AI's answer said something these results do not support (a number, a metric or a promise), so it was not kept. You can ask again.",
   "analysis.otherRuns": "This explanation is of other runs, so it is not shown here.",
   "analysis.again": "Ask again",
+  "analysis.saved.when": "Saved on {time}; shown without asking the AI again.",
+  "analysis.saved.loading": "Looking for a saved explanation…",
   "analysis.provenance": "Written by the AI from these results. The figures beside its words are the server's; the numbers in its words were checked against the results.",
   "analysis.checked": "The figures beside its words are the server's; the numbers in its words were checked against the results.",
   "analysis.summaries": "The AI's summary of each run, and what changed",

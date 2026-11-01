@@ -6,6 +6,7 @@
 // getMe (D-045), which selects no organization: it is how the UI learns the
 // organizations to choose from, and the BFF and API authenticate it.
 import type {
+  Analyses,
   AnalysisAccepted,
   AnalysisRecord,
   AnalysisRequest,
@@ -475,6 +476,17 @@ export function createApiClient(cfg: ClientConfig) {
     async getAnalysis(analysisId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<AnalysisRecord>> {
       if (!isID("ana", analysisId)) return notFound("The analysis");
       return call<AnalysisRecord>({ method: "GET", path: `/analyses/${analysisId}`, signal: opts.signal });
+    },
+    /**
+     * H-073: the completed analyses of run `runId` beside baseline run
+     * `baselineRunId`, newest first, each as getAnalysis shows it; with
+     * limit 1, the pair's saved explanation, if it has one.
+     */
+    async listAnalyses(runId: string, baselineRunId: string, opts: { cursor?: string; limit?: number; signal?: AbortSignal } = {}): Promise<Result<Analyses>> {
+      if (!isID("sim", runId)) return notFound("The run");
+      if (!isID("sim", baselineRunId)) return notFound("The baseline run");
+      const limit = opts.limit === undefined ? undefined : String(opts.limit);
+      return call<Analyses>({ method: "GET", path: `/simulations/${runId}/analyses`, query: { baseline_run_id: baselineRunId, cursor: opts.cursor, limit }, signal: opts.signal });
     },
     /** One page of the model's runs, oldest first (up to 100). */
     async listSimulations(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {

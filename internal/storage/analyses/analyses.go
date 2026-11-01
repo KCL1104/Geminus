@@ -9,7 +9,8 @@
 // once, moving it to completed in the transaction that completes the job
 // (Complete); when the job fails or is cancelled first, the analysis
 // follows it to failed with the job's error (0018). A completed or failed
-// analysis never changes.
+// analysis never changes. The API reads one by ID, and a run pair's
+// completed ones newest first (ListCompleted, listAnalyses; H-073).
 package analyses
 
 import (
@@ -81,10 +82,11 @@ func Insert(ctx context.Context, tx pgx.Tx, a Analysis) (Analysis, error) {
 
 // The job's payload holds the request that created the analysis (one job
 // at most, 0001).
-const selectAnalysis = `SELECT a.id, a.run_id, a.baseline_run_id, a.status, a.question, a.output_locale, a.analysis, a.provider_metadata,
+const selectFrom = `SELECT a.id, a.run_id, a.baseline_run_id, a.status, a.question, a.output_locale, a.analysis, a.provider_metadata,
 	  a.error, a.created_by, a.created_at, coalesce(j.payload->>'request_id', ''), a.investigation_id, a.investigation_index
-	FROM twin.ai_analyses a LEFT JOIN twin.jobs j ON j.organization_id=a.organization_id AND j.ai_analysis_id=a.id
-	WHERE a.organization_id=$1 AND a.id=$2`
+	FROM twin.ai_analyses a LEFT JOIN twin.jobs j ON j.organization_id=a.organization_id AND j.ai_analysis_id=a.id`
+
+const selectAnalysis = selectFrom + ` WHERE a.organization_id=$1 AND a.id=$2`
 
 func scan(row pgx.Row, org string) (Analysis, error) {
 	a := Analysis{OrganizationID: org}
@@ -104,6 +106,42 @@ func scan(row pgx.Row, org string) (Analysis, error) {
 // Get returns the analysis id of organization org.
 func Get(ctx context.Context, tx pgx.Tx, org, id string) (Analysis, error) {
 	return scan(tx.QueryRow(ctx, selectAnalysis, org, id), org)
+}
+
+// Position is a place in the (created_at, id) order of a pair's analyses.
+type Position struct {
+	CreatedAt time.Time
+	ID        string
+}
+
+// ListCompleted returns up to limit completed analyses of run runID beside
+// baseline run baselineID in organization org, newest first (created_at,
+// then id, both descending: listAnalyses, H-073), after the position if
+// one is given. Analyses still generating or failed, of the run without
+// a baseline or beside another, are not among them.
+func ListCompleted(ctx context.Context, tx pgx.Tx, org, runID, baselineID string, after *Position, limit int) ([]Analysis, error) {
+	const pair = selectFrom + ` WHERE a.organization_id=$1 AND a.run_id=$2 AND a.baseline_run_id=$3 AND a.status='completed'`
+	var rows pgx.Rows
+	var err error
+	if after == nil {
+		rows, err = tx.Query(ctx, pair+` ORDER BY a.created_at DESC, a.id DESC LIMIT $4`, org, runID, baselineID, limit)
+	} else {
+		rows, err = tx.Query(ctx, pair+` AND (a.created_at, a.id) < ($4, $5) ORDER BY a.created_at DESC, a.id DESC LIMIT $6`,
+			org, runID, baselineID, after.CreatedAt, after.ID, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Analysis
+	for rows.Next() {
+		a, err := scan(rows, org)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }
 
 // Lock returns the analysis and holds its row until the transaction ends.

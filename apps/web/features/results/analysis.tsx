@@ -347,3 +347,6 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline 
     </div>
   );
 }
+
+// H-073: the saved explanation (saved-explanation.tsx) shows a completed analysis in the same view.
+export { Explained };

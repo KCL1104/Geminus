@@ -611,6 +611,8 @@ export const zhHant: Catalog = {
   "analysis.ungrounded": "AI 的回答有這些結果不支持的內容（數字、指標或保證），所以沒有保留。你可以再問一次。",
   "analysis.otherRuns": "這份解讀屬於其他執行，所以不在這裡顯示。",
   "analysis.again": "再問一次",
+  "analysis.saved.when": "儲存於 {time}；再次顯示不會重新詢問 AI。",
+  "analysis.saved.loading": "正在尋找已儲存的解讀…",
   "analysis.provenance": "由 AI 根據這些結果撰寫。文字旁的數字來自伺服器；文字中的數字都對照過結果。",
   "analysis.checked": "文字旁的數字來自伺服器；文字中的數字都對照過結果。",
   "analysis.summaries": "AI 對兩次執行的摘要，以及改變了什麼",
