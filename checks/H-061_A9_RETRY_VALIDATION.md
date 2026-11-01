@@ -72,7 +72,17 @@ Live closed loop on the site (0.2.0, before this change):
 - **A hung provider** can now hold one analysis for about 15 of the investigation's 20 minutes (3 attempts × 300 s), before about 6.
 - **Meta's 404 per host** can come back on any deploy. The runbook's check after each deploy covers it.
 
-## 8. After the deploy
+## 8. After the deploy (b126549, 2026-11-01)
+
+Done:
+- The deploy verified 200 on /healthz and /readyz, the web answered, and no TCP proxy was left open.
+- The new worker host reached Meta.
+- An explanation a person asked for completed with 10,052 output tokens (64 s, US$0.089). The old 8192 bound would have cut it.
+- A Spark-planned investigation on 0.4.0 (inv_01M6AQ5EKGFY5Z4ZM8SZBHXXYK) ended `finished_by_ai` in 13.0 min. Its three explanations completed with 13,509, 16,428 and 13,778 output tokens, each in 88 to 104 s.
+
+So an investigation now takes longer: 13 min here, against the 20-minute limit. A slower one ends `time_limit`, which is a normal end, not a failure.
+
+Still to do:
 
 - Probe Meta from the new worker host.
 - Start one investigation with each planner, and check that the explanations complete (worker log: role analyst, no `AI_OUTPUT_TRUNCATED`).
