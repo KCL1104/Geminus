@@ -2856,6 +2856,13 @@
       "layer": "schema"
     },
     {
+      "id": "valid-investigator-observation-invalid-arguments",
+      "instance": "testdata/contracts/valid-investigator-observation-invalid-arguments.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
       "id": "invalid-investigator-observation-http-code",
       "instance": "testdata/contracts/invalid-investigator-observation-http-code.json",
       "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
@@ -2863,6 +2870,36 @@
       "layer": "schema",
       "expected_error_paths": [
         "/error/code"
+      ]
+    },
+    {
+      "id": "invalid-investigator-observation-no-hint",
+      "instance": "testdata/contracts/invalid-investigator-observation-no-hint.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigator-observation-hint-of-another-code",
+      "instance": "testdata/contracts/invalid-investigator-observation-hint-of-another-code.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/hint"
+      ]
+    },
+    {
+      "id": "invalid-investigator-observation-hint-free-text",
+      "instance": "testdata/contracts/invalid-investigator-observation-hint-free-text.json",
+      "schema": "schemas/investigator.schema.json#/$defs/ErrorObservation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/hint"
       ]
     },
     {

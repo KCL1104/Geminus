@@ -3,7 +3,7 @@
 	"kind": "fake",
 	"planner_model": "muse-spark-1.3",
 	"transcript": "digest",
-	"prompt_template_version": "investigator-0.1.0",
+	"prompt_template_version": "investigator-0.2.0",
 	"cases_run": 6,
 	"cases_passed": 6,
 	"gate_failures": {

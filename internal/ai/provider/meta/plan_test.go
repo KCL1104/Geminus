@@ -201,3 +201,67 @@ func TestTheRegistrysToolsAreSendable(t *testing.T) {
 		t.Errorf("%d tools sent", len(sent))
 	}
 }
+
+// H-061 A9 (live, 2026-11-01): Muse Spark 1.3 answered propose_what_if with
+// from_suggestion the string "null", shown a schema that required it. The
+// tools now sent leave each member that may be null out of required and
+// describe it (omit it when unused); an answer that omits it is the call
+// with null, canonical; the string "null" is still an invalid turn at
+// /from_suggestion, through the Meta adapter as through the registry.
+func TestTheLiveNullAnswer(t *testing.T) {
+	tools, err := investigator.ProviderTools(investigator.ToolsOf(investigator.Scenario))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const idea = "Add a third ICT tester so boards wait less before ICT."
+	s := newServer(t, map[string][]reply{messagesPath: {
+		turnAnswer("tool_use", toolUse("toolu_01", "propose_what_if", `{"from_suggestion":"null","idea":"`+idea+`"}`)),
+		turnAnswer("tool_use", toolUse("toolu_02", "propose_what_if", `{"idea":"`+idea+`"}`)),
+		turnAnswer("tool_use", toolUse("toolu_03", "finish", `{"outcome":"out_of_ideas"}`)),
+	}})
+	c, b := client(t, s)
+	meta.SetTools(b, "investigator")
+	meta.SetPlannerModels(b, model)
+	in := planContext(t, model)
+	in.Tools, in.Decoder = tools, investigator.Decoder{Mode: investigator.Scenario}
+	res, err := c.PlanTurn(context.Background(), in)
+	if provider.CodeOf(err) != provider.CodeInvalidOutput || res.Invalid == nil ||
+		*res.Invalid != (provider.InvalidTurn{Kind: provider.InvalidArguments, Code: "INVALID_ARGUMENTS", Path: "/from_suggestion"}) {
+		t.Errorf("the string null: %v %+v", err, res.Invalid)
+	}
+	res, err = c.PlanTurn(context.Background(), in)
+	if err != nil || res.Call.Name != "propose_what_if" || string(res.Call.Input) != `{"from_suggestion":null,"idea":"`+idea+`"}` {
+		t.Errorf("from_suggestion left out: %s %v", res.Call.Input, err)
+	}
+	res, err = c.PlanTurn(context.Background(), in)
+	if err != nil || string(res.Call.Input) != `{"best_scenario_id":null,"outcome":"out_of_ideas"}` {
+		t.Errorf("best_scenario_id left out: %s %v", res.Call.Input, err)
+	}
+	// What the model was shown: from_suggestion and best_scenario_id are
+	// not required, each described; the tools' text says to leave them out.
+	want := map[string]struct {
+		required []any
+		optional string
+	}{"propose_what_if": {[]any{"idea"}, "from_suggestion"}, "explain_results": {[]any{"run_id"}, "question"},
+		"finish": {[]any{"outcome"}, "best_scenario_id"}, "save_scenario": {[]any{"proposal_id"}, ""}, "run_what_if": {[]any{"scenario_id"}, ""}}
+	sent := s.bodies[0]["tools"].([]any)
+	if len(sent) != len(want) {
+		t.Fatalf("%d tools sent", len(sent))
+	}
+	for _, st := range sent {
+		tool := st.(map[string]any)
+		name := tool["name"].(string)
+		schema := tool["input_schema"].(map[string]any)
+		if w := want[name]; !reflect.DeepEqual(schema["required"], w.required) {
+			t.Errorf("%s: required %v", name, schema["required"])
+		} else if w.optional != "" {
+			d, _ := schema["properties"].(map[string]any)[w.optional].(map[string]any)["description"].(string)
+			if !strings.HasPrefix(d, "Omit it when") || !strings.Contains(tool["description"].(string), "leave "+w.optional+" out") {
+				t.Errorf("%s: %q / %q", name, d, tool["description"])
+			}
+		}
+		if v := meta.SchemaViolations(schema); len(v) > 0 {
+			t.Errorf("%s: %v", name, v)
+		}
+	}
+}

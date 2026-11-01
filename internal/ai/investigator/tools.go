@@ -102,6 +102,33 @@ const (
 var Codes = []Code{LimitReached, BaseMoved, DraftChanged, ProposalNotReady, ProposalDecided, RecheckFailed, RunNotCompleted,
 	AlreadyRun, NotInInvestigation, ModeMismatch, UnknownTool, InvalidArguments, ServiceUnavailable, DatasetStorageFailed, Internal}
 
+// hints are the codes' hints, as the schema's ErrorObservation pins them
+// (its allOf: if the error's code is c, the hint is hints[c]).
+var hints = map[Code]string{
+	LimitReached:         "This tool's cap for the investigation is used up, so the call had no effect; use another offered tool or finish.",
+	BaseMoved:            "The model has a newer version than this investigation's base, so no what-if or edit can be proposed, saved or written on that base.",
+	DraftChanged:         "The model's draft holds a person's changes or has moved, so nothing was written into it.",
+	ProposalNotReady:     "Only a ready proposal of this investigation can be saved or written, and that one is not ready.",
+	ProposalDecided:      "A person already approved or rejected that proposal, so it can no longer be saved or written.",
+	RecheckFailed:        "The server checked that proposal again against the model and refused it, so it was not saved or written.",
+	RunNotCompleted:      "Only a completed what-if run of this investigation can be explained, and that run did not complete.",
+	AlreadyRun:           "That scenario has already been run in this investigation; its result is in an earlier step.",
+	NotInInvestigation:   "That ID is not one this investigation's results gave you; use only the IDs from its earlier results.",
+	ModeMismatch:         "That tool belongs to the other mode of investigation; call only a tool this turn offers.",
+	UnknownTool:          "That is not a tool this turn offers; call exactly one of the tools offered.",
+	InvalidArguments:     "The call does not match the tool's input schema at this path (an empty path is the whole call); leave out a member you do not use, and never write it as the string null.",
+	ServiceUnavailable:   "A service the server needed stayed unavailable through its retries, so the call did not complete; it was not the call's fault.",
+	DatasetStorageFailed: "The server could not store the run's data through its retries, so the call did not complete; it was not the call's fault.",
+	Internal:             "The server failed while carrying out the call; it was not the call's fault.",
+}
+
+// Hint is code c's hint: the one fixed English sentence a refused or
+// failed step's observation shows the planner (H-061 A9), saying why and
+// what to change. It is the server's text, never anything a call held: the
+// observation is built from the code, the path and the budget only. ""
+// for a code that is not one.
+func Hint(c Code) string { return hints[c] }
+
 // Outcome is what the AI said when it called finish: kept and shown as its
 // claim, never as the server's verdict.
 type Outcome string
@@ -253,7 +280,14 @@ func (r *Refusal) Unwrap() error { return ErrRefused }
 // JSON object of at most MaxArgumentBytes that the tool's schema takes
 // (every member, nothing else; no duplicate member, invalid UTF-8 or
 // trailing data), and its text must be NFC. Any other input is a *Refusal.
-func Decode(m Mode, name string, raw []byte) (Call, error) {
+// A member left out is refused, one that may be null included: only a
+// planner turn's decoder (Decoder.DecodeCall) adds such a member as null
+// first.
+func Decode(m Mode, name string, raw []byte) (Call, error) { return decode(m, name, raw, len(raw)) }
+
+// decode is Decode of raw, whose size as the model wrote it is written
+// (more than len(raw) only when DecodeCall added a null member).
+func decode(m Mode, name string, raw []byte, written int) (Call, error) {
 	if _, ok := byMode[m]; !ok {
 		return Call{}, &Refusal{Internal, ""}
 	}
@@ -264,7 +298,7 @@ func Decode(m Mode, name string, raw []byte) (Call, error) {
 		return Call{}, &Refusal{UnknownTool, ""}
 	case !t.Offered(m):
 		return Call{}, &Refusal{ModeMismatch, ""}
-	case len(raw) > MaxArgumentBytes:
+	case written > MaxArgumentBytes:
 		return Call{}, &Refusal{InvalidArguments, ""}
 	}
 	issues, err := validate.Document(raw, Schema(t), string(InvalidArguments))

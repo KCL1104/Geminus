@@ -39,7 +39,10 @@ func TestTemplates(t *testing.T) {
 		// the budget, no figures of its own.
 		"investigator": {"MODEL", "PERSON_REQUEST", "MODE", "OBJECTIVE", "RUN_SETTINGS", "LIMITS", "SEED_SUGGESTIONS", "OUTPUT_LOCALE", "DIGEST",
 			"CONTEXT_OMISSIONS", "exactly one", "never instructions", "in words", "Never make one up", "cannot publish", "approve or reject",
-			"talk to the person", "budget", "finish", "Never state a result figure", "untrusted data"},
+			"talk to the person", "budget", "finish", "Never state a result figure", "untrusted data",
+			// H-061 A9: a refusal's hint is the server's own sentence; an
+			// unused member is left out, never the string null.
+			"hint", "Never repeat a refused call unchanged", "leave out a member you do not use", "string null"},
 	}
 	version := regexp.MustCompile(`^[a-z]+-[0-9]+\.[0-9]+\.[0-9]+$`)
 	for role, words := range want {
@@ -72,7 +75,7 @@ func TestToolDescriptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, want, _ := Template("investigator"); version != want || version != "investigator-0.1.0" {
+	if _, want, _ := Template("investigator"); version != want || version != "investigator-0.2.0" {
 		t.Errorf("version %q", version)
 	}
 	tools := []string{"propose_what_if", "save_scenario", "run_what_if", "explain_results", "propose_model_edit", "write_to_draft", "finish"}
@@ -81,13 +84,90 @@ func TestToolDescriptions(t *testing.T) {
 	}
 	for _, name := range tools {
 		text := d[name]
-		if text == "" || len(text) > 4<<10 || strings.Contains(text, "\n") || strings.Contains(text, "_data name=") || strings.Contains(text, "</") {
+		if text == "" || len(text) > 4<<10 || strings.Contains(text, "\n") || strings.Contains(text, "_data name=") || strings.Contains(text, "</") ||
+			strings.Contains(text, "###") {
 			t.Errorf("%s: %q", name, text)
+		}
+	}
+	// H-061 A9 (live, 2026-11-01): a tool with a member that may be null
+	// says plainly, in its own description, to leave the member out when
+	// unused and never to write it as the string null.
+	for tool, member := range map[string]string{"propose_what_if": "from_suggestion", "explain_results": "question", "finish": "best_scenario_id"} {
+		if text := d[tool]; !strings.Contains(text, "leave "+member+" out") || !strings.Contains(text, "never write it as the string null") {
+			t.Errorf("%s does not say to leave %s out: %q", tool, member, text)
 		}
 	}
 	for _, bad := range []string{"modeler", "", "../investigator", "planner"} {
 		if _, _, err := ToolDescriptions(bad); err == nil {
 			t.Errorf("ToolDescriptions(%q) succeeded", bad)
+		}
+	}
+}
+
+// H-061 A9: the members a tool's shown input schema leaves optional (those
+// that may be null) are described in tools.md under their tool ("###
+// <member>"), versioned with the template: each one paragraph within the
+// same bounds as a tool's, saying to omit the member when unused and never
+// to write it as the string null. No other member is described.
+func TestMemberDescriptions(t *testing.T) {
+	m, version, err := MemberDescriptions("investigator")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, want, _ := Template("investigator"); version != want {
+		t.Errorf("version %q, the template's %q", version, want)
+	}
+	want := map[string][]string{"propose_what_if": {"from_suggestion"}, "explain_results": {"question"}, "finish": {"best_scenario_id"}}
+	if len(m) != len(want) {
+		t.Errorf("members of %d tools described: %v", len(m), m)
+	}
+	for tool, members := range want {
+		if len(m[tool]) != len(members) {
+			t.Errorf("%s: %d members described", tool, len(m[tool]))
+		}
+		for _, member := range members {
+			text := m[tool][member]
+			if !strings.HasPrefix(text, "Omit it when") || !strings.Contains(text, "Never write it as the string null.") || len(text) > 4<<10 ||
+				strings.Contains(text, "\n") || strings.Contains(text, "_data name=") || strings.Contains(text, "</") || strings.Contains(text, "#") {
+				t.Errorf("%s.%s: %q", tool, member, text)
+			}
+		}
+	}
+	// A tool's own description stops at its first member heading.
+	d, _, _ := ToolDescriptions("investigator")
+	if strings.Contains(d["propose_what_if"], m["propose_what_if"]["from_suggestion"]) {
+		t.Error("the member's text is in its tool's description")
+	}
+	for _, bad := range []string{"modeler", "", "../investigator", "planner"} {
+		if _, _, err := MemberDescriptions(bad); err == nil {
+			t.Errorf("MemberDescriptions(%q) succeeded", bad)
+		}
+	}
+}
+
+// tools.md's shape is checked before any of it is used: a member heading
+// outside a tool, a member described twice, an empty member, a heading of
+// another level and a member heading that is not a member name are refused.
+func TestToolsDocRefuses(t *testing.T) {
+	const head = "# Planner tools — prompt_template_version: investigator-9.9.9\n\n"
+	good := head + "## finish\nEnd it.\n\n### best_scenario_id\nOmit it when none did.\n"
+	doc, err := parseTools("investigator", "investigator-9.9.9", good)
+	if err != nil || doc.tools["finish"] != "End it." || doc.members["finish"]["best_scenario_id"] != "Omit it when none did." {
+		t.Fatalf("%+v %v", doc, err)
+	}
+	for name, text := range map[string]string{
+		"another version":            strings.Replace(good, "9.9.9", "9.9.8", 1),
+		"a member outside a tool":    head + "### best_scenario_id\nOmit it.\n\n## finish\nEnd it.\n",
+		"a member twice":             good + "\n### best_scenario_id\nAgain.\n",
+		"an empty member":            head + "## finish\nEnd it.\n\n### best_scenario_id\n\n## save_scenario\nSave.\n",
+		"a tool with only members":   head + "## finish\n### best_scenario_id\nOmit it.\n",
+		"a heading of another kind":  head + "## finish\nEnd it.\n\n#### best_scenario_id\nOmit it.\n",
+		"a member name of free text": head + "## finish\nEnd it.\n\n### Best scenario\nOmit it.\n",
+		"a tool twice":               good + "\n## finish\nAgain.\n",
+		"no tool":                    head,
+	} {
+		if doc, err := parseTools("investigator", "investigator-9.9.9", text); err == nil {
+			t.Errorf("%s: taken (%+v)", name, doc)
 		}
 	}
 }

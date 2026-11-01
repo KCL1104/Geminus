@@ -514,6 +514,7 @@ const finishArgs: FinishArguments = { outcome: "improvement_found", best_scenari
 const refusedObservation: ErrorObservation = {
   is_error: true,
   error: { code: "PROPOSAL_DECIDED", path: "/proposal_id" },
+  hint: "A person already approved or rejected that proposal, so it can no longer be saved or written.",
   budget: { what_ifs_left: 2, runs_left: 4, explanations_left: 4, steps_left: 12 },
 };
 const editCaps: InvestigationCaps = { what_ifs: 1, runs: 0, explanations: 0, steps: 14, minutes: 20 };

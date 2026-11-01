@@ -54,8 +54,9 @@ import (
 // "replayed as returned"; the multi-turn shape is H-061's probe P1, NOT RUN
 // live). Without a replay a step is sent as below. A planner's tool input
 // schemas are the registry's closed projections
-// (internal/ai/investigator.ProviderTools), so they pass SchemaViolations;
-// the client and the registry's decoder check the full schema.
+// (internal/ai/investigator.ProviderTools: a member that may be null is
+// optional and described, H-061 A9), so they pass SchemaViolations; the
+// client and the registry's decoder check the full schema.
 //
 // A request with images, web research or a repair is never a turn. Every tool's input schema is checked
 // against the same documented limits as an output schema (SchemaViolations)

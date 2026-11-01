@@ -40,64 +40,125 @@ func Template(role string) (text, version string, err error) {
 	return text, m[1], nil
 }
 
-var toolHeading = regexp.MustCompile(`^## ([a-z][a-z0-9_]{0,63})$`)
+var (
+	toolHeading   = regexp.MustCompile(`^## ([a-z][a-z0-9_]{0,63})$`)
+	memberHeading = regexp.MustCompile(`^### ([a-z][a-z0-9_]{0,63})$`)
+)
 
 // ToolDescriptions returns the descriptions of role's tools by tool name
 // (prompts/<role>/tools.md: after its version line, one "## <tool>" heading
-// per tool and its description as one paragraph) and their version, which
-// must be the role's template's: the descriptions are prompt text, reviewed
-// and versioned with it (H-061 §9).
+// per tool and its description as one paragraph, then the descriptions of
+// some of its members: MemberDescriptions) and their version, which must be
+// the role's template's: the descriptions are prompt text, reviewed and
+// versioned with it (H-061 §9).
 func ToolDescriptions(role string) (map[string]string, string, error) {
-	_, version, err := Template(role)
+	doc, err := readTools(role)
 	if err != nil {
 		return nil, "", err
 	}
+	return doc.tools, doc.version, nil
+}
+
+// MemberDescriptions returns the descriptions tools.md gives some of role's
+// tools' arguments, by tool and member name: under a tool's description,
+// one "### <member>" heading per member and its description as one
+// paragraph, and their version, the template's (H-061 A9: a member the
+// tool's shown input schema leaves optional, the one that may be null,
+// says to omit it when unused). A tool none of whose members is described
+// is absent.
+func MemberDescriptions(role string) (map[string]map[string]string, string, error) {
+	doc, err := readTools(role)
+	if err != nil {
+		return nil, "", err
+	}
+	return doc.members, doc.version, nil
+}
+
+// toolsDoc is a role's tools.md, read.
+type toolsDoc struct {
+	tools   map[string]string
+	members map[string]map[string]string
+	version string
+}
+
+func readTools(role string) (toolsDoc, error) {
+	_, version, err := Template(role)
+	if err != nil {
+		return toolsDoc{}, err
+	}
 	data, err := fs.ReadFile(role + "/tools.md")
 	if err != nil {
-		return nil, "", fmt.Errorf("prompts: no tools for %q", role)
+		return toolsDoc{}, fmt.Errorf("prompts: no tools for %q", role)
 	}
-	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	return parseTools(role, version, string(data))
+}
+
+// parseTools reads role's tools.md text, whose version line must name
+// version: each tool's section is its heading, its description and its
+// members' sections, each a heading and a description; nothing else.
+func parseTools(role, version, text string) (toolsDoc, error) {
+	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
 	m := versionLine.FindStringSubmatch(lines[0])
 	if m == nil || m[1] != version {
-		return nil, "", fmt.Errorf("prompts: %s/tools.md does not start with its template's prompt_template_version", role)
+		return toolsDoc{}, fmt.Errorf("prompts: %s/tools.md does not start with its template's prompt_template_version", role)
 	}
-	out := map[string]string{}
-	name := ""
+	doc := toolsDoc{tools: map[string]string{}, members: map[string]map[string]string{}, version: version}
+	tool, member := "", ""
 	var body []string
 	flush := func() error {
-		if name == "" {
+		if tool == "" {
 			return nil
 		}
 		text := strings.TrimSpace(strings.Join(body, " "))
-		if text == "" {
-			return fmt.Errorf("prompts: %s/tools.md: the tool %s has no description", role, name)
+		body = nil
+		switch {
+		case text == "" && member != "":
+			return fmt.Errorf("prompts: %s/tools.md: the member %s of %s has no description", role, member, tool)
+		case text == "":
+			return fmt.Errorf("prompts: %s/tools.md: the tool %s has no description", role, tool)
+		case member != "":
+			if doc.members[tool] == nil {
+				doc.members[tool] = map[string]string{}
+			}
+			doc.members[tool][member] = text
+		default:
+			doc.tools[tool] = text
 		}
-		out[name] = text
 		return nil
 	}
 	for _, line := range lines[1:] {
 		if h := toolHeading.FindStringSubmatch(line); h != nil {
 			if err := flush(); err != nil {
-				return nil, "", err
+				return toolsDoc{}, err
 			}
-			if _, dup := out[h[1]]; dup {
-				return nil, "", fmt.Errorf("prompts: %s/tools.md names %s twice", role, h[1])
+			if _, dup := doc.tools[h[1]]; dup {
+				return toolsDoc{}, fmt.Errorf("prompts: %s/tools.md names %s twice", role, h[1])
 			}
-			name, body = h[1], nil
+			tool, member = h[1], ""
 			continue
 		}
-		if strings.HasPrefix(line, "#") || (name == "" && strings.TrimSpace(line) != "") {
-			return nil, "", fmt.Errorf("prompts: %s/tools.md: text outside a tool's section", role)
+		if h := memberHeading.FindStringSubmatch(line); h != nil && tool != "" {
+			if err := flush(); err != nil {
+				return toolsDoc{}, err
+			}
+			if _, dup := doc.members[tool][h[1]]; dup {
+				return toolsDoc{}, fmt.Errorf("prompts: %s/tools.md describes %s of %s twice", role, h[1], tool)
+			}
+			member = h[1]
+			continue
+		}
+		if strings.HasPrefix(line, "#") || (tool == "" && strings.TrimSpace(line) != "") {
+			return toolsDoc{}, fmt.Errorf("prompts: %s/tools.md: text outside a tool's section", role)
 		}
 		if strings.TrimSpace(line) != "" {
 			body = append(body, strings.TrimSpace(line))
 		}
 	}
 	if err := flush(); err != nil {
-		return nil, "", err
+		return toolsDoc{}, err
 	}
-	if len(out) == 0 {
-		return nil, "", fmt.Errorf("prompts: %s/tools.md describes no tool", role)
+	if len(doc.tools) == 0 {
+		return toolsDoc{}, fmt.Errorf("prompts: %s/tools.md describes no tool", role)
 	}
-	return out, version, nil
+	return doc, nil
 }
