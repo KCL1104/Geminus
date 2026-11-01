@@ -305,7 +305,13 @@ for (const locale of locales) {
           const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
           for (let n = walker.nextNode(); n; n = walker.nextNode()) {
             const text = norm(n.textContent);
-            if (text && /\p{L}/u.test(text) && !isData(n.parentElement)) out.push([text, norm(n.parentElement?.textContent)]);
+            // A figure's words around its <data> (the hours of a long time, H-073's Figure) are a span of
+            // words only, beside the <data>: they are judged with the whole figure, as one catalog message.
+            // A span that holds <data> itself (an interval's "95% CI {low} to {high}") is its own message.
+            const p = n.parentElement;
+            const wordsOnly = !p?.querySelector(":scope > data") && !!p?.parentElement?.querySelector(":scope > data");
+            const whole = wordsOnly ? p!.parentElement : p;
+            if (text && /\p{L}/u.test(text) && !isData(p)) out.push([text, norm(whole?.textContent)]);
           }
           for (const el of [root, ...root.querySelectorAll("[aria-label], [aria-valuetext]")]) {
             for (const a of ["aria-label", "aria-valuetext"]) {
