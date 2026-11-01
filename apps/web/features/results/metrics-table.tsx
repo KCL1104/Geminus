@@ -11,6 +11,7 @@ import { useI18n } from "../../lib/i18n/provider";
 import { LineKey } from "../simulations/run-status";
 import { formatAbsolute, formatRelative, formatValue, type MetricUnit } from "./format";
 import type { Interval, MetricGroup, MetricLabel, MetricRow } from "./metrics";
+import { metricRowId } from "./row-id";
 import styles from "./results.module.css";
 
 const groups: readonly MetricGroup[] = ["run", "resources", "queues"];
@@ -119,8 +120,9 @@ function Head() {
 }
 
 function Row({ row }: { row: MetricRow }) {
+  // H-073 (4): the AI explanation's evidence links here (evidence-link.tsx), and focus lands on the row.
   return (
-    <tr role="row" data-status={row.status}>
+    <tr role="row" data-status={row.status} id={metricRowId(row.path)} tabIndex={-1}>
       <th scope="row" role="rowheader">
         <MetricName label={row.label} />
       </th>

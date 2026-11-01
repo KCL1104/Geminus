@@ -1,0 +1,64 @@
+H-073 slice 3, the review's two findings (on a1c4321), 2026-11-01.
+
+1. A fingerprint opened by hover could not be closed with Escape (WCAG 1.4.13)
+   The chip opens over the rows below it. The only Escape handler was the
+   span's onKeyDown, and a browser sends a key to the focused element, so a
+   pointer resting on a fingerprint with the focus elsewhere could not close
+   it. Also: Escape while focused and hovered, then the pointer leaving,
+   cleared the dismissal and the chip opened again through :focus.
+   Fix (apps/web/features/results/proof.tsx, Hash): while the chip shows on
+   hover, a capture listener on the document takes Escape (not during IME
+   composition), closes the chip and stops that Escape there; a dismissed
+   chip stays hidden until neither the pointer nor the focus is on it.
+   Tests first (apps/web/tests/results-proof.test.tsx):
+     - "hides a value opened by hover on Escape, wherever the key goes, and
+       lets other Escapes through"
+     - "keeps a value hidden after Escape until neither the pointer nor the
+       focus is on it"
+   Before the fix: npx vitest run tests/results-proof.test.tsx
+     Tests  4 failed | 20 passed (24)   (the two new tests, in both projects
+     wonder-on and wonder-off; "expected false to be true" at the hover
+     Escape and at the pointer leaving while focused)
+   After the fix: Tests 24 passed (24).
+   Mutation checks: dropping the document listener's stopPropagation fails
+   the first new test; resetting the dismissal on pointer leave while focused
+   fails the second. Both restored.
+
+2. The utilization relabel changes the accepted /ui-gallery/results screenshots
+   "Utilization: {name}" now reads "Utilization (counts blocked and changeover
+   time): {name}" (zh-Hant 使用率（含阻塞與換線時間）：{name}), as H-073 (3)
+   asks. The gallery results page shows four such rows, so the 8 accepted
+   baselines change (wrapped labels, a taller page):
+     apps/web-e2e/tests/__screenshots__/screenshots.spec.ts/
+       ui-gallery-results-en-1280.png        ui-gallery-results-en-1280-dark.png
+       ui-gallery-results-en-390.png         ui-gallery-results-en-390-dark.png
+       ui-gallery-results-zh-Hant-1280.png   ui-gallery-results-zh-Hant-1280-dark.png
+       ui-gallery-results-zh-Hant-390.png    ui-gallery-results-zh-Hant-390-dark.png
+   CI's "browser checks" job (E2E_SCREENSHOTS=1) will fail on these 8 until
+   they are re-taken by the ci workflow's workflow_dispatch with
+   update_screenshots on, in CI's pinned container, on this branch, and a
+   person accepts them side by side (TEST-033; as H-071 did). This branch
+   does not change them: screenshots compare only in that container, and
+   this slice does not push. From reading the code (not from a run), the
+   label is this slice's only change that the screenshot pages show: the
+   two new cards are not mounted, and no screenshot page shows an AI
+   explanation, where the evidence links are. Follow T-045's order:
+   re-take and accept the baselines on the branch before merging, so
+   main's CI stays green.
+   No local test can fail first for this: the comparison runs only there.
+
+Gates (worktree /home/kuoba123/Geminus-h073-s3, Node 24.21.0):
+  make frontend-test                                   exit 0
+    eslint --max-warnings=0, tsc --noEmit, vitest: Test Files 136 passed (136),
+    Tests 2828 passed (2828)
+  PATH=$PWD/.venv/bin:$PATH make spec-check            exit 0
+  .venv/bin/python scripts/gen_ts_contracts.py --check PASS_TS_CONTRACTS_FRESH
+    (files 17, types 165; no contract touched)
+  go test                                              not applicable: no Go
+    package touched by these fixes
+
+NOT RUN:
+  make e2e-test (the machine is shared; it runs once after merging)
+  the 72 screenshot comparisons, including the 8 above (CI's pinned
+    container only; E2E_SCREENSHOTS=1)
+  make backend-test / backend-race / integration-test (no Go or SQL touched)

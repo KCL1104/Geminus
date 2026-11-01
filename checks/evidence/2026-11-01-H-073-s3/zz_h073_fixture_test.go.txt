@@ -1,0 +1,67 @@
+package electronicsline_test
+
+// TEMPORARY (H-073 slice 3): writes a real engine run of the electronics
+// line template, its baseline and the demo's "Fourth FCT tester" what-if,
+// and the comparison kernel's answer for the pair, for the web app's
+// line-constraint tests (the Results give the rows their units and intervals). Deleted before commit; the generator is kept in
+// checks/evidence/2026-11-01-H-073-s3/.
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	cmpk "github.com/kcl1104/geminus/internal/results/compare"
+	"github.com/kcl1104/geminus/internal/simulation"
+)
+
+func TestWriteH073Fixture(t *testing.T) {
+	out := os.Getenv("H073_OUT")
+	if out == "" {
+		t.Skip("set H073_OUT")
+	}
+	ir := tmpl(t)
+	// The lock's config (testdata/template-run-lock.json): 28 days, 7 warm-up, 5 replications, seed 2026.
+	base := runInput(t, ir, 28, 7, 5, 2026)
+	scen := clone(t, ir)
+	if scen.Resources[3].ID != "fct_tester" || scen.Resources[3].Capacity != 3 {
+		t.Fatalf("resource 3 is %s with %d", scen.Resources[3].ID, scen.Resources[3].Capacity)
+	}
+	scen.Resources[3].Capacity = 4
+	si := runInput(t, scen, 28, 7, 5, 2026)
+	si.ModelHash = base.ModelHash // the pinned version's
+	b, err := engine().Run(context.Background(), base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := engine().Run(context.Background(), si, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.RunID, s.RunID = "sim_01M4YDQK00TA00000000H073BA", "sim_01M4YDQK00TA00000000H073SC"
+	patch := `[{"op":"test","path":"/resources/3/capacity","value":3},{"op":"replace","path":"/resources/3/capacity","value":4}]`
+	run := func(r *simulation.Result, in simulation.RunInput, p string) cmpk.Run {
+		return cmpk.Run{ID: r.RunID, ModelVersionID: "mv_01M4YDQK00TA0000000000H073", EngineVersion: r.EngineVersion,
+			DatasetManifestHash: r.Reproducibility.DatasetManifestHash, ModelHash: in.ModelHash, EffectiveModelHash: in.EffectiveModelHash,
+			ConfigHash: r.Reproducibility.ConfigHash, ScenarioPatch: []byte(p), Config: in.Config, Result: r}
+	}
+	c, err := cmpk.Compare(run(b, base, "[]"), run(s, si, patch))
+	if err != nil {
+		t.Fatal(err)
+	}
+	write := func(name string, v any) {
+		data, err := json.MarshalIndent(v, "", " ")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(out, name), append(data, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("electronics-line-comparison.json", c)
+	write("electronics-line-model.json", ir)
+	write("electronics-line-baseline-result.json", b)
+	write("electronics-line-scenario-result.json", s)
+}

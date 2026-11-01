@@ -1,0 +1,3575 @@
+{
+ "baseline_run_id": "sim_01M4YDQK00TA00000000H073BA",
+ "scenario_run_id": "sim_01M4YDQK00TA00000000H073SC",
+ "comparable": true,
+ "incomparable_reasons": [],
+ "metrics": [
+  {
+   "metric_path": "/metrics/throughput/mean",
+   "baseline": 10733.2,
+   "scenario": 10737.8,
+   "absolute_delta": 4.599999999998545,
+   "relative_delta": 0.0004285767525061067,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/throughput/p50",
+   "baseline": 10731,
+   "scenario": 10738,
+   "absolute_delta": 7,
+   "relative_delta": 0.0006523157208088715,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/throughput/p95",
+   "baseline": 10756.4,
+   "scenario": 10772,
+   "absolute_delta": 15.600000000000364,
+   "relative_delta": 0.001450299356662114,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/lead_time_minutes/mean",
+   "baseline": 1242.8770379607702,
+   "scenario": 1140.592495311363,
+   "absolute_delta": -102.28454264940706,
+   "relative_delta": -0.08229659051166374,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/lead_time_minutes/p50",
+   "baseline": 1028.792175,
+   "scenario": 978.2793333333333,
+   "absolute_delta": -50.51284166666676,
+   "relative_delta": -0.049099169778062085,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/lead_time_minutes/p95",
+   "baseline": 3977.4494683333332,
+   "scenario": 3925.5974566666664,
+   "absolute_delta": -51.85201166666684,
+   "relative_delta": -0.013036497906381785,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/failure_count/mean",
+   "baseline": 1797,
+   "scenario": 1797,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/failure_count/p50",
+   "baseline": 1803,
+   "scenario": 1806,
+   "absolute_delta": 3,
+   "relative_delta": 0.0016638935108153079,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/failure_count/p95",
+   "baseline": 1834.2,
+   "scenario": 1838,
+   "absolute_delta": 3.7999999999999545,
+   "relative_delta": 0.002071747900992233,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/rework_count/mean",
+   "baseline": 1734.6,
+   "scenario": 1734.6,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/rework_count/p50",
+   "baseline": 1746,
+   "scenario": 1743,
+   "absolute_delta": -3,
+   "relative_delta": -0.001718213058419244,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/rework_count/p95",
+   "baseline": 1771,
+   "scenario": 1773.2,
+   "absolute_delta": 2.2000000000000455,
+   "relative_delta": 0.0012422360248447461,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/additional_metrics/replication_mean_lead_time_minutes/mean",
+   "baseline": 1242.8968232229543,
+   "scenario": 1140.6038415139312,
+   "absolute_delta": -102.29298170902302,
+   "relative_delta": -0.08230207029073196,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/additional_metrics/replication_mean_lead_time_minutes/p50",
+   "baseline": 1240.7096069780616,
+   "scenario": 1130.3572499548843,
+   "absolute_delta": -110.35235702317732,
+   "relative_delta": -0.08894293749522694,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/additional_metrics/replication_mean_lead_time_minutes/p95",
+   "baseline": 1277.4960764387913,
+   "scenario": 1161.36977207849,
+   "absolute_delta": -116.12630436030122,
+   "relative_delta": -0.09090149590441046,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.aoi/mean",
+   "baseline": 0.9880674113425926,
+   "scenario": 0.9880674113425926,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.aoi/p50",
+   "baseline": 0.9873248807870371,
+   "scenario": 0.9873248807870371,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.aoi/p95",
+   "baseline": 0.9912486208333333,
+   "scenario": 0.9912486208333333,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.burn_in/mean",
+   "baseline": 0.9777911365985694,
+   "scenario": 0.9777911365985694,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.burn_in/p50",
+   "baseline": 0.9769098033019792,
+   "scenario": 0.9769098033019792,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.burn_in/p95",
+   "baseline": 0.9809853039143641,
+   "scenario": 0.9809853039143641,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.fct/mean",
+   "baseline": 0.952588168595679,
+   "scenario": 0.9527134510995371,
+   "absolute_delta": 0.00012528250385812623,
+   "relative_delta": 0.0001315180137528054,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.fct/p50",
+   "baseline": 0.9538495050154321,
+   "scenario": 0.9506174273726852,
+   "absolute_delta": -0.003232077642746911,
+   "relative_delta": -0.0033884565916869874,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.fct/p95",
+   "baseline": 0.956634350308642,
+   "scenario": 0.9585696807870371,
+   "absolute_delta": 0.0019353304783951142,
+   "relative_delta": 0.0020230618707876343,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.ict/mean",
+   "baseline": 0.9713517648148148,
+   "scenario": 0.9712827570601853,
+   "absolute_delta": -0.00006900775462947983,
+   "relative_delta": -0.00007104301153211571,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.ict/p50",
+   "baseline": 0.9716187575231482,
+   "scenario": 0.9716187575231482,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.ict/p95",
+   "baseline": 0.9787597787037038,
+   "scenario": 0.9786780634259259,
+   "absolute_delta": -0.000081715277777894,
+   "relative_delta": -0.00008348859398995732,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/availability.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/availability.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/availability.smt/mean",
+   "baseline": 0.9479445375000001,
+   "scenario": 0.9479006884259258,
+   "absolute_delta": -0.00004384907407428695,
+   "relative_delta": -0.00004625700380101294,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.smt/p50",
+   "baseline": 0.9460708159722222,
+   "scenario": 0.9460708159722222,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/availability.smt/p95",
+   "baseline": 0.955177712037037,
+   "scenario": 0.9550717592592592,
+   "absolute_delta": -0.00010595277777780687,
+   "relative_delta": -0.00011092467552645172,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.burn_in/mean",
+   "baseline": 0.9791072870914214,
+   "scenario": 0.9786599987706266,
+   "absolute_delta": -0.00044728832079476977,
+   "relative_delta": -0.00045683279727546907,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.burn_in/p50",
+   "baseline": 0.9795620437956204,
+   "scenario": 0.9783514492753623,
+   "absolute_delta": -0.0012105945202580681,
+   "relative_delta": -0.0012358528261948983,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.burn_in/p95",
+   "baseline": 0.9819807204062202,
+   "scenario": 0.9841385534173855,
+   "absolute_delta": 0.0021578330111653443,
+   "relative_delta": 0.002197429100515033,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.smt/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.smt/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batch_fill_ratio.smt/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.burn_in/mean",
+   "baseline": 275.8,
+   "scenario": 275.8,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.burn_in/p50",
+   "baseline": 276,
+   "scenario": 276,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.burn_in/p95",
+   "baseline": 277.8,
+   "scenario": 277,
+   "absolute_delta": -0.8000000000000114,
+   "relative_delta": -0.002879769618430566,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.smt/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.smt/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/batches_started.smt/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.aoi/mean",
+   "baseline": 0.4176226299603174,
+   "scenario": 0.10573578328924163,
+   "absolute_delta": -0.3118868466710758,
+   "relative_delta": -0.7468150054529166,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.aoi/p50",
+   "baseline": 0.38728872960758376,
+   "scenario": 0.11133594025573192,
+   "absolute_delta": -0.27595278935185186,
+   "relative_delta": -0.7125247089721876,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.aoi/p95",
+   "baseline": 0.5310605335097002,
+   "scenario": 0.12258073478835979,
+   "absolute_delta": -0.4084797987213404,
+   "relative_delta": -0.7691774721457045,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.burn_in/mean",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.burn_in/p50",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.burn_in/p95",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.fct/mean",
+   "baseline": 0.00023854504703115813,
+   "scenario": 0.0001190665233686067,
+   "absolute_delta": -0.00011947852366255143,
+   "relative_delta": -0.5008635691645505,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.fct/p50",
+   "baseline": 0,
+   "scenario": 0.0000460564098324515,
+   "absolute_delta": 0.0000460564098324515,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.fct/p95",
+   "baseline": 0.0008317743239271016,
+   "scenario": 0.00038423916997354493,
+   "absolute_delta": -0.00044753515395355665,
+   "relative_delta": -0.5380487724610018,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.ict/mean",
+   "baseline": 0.26398120618386245,
+   "scenario": 0.004876127700617284,
+   "absolute_delta": -0.25910507848324515,
+   "relative_delta": -0.9815285043541279,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.ict/p50",
+   "baseline": 0.269072011133157,
+   "scenario": 0.004910951278659612,
+   "absolute_delta": -0.2641610598544974,
+   "relative_delta": -0.981748561442798,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.ict/p95",
+   "baseline": 0.3776794334766314,
+   "scenario": 0.005494363370811287,
+   "absolute_delta": -0.37218507010582014,
+   "relative_delta": -0.9854523098590932,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.pack_ship/mean",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.pack_ship/p50",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.pack_ship/p95",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.smt/mean",
+   "baseline": 0.12701863657407406,
+   "scenario": 0.004398519951499118,
+   "absolute_delta": -0.12262011662257494,
+   "relative_delta": -0.9653710662455898,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.smt/p50",
+   "baseline": 0.1496105715388007,
+   "scenario": 0.004661337081128748,
+   "absolute_delta": -0.14494923445767194,
+   "relative_delta": -0.9688435313548691,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/blocking_ratio.smt/p95",
+   "baseline": 0.16943383201058201,
+   "scenario": 0.005192130731922398,
+   "absolute_delta": -0.1642417012786596,
+   "relative_delta": -0.9693559977348672,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.aoi/mean",
+   "baseline": 0.005682185074955907,
+   "scenario": 0.005682185074955907,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.aoi/p50",
+   "baseline": 0.006035771053791887,
+   "scenario": 0.006035771053791887,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.aoi/p95",
+   "baseline": 0.007133661816578483,
+   "scenario": 0.007133661816578483,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.burn_in/mean",
+   "baseline": 0.02220886340143053,
+   "scenario": 0.02220886340143053,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.burn_in/p50",
+   "baseline": 0.023090196698020773,
+   "scenario": 0.023090196698020773,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.burn_in/p95",
+   "baseline": 0.024222045965608466,
+   "scenario": 0.024222045965608466,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.fct/mean",
+   "baseline": 0.023359721560846564,
+   "scenario": 0.023051415647045853,
+   "absolute_delta": -0.0003083059138007105,
+   "relative_delta": -0.013198184447432145,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.fct/p50",
+   "baseline": 0.02332316541740153,
+   "scenario": 0.02397370907738095,
+   "absolute_delta": 0.0006505436599794218,
+   "relative_delta": 0.02789259726700939,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.fct/p95",
+   "baseline": 0.026406304159318047,
+   "scenario": 0.025145642250881832,
+   "absolute_delta": -0.0012606619084362149,
+   "relative_delta": -0.04774094476948462,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.ict/mean",
+   "baseline": 0.013832297123015874,
+   "scenario": 0.013832297123015874,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.ict/p50",
+   "baseline": 0.013514877369929453,
+   "scenario": 0.013514877369929453,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.ict/p95",
+   "baseline": 0.017477317294973545,
+   "scenario": 0.017477317294973545,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.smt/mean",
+   "baseline": 0.0250226541005291,
+   "scenario": 0.0250226541005291,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.smt/p50",
+   "baseline": 0.025680563822751322,
+   "scenario": 0.025680563822751322,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/down_ratio.smt/p95",
+   "baseline": 0.0287334055335097,
+   "scenario": 0.0287334055335097,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.aoi/mean",
+   "baseline": 0.97,
+   "scenario": 0.97,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.aoi/p50",
+   "baseline": 0.97,
+   "scenario": 0.97,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.aoi/p95",
+   "baseline": 0.97,
+   "scenario": 0.97,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.burn_in/mean",
+   "baseline": 0.9949999999999999,
+   "scenario": 0.9949999999999999,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.burn_in/p50",
+   "baseline": 0.995,
+   "scenario": 0.995,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.burn_in/p95",
+   "baseline": 0.995,
+   "scenario": 0.995,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.fct/mean",
+   "baseline": 0.93,
+   "scenario": 0.93,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.fct/p50",
+   "baseline": 0.93,
+   "scenario": 0.93,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.fct/p95",
+   "baseline": 0.93,
+   "scenario": 0.93,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.ict/mean",
+   "baseline": 0.95,
+   "scenario": 0.95,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.ict/p50",
+   "baseline": 0.95,
+   "scenario": 0.95,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/fpy_input.ict/p95",
+   "baseline": 0.95,
+   "scenario": 0.95,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.aoi/mean",
+   "baseline": 0.12194149173280425,
+   "scenario": 0.2694779215167548,
+   "absolute_delta": 0.14753642978395057,
+   "relative_delta": 1.2098952348986303,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.aoi/p50",
+   "baseline": 0.11735015542328042,
+   "scenario": 0.26347731371252203,
+   "absolute_delta": 0.1461271582892416,
+   "relative_delta": 1.245223389454943,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.aoi/p95",
+   "baseline": 0.13268321494708996,
+   "scenario": 0.2956187533068783,
+   "absolute_delta": 0.16293553835978836,
+   "relative_delta": 1.2280041482621755,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.burn_in/mean",
+   "baseline": 0.4913713835121497,
+   "scenario": 0.4913713835121497,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.burn_in/p50",
+   "baseline": 0.4931026093106996,
+   "scenario": 0.49140879648001173,
+   "absolute_delta": -0.0016938128306878686,
+   "relative_delta": -0.003435010885575363,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.burn_in/p95",
+   "baseline": 0.49473554226680383,
+   "scenario": 0.4947215711468744,
+   "absolute_delta": -0.000013971119929456766,
+   "relative_delta": -0.000028239571924513843,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.fct/mean",
+   "baseline": 0.02657657738095238,
+   "scenario": 0.13298317049713404,
+   "absolute_delta": 0.10640659311618166,
+   "relative_delta": 4.003773382514033,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.fct/p50",
+   "baseline": 0.02576386923133451,
+   "scenario": 0.1323590131723986,
+   "absolute_delta": 0.10659514394106409,
+   "relative_delta": 4.137388797619771,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.fct/p95",
+   "baseline": 0.02951746406525573,
+   "scenario": 0.13536264715608465,
+   "absolute_delta": 0.10584518309082891,
+   "relative_delta": 3.5858494773409966,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.ict/mean",
+   "baseline": 0.042779771880511464,
+   "scenario": 0.11916923677248677,
+   "absolute_delta": 0.0763894648919753,
+   "relative_delta": 1.7856445122086988,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.ict/p50",
+   "baseline": 0.04278364390432099,
+   "scenario": 0.12029752425044092,
+   "absolute_delta": 0.07751388034611993,
+   "relative_delta": 1.8117643396496976,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.ict/p95",
+   "baseline": 0.04681859011243386,
+   "scenario": 0.12292694973544974,
+   "absolute_delta": 0.07610835962301588,
+   "relative_delta": 1.6256012716368273,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.pack_ship/mean",
+   "baseline": 0.2808876520061728,
+   "scenario": 0.28078980020943567,
+   "absolute_delta": -0.00009785179673715838,
+   "relative_delta": -0.00034836631670447365,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.pack_ship/p50",
+   "baseline": 0.2808859840718695,
+   "scenario": 0.2807807594797178,
+   "absolute_delta": -0.0001052245921516759,
+   "relative_delta": -0.00037461674173372916,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.pack_ship/p95",
+   "baseline": 0.2814284207451499,
+   "scenario": 0.2816020583112875,
+   "absolute_delta": 0.00017363756613758552,
+   "relative_delta": 0.0006169866059648063,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.smt/mean",
+   "baseline": 0.02682985659171076,
+   "scenario": 0.08099613855820106,
+   "absolute_delta": 0.0541662819664903,
+   "relative_delta": 2.018880786087589,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.smt/p50",
+   "baseline": 0.025523938492063494,
+   "scenario": 0.08076853229717813,
+   "absolute_delta": 0.055244593805114636,
+   "relative_delta": 2.164422775987044,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/idle_ratio.smt/p95",
+   "baseline": 0.03350910284391534,
+   "scenario": 0.08356011563051147,
+   "absolute_delta": 0.05005101278659613,
+   "relative_delta": 1.4936542174743572,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/line_balance/mean",
+   "baseline": 0.630132791432165,
+   "scenario": 0.7428094034042412,
+   "absolute_delta": 0.11267661197207612,
+   "relative_delta": 0.1788140745952688,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/line_balance/p50",
+   "baseline": 0.6298239458994382,
+   "scenario": 0.7424065989392018,
+   "absolute_delta": 0.11258265303976356,
+   "relative_delta": 0.1787525764505296,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/line_balance/p95",
+   "baseline": 0.6312273950873722,
+   "scenario": 0.7444327422643484,
+   "absolute_delta": 0.11320534717697617,
+   "relative_delta": 0.17934162562970937,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/line_wip/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/line_wip/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/line_wip/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.burn_in/mean",
+   "baseline": 39.16429148365685,
+   "scenario": 39.14639995082507,
+   "absolute_delta": -0.01789153283177569,
+   "relative_delta": -0.00045683279727508363,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.burn_in/p50",
+   "baseline": 39.18248175182482,
+   "scenario": 39.13405797101449,
+   "absolute_delta": -0.0484237808103245,
+   "relative_delta": -0.0012358528261949436,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.burn_in/p95",
+   "baseline": 39.27922881624881,
+   "scenario": 39.36554213669542,
+   "absolute_delta": 0.08631332044660667,
+   "relative_delta": 0.0021974291005148515,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.smt/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.smt/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_batch_size.smt/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.aoi/mean",
+   "baseline": 1.602420543715014,
+   "scenario": 0.8591604048604538,
+   "absolute_delta": -0.7432601388545603,
+   "relative_delta": -0.4638358773979542,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.aoi/p50",
+   "baseline": 1.4977248555990312,
+   "scenario": 0.8550615074941162,
+   "absolute_delta": -0.642663348104915,
+   "relative_delta": -0.42909306452544305,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.aoi/p95",
+   "baseline": 1.9808135097389417,
+   "scenario": 0.8774702916723455,
+   "absolute_delta": -1.103343218066596,
+   "relative_delta": -0.5570151923146008,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.burn_in/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.burn_in/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.burn_in/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.ict/mean",
+   "baseline": 2.8428773717021847,
+   "scenario": 0.8949179572487967,
+   "absolute_delta": -1.947959414453388,
+   "relative_delta": -0.6852069786207624,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.ict/p50",
+   "baseline": 3.3355083065265565,
+   "scenario": 0.9047237654320988,
+   "absolute_delta": -2.4307845410944577,
+   "relative_delta": -0.7287598523853667,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.ict/p95",
+   "baseline": 3.696049089689085,
+   "scenario": 0.9296512929617721,
+   "absolute_delta": -2.766397796727313,
+   "relative_delta": -0.7484743112435298,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.smt/mean",
+   "baseline": 1.100321671234568,
+   "scenario": 0.7530481126195865,
+   "absolute_delta": -0.34727355861498155,
+   "relative_delta": -0.3156109415034409,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.smt/p50",
+   "baseline": 0.902476024173028,
+   "scenario": 0.7682043089430894,
+   "absolute_delta": -0.13427171522993853,
+   "relative_delta": -0.14878147633115976,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/mean_blocking_minutes.smt/p95",
+   "baseline": 1.8949864895231134,
+   "scenario": 0.8079327030786911,
+   "absolute_delta": -1.0870537864444223,
+   "relative_delta": -0.573647248914153,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.aoi/mean",
+   "baseline": 0.3595205799162257,
+   "scenario": 0.5238079235008819,
+   "absolute_delta": 0.1642873435846562,
+   "relative_delta": 0.4569622791077436,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.aoi/p50",
+   "baseline": 0.376984126984127,
+   "scenario": 0.5238095238095238,
+   "absolute_delta": 0.14682539682539686,
+   "relative_delta": 0.3894736842105264,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.aoi/p95",
+   "baseline": 0.4420602624559083,
+   "scenario": 0.5238095238095238,
+   "absolute_delta": 0.08174926135361554,
+   "relative_delta": 0.1849278668465916,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.burn_in/mean",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.burn_in/p50",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.burn_in/p95",
+   "baseline": 0,
+   "scenario": 0,
+   "absolute_delta": 0,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.fct/mean",
+   "baseline": 0.5221837114564962,
+   "scenario": 0.5231784504794973,
+   "absolute_delta": 0.0009947390230010678,
+   "relative_delta": 0.0019049598851455954,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.fct/p50",
+   "baseline": 0.5224552564667843,
+   "scenario": 0.5231812010857584,
+   "absolute_delta": 0.0007259446189741281,
+   "relative_delta": 0.001389486678502355,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.fct/p95",
+   "baseline": 0.5228404838697824,
+   "scenario": 0.5235414572861552,
+   "absolute_delta": 0.0007009734163727632,
+   "relative_delta": 0.0013407022562303078,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.ict/mean",
+   "baseline": 0.34098288756613754,
+   "scenario": 0.5236148468364197,
+   "absolute_delta": 0.18263195927028214,
+   "relative_delta": 0.5356044714556492,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.ict/p50",
+   "baseline": 0.32876897514329806,
+   "scenario": 0.523649375,
+   "absolute_delta": 0.1948803998567019,
+   "relative_delta": 0.5927578773871861,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.ict/p95",
+   "baseline": 0.448114433531746,
+   "scenario": 0.5238014551366843,
+   "absolute_delta": 0.07568702160493829,
+   "relative_delta": 0.16890110190922103,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.pack_ship/mean",
+   "baseline": 0.5237582868716931,
+   "scenario": 0.523778624393739,
+   "absolute_delta": 0.0000203375220458879,
+   "relative_delta": 0.000038829976643157254,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.pack_ship/p50",
+   "baseline": 0.5237641388337743,
+   "scenario": 0.5237798382385361,
+   "absolute_delta": 0.000015699404761870817,
+   "relative_delta": 0.00002997418799390788,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.pack_ship/p95",
+   "baseline": 0.5237724541997354,
+   "scenario": 0.5238064625220459,
+   "absolute_delta": 0.000034008322310485894,
+   "relative_delta": 0.00006492957397396306,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.smt/mean",
+   "baseline": 0.45527609843474426,
+   "scenario": 0.523588148478836,
+   "absolute_delta": 0.06831205004409169,
+   "relative_delta": 0.15004532475777005,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.smt/p50",
+   "baseline": 0.4246031746031746,
+   "scenario": 0.5237719587742504,
+   "absolute_delta": 0.09916878417107583,
+   "relative_delta": 0.23355638888888888,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/off_shift_ratio.smt/p95",
+   "baseline": 0.5076177080026455,
+   "scenario": 0.5238095238095238,
+   "absolute_delta": 0.01619181580687834,
+   "relative_delta": 0.03189765753166742,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.aoi/mean",
+   "baseline": 4968.097663333333,
+   "scenario": 0.04839333333333333,
+   "absolute_delta": -4968.0492699999995,
+   "relative_delta": -0.9999902591823646,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.aoi/p50",
+   "baseline": 4440,
+   "scenario": 0,
+   "absolute_delta": -4440,
+   "relative_delta": -1,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.aoi/p95",
+   "baseline": 8520,
+   "scenario": 0.1935733333333333,
+   "absolute_delta": -8519.806426666666,
+   "relative_delta": -0.9999772801251956,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.fct/mean",
+   "baseline": 76.49087333333333,
+   "scenario": 11.74061,
+   "absolute_delta": -64.75026333333332,
+   "relative_delta": -0.8465096620241664,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.fct/p50",
+   "baseline": 60.92828333333333,
+   "scenario": 11.667233333333334,
+   "absolute_delta": -49.26105,
+   "relative_delta": -0.808508746758826,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.fct/p95",
+   "baseline": 122.00572333333332,
+   "scenario": 20.455153333333335,
+   "absolute_delta": -101.55057,
+   "relative_delta": -0.8323426739789284,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.ict/mean",
+   "baseline": 11045.846803333334,
+   "scenario": 2.25333,
+   "absolute_delta": -11043.593473333334,
+   "relative_delta": -0.9997960020594058,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.ict/p50",
+   "baseline": 11766.643183333334,
+   "scenario": 2.2245166666666667,
+   "absolute_delta": -11764.418666666666,
+   "relative_delta": -0.9998109472147657,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.ict/p95",
+   "baseline": 17953.687723333333,
+   "scenario": 4.570793333333333,
+   "absolute_delta": -17949.11693,
+   "relative_delta": -0.9997454120065042,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.pack_ship/mean",
+   "baseline": 3.0988100000000003,
+   "scenario": 1.8687966666666669,
+   "absolute_delta": -1.2300133333333334,
+   "relative_delta": -0.3969308648588759,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.pack_ship/p50",
+   "baseline": 2.744883333333333,
+   "scenario": 1.7953833333333333,
+   "absolute_delta": -0.9494999999999998,
+   "relative_delta": -0.3459163413138384,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.pack_ship/p95",
+   "baseline": 4.276243333333333,
+   "scenario": 3.7838133333333333,
+   "absolute_delta": -0.49243000000000015,
+   "relative_delta": -0.11515481267436453,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.smt/mean",
+   "baseline": 2065.3643833333335,
+   "scenario": 0.23941666666666667,
+   "absolute_delta": -2065.1249666666668,
+   "relative_delta": -0.9998840801804278,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.smt/p50",
+   "baseline": 3000,
+   "scenario": 0,
+   "absolute_delta": -3000,
+   "relative_delta": -1,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/overtime_minutes.smt/p95",
+   "baseline": 3288.6796833333333,
+   "scenario": 0.9209966666666664,
+   "absolute_delta": -3287.7586866666666,
+   "relative_delta": -0.9997199494157688,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.aoi/mean",
+   "baseline": 0.09523311331569664,
+   "scenario": 0.09529618661816579,
+   "absolute_delta": 0.00006307330246914378,
+   "relative_delta": 0.0006623043211877,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.aoi/p50",
+   "baseline": 0.0951487891313933,
+   "scenario": 0.09532016093474427,
+   "absolute_delta": 0.00017137180335097257,
+   "relative_delta": 0.0018010928453784214,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.aoi/p95",
+   "baseline": 0.0954986121031746,
+   "scenario": 0.09541809270282188,
+   "absolute_delta": -0.00008051940035272431,
+   "relative_delta": -0.0008431473356464377,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.burn_in/mean",
+   "baseline": 0.4864197530864197,
+   "scenario": 0.48641975308641977,
+   "absolute_delta": 5.551115123125783e-17,
+   "relative_delta": 1.1412190989167219e-16,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.burn_in/p50",
+   "baseline": 0.48677248677248675,
+   "scenario": 0.48677248677248675,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.burn_in/p95",
+   "baseline": 0.4899470899470899,
+   "scenario": 0.48853615520282184,
+   "absolute_delta": -0.0014109347442680664,
+   "relative_delta": -0.002879769618430503,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.fct/mean",
+   "baseline": 0.42764144455467373,
+   "scenario": 0.3206678968529541,
+   "absolute_delta": -0.10697354770171963,
+   "relative_delta": -0.25014775593866256,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.fct/p50",
+   "baseline": 0.4279232100602587,
+   "scenario": 0.32064744460978833,
+   "absolute_delta": -0.10727576545047035,
+   "relative_delta": -0.2506892894063029,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.fct/p95",
+   "baseline": 0.4292119910714286,
+   "scenario": 0.32117276904210756,
+   "absolute_delta": -0.10803922202932104,
+   "relative_delta": -0.25171529285476407,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.ict/mean",
+   "baseline": 0.3384238372464726,
+   "scenario": 0.3385074915674603,
+   "absolute_delta": 0.00008365432098766945,
+   "relative_delta": 0.0002471880280901855,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.ict/p50",
+   "baseline": 0.3380704205246914,
+   "scenario": 0.3389478587962963,
+   "absolute_delta": 0.0008774382716049134,
+   "relative_delta": 0.0025954304734590898,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.ict/p95",
+   "baseline": 0.3397530933641975,
+   "scenario": 0.3393738745039683,
+   "absolute_delta": -0.0003792188602292357,
+   "relative_delta": -0.0011161601399247098,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.pack_ship/mean",
+   "baseline": 0.19535406112213405,
+   "scenario": 0.1954315753968254,
+   "absolute_delta": 0.00007751427469135375,
+   "relative_delta": 0.00039678865259367373,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.pack_ship/p50",
+   "baseline": 0.1953404516644621,
+   "scenario": 0.19542502314814814,
+   "absolute_delta": 0.00008457148368604117,
+   "relative_delta": 0.0004329440367595254,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.pack_ship/p95",
+   "baseline": 0.19580791892636684,
+   "scenario": 0.1961472638888889,
+   "absolute_delta": 0.0003393449625220535,
+   "relative_delta": 0.00173305024833885,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.smt/mean",
+   "baseline": 0.3270077730379189,
+   "scenario": 0.3271495576499118,
+   "absolute_delta": 0.00014178461199293446,
+   "relative_delta": 0.00043358177903769134,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.smt/p50",
+   "baseline": 0.32701144675925925,
+   "scenario": 0.32701144675925925,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/processing_ratio.smt/p95",
+   "baseline": 0.3273000153218695,
+   "scenario": 0.327657453813933,
+   "absolute_delta": 0.0003574384920635443,
+   "relative_delta": 0.0010920821122236623,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/retest_ratio.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/rolled_throughput_yield_input/mean",
+   "baseline": 0.852710025,
+   "scenario": 0.852710025,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/rolled_throughput_yield_input/p50",
+   "baseline": 0.852710025,
+   "scenario": 0.852710025,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/rolled_throughput_yield_input/p95",
+   "baseline": 0.852710025,
+   "scenario": 0.852710025,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.aoi/mean",
+   "baseline": 0.7319902787037037,
+   "scenario": 0.4221637761574074,
+   "absolute_delta": -0.3098265025462963,
+   "relative_delta": -0.4232658705454043,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.aoi/p50",
+   "baseline": 0.7418872893518519,
+   "scenario": 0.43402252199074076,
+   "absolute_delta": -0.3078647673611111,
+   "relative_delta": -0.4149751205874904,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.aoi/p95",
+   "baseline": 0.7492943416666666,
+   "scenario": 0.4575977041666667,
+   "absolute_delta": -0.29169663749999997,
+   "relative_delta": -0.3892951291360012,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.fct/mean",
+   "baseline": 0.896777356095679,
+   "scenario": 0.6734487930555556,
+   "absolute_delta": -0.22332856304012338,
+   "relative_delta": -0.24903456975367252,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.fct/p50",
+   "baseline": 0.8972283641975308,
+   "scenario": 0.6735540902777778,
+   "absolute_delta": -0.22367427391975303,
+   "relative_delta": -0.24929469781063412,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.fct/p95",
+   "baseline": 0.9001366949845678,
+   "scenario": 0.6743898469328704,
+   "absolute_delta": -0.22574684805169742,
+   "relative_delta": -0.250791740087396,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.ict/mean",
+   "baseline": 0.8815142438657407,
+   "scenario": 0.721027359837963,
+   "absolute_delta": -0.16048688402777778,
+   "relative_delta": -0.1820581858371205,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.ict/p50",
+   "baseline": 0.881773105324074,
+   "scenario": 0.721279375,
+   "absolute_delta": -0.1604937303240741,
+   "relative_delta": -0.18201250339234215,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.ict/p95",
+   "baseline": 0.8952868444444445,
+   "scenario": 0.7225511380787036,
+   "absolute_delta": -0.17273570636574087,
+   "relative_delta": -0.19293895295974015,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.pack_ship/mean",
+   "baseline": 0.41013593078703703,
+   "scenario": 0.4103414195601852,
+   "absolute_delta": 0.00020548877314818803,
+   "relative_delta": 0.0005010260202120355,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.pack_ship/p50",
+   "baseline": 0.41013943344907405,
+   "scenario": 0.4103604050925926,
+   "absolute_delta": 0.0002209716435185305,
+   "relative_delta": 0.0005387720016587187,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.pack_ship/p95",
+   "baseline": 0.4111017217592593,
+   "scenario": 0.4118418537037037,
+   "absolute_delta": 0.0007401319444443888,
+   "relative_delta": 0.00180036206435012,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.smt/mean",
+   "baseline": 0.8916018386574074,
+   "scenario": 0.7778087974537037,
+   "absolute_delta": -0.1137930412037037,
+   "relative_delta": -0.12762764304642488,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.smt/p50",
+   "baseline": 0.8931525694444444,
+   "scenario": 0.7764568981481481,
+   "absolute_delta": -0.11669567129629632,
+   "relative_delta": -0.13065592071115348,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scheduled_utilization.smt/p95",
+   "baseline": 0.9011901168981481,
+   "scenario": 0.7846553601851852,
+   "absolute_delta": -0.11653475671296287,
+   "relative_delta": -0.1293120669299723,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/scrap_rate/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/scrap_rate/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/scrap_rate/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.burn_in/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.burn_in/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.burn_in/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.smt/mean",
+   "baseline": 0.038844981261022926,
+   "scenario": 0.038844981261022926,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.smt/p50",
+   "baseline": 0.03864341104497355,
+   "scenario": 0.03864341104497355,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/setup_ratio.smt/p95",
+   "baseline": 0.041389957782186945,
+   "scenario": 0.041389957782186945,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.burn_in/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.burn_in/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.burn_in/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.pack_ship/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.pack_ship/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.pack_ship/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.smt/mean",
+   "baseline": 30,
+   "scenario": 30,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.smt/p50",
+   "baseline": 30,
+   "scenario": 30,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/setups_started.smt/p95",
+   "baseline": 30,
+   "scenario": 30,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.aoi/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.aoi/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.aoi/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.burn_in/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.burn_in/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.burn_in/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.fct/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.fct/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.fct/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.ict/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.ict/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/simulated_first_pass_ratio.ict/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.aoi/mean",
+   "baseline": 0.12194149173280425,
+   "scenario": 0.2694779215167548,
+   "absolute_delta": 0.14753642978395057,
+   "relative_delta": 1.2098952348986303,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.aoi/p50",
+   "baseline": 0.11735015542328042,
+   "scenario": 0.26347731371252203,
+   "absolute_delta": 0.1461271582892416,
+   "relative_delta": 1.245223389454943,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.aoi/p95",
+   "baseline": 0.13268321494708996,
+   "scenario": 0.2956187533068783,
+   "absolute_delta": 0.16293553835978836,
+   "relative_delta": 1.2280041482621755,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.burn_in/mean",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.burn_in/p50",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.burn_in/p95",
+   "baseline": null,
+   "scenario": null,
+   "absolute_delta": null,
+   "relative_delta": null,
+   "status": "unavailable",
+   "reason": "BOTH_UNAVAILABLE"
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.fct/mean",
+   "baseline": 0.02657657738095238,
+   "scenario": 0.13298317049713404,
+   "absolute_delta": 0.10640659311618166,
+   "relative_delta": 4.003773382514033,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.fct/p50",
+   "baseline": 0.02576386923133451,
+   "scenario": 0.1323590131723986,
+   "absolute_delta": 0.10659514394106409,
+   "relative_delta": 4.137388797619771,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.fct/p95",
+   "baseline": 0.02951746406525573,
+   "scenario": 0.13536264715608465,
+   "absolute_delta": 0.10584518309082891,
+   "relative_delta": 3.5858494773409966,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.ict/mean",
+   "baseline": 0.042779771880511464,
+   "scenario": 0.11916923677248677,
+   "absolute_delta": 0.0763894648919753,
+   "relative_delta": 1.7856445122086988,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.ict/p50",
+   "baseline": 0.04278364390432099,
+   "scenario": 0.12029752425044092,
+   "absolute_delta": 0.07751388034611993,
+   "relative_delta": 1.8117643396496976,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.ict/p95",
+   "baseline": 0.04681859011243386,
+   "scenario": 0.12292694973544974,
+   "absolute_delta": 0.07610835962301588,
+   "relative_delta": 1.6256012716368273,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.pack_ship/mean",
+   "baseline": 0.2808876520061728,
+   "scenario": 0.28078980020943567,
+   "absolute_delta": -0.00009785179673715838,
+   "relative_delta": -0.00034836631670447365,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.pack_ship/p50",
+   "baseline": 0.2808859840718695,
+   "scenario": 0.2807807594797178,
+   "absolute_delta": -0.0001052245921516759,
+   "relative_delta": -0.00037461674173372916,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.pack_ship/p95",
+   "baseline": 0.2814284207451499,
+   "scenario": 0.2816020583112875,
+   "absolute_delta": 0.00017363756613758552,
+   "relative_delta": 0.0006169866059648063,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.smt/mean",
+   "baseline": 0.02682985659171076,
+   "scenario": 0.08099613855820106,
+   "absolute_delta": 0.0541662819664903,
+   "relative_delta": 2.018880786087589,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.smt/p50",
+   "baseline": 0.025523938492063494,
+   "scenario": 0.08076853229717813,
+   "absolute_delta": 0.055244593805114636,
+   "relative_delta": 2.164422775987044,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/starved_ratio.smt/p95",
+   "baseline": 0.03350910284391534,
+   "scenario": 0.08356011563051147,
+   "absolute_delta": 0.05005101278659613,
+   "relative_delta": 1.4936542174743572,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph/mean",
+   "baseline": 21.296031746031748,
+   "scenario": 21.30515873015873,
+   "absolute_delta": 0.009126984126982762,
+   "relative_delta": 0.0004285767525061782,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph/p50",
+   "baseline": 21.291666666666668,
+   "scenario": 21.305555555555557,
+   "absolute_delta": 0.013888888888889284,
+   "relative_delta": 0.00065231572080889,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph/p95",
+   "baseline": 21.34206349206349,
+   "scenario": 21.373015873015873,
+   "absolute_delta": 0.03095238095238173,
+   "relative_delta": 0.0014502993566621167,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph_scheduled/mean",
+   "baseline": 44.72166666666667,
+   "scenario": 44.740833333333335,
+   "absolute_delta": 0.019166666666663446,
+   "relative_delta": 0.00042857675250617023,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph_scheduled/p50",
+   "baseline": 44.7125,
+   "scenario": 44.74166666666667,
+   "absolute_delta": 0.02916666666666856,
+   "relative_delta": 0.0006523157208089138,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/uph_scheduled/p95",
+   "baseline": 44.818333333333335,
+   "scenario": 44.88333333333333,
+   "absolute_delta": 0.06499999999999773,
+   "relative_delta": 0.0014502993566620295,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.aoi/mean",
+   "baseline": 0.19997106250000002,
+   "scenario": 0.20011863125,
+   "absolute_delta": 0.00014756874999999336,
+   "relative_delta": 0.0007379505222161499,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.aoi/p50",
+   "baseline": 0.1997509236111111,
+   "scenario": 0.20017233796296297,
+   "absolute_delta": 0.00042141435185186205,
+   "relative_delta": 0.0021096991404770706,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.aoi/p95",
+   "baseline": 0.20053951226851852,
+   "scenario": 0.2003779946759259,
+   "absolute_delta": -0.00016151759259261378,
+   "relative_delta": -0.0008054153057694927,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.burn_in/mean",
+   "baseline": 0.4864197530864197,
+   "scenario": 0.48641975308641977,
+   "absolute_delta": 5.551115123125783e-17,
+   "relative_delta": 1.1412190989167219e-16,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.burn_in/p50",
+   "baseline": 0.48677248677248675,
+   "scenario": 0.48677248677248675,
+   "absolute_delta": 0,
+   "relative_delta": 0,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.burn_in/p95",
+   "baseline": 0.4899470899470899,
+   "scenario": 0.48853615520282184,
+   "absolute_delta": -0.0014109347442680664,
+   "relative_delta": -0.002879769618430503,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.fct/mean",
+   "baseline": 0.8966196069444445,
+   "scenario": 0.6731987533564814,
+   "absolute_delta": -0.22342085358796315,
+   "relative_delta": -0.24918131597562368,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.fct/p50",
+   "baseline": 0.8972283641975308,
+   "scenario": 0.6730023723958334,
+   "absolute_delta": -0.22422599180169744,
+   "relative_delta": -0.24990961136437345,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.fct/p95",
+   "baseline": 0.9000646299382716,
+   "scenario": 0.6742887780671296,
+   "absolute_delta": -0.22577585187114202,
+   "relative_delta": -0.2508440442622728,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.ict/mean",
+   "baseline": 0.7101914863425925,
+   "scenario": 0.7107874916666668,
+   "absolute_delta": 0.0005960053240742225,
+   "relative_delta": 0.000839217782155604,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.ict/p50",
+   "baseline": 0.7092830248842592,
+   "scenario": 0.7117132633101851,
+   "absolute_delta": 0.0024302384259259346,
+   "relative_delta": 0.003426331014086374,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.ict/p95",
+   "baseline": 0.7130477417824074,
+   "scenario": 0.7126747290509259,
+   "absolute_delta": -0.0003730127314814924,
+   "relative_delta": -0.000523124483290658,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.pack_ship/mean",
+   "baseline": 0.41013593078703703,
+   "scenario": 0.4103414195601852,
+   "absolute_delta": 0.00020548877314818803,
+   "relative_delta": 0.0005010260202120355,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.pack_ship/p50",
+   "baseline": 0.41013943344907405,
+   "scenario": 0.4103604050925926,
+   "absolute_delta": 0.0002209716435185305,
+   "relative_delta": 0.0005387720016587187,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.pack_ship/p95",
+   "baseline": 0.4111017217592593,
+   "scenario": 0.4118418537037037,
+   "absolute_delta": 0.0007401319444443888,
+   "relative_delta": 0.00180036206435012,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.smt/mean",
+   "baseline": 0.6865881590277778,
+   "scenario": 0.6869974449074074,
+   "absolute_delta": 0.00040928587962962837,
+   "relative_delta": 0.0005961155523118621,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.smt/p50",
+   "baseline": 0.686602125,
+   "scenario": 0.6867197939814815,
+   "absolute_delta": 0.0001176689814815779,
+   "relative_delta": 0.00017137870274080188,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/domain/work_ratio.smt/p95",
+   "baseline": 0.6872778965277778,
+   "scenario": 0.6880806530092592,
+   "absolute_delta": 0.0008027564814814259,
+   "relative_delta": 0.0011680231323269112,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/aoi_machine/utilization_mean",
+   "baseline": 0.5128557432760141,
+   "scenario": 0.2010319699074074,
+   "absolute_delta": -0.3118237733686067,
+   "relative_delta": -0.6080145878385652,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/burn_in_chamber/utilization_mean",
+   "baseline": 0.4864197530864197,
+   "scenario": 0.48641975308641977,
+   "absolute_delta": 5.551115123125783e-17,
+   "relative_delta": 1.1412190989167219e-16,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/debug_operator/utilization_mean",
+   "baseline": 0.32303813880621696,
+   "scenario": 0.3111087280643739,
+   "absolute_delta": -0.01192941074184306,
+   "relative_delta": -0.036928799756982364,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/fct_tester/utilization_mean",
+   "baseline": 0.4278799896017048,
+   "scenario": 0.32078696337632273,
+   "absolute_delta": -0.10709302622538208,
+   "relative_delta": -0.2502875311487934,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/ict_tester/utilization_mean",
+   "baseline": 0.6024050434303351,
+   "scenario": 0.3433836192680776,
+   "absolute_delta": -0.2590214241622575,
+   "relative_delta": -0.4299788439473979,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/pack_station/utilization_mean",
+   "baseline": 0.19535406112213405,
+   "scenario": 0.1954315753968254,
+   "absolute_delta": 0.00007751427469135375,
+   "relative_delta": 0.00039678865259367373,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/resources/smt_line/utilization_mean",
+   "baseline": 0.49287139087301596,
+   "scenario": 0.3703930588624339,
+   "absolute_delta": -0.12247833201058206,
+   "relative_delta": -0.2484995767225157,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_aoi/wait_mean_minutes",
+   "baseline": 19.226187565588162,
+   "scenario": 4.1298126055555455,
+   "absolute_delta": -15.096374960032616,
+   "relative_delta": -0.7851985688027272,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_aoi/wait_p50_minutes",
+   "baseline": 18.199,
+   "scenario": 0,
+   "absolute_delta": -18.199,
+   "relative_delta": -1,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_aoi/wait_p95_minutes",
+   "baseline": 32.49123999999999,
+   "scenario": 18.487860833333333,
+   "absolute_delta": -14.003379166666658,
+   "relative_delta": -0.4309893733408347,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_aoi/queue_length_mean",
+   "baseline": 7.720585131723986,
+   "scenario": 1.4749330734126986,
+   "absolute_delta": -6.245652058311288,
+   "relative_delta": -0.808960972743869,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_burnin/wait_mean_minutes",
+   "baseline": 42.09390300388444,
+   "scenario": 37.97688749174028,
+   "absolute_delta": -4.117015512144164,
+   "relative_delta": -0.09780550669687826,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_burnin/wait_p50_minutes",
+   "baseline": 32.48736666666667,
+   "scenario": 26.418783333333334,
+   "absolute_delta": -6.068583333333333,
+   "relative_delta": -0.1867982528593166,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_burnin/wait_p95_minutes",
+   "baseline": 95.61292666666662,
+   "scenario": 114.60316166666664,
+   "absolute_delta": 18.990235000000013,
+   "relative_delta": 0.19861576945767256,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_burnin/queue_length_mean",
+   "baseline": 15.454660991291888,
+   "scenario": 13.596387551477074,
+   "absolute_delta": -1.8582734398148144,
+   "relative_delta": -0.1202403236707606,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct/wait_mean_minutes",
+   "baseline": 19.145015210343875,
+   "scenario": 2.5287472007393887,
+   "absolute_delta": -16.616268009604486,
+   "relative_delta": -0.8679161560878191,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct/wait_p50_minutes",
+   "baseline": 11.23825,
+   "scenario": 0.6109166666666667,
+   "absolute_delta": -10.627333333333334,
+   "relative_delta": -0.9456395197947486,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct/wait_p95_minutes",
+   "baseline": 17.185006666666666,
+   "scenario": 9.629343333333333,
+   "absolute_delta": -7.555663333333333,
+   "relative_delta": -0.4396660111857197,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct/queue_length_mean",
+   "baseline": 7.54948422111993,
+   "scenario": 0.9017693142636685,
+   "absolute_delta": -6.647714906856262,
+   "relative_delta": -0.8805521956399434,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_debug/wait_mean_minutes",
+   "baseline": 34.69078393269296,
+   "scenario": 31.40667343901168,
+   "absolute_delta": -3.284110493681279,
+   "relative_delta": -0.09466809686552799,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_debug/wait_p50_minutes",
+   "baseline": 0,
+   "scenario": 1.8856,
+   "absolute_delta": 1.8856,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_debug/wait_p95_minutes",
+   "baseline": 38.17857333333332,
+   "scenario": 47.8063183333332,
+   "absolute_delta": 9.627744999999884,
+   "relative_delta": 0.25217665720353144,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_debug/queue_length_mean",
+   "baseline": 1.4344459490740742,
+   "scenario": 1.25542941920194,
+   "absolute_delta": -0.17901652987213423,
+   "relative_delta": -0.12479837946329611,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_retest/wait_mean_minutes",
+   "baseline": 53.5415920980393,
+   "scenario": 13.123027676056342,
+   "absolute_delta": -40.418564421982964,
+   "relative_delta": -0.7549003090526906,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_retest/wait_p50_minutes",
+   "baseline": 11.8541,
+   "scenario": 0.6601916666666667,
+   "absolute_delta": -11.193908333333335,
+   "relative_delta": -0.9443068924113458,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_retest/wait_p95_minutes",
+   "baseline": 34.06098416666663,
+   "scenario": 10.749433333333327,
+   "absolute_delta": -23.3115508333333,
+   "relative_delta": -0.6844062614064707,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_fct_retest/queue_length_mean",
+   "baseline": 1.8031737358906526,
+   "scenario": 0.4335522218915345,
+   "absolute_delta": -1.3696215139991181,
+   "relative_delta": -0.759561592284735,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict/wait_mean_minutes",
+   "baseline": 14.856572102960595,
+   "scenario": 6.4338320530390165,
+   "absolute_delta": -8.422740049921579,
+   "relative_delta": -0.5669369752019113,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict/wait_p50_minutes",
+   "baseline": 11.1466,
+   "scenario": 7.159083333333333,
+   "absolute_delta": -3.987516666666666,
+   "relative_delta": -0.35773389793001154,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict/wait_p95_minutes",
+   "baseline": 17.82036999999998,
+   "scenario": 11.516419999999997,
+   "absolute_delta": -6.303949999999983,
+   "relative_delta": -0.3537496696196538,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict/queue_length_mean",
+   "baseline": 5.784600802579365,
+   "scenario": 2.317533741953263,
+   "absolute_delta": -3.467067060626102,
+   "relative_delta": -0.5993615080715907,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_debug/wait_mean_minutes",
+   "baseline": 11.339753484900681,
+   "scenario": 10.147063484952904,
+   "absolute_delta": -1.1926899999477776,
+   "relative_delta": -0.10517777141592101,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_debug/wait_p50_minutes",
+   "baseline": 0,
+   "scenario": 1.1327083333333334,
+   "absolute_delta": 1.1327083333333334,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_debug/wait_p95_minutes",
+   "baseline": 25.631733333333344,
+   "scenario": 41.25332749999998,
+   "absolute_delta": 15.62159416666664,
+   "relative_delta": 0.6094630419063856,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_debug/queue_length_mean",
+   "baseline": 0.22248217173721335,
+   "scenario": 0.2148585804673721,
+   "absolute_delta": -0.007623591269841246,
+   "relative_delta": -0.034266077188629354,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_retest/wait_mean_minutes",
+   "baseline": 24.129985829792307,
+   "scenario": 11.106757412653431,
+   "absolute_delta": -13.023228417138876,
+   "relative_delta": -0.5397113992938872,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_retest/wait_p50_minutes",
+   "baseline": 11.870825,
+   "scenario": 7.126225,
+   "absolute_delta": -4.7446,
+   "relative_delta": -0.39968578426520485,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_retest/wait_p95_minutes",
+   "baseline": 20.851622499999994,
+   "scenario": 13.16118999999999,
+   "absolute_delta": -7.690432500000004,
+   "relative_delta": -0.36881698294701076,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_ict_retest/queue_length_mean",
+   "baseline": 0.5270599329805996,
+   "scenario": 0.2272692795414462,
+   "absolute_delta": -0.2997906534391534,
+   "relative_delta": -0.5687980335439163,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_pack/wait_mean_minutes",
+   "baseline": 391.4924827168011,
+   "scenario": 376.6507991378763,
+   "absolute_delta": -14.841683578924801,
+   "relative_delta": -0.03791051995667825,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_pack/wait_p50_minutes",
+   "baseline": 170.08333333333334,
+   "scenario": 115.07495,
+   "absolute_delta": -55.00838333333334,
+   "relative_delta": -0.32342018618324353,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_pack/wait_p95_minutes",
+   "baseline": 3158.8212,
+   "scenario": 3174.788225,
+   "absolute_delta": 15.967024999999921,
+   "relative_delta": 0.005054741623235884,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_pack/queue_length_mean",
+   "baseline": 175.39353748611111,
+   "scenario": 169.6622768099647,
+   "absolute_delta": -5.731260676146405,
+   "relative_delta": -0.03267657838647702,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_smt/wait_mean_minutes",
+   "baseline": 249.829074749244,
+   "scenario": 215.7299618228408,
+   "absolute_delta": -34.099112926403194,
+   "relative_delta": -0.1364897698981947,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_smt/wait_p50_minutes",
+   "baseline": 229.41003333333333,
+   "scenario": 213.523625,
+   "absolute_delta": -15.886408333333321,
+   "relative_delta": -0.06924896920375898,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_smt/wait_p95_minutes",
+   "baseline": 440.7969425,
+   "scenario": 380.6741808333333,
+   "absolute_delta": -60.12276166666669,
+   "relative_delta": -0.13639559595326978,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_smt/queue_length_mean",
+   "baseline": 89.88237115795854,
+   "scenario": 77.0464149367284,
+   "absolute_delta": -12.835956221230148,
+   "relative_delta": -0.14280838451260197,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_touchup/wait_mean_minutes",
+   "baseline": 6.783373983996632,
+   "scenario": 9.614227802313357,
+   "absolute_delta": 2.830853818316725,
+   "relative_delta": 0.4173223863221,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_touchup/wait_p50_minutes",
+   "baseline": 0,
+   "scenario": 0.6910333333333334,
+   "absolute_delta": 0.6910333333333334,
+   "relative_delta": null,
+   "status": "available",
+   "reason": "BASELINE_ZERO"
+  },
+  {
+   "metric_path": "/metrics/queues/q_touchup/wait_p95_minutes",
+   "baseline": 22.919163333333326,
+   "scenario": 36.09171666666666,
+   "absolute_delta": 13.172553333333337,
+   "relative_delta": 0.5747397119935591,
+   "status": "available",
+   "reason": null
+  },
+  {
+   "metric_path": "/metrics/queues/q_touchup/queue_length_mean",
+   "baseline": 0.09092587169312169,
+   "scenario": 0.12084334457671957,
+   "absolute_delta": 0.029917472883597876,
+   "relative_delta": 0.3290314662538567,
+   "status": "available",
+   "reason": null
+  }
+ ],
+ "warnings": [
+  "CENSORED_ENTITIES"
+ ]
+}
