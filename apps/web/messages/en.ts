@@ -188,6 +188,7 @@ export const en = {
   "scenarios.ranking.stopped": "Did not finish",
   "scenarios.ranking.unread": "Not compared on this page",
   "scenarios.ranking.capped": "This page reads the comparisons of the {count} most recent results; the others are listed without figures.",
+  "scenarios.ranking.shared": "In every comparison below: {warning}",
 
   "loading.projects": "Loading projects…",
   "loading.models": "Loading models…",

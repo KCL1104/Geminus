@@ -76,6 +76,20 @@
   margin: var(--gm-space-xs) 0 0;
 }
 
+/* The server's warnings on a compared row, under its marks: its words in Ink 2 at Body, as the reasons. */
+.warnings {
+  margin: var(--gm-space-xs) 0 0;
+  padding: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-body);
+  line-height: var(--gm-line-height-body);
+  list-style: none;
+}
+
+.warnings li + li {
+  margin-top: var(--gm-space-xs);
+}
+
 .figure,
 .delta {
   font-size: var(--gm-font-size-title);

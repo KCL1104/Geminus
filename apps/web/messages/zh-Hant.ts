@@ -184,6 +184,7 @@ export const zhHant: Catalog = {
   "scenarios.ranking.stopped": "未完成",
   "scenarios.ranking.unread": "本頁未讀取比較",
   "scenarios.ranking.capped": "本頁只讀取最近 {count} 份結果的比較；其餘的照列，但不顯示數字。",
+  "scenarios.ranking.shared": "下表每一份比較都是如此：{warning}",
 
   "loading.projects": "正在載入專案…",
   "loading.models": "正在載入模型…",

@@ -9,12 +9,12 @@ import { act, type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ScenariosPage, RunsPage } from "../features/models/model-lists";
 import { MAX_RUN_PAGES } from "../features/simulations/load";
-import { MAX_COMPARISONS, rankScenarios, standingOf } from "../features/simulations/ranking";
+import { MAX_COMPARISONS, rankScenarios, sharedWarnings, standingOf, warningsOf } from "../features/simulations/ranking";
 import { baselinesOf, earlierPairs, latestCompleted } from "../features/simulations/run-pair";
 import { createApiClient } from "../lib/api/client";
 import { ApiProvider } from "../lib/api/provider";
 import { AuthProvider } from "../lib/auth/session";
-import type { Comparison, ComparisonMetric, Run, Scenario } from "../lib/contracts";
+import type { Comparison, ComparisonMetric, ComparisonWarning, Run, Scenario } from "../lib/contracts";
 import type { Locale } from "../lib/i18n/locale";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
@@ -108,6 +108,11 @@ async function scenariosPage(api: ReturnType<typeof fakeApi>, locale: Locale = "
   return el;
 }
 
+const notes = (el: Element) => [...el.querySelectorAll("[role=note]")].map(text);
+const shared = (locale: Locale, w: ComparisonWarning) => {
+  const c = locale === "en" ? en : zhHant;
+  return c["scenarios.ranking.shared"].replace("{warning}", c[`compare.warning.${w}`]);
+};
 const results = (s: Scenario, b: Run, r: Run) => `/scenarios/${s.id}/results?baseline=${b.id}&scenario=${r.id}`;
 /** A row as [rank, the name's link, the figures' exact server values (data value), the row's words]. */
 const shape = (tr: Element) => [
@@ -174,6 +179,33 @@ describe("the ranking's order (ranking.ts)", () => {
     expect(c(p50({ status: "unavailable", scenario: null, absolute_delta: null, relative_delta: null, reason: "SCENARIO_UNAVAILABLE" }))).toBe("compared");
     expect(c(null)).toBe("compared");
   });
+
+  // Review of slice 2: a ranked row kept only its figures, so a single-replication result could stand first with nothing beside it.
+  it("keeps the server's warnings with every compared row, and finds the ones every compared row shares", () => {
+    const warned = (n: number, relative: number | null, warnings: ComparisonWarning[]) => ({
+      scenario: s(n), version: 3, standing: standingOf([pair], comparison(pair.baseline, pair.scenario, p50({ relative_delta: relative, ...(relative === null ? { reason: "BASELINE_ZERO" as const } : {}) }), { warnings })),
+    });
+    const quick = warned(1, -0.25, ["SINGLE_REPLICATION", "CENSORED_ENTITIES"]);
+    const careful = warned(2, -0.2, ["CENSORED_ENTITIES"]);
+    const same = warned(3, null, ["SCENARIO_PATCH_EMPTY", "CENSORED_ENTITIES"]);
+    const none = { scenario: s(4), version: 3, standing: standingOf([], undefined) };
+    const unread = { scenario: s(5), version: 3, standing: standingOf([pair], undefined) };
+    const ranked = rankScenarios([careful, same, none, quick, unread]);
+    expect(ranked.map((r) => [r.scenario.name, r.standing.kind, warningsOf(r.standing)])).toEqual([
+      ["S1", "ranked", ["SINGLE_REPLICATION", "CENSORED_ENTITIES"]],
+      ["S2", "ranked", ["CENSORED_ENTITIES"]],
+      ["S3", "compared", ["SCENARIO_PATCH_EMPTY", "CENSORED_ENTITIES"]],
+      ["S5", "unread", []],
+      ["S4", "none", []],
+    ]);
+    // In the server's order; a row without a comparison has no say.
+    expect(sharedWarnings(ranked)).toEqual(["CENSORED_ENTITIES"]);
+    expect(sharedWarnings([quick, same])).toEqual(["CENSORED_ENTITIES"]);
+    expect(sharedWarnings([quick, warned(6, -0.1, [])])).toEqual([]);
+    // With one comparison there is nothing to share: its warnings stay on its row.
+    expect(sharedWarnings([quick, none, unread])).toEqual([]);
+    expect(sharedWarnings([])).toEqual([]);
+  });
 });
 
 describe("the Scenarios page ranks what the server compared (H-073)", () => {
@@ -228,8 +260,51 @@ describe("the Scenarios page ranks what the server compared (H-073)", () => {
     // H-027: each place is linked once.
     const hrefs = [...el.querySelectorAll("a")].map((a) => a.getAttribute("href"));
     expect(new Set(hrefs).size).toBe(hrefs.length);
-    expect(el.querySelector("[role=note]")).toBeNull();
+    // Both comparisons carry the board line's CENSORED_ENTITIES: said once, above the table, and on no row; no cap note.
+    expect(notes(el)).toEqual([shared("en", "CENSORED_ENTITIES")]);
+    expect(rows(el).flatMap((r) => [...r.querySelectorAll("th li")])).toEqual([]);
     expect(await violations()).toEqual([]);
+  });
+
+  it("writes the server's warnings on a ranked row beside its figures, and says once a warning every comparison shares (review of slice 2)", async () => {
+    const quick = scenario(8, "Quick try");
+    const careful = scenario(9, "Careful try");
+    const same = scenario(10, "Same line");
+    const one = { config: { ...boardBaselineRun().config, replications: 1 } };
+    const theRuns = [baseline(60, 0, one), whatIf(61, quick, 1, one), baseline(62, 2), whatIf(63, careful, 3), baseline(64, 4), whatIf(65, same, 5)];
+    const comps = [
+      comparison(theRuns[0]!, theRuns[1]!, p50({ baseline: 30, scenario: 22.5, absolute_delta: -7.5, relative_delta: -0.25 }), { warnings: ["SINGLE_REPLICATION", "CENSORED_ENTITIES"] }),
+      comparison(theRuns[2]!, theRuns[3]!, p50({ baseline: 30, scenario: 24, absolute_delta: -6, relative_delta: -0.2 }), { warnings: ["CENSORED_ENTITIES"] }),
+      comparison(theRuns[4]!, theRuns[5]!, p50({ baseline: 0, scenario: 0, absolute_delta: 0, relative_delta: null, reason: "BASELINE_ZERO" }), { warnings: ["SCENARIO_PATCH_EMPTY", "CENSORED_ENTITIES"] }),
+    ];
+    const el = await scenariosPage(fakeApi(modelAnswers([careful, same, quick], theRuns, comps)));
+    // The order is still the server's figures' (the qualifier does not move a row), each row with its own warnings in the server's words.
+    expect(rows(el).map((r) => [text(r.querySelector("th a")), shape(r)[0], [...r.querySelectorAll("th li")].map(text)])).toEqual([
+      [quick.name, "1", [en["compare.warning.SINGLE_REPLICATION"]]],
+      [careful.name, "2", []],
+      [same.name, "", [en["compare.warning.SCENARIO_PATCH_EMPTY"]]],
+    ]);
+    // The first row's warning is in the row that holds its figures.
+    const first = rows(el)[0]!;
+    expect([...first.querySelectorAll("data")].map((d) => d.getAttribute("value"))).toEqual(["30", "22.5", "-7.5", "-0.25"]);
+    // The warning all three share is said once, before the table.
+    expect(notes(el)).toEqual([shared("en", "CENSORED_ENTITIES")]);
+    const note = el.querySelector("[role=note]")!;
+    expect(note.compareDocumentPosition(el.querySelector("table")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(text(el.querySelector("tbody"))).not.toContain(en["compare.warning.CENSORED_ENTITIES"]);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("keeps a lone comparison's warnings on its row, with nothing said above the table", async () => {
+    const quick = scenario(8, "Quick try");
+    const theRuns = [baseline(70, 0), whatIf(71, quick, 1)];
+    const comps = [comparison(theRuns[0]!, theRuns[1]!, p50({}), { warnings: ["SINGLE_REPLICATION", "CENSORED_ENTITIES"] })];
+    const el = await scenariosPage(fakeApi(modelAnswers([quick, untried], theRuns, comps)));
+    expect(rows(el).map((r) => [shape(r)[0], [...r.querySelectorAll("th li")].map(text)])).toEqual([
+      ["1", [en["compare.warning.SINGLE_REPLICATION"], en["compare.warning.CENSORED_ENTITIES"]]],
+      ["", []],
+    ]);
+    expect(notes(el)).toEqual([]);
   });
 
   it("sends the scenario and run reads together, and every comparison at once", async () => {
@@ -332,6 +407,7 @@ describe("the Scenarios page ranks what the server compared (H-073)", () => {
     expect(text(el.querySelector("caption"))).toBe(zhHant["scenarios.ranking.caption"]);
     expect([...el.querySelectorAll("thead th")].map(text)).toEqual([zhHant["scenarios.ranking.rank"], zhHant["scenarios.ranking.whatIf"], zhHant["compare.baseline"], zhHant["compare.scenario"], zhHant["compare.absolute"], zhHant["compare.relative"]]);
     expect(text(rows(el).at(-1))).toContain(zhHant["scenarios.ranking.notRun"]);
+    expect(notes(el)).toEqual([shared("zh-Hant", "CENSORED_ENTITIES")]);
     expect(await violations()).toEqual([]);
   });
 });

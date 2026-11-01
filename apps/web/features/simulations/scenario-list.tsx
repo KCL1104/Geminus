@@ -5,7 +5,9 @@
 // wins?", ranking.ts): each one's latest completed run against its baseline
 // on the median lead time, best first, as the results' Compare Table writes
 // its figures. Every figure is the server's, with the exact value in
-// <data value>; where there is none the row says why. Each name opens the
+// <data value>; where there is none the row says why. The server's warnings
+// on a comparison are written under its name, beside its figures, and one
+// that every compared row carries once above the table. Each name opens the
 // results its figures come from (or, before any run, the scenario's page).
 // Nothing shows while the model has none.
 import Link from "next/link";
@@ -14,11 +16,12 @@ import { Callout } from "../../ui/callout";
 import { MorePages, RemoteView } from "../../app/_components/states";
 import { useRemote } from "../../app/_components/use-remote";
 import { useApi } from "../../lib/api/provider";
+import type { ComparisonWarning } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { AiMark } from "../investigations/ai-mark";
 import { formatAbsolute, formatRelative, formatValue } from "../results/format";
 import { MAX_RUN_PAGES, resultsHref } from "./load";
-import { loadRanking, MAX_COMPARISONS, type RankedScenario } from "./ranking";
+import { loadRanking, MAX_COMPARISONS, type RankedScenario, warningsOf } from "./ranking";
 import { LineKey } from "./run-status";
 import styles from "./simulations.module.css";
 import ranking from "./ranking.module.css";
@@ -31,12 +34,18 @@ export function ScenarioList({ modelId, latestVersionId, empty = null }: { model
   const [remote, retry] = useRemote((signal) => loadRanking(api, modelId, signal), api, `${modelId} ${latestVersionId}`);
   return (
     <RemoteView remote={remote} what="scenarios" onRetry={retry} headingLevel={2}>
-      {({ rows, more, runsCut, unread }) =>
+      {({ rows, shared, more, runsCut, unread }) =>
         rows.length === 0 ? (
           empty
         ) : (
           <section aria-labelledby={heading} className={styles.section}>
             <h2 id={heading}>{t("scenarios.ranking.title")}</h2>
+            {/* A warning every comparison below carries, said before the order it qualifies (as the results say theirs), and on no row. */}
+            {shared.map((w) => (
+              <Callout key={w} tone="info">
+                {t("scenarios.ranking.shared", { warning: t(`compare.warning.${w}`) })}
+              </Callout>
+            ))}
             {/* On a phone each row is a grid (ranking.module.css), so the table states its roles: a table whose display changes may otherwise lose them. */}
             <div className={ranking.scroll}>
               <table role="table" className={ranking.table}>
@@ -67,7 +76,7 @@ export function ScenarioList({ modelId, latestVersionId, empty = null }: { model
                 </thead>
                 <tbody role="rowgroup">
                   {rows.map((row) => (
-                    <Row key={row.scenario.id} row={row} />
+                    <Row key={row.scenario.id} row={row} shared={shared} />
                   ))}
                 </tbody>
               </table>
@@ -131,9 +140,11 @@ function Why({ words, span }: { words: string; span: number }) {
   );
 }
 
-function Row({ row }: { row: RankedScenario }) {
+/** shared: the warnings said once above the table, so not on the row. */
+function Row({ row, shared }: { row: RankedScenario; shared: readonly ComparisonWarning[] }) {
   const { t } = useI18n();
   const { scenario, version, standing } = row;
+  const warnings = warningsOf(standing).filter((w) => !shared.includes(w));
   const pair = standing.kind === "none" ? null : standing.pair;
   const href = pair === null ? `/scenarios/${scenario.id}` : resultsHref(scenario.id, pair.baseline.id, pair.scenario.id);
   return (
@@ -152,6 +163,14 @@ function Row({ row }: { row: RankedScenario }) {
           {/* H-061 A8: a scenario an AI investigation saved for the person who asked. */}
           {scenario.made_by_ai && <AiMark kind="saved" />}
         </p>
+        {/* The server's qualifiers on these figures (a single replication: the difference cannot be told from chance); they do not move the row. */}
+        {warnings.length > 0 && (
+          <ul className={ranking.warnings}>
+            {warnings.map((w) => (
+              <li key={w}>{t(`compare.warning.${w}`)}</li>
+            ))}
+          </ul>
+        )}
       </th>
       {standing.kind === "ranked" || standing.kind === "compared" ? (
         <Figures standing={standing} />
