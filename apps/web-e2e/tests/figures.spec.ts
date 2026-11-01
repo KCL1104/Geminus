@@ -12,12 +12,15 @@
 // "Fourth FCT tester" what-if beside its baseline). Only the envelopes around
 // them (the model, its version, the scenario and the two runs) are built
 // here; every other read goes to the fake as usual.
+//
+// Also on the results page: a fingerprint's whole value stays open while the
+// pointer moves from the fingerprint onto it (WCAG 1.4.13 hoverable).
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
-import { cellOverflow, locales, signInAs, tenant } from "./helpers";
+import { cellOverflow, locales, open, signInAs, tenant } from "./helpers";
 
 const fixture = <T>(name: string): T => JSON.parse(readFileSync(new URL(`../../web/features/results/fixtures/${name}`, import.meta.url), "utf8")) as T;
 type Comparison = { baseline_run_id: string; scenario_run_id: string; metrics: { metric_path: string; baseline: number | null; scenario: number | null }[] };
@@ -157,3 +160,38 @@ test.describe("at 390px", () => {
     });
   }
 });
+
+// WCAG 1.4.13 (hoverable): the chip opens under the fingerprint's row, so the
+// pointer crosses the rest of the cell to reach it; the chip stays open on the
+// way and once the pointer is on it, and Escape still closes it there.
+for (const width of [390, 1280]) {
+  test(`at ${width}px: a fingerprint's whole value stays open while the pointer moves onto it`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "/ui-gallery/results", "en");
+    const proof = page.getByRole("table", { name: en["proof.caption"] });
+    await expect(proof).toBeVisible();
+    // Model version (one line) and Model as run (a label that wraps in the side panel, so a taller row).
+    for (const label of [en["proof.model_hash"], en["proof.effective_model_hash"]]) {
+      for (const column of [0, 1]) {
+        const cell = proof.getByRole("row", { name: new RegExp(`^${label.replace(/[()]/g, "\\$&")}`) }).getByRole("cell").nth(column);
+        const hash = cell.locator("[tabindex='0']");
+        const chip = cell.locator("code");
+        await hash.scrollIntoViewIfNeeded();
+        const from = (await hash.boundingBox())!;
+        await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+        await expect.poll(async () => (await chip.boundingBox())!.width, `${label} ${column}: opens on hover`).toBeGreaterThan(100);
+        const to = (await chip.boundingBox())!;
+        // Down to the chip a pixel at a time, as a hand would move.
+        const x = from.x + from.width / 2;
+        const target = to.y + Math.min(6, to.height / 2);
+        await page.mouse.move(x, target, { steps: Math.ceil(target - (from.y + from.height / 2)) });
+        expect((await chip.boundingBox())!.width, `${label} ${column}: still open with the pointer on it`).toBeGreaterThan(100);
+        expect(await chip.evaluate((c, [px, py]) => c.contains(document.elementFromPoint(px!, py!)), [x, target]), `${label} ${column}: the pointer is on the chip`).toBe(true);
+        // Dismissible there too.
+        await page.keyboard.press("Escape");
+        await expect.poll(async () => (await chip.boundingBox())!.width, `${label} ${column}: Escape closes it`).toBeLessThanOrEqual(1);
+        await page.mouse.move(0, 0);
+      }
+    }
+  });
+}
