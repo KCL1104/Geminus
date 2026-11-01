@@ -14,7 +14,7 @@ import { SAMPLE_MODEL_ID, sampleLine } from "../app/ui-gallery/editor/sample-lin
 import { readyEdit, readyFromPhoto, readyScenario, SAMPLE_PROPOSAL_ID, USER, versionId } from "../app/ui-gallery/proposal/samples";
 import { createProposalStandIn, type ProposalStandIn, type ProposalStandInOptions } from "../app/ui-gallery/proposal/stand-in";
 import { ProposalRoute } from "../features/ai-proposals/proposal-view";
-import { askPrefill, clearAskPrefill, noteAskPrefill, photoStations, stationTimesRequest } from "../features/ai-proposals/station-research";
+import { askPrefill, clearAskPrefill, newStations, noteAskPrefill, photoStations, stationTimesRequest } from "../features/ai-proposals/station-research";
 import { ModelView } from "../features/model-editor/model-view";
 import { createApiClient } from "../lib/api/client";
 import { ApiProvider } from "../lib/api/provider";
@@ -83,6 +83,8 @@ const C = "node_01m4ydqk00e1ectr0n1c5x0013";
 const D = "node_01m4ydqk00e1ectr0n1c5x0014";
 /** A photo answer that adds a buffer and changes a capacity, but no station. */
 const noStation: JsonPatch = [node(D, "Before X-ray", "queue")];
+/** Three new stations, two of them named alike. */
+const sharedNames: JsonPatch = [node(A, "Reflow oven"), node(C, "reflow  OVEN"), node(D, "X-ray inspection")];
 
 const photo = (changes?: JsonPatch, extra: Partial<Proposal> = {}): Proposal => ({ ...readyFromPhoto(SAMPLE_PROPOSAL_ID), ...(changes ? { changes } : {}), ...extra });
 
@@ -112,6 +114,14 @@ describe("the stations a photo proposal added", () => {
 
   it("are none when the changes do not apply to the base", () => {
     expect(photoStations(photo([{ op: "remove", path: "/nodes/999" }]), sampleLine)).toEqual([]);
+    expect(newStations(photo([{ op: "remove", path: "/nodes/999" }]), sampleLine)).toEqual({ names: [], count: 0 });
+  });
+
+  // H-073 review (Low): the count is of the process steps the proposal adds; only the names are listed once.
+  it("are counted as the process steps the proposal adds, though names they share are listed once", () => {
+    expect(newStations(photo(), sampleLine)).toEqual({ names: ["X-ray inspection"], count: 1 });
+    expect(newStations(photo(sharedNames), sampleLine)).toEqual({ names: ["Reflow oven", "X-ray inspection"], count: 3 });
+    expect(newStations(photo(noStation), sampleLine)).toEqual({ names: [], count: 0 });
   });
 
   it.each(["en", "zh-Hant"] as const)("are named in the %s request, quoted and listed the reader's way", (locale) => {
@@ -120,6 +130,20 @@ describe("the stations a photo proposal added", () => {
     const two = stationTimesRequest(t, locale, ["Reflow oven", "X-ray inspection"]);
     expect(two).toBe(t("ask.prefill.stationTimes.intent", { count: 2, stations: quoted(t, ["Reflow oven", "X-ray inspection"], locale) }));
     expect(two).toContain(locale === "en" ? "“Reflow oven” and “X-ray inspection”" : "「Reflow oven」和「X-ray inspection」");
+  });
+
+  it.each(["en", "zh-Hant"] as const)("give the %s request the count of the new stations, and say that shared names are listed once", (locale) => {
+    const t = createTranslator(locale);
+    const names = ["Reflow oven", "X-ray inspection"];
+    const shared = stationTimesRequest(t, locale, names, 3);
+    expect(shared).toBe(t("ask.prefill.stationTimes.shared", { count: 3, stations: quoted(t, names, locale) }));
+    expect(shared).toContain(
+      locale === "en"
+        ? "A photo added 3 stations; names they share are listed once: “Reflow oven” and “X-ray inspection”."
+        : "照片新增了 3 個工作站，同名的只列一次：「Reflow oven」和「X-ray inspection」。",
+    );
+    // As many names as stations: the request as before.
+    expect(stationTimesRequest(t, locale, names, 2)).toBe(stationTimesRequest(t, locale, names));
   });
 });
 
@@ -232,6 +256,18 @@ describe("the offer on an approved photo proposal", () => {
       expect(buttons(el, en("proposal.stationTimes.offer")), what).toHaveLength(0);
       unmountAll();
     }
+  });
+
+  it("fills in the request with the number of new stations, a shared name once", async () => {
+    clearAskPrefill(SAMPLE_MODEL_ID);
+    const { el } = await proposalPage({ proposal: { ...decided, changes: sharedNames } });
+    const o = offer(el)!;
+    expect([...o.querySelectorAll("bdi")].map((x) => x.textContent)).toEqual(["Reflow oven", "X-ray inspection"]);
+    await press(button(o, en("proposal.stationTimes.offer")));
+    const intent = askPrefill(SAMPLE_MODEL_ID)?.intent;
+    expect(intent).toBe(stationTimesRequest(en, "en", ["Reflow oven", "X-ray inspection"], 3));
+    expect(intent).toContain("A photo added 3 stations");
+    clearAskPrefill(SAMPLE_MODEL_ID);
   });
 
   it("is not offered after approving a photo proposal that added no station", async () => {

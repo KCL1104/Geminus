@@ -18,7 +18,7 @@ import type { ModelIR, Proposal } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
 import { AskIcon } from "../../ui/icons";
-import { noteAskPrefill, photoStations, stationTimesRequest } from "./station-research";
+import { newStations, noteAskPrefill, stationTimesRequest } from "./station-research";
 import { data, joined, type Rich, useRich, Words } from "./words";
 import styles from "./station-research.module.css";
 
@@ -34,7 +34,8 @@ export function StationResearchOffer({ proposal, base, onAsk }: {
   const rich = useRich();
   const whyId = useId();
   const noteId = useId();
-  const stations = useMemo(() => photoStations(proposal, base), [proposal, base]);
+  // Every station the proposal added is counted; a name they share is listed once (H-073 review).
+  const { names: stations, count } = useMemo(() => newStations(proposal, base), [proposal, base]);
   if (onAsk === undefined || !canEdit(role) || stations.length === 0) return null;
 
   // Each name quoted and listed the reader's way, the names as data.
@@ -42,7 +43,7 @@ export function StationResearchOffer({ proposal, base, onAsk }: {
   const list: Rich = joined(parts.flatMap((p) => (p.type === "element" ? rich("proposal.value.text", { text: data(stations[Number(p.value)]!) }) : [p.value])));
 
   const open = () => {
-    noteAskPrefill(proposal.model_id, { from: "photoStations", intent: stationTimesRequest(t, locale, stations), mode: "edit", research: true });
+    noteAskPrefill(proposal.model_id, { from: "photoStations", intent: stationTimesRequest(t, locale, stations, count), mode: "edit", research: true });
     onAsk(proposal.model_id);
   };
 

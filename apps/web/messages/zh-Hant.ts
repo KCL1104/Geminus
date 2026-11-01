@@ -785,6 +785,7 @@ export const zhHant: Catalog = {
   "ask.modelHint.muse-wonder-1.0": "適合較難的修改。它想得比較久：要幾分鐘，也比較貴。",
   "ask.model.unavailable": "這個部署沒有提供你選的模型，請改選 Muse Spark 1.3 後再送出。",
   "ask.prefill.stationTimes.intent": { other: "照片新增了 {count} 個工作站：{stations}。照片看不出時間，所以新工作站的作業時間用的是模型原有的數字。請在網路上查詢典型的作業時間，並把每個新工作站的作業時間設為公開資料中的典型值。" },
+  "ask.prefill.stationTimes.shared": "照片新增了 {count} 個工作站，同名的只列一次：{stations}。照片看不出時間，所以新工作站的作業時間用的是模型原有的數字。請在網路上查詢典型的作業時間，並把每個新工作站的作業時間設為公開資料中的典型值。",
   "ask.prefill.stationTimes.note": "依已批准的照片提案填好，並勾選了網路研究。請檢查請求後再送出。",
   "photo.hint": "產線的照片或平面圖：PNG 或 JPEG，最大 5 MB，只用示範影像。",
   "photo.choose": "從照片提出…",

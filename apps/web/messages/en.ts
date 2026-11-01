@@ -824,6 +824,8 @@ export const en = {
     one: "A photo added the station {stations}. A photo shows no times, so its service time uses numbers already in the model. Look up the typical service time for this station on the web, and set it to a published typical value.",
     other: "A photo added {count} stations: {stations}. A photo shows no times, so their service times use numbers already in the model. Look up typical service times for these stations on the web, and set each one to a published typical value.",
   },
+  // H-073 review: more stations than names (a name two or more of them share is listed once); count is always 2 or more.
+  "ask.prefill.stationTimes.shared": "A photo added {count} stations; names they share are listed once: {stations}. A photo shows no times, so their service times use numbers already in the model. Look up typical service times for these stations on the web, and set each one to a published typical value.",
   "ask.prefill.stationTimes.note": "Filled in from the approved photo proposal, with web research on. Check the request, then send it.",
   "photo.hint": "A photo or floor plan of the line: PNG or JPEG up to 5 MB, demo images only.",
   "photo.choose": "Propose from a photo…",
