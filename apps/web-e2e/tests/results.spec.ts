@@ -96,7 +96,8 @@ for (const locale of locales) {
     await expect(proof.getByText(t["proof.reruns.none"], { exact: true })).toHaveCount(2);
     for (const line of await proof.getByText(t["proof.reruns.none"], { exact: true }).all()) await expect(line).toBeVisible();
     await expect(proof.getByRole("table", { name: t["proof.caption"] })).toBeVisible();
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    // No problem in the page (Next.js's route announcer, an empty alert outside main, is not one).
+    await expect(page.locator("main").getByRole("alert")).toHaveCount(0);
     await expect(page.getByRole("heading", { level: 2, name: t["constraint.title"], exact: true })).toHaveCount(0);
     // The run settings come before it in the side panel.
     const facts = page.getByRole("heading", { level: 2, name: t["facts.title"], exact: true });
