@@ -67,7 +67,8 @@ export function toFlow(ir: ModelIR, opts: FlowOptions): { nodes: StepNode[]; edg
       id: f.id,
       source: f.from,
       target: f.to,
-      type: "smoothstep",
+      // React Flow's smoothstep link, drawn by trace-overlay.tsx's FlowEdge (the trace's dots follow it).
+      type: "flow",
       // Connections are made and changed from a step's properties.
       selectable: false,
       focusable: false,

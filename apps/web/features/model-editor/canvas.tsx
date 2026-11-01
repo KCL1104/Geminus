@@ -8,6 +8,14 @@
 // times farther), Delete asks to remove it, Escape deselects and keeps the
 // focus there (React Flow would drop it). Connections are made from a
 // step's properties (a menu), or by dragging between the handles.
+//
+// The line in motion (H-072): given a run (`playback`: the page's clock and
+// the run's motion), the trace overlay (trace-overlay.tsx) slides a dot in
+// the run's ink along the links for each hop, counts the boards waiting on
+// each card and rings each machine in its state; without one, chevrons on
+// the links show the way the line flows. Editing comes first: dragging a
+// step, starting a connection, selecting a step to edit it, or any change
+// to the draft pauses the playback, which plays again only on Play.
 import {
   type Connection,
   Handle,
@@ -18,28 +26,45 @@ import {
   Position,
   ReactFlow,
 } from "@xyflow/react";
-import { type KeyboardEvent, useCallback, useMemo, useState } from "react";
+import { type KeyboardEvent, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ModelIR } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import styles from "./canvas.module.css";
 import { connectSteps, stepLabel } from "./edits";
 import { type Severity, type StepNode, toFlow } from "./flow";
 import type { Position as Point } from "./layout";
+import { type CanvasPlayback, createRegistry, FlowEdge, OverlayContext, TraceLayer } from "./trace-overlay";
 import "./vendor.css";
 
-function StepNodeView({ data, selected, isConnectable }: NodeProps<StepNode>) {
+export type { CanvasPlayback } from "./trace-overlay";
+
+function StepNodeView({ id, data, selected, isConnectable }: NodeProps<StepNode>) {
   const { t } = useI18n();
+  const { active, registry } = useContext(OverlayContext);
+  const stateId = useId();
+  // While a run plays, the overlay paints this card: its ring, its badge and its state text.
+  const register = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (el === null || registry === null) return;
+      registry.setStep(id, el);
+      return () => registry.deleteStep(id, el);
+    },
+    [registry, id],
+  );
   return (
-    <div className={styles.node} data-kind={data.kind} data-severity={data.severity ?? undefined} data-selected={selected || undefined}>
+    <div ref={active ? register : undefined} className={styles.node} data-kind={data.kind} data-severity={data.severity ?? undefined} data-selected={selected || undefined}>
       {data.kind !== "source" && <Handle type="target" position={Position.Left} isConnectable={isConnectable} className={styles.handle} />}
       <div className={styles.name}>{data.label}</div>
       <div className={styles.kind}>{t(`editor.type.${data.kind}`)}</div>
       {data.kind !== "sink" && <Handle type="source" position={Position.Right} isConnectable={isConnectable} className={styles.handle} />}
+      {active && <span className={styles.badge} data-trace-badge="" aria-hidden="true" />}
+      {active && <span className={styles.stepState} id={stateId} data-trace-state="" />}
     </div>
   );
 }
 
 const nodeTypes = { step: StepNodeView };
+const edgeTypes = { flow: FlowEdge };
 const marker = { type: MarkerType.Arrow, width: 18, height: 18 };
 /** How much of the line, in canvas units, the first view shows: about four layers. */
 const START_WIDTH = 960;
@@ -50,7 +75,7 @@ type Size = { width: number; height: number };
 /** The step a keyboard event happened on, if any. */
 const stepOfEvent = (e: KeyboardEvent) => (e.target as Element).closest?.(".react-flow__node")?.getAttribute("data-id") ?? null;
 
-export function Canvas({ ir, selected, severity, editable, onSelect, onMove, onConnect, onDelete }: {
+export function Canvas({ ir, selected, severity, editable, onSelect, onMove, onConnect, onDelete, playback = null }: {
   ir: ModelIR;
   selected: string | null;
   severity: (id: string) => Severity | null;
@@ -59,10 +84,34 @@ export function Canvas({ ir, selected, severity, editable, onSelect, onMove, onC
   onMove: (id: string, to: Point) => void;
   onConnect: (from: string, to: string) => void;
   onDelete: (id: string) => void;
+  /** A run to play on the canvas (H-072), or null: then the links show the flow's direction and nothing moves. */
+  playback?: CanvasPlayback | null;
 }) {
   const { t, number } = useI18n();
   const [measured, setMeasured] = useState<Record<string, Size>>({});
   const [dragging, setDragging] = useState<{ id: string; position: Point } | null>(null);
+
+  // The trace overlay: the cards and links report to the registry while a run plays.
+  const [registry] = useState(createRegistry);
+  const active = playback !== null;
+  const overlay = useMemo(() => ({ active, registry }), [active, registry]);
+  // Editing pauses the playback (a pause holds until Play, clock.ts): a drag, a connection begun,
+  // a step selected to edit it, and any change to the draft (from the canvas or the properties).
+  const clock = playback?.clock ?? null;
+  const pause = useCallback(() => clock?.pause(), [clock]);
+  const draft = useMemo(() => JSON.stringify(ir), [ir]);
+  const shownDraft = useRef(draft);
+  useEffect(() => {
+    if (shownDraft.current === draft) return;
+    shownDraft.current = draft;
+    clock?.pause();
+  }, [draft, clock]);
+  const shownSelection = useRef(selected);
+  useEffect(() => {
+    if (shownSelection.current === selected) return;
+    shownSelection.current = selected;
+    if (editable && selected !== null) clock?.pause();
+  }, [selected, editable, clock]);
 
   const describe = useMemo(() => {
     const byId = new Map(ir.nodes.map((n) => [n.id, n]));
@@ -146,30 +195,37 @@ export function Canvas({ ir, selected, severity, editable, onSelect, onMove, onC
   }), [t, editable]);
 
   return (
-    <div className={styles.canvas} onKeyDownCapture={onKeyDownCapture}>
-      <ReactFlow<StepNode>
-        aria-label={t("editor.canvas")}
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onConnect={(c) => onConnect(c.source, c.target)}
-        isValidConnection={isValidConnection}
-        onPaneClick={() => onSelect(null)}
-        nodesDraggable={editable}
-        nodesConnectable={editable}
-        edgesFocusable={false}
-        edgesReconnectable={false}
-        deleteKeyCode={null}
-        selectionKeyCode={null}
-        multiSelectionKeyCode={null}
-        zoomOnDoubleClick={false}
-        minZoom={0.2}
-        maxZoom={2}
-        fitView
-        fitViewOptions={firstView}
-        ariaLabelConfig={ariaLabelConfig}
-      />
-    </div>
+    <OverlayContext.Provider value={overlay}>
+      <div className={styles.canvas} data-trace={playback?.side} onKeyDownCapture={onKeyDownCapture}>
+        <ReactFlow<StepNode>
+          aria-label={t("editor.canvas")}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodesChange={onNodesChange}
+          onNodeDragStart={pause}
+          onConnectStart={pause}
+          onConnect={(c) => onConnect(c.source, c.target)}
+          isValidConnection={isValidConnection}
+          onPaneClick={() => onSelect(null)}
+          nodesDraggable={editable}
+          nodesConnectable={editable}
+          edgesFocusable={false}
+          edgesReconnectable={false}
+          deleteKeyCode={null}
+          selectionKeyCode={null}
+          multiSelectionKeyCode={null}
+          zoomOnDoubleClick={false}
+          minZoom={0.2}
+          maxZoom={2}
+          fitView
+          fitViewOptions={firstView}
+          ariaLabelConfig={ariaLabelConfig}
+        >
+          {playback !== null && <TraceLayer playback={playback} ir={ir} registry={registry} />}
+        </ReactFlow>
+      </div>
+    </OverlayContext.Provider>
   );
 }

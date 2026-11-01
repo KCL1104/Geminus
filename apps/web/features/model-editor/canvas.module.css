@@ -30,7 +30,7 @@
   background: var(--gm-color-sheet);
   box-shadow: var(--gm-shadow-control);
   color: var(--gm-color-ink);
-  transition: border-color var(--gm-motion), box-shadow var(--gm-motion);
+  transition: border-color var(--gm-motion), box-shadow var(--gm-motion), outline-color var(--gm-motion);
 }
 
 .name {
@@ -99,4 +99,129 @@
   align-items: center;
   min-height: 24px;
   color: var(--gm-color-ink-2);
+}
+
+/* The line in motion (H-072; DESIGN.md, The Trace Motion Rule): the trace
+   overlay (trace-overlay.tsx) paints these from the run's sampled trace,
+   never from a CSS animation. The run's ink is the canvas's data-trace. */
+
+/* A machine's state: a 2 px ring around its card (inside the focus ring, 4 px
+   out), Ink while busy, Ink 4 idle, Warning blocked or changing over, Error
+   down; the colour changes in the 180 ms of every state change. */
+.node[data-station] {
+  outline: var(--gm-space-hair) solid var(--gm-color-ink-4);
+}
+
+.node[data-station="busy"] {
+  outline-color: var(--gm-color-ink);
+}
+
+.node[data-station="blocked"],
+.node[data-station="setup"] {
+  outline-color: var(--gm-color-warning);
+}
+
+.node[data-station="failed"] {
+  outline-color: var(--gm-color-error);
+}
+
+/* The sampled boards waiting at a step: a count pill at the card's lower
+   right, in the run's ink (The Two Inks Rule: Scenario solid, Baseline
+   dashed). Gone at zero. */
+.badge {
+  position: absolute;
+  right: var(--gm-space-lg);
+  bottom: var(--gm-space-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--gm-space-sm);
+  border: 1px solid var(--gm-color-scenario);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-scenario);
+  color: var(--gm-color-on-scenario);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-label);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.badge:empty {
+  display: none;
+}
+
+.canvas[data-trace="baseline"] .badge {
+  border-style: dashed;
+  border-color: var(--gm-color-baseline);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-baseline);
+}
+
+/* The step's state in words: the card's description for assistive tech. */
+.stepState {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A board on its hop to the next step: a dot on the link, under the cards,
+   Scenario solid, Baseline outlined on the ground. */
+.dots {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.dot {
+  fill: var(--gm-color-scenario);
+  stroke: none;
+}
+
+.canvas[data-trace="baseline"] .dot {
+  fill: var(--gm-color-ground);
+  stroke: var(--gm-color-baseline);
+  stroke-width: var(--gm-space-hair);
+}
+
+/* Without a run: open chevrons on the links' straight runs show the way the
+   line flows, in the link's own ink and width (DESIGN.md Links). */
+.chevrons {
+  fill: none;
+  stroke: var(--gm-color-ink-3);
+  stroke-width: var(--xy-edge-stroke-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* What the canvas does not draw (boards past the limit, or at steps it does
+   not have): a caption box at the lower left, gone when there is none. */
+.tracePanel {
+  margin: var(--gm-space-gutter);
+  pointer-events: none;
+}
+
+.traceNote {
+  max-width: 460px;
+  margin: 0;
+  padding: var(--gm-space-sm) var(--gm-space-cell);
+  border: 1px solid var(--gm-color-rule);
+  border-radius: var(--gm-radius-md);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.traceNote:empty {
+  display: none;
 }

@@ -473,6 +473,7 @@ export const zhHant: Catalog = {
   "playback.board.left": "已離開產線",
   "playback.step": { other: "{name}：{state}，{count} 個等待中" },
   "playback.step.batch": { other: "{name}：一批處理中，其中 {count} 個為取樣" },
+  "playback.step.waiting": { other: "{name}：{count} 個等待中" },
   "editor.added": "已新增步驟 {id}。",
 
   "editor.properties": "屬性",

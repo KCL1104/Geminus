@@ -503,6 +503,7 @@ export const en = {
   "playback.board.left": "out of the line",
   "playback.step": { one: "{name}: {state}, {count} waiting", other: "{name}: {state}, {count} waiting" },
   "playback.step.batch": { one: "{name}: a batch in service, {count} of it sampled", other: "{name}: a batch in service, {count} of it sampled" },
+  "playback.step.waiting": { one: "{name}: {count} waiting", other: "{name}: {count} waiting" },
   "editor.added": "Step {id} added.",
 
   "editor.properties": "Properties",
