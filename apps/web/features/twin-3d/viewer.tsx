@@ -3,7 +3,9 @@
 // same steps as the 2D canvas, by the same IDs, selected through the same
 // store, each drawn as its equipment (scene.ts). It authors nothing: a click
 // selects a step, and the camera moves. Drag to orbit, Shift+drag or the
-// right button to pan, the wheel to zoom; from the keyboard, the arrows
+// right button to pan, the wheel with Ctrl or ⌘ held (or a trackpad's
+// pinch) to zoom, so the plain wheel and a vertical swipe scroll the page
+// past the stage (H-072 review); from the keyboard, the arrows
 // orbit, + and − zoom, 0 resets, Escape clears the selection. Steps are
 // chosen from the keyboard in the 2D view, which has every step in Tab
 // order: the 3D view is a projection, not the only way in.
@@ -61,6 +63,8 @@ type Props = {
   label?: string;
   /** The key under the stage: the station lights while it plays, the results' colours while it stands still (default on; a page with two stages shows each under one). */
   legend?: boolean;
+  /** The controls in words under the stage (default on). A page with two stages shows them under one (H-039: each thing once); each canvas keeps them as its description. */
+  controls?: boolean;
   loadView?: LoadView;
 };
 
@@ -98,7 +102,7 @@ const KEY_ORBIT = 10;
 /** A press that moves less than this far from where it went down is a click (review r1 M2). */
 const CLICK_SLOP = 4;
 
-export function Twin3D({ ir, results, selected, onSelect, occupancy = null, stage = null, clock = null, label: name, legend = true, loadView = loadPlayCanvas }: Props) {
+export function Twin3D({ ir, results, selected, onSelect, occupancy = null, stage = null, clock = null, label: name, legend = true, controls = true, loadView = loadPlayCanvas }: Props) {
   const { t } = useI18n();
   const hintId = useId();
   const lightsId = useId();
@@ -157,8 +161,11 @@ export function Twin3D({ ir, results, selected, onSelect, occupancy = null, stag
     const scheme = window.matchMedia?.("(prefers-color-scheme: dark)");
     // The page's theme can change while the view is open (review r1 M4).
     const retheme = () => wrap.current && view.current?.setPalette(palette(wrap.current));
-    // The wheel zooms the scene, not the page (a passive React listener could not stop it).
+    // The wheel scrolls the page past the stage; with Ctrl or ⌘ held (as a trackpad's pinch
+    // sends it) it zooms the scene instead (H-072 review: the stages stand open in the
+    // results page). A passive React listener could not stop the page's own zoom.
     const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       view.current?.zoom(Math.min(1.5, Math.max(0.66, Math.exp(e.deltaY * 0.0015))));
     };
@@ -289,10 +296,13 @@ export function Twin3D({ ir, results, selected, onSelect, occupancy = null, stag
         {/* "+N not drawn": the boards past the stage's 2,000 (brief §5), written per draw. */}
         {playing && <span ref={capped} className={styles.cap} hidden />}
       </div>
-      <p id={hintId} className={styles.hint}>
+      {/* The canvas's description: the selected step, then the controls (shown here, or only read when another stage shows them). */}
+      <p id={hintId} className={styles.hint} hidden={!controls && selected === null}>
         {selected !== null &&
           (playing ? <span ref={now} className={styles.selected} hidden /> : <span className={styles.selected}>{t("twin3d.selected", { name: label(selected) })}</span>)}
-        {t("twin3d.hint")}
+        <span className={controls ? undefined : styles.unseen} data-controls={controls ? "shown" : "unseen"}>
+          {t("twin3d.hint")}
+        </span>
       </p>
       {playing && legend && (
         <div className={styles.legend}>

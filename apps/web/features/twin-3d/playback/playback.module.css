@@ -1,8 +1,10 @@
 /* The results page's line in motion (H-072; DESIGN.md, The Trace Motion
-   Rule): one playback bar over two stages, Baseline left and Scenario right,
-   stacked where the results' side panel moves under them (1100 px and less,
-   results.module.css). Each stage is titled with its run's pill, the line
-   key and the run's name as the header band's provenance pills draw them. */
+   Rule): one playback bar over two stages, Baseline above Scenario at every
+   width, each the card's whole width, so each station stands right above its
+   twin and a long line is drawn large enough to read (H-072 review: side by
+   side, each stage was 312 px wide at every desktop width). Each stage is
+   titled with its run's pill, the line key and the run's name as the header
+   band's provenance pills draw them. */
 .motion {
   display: grid;
   gap: var(--gm-space-gutter);
@@ -11,15 +13,9 @@
 
 .stages {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--gm-space-section);
   min-width: 0;
-}
-
-@media (max-width: 1100px) {
-  .stages {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .stage {

@@ -508,6 +508,15 @@ describe("the AI explanation of the results (T-030)", () => {
     expect(motion.querySelectorAll('[role="group"]')).toHaveLength(1);
     expect(motion.querySelector('[role="group"]')?.getAttribute("aria-label")).toBe(en["playback.bar"]);
     expect(el.querySelector("details summary")?.textContent).not.toBe("See the line in 3D and play back its runs");
+    // H-072 review: the card follows the comparison (the table, the Marey chart) and its side panel,
+    // out of their two columns, not in the comparison's column beside the panel, where each stage
+    // was 312 px wide; the browser checks measure it (motion.spec.ts).
+    const facts = el.querySelector<HTMLElement>('section[aria-labelledby="facts-heading"]')!;
+    const layout = facts.parentElement!.parentElement!;
+    expect(layout.contains(motion)).toBe(false);
+    expect(motion.parentElement).toBe(layout.parentElement);
+    expect(layout.compareDocumentPosition(motion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(layout.contains(el.querySelector('svg[role="img"]'))).toBe(true);
     // No WebGL here: each stage says so, and the rest of the page stays.
     await waitFor(() => motion.querySelectorAll('[data-stage] [data-tone="info"]').length === 2, "the 3D views' answer");
     expect(text(motion)).toContain(en["twin3d.unavailable"]);

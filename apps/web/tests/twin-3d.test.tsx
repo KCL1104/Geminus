@@ -231,4 +231,27 @@ describe("the 3D view's pointer and keys (review r1)", () => {
     expect(calls).toContain("palette");
     document.documentElement.removeAttribute("data-theme");
   });
+
+  // H-072 review: the stages stand open in the results page, so the page scrolls past them.
+  it("leaves the wheel and a vertical swipe to the page; the wheel zooms with Ctrl or ⌘ held (a trackpad's pinch)", async () => {
+    const { canvas, calls } = await opened();
+    const wheel = async (extra: WheelEventInit = {}) => {
+      const e = new WheelEvent("wheel", { bubbles: true, cancelable: true, deltaY: 200, ...extra });
+      // happy-dom's WheelEvent is not a MouseEvent: its modifier keys are set here as a browser sets them.
+      for (const k of ["ctrlKey", "metaKey"] as const) Object.defineProperty(e, k, { value: extra[k] ?? false });
+      await act(async () => void canvas.dispatchEvent(e));
+      return e.defaultPrevented;
+    };
+    expect(await wheel()).toBe(false);
+    expect(calls.filter((c) => c.startsWith("zoom:"))).toEqual([]);
+    expect(await wheel({ ctrlKey: true })).toBe(true);
+    expect(await wheel({ metaKey: true, deltaY: -200 })).toBe(true);
+    expect(calls.filter((c) => c.startsWith("zoom:"))).toEqual(["zoom:1.35", "zoom:0.74"]);
+    // Touch: a vertical swipe scrolls the page, a sideways drag still turns the scene.
+    const css = readFileSync(join(process.cwd(), "features/twin-3d/twin-3d.module.css"), "utf8");
+    const rule = /\.canvas\s*\{([^}]*)\}/.exec(css)![1]!;
+    expect(rule).toMatch(/touch-action:\s*pan-y;/);
+    // The hint says how to zoom.
+    expect(en["twin3d.hint"]).toMatch(/Ctrl or ⌘/);
+  });
 });

@@ -311,15 +311,23 @@ describe("the electronics line at fixed times of its sampled traces", () => {
     expect(limited.dots.length).toBeLessThanOrEqual(10);
   });
 
-  it("holds a cut-short trace at its last event", () => {
+  it("holds a cut-short trace at its last event: the counts and rings stay, and the boards that had just moved finish their slide (H-072 review)", () => {
     const cut = 12 * HOUR;
     const short: TraceArtifact = { ...data.traces.baseline, truncated: true, events: data.traces.baseline.events.filter((e) => e.time_tick <= cut) };
     const m = motion(short, ir, horizon);
     expect(m.end).toBeLessThanOrEqual(cut);
     const atEnd = view("baseline", m.end, HOP, ir.nodes, m);
-    const after = view("baseline", 20 * HOUR, HOP, ir.nodes, m);
-    expect(after.tick).toBe(m.end);
-    expect([...after.steps]).toEqual([...atEnd.steps]);
-    expect(after.dots).toEqual(atEnd.dots);
+    // Boards moved on the last events: at the end they have only begun their slide.
+    expect(atEnd.dots.length).toBeGreaterThan(0);
+    const midway = view("baseline", m.end + HOP / 2, HOP, ir.nodes, m);
+    expect(midway.tick).toBe(m.end);
+    expect([...midway.steps]).toEqual([...atEnd.steps]);
+    for (const t of [m.end + HOP, 20 * HOUR, horizon]) {
+      const after = view("baseline", t, HOP, ir.nodes, m);
+      expect(after.tick).toBe(m.end);
+      expect([...after.steps]).toEqual([...atEnd.steps]);
+      // Every board then stands at its step: no dot is left on a link (a dot means a board in transit).
+      expect(after.dots).toEqual([]);
+    }
   });
 });

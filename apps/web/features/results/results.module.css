@@ -391,6 +391,16 @@
   margin-top: 0;
 }
 
+/* H-072 review: the line in motion under the comparison and its side panel,
+   the page's whole width, so a long line's boards are drawn large enough to
+   see (twin-3d/playback). It follows their grid rather than spanning a row of
+   it, so the sticky side panel stops where the comparison does. 40 px from
+   the cards above, as from a group: the last card's own 20 px and these. */
+.wide {
+  min-width: 0;
+  margin-top: var(--gm-space-section);
+}
+
 @media (max-width: 1100px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
@@ -398,6 +408,11 @@
 
   .side {
     position: static;
+  }
+
+  /* Under the side panel, whose last part has no margin of its own. */
+  .wide {
+    margin-top: var(--gm-space-split);
   }
 }
 

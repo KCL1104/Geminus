@@ -104,6 +104,28 @@ describe("the boards at a time of the run", () => {
     }
     expect(seen.size).toBeGreaterThan(5);
   });
+
+  it("gives the oven cells of a trace at the engine's cap in time linear in its batches (H-072 review)", () => {
+    // A batch step that makes most of a capped trace: 20,000 batches of one sampled board each,
+    // four at a time in the oven's cells, then the next four.
+    const oven = scenes.baseline.stations.burn_in!;
+    const n = oven.cells.length;
+    const events: TraceEvent[] = [];
+    for (let i = 0; i < 20_000; i++) {
+      const start = Math.floor(i / n) * 10;
+      events.push({ time_tick: start, sequence: 2 * i + 1, type: "service_start", entity_id: `r0/release_a/${i}`, node_id: "burn_in", batch_id: `r0/burn_in/${i}` });
+    }
+    for (let i = 0; i < 20_000; i++) events.push({ time_tick: Math.floor(i / n) * 10 + 9, sequence: 2 * i + 2, type: "service_end", entity_id: `r0/release_a/${i}`, node_id: "burn_in", batch_id: `r0/burn_in/${i}` });
+    events.sort((a, b) => a.time_tick - b.time_tick || a.sequence - b.sequence);
+    const trace: TraceArtifact = { ...data.traces.baseline, truncated: true, events };
+    const t0 = performance.now();
+    const cells = batchCells(trace, scenes.baseline);
+    // Grouping by copying each step's list per batch took about 2 s here; pushing onto it, about 10 ms.
+    expect(performance.now() - t0).toBeLessThan(400);
+    expect(cells.size).toBe(20_000);
+    // Each round of n batches fills the cells in turn.
+    expect([0, 1, n - 1, n, 19_999].map((i) => cells.get(`r0/burn_in/${i}`))).toEqual([0, 1 % n, (n - 1) % n, 0, 19_999 % n]);
+  });
 });
 
 describe("a hop's slide", () => {

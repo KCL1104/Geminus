@@ -119,6 +119,9 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
     cylinder: pc.Mesh.fromGeometry(device, new pc.CylinderGeometry({ capSegments: 24 })),
     sphere: pc.Mesh.fromGeometry(device, new pc.SphereGeometry({ latitudeBands: 12, longitudeBands: 16 })),
   };
+  // The view holds its shared meshes until destroy(): PlayCanvas destroys a mesh when the last
+  // draw on it goes, and a theme change (applyPalette) takes every draw away before it draws again.
+  for (const m of Object.values(meshes)) m.incRefCount();
   const format = pc.VertexFormat.getDefaultInstancingFormat(device);
 
   // Materials by colour: shaded, or flat (the token itself: lights and their sockets).
@@ -394,7 +397,10 @@ export function createView(pc: PC, canvas: HTMLCanvasElement, palette: Palette):
       equipment.clear();
       tiles.clear();
       lamps.clear();
-      for (const m of Object.values(meshes)) m.destroy();
+      for (const m of Object.values(meshes)) {
+        m.decRefCount();
+        m.destroy();
+      }
       app.destroy();
     },
   };

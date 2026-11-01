@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 // H-072 (replacing T-034's column playback; TEST-025, TEST-026): the results
 // page's line in motion (features/twin-3d/playback/playback.tsx). The
-// baseline and the scenario play side by side, Baseline first, each titled
-// with its run, under one playback bar and on one clock; the scenario's
+// baseline and the scenario play one above the other, Baseline first, each
+// titled with its run, under one playback bar and on one clock, the controls
+// said once under the last; the scenario's
 // stage is its version with the scenario's patch; a step selected in one is
 // selected in both; it plays once the traces are there and starts paused
 // under reduced motion; a run without a trace stands still and says why;
@@ -79,7 +80,7 @@ async function slide(el: HTMLElement, value: number) {
 }
 
 describe("the results page's line in motion", () => {
-  it("plays both runs side by side on one clock, Baseline first, each titled with its run, under one bar", async () => {
+  it("plays both runs on one clock, Baseline first, each titled with its run, under one bar", async () => {
     reducedMotion(false);
     const v = views();
     const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
@@ -194,6 +195,27 @@ describe("the results page's line in motion", () => {
     expect(el.querySelector("canvas")?.getAttribute("aria-label")).toMatch(/^3D view of the line: \d+ steps$/);
     expect(stages(el)[1]!.textContent).toContain(en["twin3d.lights"]);
     expect(stages(el)[0]!.textContent).toContain(en["twin3d.legend"]);
+  });
+
+  // H-039 "say each thing once" (H-072 review): the same three lines of controls were under both stages.
+  it("shows the stage's controls once, under the last stage; each canvas is still described by them", async () => {
+    reducedMotion(false);
+    const v = views();
+    const el = await mount(<Playback ir={ir} runs={runs()} loadView={v.loadView} />);
+    await settle();
+    const described = [...el.querySelectorAll("canvas")].map((c) => el.querySelector(`[id="${c.getAttribute("aria-describedby")}"]`)?.textContent ?? "");
+    expect(described.map((d) => d.includes(en["twin3d.hint"]))).toEqual([true, true]);
+    const said = stages(el).map((s) => s.querySelector("[data-controls]")?.getAttribute("data-controls"));
+    expect(said).toEqual(["unseen", "shown"]);
+    // A step selected is named under each stage, with its own run's state.
+    const canvas = el.querySelectorAll("canvas")[0]!;
+    await act(async () => {
+      canvas.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+      canvas.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, button: 0, clientX: 10, clientY: 10 }));
+    });
+    await settle();
+    for (const s of stages(el)) expect(s.querySelector<HTMLElement>(`[id="${s.querySelector("canvas")!.getAttribute("aria-describedby")}"]`)!.hidden).toBe(false);
+    expect(await violations()).toEqual([]);
   });
 
   it("reads in Traditional Chinese", async () => {

@@ -1,11 +1,13 @@
 "use client";
 // The results page's line in motion (H-072; docs/design/H-072_TRACE_ANIMATION.md
 // §2, §6; DESIGN.md, The Trace Motion Rule). It replaces T-034's column per
-// step: the baseline and the scenario play side by side, Baseline on the left
-// and Scenario on the right (stacked under 1100 px), each a 3D stage titled
-// with its run's pill, under one playback bar and on one clock, so a pile of
-// boards that drains on one side and not on the other is seen at the same
-// moment. Selecting a step in either stage selects it in both (shared IDs).
+// step: the baseline and the scenario play one above the other, Baseline
+// first, each a 3D stage as wide as the page's card and titled with its run's
+// pill, under one playback bar and on one clock, so a pile of boards that
+// drains in one run and not in the other is seen at the same moment, each
+// station right above its twin (H-072 review: side by side, each stage was
+// 312 px wide and its boards about 1 px). Selecting a step in either stage
+// selects it in both (shared IDs); the controls are said once, under the last.
 //
 // Each run's boards come from its own sampled trace, built once into its
 // motion (motion.ts) on the model that run ran: the scenario's stage is its
@@ -85,6 +87,7 @@ export function Playback({ ir, runs, loadView }: { ir: ModelIR; runs: Record<Run
                 clock={stage ? clock : null}
                 label={stage ? t(`playback.stage.${side}`) : undefined}
                 legend={legend}
+                controls={side === SIDES.at(-1)}
                 loadView={loadView}
               />
             </section>

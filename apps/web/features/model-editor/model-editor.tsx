@@ -52,7 +52,7 @@ import { type Stage, Twin3D } from "../twin-3d/viewer";
 import { InvestigationLink } from "../investigations/ai-mark";
 import type { PlaybackClock } from "../playback/clock";
 import { motion as buildMotion } from "../playback/motion";
-import { PlaybackBar } from "../playback/playback-bar";
+import { packKey, PlaybackBar } from "../playback/playback-bar";
 import { type LatestRun, loadLatestRun, playableTrace, stillReason } from "../playback/run";
 import { usePageClock } from "../playback/still";
 import type { Remote } from "../../lib/state/remote";
@@ -83,10 +83,40 @@ function saveIssues(candidate: ModelIR, problem: Problem): StepIssue[] {
 type Playing = { latest: LatestRun; trace: TraceArtifact; clock: PlaybackClock; canvas: CanvasPlayback; stage: Stage };
 
 /**
- * Over the canvas (H-072): which run plays, or why the line stands still,
- * and the playback bar while it plays. Nothing while the runs load.
+ * The key to the 2D canvas's state rings while a run plays on it (H-072
+ * review), as the 3D stage keys its lights: each state as its ring is drawn
+ * (Ink busy, Ink 4 idle, Warning blocked or changing over), then what the
+ * rings cannot show, in the pack's words. One Label line that wraps; read
+ * with the bar, before the steps, never announced.
  */
-function MotionStrip({ latest, playing }: { latest: Remote<LatestRun | null>; playing: Playing | null }) {
+function RingKey({ domain }: { domain: string }) {
+  const { t } = useI18n();
+  const id = useId();
+  const states = [["busy", t("playback.state.busy")], ["idle", t("playback.state.idle")], ["held", t("twin3d.lights.held")]] as const;
+  return (
+    <div className={styles.rings} data-rings="">
+      <span id={id} className={styles.ringsLabel}>
+        {t("playback.rings")}
+      </span>
+      <ul className={styles.ringList} aria-labelledby={id}>
+        {states.map(([state, name]) => (
+          <li key={state}>
+            <span className={styles.ring} data-ring={state} aria-hidden="true" />
+            {name}
+          </li>
+        ))}
+      </ul>
+      <span className={styles.ringsCaveat}>{t(packKey(domain, "playback.ringsSampled"))}</span>
+    </div>
+  );
+}
+
+/**
+ * Over the canvas (H-072): which run plays, or why the line stands still,
+ * and the playback bar while it plays; with the 2D canvas shown (`rings`),
+ * the key to its state rings. Nothing while the runs load.
+ */
+function MotionStrip({ latest, playing, rings }: { latest: Remote<LatestRun | null>; playing: Playing | null; rings: boolean }) {
   const { t, dateTime } = useI18n();
   if (latest.state === "loading") return null;
   const run = latest.state === "loaded" ? latest.data : null;
@@ -109,6 +139,7 @@ function MotionStrip({ latest, playing }: { latest: Remote<LatestRun | null>; pl
           traces={[{ side: null, trace: playing.trace, end: playing.canvas.motion.end }]}
         />
       )}
+      {playing && rings && <RingKey domain={playing.latest.model.domain} />}
     </div>
   );
 }
@@ -383,7 +414,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
         {/* H-072: a run with a trace plays on a read-only canvas; nothing else of the editor (no 3D) loads here. */}
         {playing && (
           <div className={styles.phoneMotion}>
-            <MotionStrip latest={latest} playing={playing} />
+            <MotionStrip latest={latest} playing={playing} rings />
             <Canvas
               ir={working}
               selected={selected}
@@ -454,7 +485,7 @@ function Editor({ model, session, dispatch, reloadPage, header, ask }: EditorPro
 
       <div className={styles.stage}>
         <div className={styles.column}>
-          <MotionStrip latest={latest} playing={playing} />
+          <MotionStrip latest={latest} playing={playing} rings={view === "2d"} />
           <div className={styles.surface}>
           <div className={styles.toolbar}>
             {/* 3D is a read-only projection (T-033): no step is added or fitted there. */}

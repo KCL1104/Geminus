@@ -220,6 +220,27 @@ describe("the slide of a hop", () => {
     expect(where(m.at(17, { hop: 2 }))).not.toHaveProperty("e1");
     expect(m.at(15, { hop: 2 }).inLine).toBe(1);
   });
+
+  it("finishes the hops a cut-short trace's last events began while it holds, then draws every item at its node (H-072 review)", () => {
+    // e2 reaches p at 9, the trace's last event: the clock runs on past the end, and so does that slide.
+    const m = motion(trace(e2(), true), model, 20);
+    expect(m.end).toBe(9);
+    expect(m.at(9, { hop: 4 }).boards[0]!.hop).toEqual({ path: ["q", "p"], steps: [0] });
+    const half = m.at(11, { hop: 4 });
+    expect(half.tick).toBe(9); // the line itself holds at the end
+    expect(half.boards[0]!.hop).toEqual({ path: ["q", "p"], steps: [0.5] });
+    for (const t of [13, 15, 20]) {
+      const f = m.at(t, { hop: 4 });
+      expect(f.tick).toBe(9);
+      expect(f.boards.map((b) => [b.id, b.state, b.node, b.hop])).toEqual([["e2", "service", "p", null]]);
+    }
+    // An item that left at the end slides into its sink, then is gone; nothing else changes.
+    const left = motion(trace(e1().slice(0, 10), true), model, 20);
+    expect(left.end).toBe(15);
+    expect(where(left.at(16, { hop: 2 }))).toEqual({ e1: "left@sink" });
+    expect(left.at(17, { hop: 2 }).boards).toEqual([]);
+    expect(left.at(20, { hop: 2 }).nodes.sink!.through).toBe(1);
+  });
 });
 
 describe("a limit on the boards drawn", () => {

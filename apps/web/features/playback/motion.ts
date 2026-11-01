@@ -23,7 +23,10 @@
 //   from where the item was drawn (`Hop`, `placeOnHop`), so nothing jumps
 //   back. A completed or abandoned item slides into its sink and is gone.
 // - A truncated trace holds after its last event (`end`); a whole one ends
-//   at the horizon.
+//   at the horizon. Asked for a later time (the page's clock runs to the
+//   horizon, or to the longer of two runs), the line stays as it was at
+//   `end`, and only the slides its last events began finish, so every item
+//   then stands at its node.
 // - Station states come from the sampled items only: a station serving
 //   items the sample left out looks idle. Breakdowns are not in the trace
 //   (SIMULATION_SPEC §9), so no station is ever "failed" from a
@@ -140,7 +143,8 @@ export type Motion = {
   /** Distinct sampled items in the trace. */
   readonly items: number;
   /**
-   * The line at tick t (clamped to 0..end). hop: the ticks a slide takes
+   * The line at tick t (clamped to 0..end; a slide begun by then goes on
+   * at t itself, so past `end` it finishes). hop: the ticks a slide takes
    * (0, the default: none). limit: at most this many boards (default all;
    * the rest are counted in notDrawn, the deepest in a stack first).
    */
@@ -464,13 +468,19 @@ export function motion(trace: TraceArtifact, model: MotionModel, horizon: number
   const rank = new Int32Array(NS);
   STATE_ORDER.forEach((st, i) => (rank[st] = i));
 
-  let memo: { tick: number; hop: number; limit: number; frame: Frame } | null = null;
+  let memo: { tick: number; slide: number; hop: number; limit: number; frame: Frame } | null = null;
 
   const at: Motion["at"] = (t, options = {}) => {
-    const tick = Math.min(Math.max(Number.isFinite(t) ? t : 0, 0), end);
+    const asked = Math.max(Number.isFinite(t) ? t : 0, 0);
+    const tick = Math.min(asked, end);
     const h = Math.max(0, options.hop ?? 0);
     const limit = Math.max(0, Math.floor(options.limit ?? Number.POSITIVE_INFINITY));
-    if (memo && memo.tick === tick && memo.hop === h && memo.limit === limit) return memo.frame;
+    // The slides are worked out at the time asked: past a cut-short trace's end the clock
+    // runs on, and the hops its last events began finish on it (H-072 review), while the
+    // line itself holds at `end`. From end + hop on every slide is over, so every later
+    // time is the same frame.
+    const slide = h > 0 ? Math.min(asked, end + h) : tick;
+    if (memo && memo.tick === tick && memo.slide === slide && memo.hop === h && memo.limit === limit) return memo.frame;
     moveTo(upTo(ticks, tick));
 
     // The items to draw: those in the line at a node the model has, and those sliding into a sink.
@@ -480,7 +490,7 @@ export function motion(trace: TraceArtifact, model: MotionModel, horizon: number
       if (s >= 0 && sNode[s]! >= 0) drawn.push(s);
     }
     if (h > 0) {
-      for (let j = upTo(leaveTicks, tick - h); j < leaves.length && leaveTicks[j]! <= tick; j++) {
+      for (let j = upTo(leaveTicks, slide - h); j < leaves.length && leaveTicks[j]! <= tick; j++) {
         const s = cTo[leaves[j]!]!;
         if (sNode[s]! >= 0) drawn.push(s);
       }
@@ -527,7 +537,7 @@ export function motion(trace: TraceArtifact, model: MotionModel, horizon: number
         since: sStart[s]!,
         until: Number.isNaN(next) ? null : next,
         slot: slots[i]!,
-        hop: hopOf(s, tick, h),
+        hop: hopOf(s, slide, h),
       });
     }
 
@@ -575,7 +585,7 @@ export function motion(trace: TraceArtifact, model: MotionModel, horizon: number
     });
 
     const frame: Frame = { tick, boards, nodes, resources, inLine: aliveN, notDrawn, hidden };
-    memo = { tick, hop: h, limit, frame };
+    memo = { tick, slide, hop: h, limit, frame };
     return frame;
   };
 

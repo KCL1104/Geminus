@@ -84,14 +84,14 @@ for (const locale of locales) {
 }
 
 // H-072 (replacing T-034's column playback): the line in motion. The two
-// runs' 3D stages, Baseline on the left and Scenario on the right, play
-// under one playback bar on one clock; Pause is its first control, from the
-// mouse and the keyboard; under 1100 px the stages stack. More on the
-// electronics line's own page: motion.spec.ts.
+// runs' 3D stages, Baseline above Scenario at every width and each as wide
+// as the page's card (H-072 review), play under one playback bar on one
+// clock; Pause is its first control, from the mouse and the keyboard. More
+// on the electronics line's own page: motion.spec.ts.
 test.describe("the results page's line in motion", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("plays both runs side by side under one bar; Pause pauses from the keyboard; the slider moves; it says what is sampled", async ({ page }) => {
+  test("plays both runs one above the other under one bar; Pause pauses from the keyboard; the slider moves; it says what is sampled", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await open(page, "/ui-gallery/results", "en");
@@ -101,10 +101,12 @@ test.describe("the results page's line in motion", () => {
     const scenario = motion.locator("section[data-stage=scenario]");
     await expect(baseline.getByRole("heading", { level: 3 })).toHaveText(en["runs.baseline"]);
     await expect(scenario.getByRole("heading", { level: 3 })).toHaveText(en["runs.scenario"]);
-    // Side by side: Baseline on the left, Scenario on the right, level.
+    // Baseline above Scenario, level at the left and as wide, past the side panel (H-072 review).
     const [b, s] = [(await baseline.boundingBox())!, (await scenario.boundingBox())!];
-    expect(s.x).toBeGreaterThanOrEqual(b.x + b.width);
-    expect(Math.abs(s.y - b.y)).toBeLessThan(2);
+    expect(s.y).toBeGreaterThanOrEqual(b.y + b.height);
+    expect(Math.abs(s.x - b.x)).toBeLessThan(1);
+    expect(Math.abs(s.width - b.width)).toBeLessThan(1);
+    expect(b.width).toBeGreaterThan(1000);
     // Each stage is its run's scene, or says why it cannot run here.
     for (const [stage, name] of [[baseline, en["playback.stage.baseline"]], [scenario, en["playback.stage.scenario"]]] as const) {
       await expect(stage.getByRole("img", { name }).or(stage.getByText(en["twin3d.unavailable"]))).toBeVisible();

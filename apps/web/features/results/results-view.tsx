@@ -57,14 +57,17 @@ function Facts({ baseline, scenario, version }: { baseline: Run; scenario: Run; 
 
 /**
  * The line in motion (H-072, replacing T-034's closed "See the line in 3D"):
- * the two runs' stages side by side under one playback bar, playing once
- * their traces are here (The Trace Motion Rule). A run without a trace
- * stands still in its results' colours (T-033) and says why.
+ * the two runs' stages, Baseline above Scenario, under one playback bar,
+ * playing once their traces are here (The Trace Motion Rule). A run without
+ * a trace stands still in its results' colours (T-033) and says why. The
+ * card takes the page's whole width, under the comparison and its side
+ * panel (H-072 review): a long line is drawn at a scale where its boards
+ * and its pile before a station can be seen, each station above its twin.
  */
 function LineInMotion({ data }: { data: ResultsData }) {
   const { t } = useI18n();
   return (
-    <section aria-labelledby="motion-heading" className={styles.section}>
+    <section aria-labelledby="motion-heading" className={`${styles.section} ${styles.wide}`}>
       <h2 id="motion-heading">{t("playback.stage")}</h2>
       <Playback ir={data.version.ir} runs={{ baseline: data.baseline, scenario: data.scenario }} />
     </section>
@@ -97,8 +100,11 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
   const { replications: br } = baseline.run.config;
   const caption = br === scenario.run.config.replications ? t("compare.summary.caption", { count: br }) : t("compare.summary.captionMixed");
 
-  // H-040: the comparison on the left, the AI's explanation and the frozen settings in the side panel.
+  // H-040: the comparison on the left, the AI's explanation and the frozen settings in the side panel;
+  // H-072: the line in motion under both, the page's whole width (out of their grid, so the sticky
+  // side panel ends with the comparison and never covers it).
   return (
+    <>
     <div className={styles.layout}>
       <div className={styles.main}>
       {!comparison.comparable && (
@@ -130,7 +136,6 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
           <MetricsTable rows={rows} />
         </div>
       </section>
-      <LineInMotion data={data} />
       <MareyChart
         ir={version.ir}
         baseline={{ trace: baseline.trace, endTick: baseline.result.measurement_window.horizon_ticks }}
@@ -142,5 +147,7 @@ export function ResultsView({ data, analysis }: { data: ResultsData; analysis?: 
         <Facts baseline={baseline.run} scenario={scenario.run} version={version.version} />
       </div>
     </div>
+    <LineInMotion data={data} />
+    </>
   );
 }

@@ -79,6 +79,7 @@
   - Two stages under one playback bar: Baseline on the left, Scenario on the right, each titled with its run pill.
   - Selecting a step in either stage selects it in both (shared entity IDs).
   - Under 1100 px they stack.
+  - *Amended by the slice's review (2026-11-01, the owner's "follow your suggestions"):* side by side in the comparison's column, beside the 400 px side panel, each stage was 312 × 239 px at every desktop width and a board about 1 px, so the primary moment (§2) could not be seen. The card now takes the page's whole width, under the comparison and its side panel, and the stages stand Baseline above Scenario at every width (each about 1,064 px wide at 1280 px), so each station stands right above its twin. The controls' line is said once, under the last stage.
 - **Model page.**
   - 2D: an overlay on the React Flow canvas. Dots in the run's ink travel along the links, each step card shows a count badge of the boards waiting there, and a 2 px state ring shows the machine's state. Editing is unaffected: dragging or editing pauses playback, and it resumes on Play.
   - 3D: the same equipment scene as the results page, one stage.

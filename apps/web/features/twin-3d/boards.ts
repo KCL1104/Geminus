@@ -195,7 +195,12 @@ export function batchCells(trace: TraceArtifact, scene: Scene): ReadonlyMap<stri
   for (const b of open.values()) b.end = Number.POSITIVE_INFINITY;
   const out = new Map<string, number>();
   const byNode = new Map<string, Batch[]>();
-  for (const b of batches.values()) byNode.set(b.node, [...(byNode.get(b.node) ?? []), b]);
+  // Pushed onto each step's list (a copy per batch was quadratic: seconds at the trace cap; H-072 review).
+  for (const b of batches.values()) {
+    const list = byNode.get(b.node);
+    if (list) list.push(b);
+    else byNode.set(b.node, [b]);
+  }
   for (const [node, list] of byNode) {
     const st = scene.stations[node];
     const n = Math.max(1, st ? st.cells.length || st.units.length : 1);

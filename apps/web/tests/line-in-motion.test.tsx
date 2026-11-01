@@ -195,7 +195,44 @@ describe("the model page's line in motion", () => {
     expect(caption(el)).toBe(`播放中：${runDate("zh-Hant")} 的基準執行，種子 1。`);
     expect(toggle(el)?.getAttribute("aria-label")).toBe(zhHant["playback.pause"]);
     expect(strip(el)?.textContent).toContain("抽樣：每 8 片電路板取 1 片，第 1 次重複。");
+    expect(strip(el)?.textContent).toContain(zhHant["domain.electronics_line.playback.ringsSampled"]);
     expect(await violations()).toEqual([]);
+  });
+
+  // H-072 review: a ring's colour is the only sign of a machine's state on the 2D canvas, and it
+  // comes from the sampled boards alone (FCT can look idle while boards wait before it).
+  it("keys the 2D canvas's state rings, and says they show only the sampled boards; in 3D the stage keys its lights", async () => {
+    const rings = (el: HTMLElement) => strip(el)?.querySelector<HTMLElement>("[data-rings]") ?? null;
+    const key = (el: HTMLElement) => {
+      const list = rings(el)?.querySelector("ul");
+      const name = list && document.getElementById(list.getAttribute("aria-labelledby") ?? "")?.textContent;
+      return { name, items: [...(list?.querySelectorAll("li") ?? [])].map((li) => [li.querySelector("[data-ring]")?.getAttribute("data-ring"), li.textContent]) };
+    };
+    media();
+    const el = await open();
+    expect(key(el)).toEqual({
+      name: en["playback.rings"],
+      items: [["busy", en["playback.state.busy"]], ["idle", en["playback.state.idle"]], ["held", en["twin3d.lights.held"]]],
+    });
+    expect(rings(el)?.textContent).toContain(en["domain.electronics_line.playback.ringsSampled"]);
+    // Read with the bar before the steps, never announced.
+    expect(rings(el)!.compareDocumentPosition(el.querySelector(".react-flow__node")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(rings(el)?.closest("[aria-live], [role=status]")).toBeNull();
+    expect(await violations()).toEqual([]);
+    // The 3D view draws no rings: the strip drops their key (the stage has its own, of the lights).
+    await press(button("3D"));
+    await settle();
+    expect(rings(el)).toBeNull();
+    await press(button("2D"));
+    await settle();
+    expect(rings(el)).not.toBeNull();
+    document.body.innerHTML = "";
+    // A phone plays on the 2D canvas, so it has the key too; a line standing still has none.
+    media({ wide: false });
+    expect(rings(await open())).not.toBeNull();
+    document.body.innerHTML = "";
+    media();
+    expect(rings(await open({ runs: [] }))).toBeNull();
   });
 });
 

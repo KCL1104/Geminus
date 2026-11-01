@@ -101,6 +101,67 @@ test.describe("the results page's two stages, the electronics line", () => {
       expect((await scene.screenshot()).equals(before)).toBe(true);
     }
   });
+
+  // H-072 review: side by side beside the side panel each stage was 312 px wide at every desktop
+  // width, and the wheel over either one zoomed it instead of scrolling the page.
+  test("stand one above the other, as wide as the page; the wheel scrolls the page past them, and zooms with Ctrl held", async ({ page }) => {
+    await open(page, results("still"), "en");
+    await expect(page.getByText(en["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
+    const motion = page.getByRole("region", { name: en["playback.stage"] });
+    const [b, s] = [(await motion.locator("section[data-stage=baseline]").boundingBox())!, (await motion.locator("section[data-stage=scenario]").boundingBox())!];
+    expect(s.y).toBeGreaterThanOrEqual(b.y + b.height);
+    expect(Math.abs(s.x - b.x)).toBeLessThan(1);
+    expect(Math.abs(s.width - b.width)).toBeLessThan(1);
+    // Past the side panel: the card's whole width (1,104 px of content at 1280, less its 20 px sides).
+    expect(b.width).toBeGreaterThan(1000);
+    // The controls are said once, under the last stage.
+    await expect(motion.getByText(en["twin3d.hint"])).toHaveCount(2);
+    await expect(motion.getByText(en["twin3d.hint"]).filter({ visible: true })).toHaveCount(1);
+    const scene = page.getByRole("img", { name: en["playback.stage.baseline"] });
+    const target = (await scene.isVisible()) ? scene : motion.locator("section[data-stage=baseline]");
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    // The side panel, sticky beside the comparison, stops above the card (it does not cover it).
+    const facts = (await page.locator('section[aria-labelledby="facts-heading"]').boundingBox())!;
+    expect(facts.y + facts.height).toBeLessThanOrEqual((await motion.boundingBox())!.y);
+    const box = (await target.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const bottom = await page.evaluate(() => window.scrollY);
+    expect(bottom).toBeGreaterThan(400);
+    await page.mouse.wheel(0, -400);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeLessThan(bottom);
+    if (await scene.isVisible()) {
+      // With Ctrl held the wheel zooms the scene, and the page stays where it is.
+      const at = (await scene.boundingBox())!;
+      await page.mouse.move(at.x + at.width / 2, at.y + at.height / 2);
+      const y = await page.evaluate(() => window.scrollY);
+      const before = await scene.screenshot();
+      await page.keyboard.down("Control");
+      await page.mouse.wheel(0, -400);
+      await page.keyboard.up("Control");
+      await expect.poll(async () => (await scene.screenshot()).equals(before)).toBe(false);
+      expect(await page.evaluate(() => window.scrollY)).toBe(y);
+    }
+  });
+
+  // H-072 review: a theme change destroyed the meshes the stages share, and each stage then threw on every frame.
+  test("go on drawing when the theme changes while they play", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await open(page, results("line"), "en");
+    await expect(page.getByText(en["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
+    await expect(bar(page).getByRole("button", { name: en["playback.pause"] })).toBeVisible();
+    for (const theme of ["dark", "light"]) {
+      await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
+      await page.waitForTimeout(800);
+    }
+    const scene = page.getByRole("img", { name: en["playback.stage.scenario"] });
+    if (await scene.isVisible()) {
+      // Still playing: its picture changes.
+      const before = await scene.screenshot();
+      await expect.poll(async () => (await scene.screenshot()).equals(before), { timeout: 5_000 }).toBe(false);
+    }
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("the model page's line in motion, the electronics line", () => {
@@ -117,8 +178,10 @@ test.describe("the model page's line in motion, the electronics line", () => {
     const b = bar(strip);
     await expect(b.getByRole("button", { name: en["playback.pause"] })).toBeVisible();
     await expect(playhead(b)).not.toHaveText("Day 1, 00:00", { timeout: 5_000 });
-    // The machines wear their state from the trace.
+    // The machines wear their state from the trace; the strip keys the rings and says they show only the sampled boards.
     await expect(page.locator("[data-station]").first()).toBeAttached();
+    await expect(strip.getByRole("list", { name: en["playback.rings"] })).toBeVisible();
+    await expect(strip.getByText(en["domain.electronics_line.playback.ringsSampled"])).toBeVisible();
     // Pause comes before the steps: from the keyboard, Enter pauses.
     await b.getByRole("button", { name: en["playback.pause"] }).focus();
     expect(await focusIsVisible(page)).toBe(true);
@@ -141,6 +204,8 @@ test.describe("the model page's line in motion, the electronics line", () => {
     await expect(page.getByText(en["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
     await expect(page.getByRole("img", { name: en["playback.stage.baseline"] }).or(page.getByText(en["twin3d.unavailable"]))).toBeVisible();
     await expect(b.getByRole("button", { name: en["playback.play"] })).toBeVisible();
+    // No rings in 3D, so no key to them over it (the stage keys its lights).
+    await expect(strip.getByRole("list", { name: en["playback.rings"] })).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 
@@ -183,9 +248,10 @@ for (const locale of locales) {
         await expect(page.getByText(t["twin3d.loading"])).toHaveCount(0, { timeout: 30_000 });
         await expect(bar(motion, locale).getByRole("button", { name: t["playback.pause"] })).toBeVisible();
         const [b, s] = [(await motion.locator("section[data-stage=baseline]").boundingBox())!, (await motion.locator("section[data-stage=scenario]").boundingBox())!];
-        // Under 1100 px they stack, Baseline first; wider, side by side.
-        if (width < 1100) expect(s.y).toBeGreaterThanOrEqual(b.y + b.height);
-        else expect(s.x).toBeGreaterThanOrEqual(b.x + b.width);
+        // At every width one above the other, Baseline first, each the card's whole width (H-072 review).
+        expect(s.y).toBeGreaterThanOrEqual(b.y + b.height);
+        expect(Math.abs(s.x - b.x)).toBeLessThan(1);
+        expect(b.width).toBeGreaterThan(width === 1280 ? 1000 : 300);
         expect(await noScroll(page)).toBe(true);
         const box = (await slider(motion, locale).boundingBox())!;
         expect(box.x >= 0 && box.x + box.width <= width).toBe(true);

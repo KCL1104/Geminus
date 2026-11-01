@@ -99,6 +99,65 @@
   line-height: var(--gm-line-height-label);
 }
 
+/* Under the bar while the 2D canvas plays (H-072 review), as the 3D stage
+   keys its lights: one Label line that wraps, each state's ring as the canvas
+   draws it on a step card (canvas.module.css: Ink busy, Ink 4 idle, Warning
+   blocked or changing over), then what the rings cannot show. */
+.rings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.ringsLabel {
+  color: var(--gm-color-ink);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+.ringList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ringList li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-sm);
+}
+
+/* A step card in small: Sheet inside its state's 2 px ring. */
+.ring {
+  display: inline-block;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--gm-space-section);
+  height: var(--gm-space-group);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-sheet);
+  outline: var(--gm-space-hair) solid var(--gm-color-ink-4);
+  outline-offset: calc(-1 * var(--gm-space-hair));
+}
+
+.ring[data-ring="busy"] {
+  outline-color: var(--gm-color-ink);
+}
+
+.ring[data-ring="held"] {
+  outline-color: var(--gm-color-warning);
+}
+
+.ringsCaveat {
+  flex-basis: 100%;
+}
+
 .surface {
   position: relative;
   min-width: 0;
