@@ -154,11 +154,15 @@ test.describe("the results page's two stages, the electronics line", () => {
       await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
       await page.waitForTimeout(800);
     }
+    // A stage that throws on every frame says so here, not as a picture that stopped.
+    expect(errors).toEqual([]);
     const scene = page.getByRole("img", { name: en["playback.stage.scenario"] });
     if (await scene.isVisible()) {
-      // Still playing: its picture changes.
+      // Still playing: its picture changes. On the software WebGL of these checks one screenshot
+      // of a stage takes about 1.7-3.7 s (measured 2026-11-02 on h072 and the merged branch, while
+      // every picture differed from the last), so the project's 15 s, not 5 s, as the wheel check uses.
       const before = await scene.screenshot();
-      await expect.poll(async () => (await scene.screenshot()).equals(before), { timeout: 5_000 }).toBe(false);
+      await expect.poll(async () => (await scene.screenshot()).equals(before)).toBe(false);
     }
     expect(errors).toEqual([]);
   });
