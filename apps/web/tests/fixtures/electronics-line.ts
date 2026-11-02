@@ -24,6 +24,12 @@
 //   neither truncated). All six validate against schemas/ (Result,
 //   TraceArtifact, Comparison, the IR).
 //
+// - Made again on 2026-11-02, when the template's 2D positions moved (the
+//   canvas layout): the same throwaway test wrote the model (its positions)
+//   and the two Results (their model hashes and digests, nothing else);
+//   the traces and the Comparison came out value for value the same and
+//   were kept as they were.
+//
 // The traces have blocking (aoi, ict, smt), burn-in batches (batch_id) and
 // test failures with rework, but no setup_start (no sampled board got the
 // SMT changeover in this run): the motion tests cover setups with their own
