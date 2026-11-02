@@ -883,6 +883,7 @@ export const en = {
   "ask.log.sep": " · ",
   "ask.log.photo": "From a photo",
   "ask.log.reuse": "Reuse",
+  "ask.log.reuseNamed": "Reuse “{request}”, {time}",
   "ask.log.reused": "Back in the box. Nothing is sent until you send it.",
   "ask.log.investigation.scenario": "The AI acts on it: what-ifs",
   "ask.log.investigation.edit": "The AI acts on it: one change to the draft",

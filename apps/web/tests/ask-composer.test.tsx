@@ -474,17 +474,31 @@ describe("earlier requests above the composer (2026-11-02, H-079)", () => {
     expect(c!.querySelector("time")!.getAttribute("datetime")).toBe("2026-10-26T08:48:00Z");
     // Requests in words can be reused; a photo has no words to reuse.
     expect([reuse(a!), reuse(b!), reuse(c!)].map((r) => r !== null)).toEqual([true, true, false]);
+    // Reuse shows its label; its name starts with it and says which request (the words' start and the time), so no two share a name (H-027).
     expect(text(reuse(a!))).toBe(t("ask.log.reuse"));
-    expect(described(reuse(a!))).toEqual(["Make the burn-in batches bigger."]);
+    const names = [reuse(a!), reuse(b!)].map((r) => r!.getAttribute("aria-label")!);
+    expect(names[0]).toBe(t("ask.log.reuseNamed", { request: "Make the burn-in batches bigger.", time: a!.querySelector("time")!.textContent! }));
+    expect(names.every((n) => n.startsWith(t("ask.log.reuse")))).toBe(true);
+    expect(new Set(names).size).toBe(2);
     // The honest line, and that older ones are under AI proposals in the rail; no second link to that page.
     expect(text(list)).toContain(t("ask.log.note"));
     expect(text(list)).toContain(t("ask.log.older"));
     expect(ask(el).querySelector(`a[href="/models/${SAMPLE_MODEL_ID}/proposals"]`)).toBeNull();
     // Every row is a link of its own, and Reuse is not inside it.
-    const names = rows(el).map((r) => text(r.querySelector("a")));
-    expect(new Set(names).size).toBe(names.length);
+    const links = rows(el).map((r) => text(r.querySelector("a")));
+    expect(new Set(links).size).toBe(links.length);
     expect(rows(el).some((r) => r.querySelector("a [data-reuse], a button") !== null)).toBe(false);
     expect(await violations()).toEqual([]);
+  });
+
+  it("names Reuse of a long request by its start, on one line", async () => {
+    const long = { ...readyEdit(proposalId(96)), base_version_id: versionId(1), created_at: "2026-10-26T08:50:00Z", intent: `Raise the AOI buffer\n${"to thirty boards ".repeat(20)}` };
+    const { el } = await modelPage({ earlier: [long] });
+    const name = reuse(rows(el)[0]!)!.getAttribute("aria-label")!;
+    const quoted = /“(.*)”/.exec(name)![1]!;
+    expect([...quoted]).toHaveLength(80);
+    expect(quoted.startsWith("Raise the AOI buffer to thirty boards")).toBe(true);
+    expect(quoted.endsWith("…")).toBe(true);
   });
 
   it("shows the person's words as data, never as markup", async () => {

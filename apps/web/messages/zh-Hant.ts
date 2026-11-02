@@ -838,6 +838,7 @@ export const zhHant: Catalog = {
   "ask.log.sep": "・",
   "ask.log.photo": "來自照片",
   "ask.log.reuse": "再用一次",
+  "ask.log.reuseNamed": "再用一次「{request}」，{time}",
   "ask.log.reused": "已放回輸入框。在你送出之前，不會送出任何內容。",
   "ask.log.investigation.scenario": "AI 直接執行：假設情境",
   "ask.log.investigation.edit": "AI 直接執行：在草稿中做一項修改",

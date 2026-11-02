@@ -11,8 +11,10 @@
 // a scenario, or that the AI acts on it), and its time. Reuse puts the
 // words, the mode and the model back in the composer (onReuse) and sends
 // nothing; a photo has nothing to reuse, so no Reuse. Reuse is a quiet
-// button beside the link, never inside it, named "Reuse" and described by
-// the words it puts back. One line says what the list is: this model's
+// button beside the link, never inside it, showing "Reuse" and named by it,
+// the start of the words it puts back and the time ("Reuse “…”, <time>"), so
+// no two of the panel's buttons share a name (H-027) and the name starts
+// with what is shown (WCAG 2.5.3). One line says what the list is: this model's
 // latest requests from anyone in the organization, each starting from the
 // latest version, which the AI does not see. The rail's AI proposals already
 // links to the whole list, so there is no second link to it (H-027); the
@@ -28,6 +30,13 @@ import { Button } from "../../ui/button";
 import { type Entry, loadRequestLog, type Reused, reused, requestState, wordsOf } from "./request-log";
 import { visible } from "./shown";
 import styles from "./ask.module.css";
+
+/** The start of a request's words for Reuse's name: one line, at most 80 characters. */
+function opening(words: string): string {
+  const line = visible(words, "prose").replace(/\s+/g, " ").trim();
+  const chars = [...line];
+  return chars.length > 80 ? `${chars.slice(0, 79).join("")}…` : line;
+}
 
 export function EarlierRequests({ model, investigations, onReuse }: {
   model: Model;
@@ -77,7 +86,6 @@ export function EarlierRequests({ model, investigations, onReuse }: {
 
 function Row({ entry, latest, onReuse }: { entry: Entry; latest: Model["latest_version"]; onReuse: (r: Reused) => void }) {
   const { t, dateTime } = useI18n();
-  const wordsId = useId();
   const state = requestState(entry, latest);
   const sep = t("ask.log.sep");
   const own = wordsOf(entry);
@@ -105,7 +113,7 @@ function Row({ entry, latest, onReuse }: { entry: Entry; latest: Model["latest_v
   return (
     <li className={styles.row} data-request>
       <Link href={href} className={styles.entry}>
-        <span id={wordsId} className={styles.words} data-request-text>
+        <span className={styles.words} data-request-text>
           {words}
         </span>
         <span className={styles.meta} data-request-meta>
@@ -123,7 +131,7 @@ function Row({ entry, latest, onReuse }: { entry: Entry; latest: Model["latest_v
         </span>
       </Link>
       {again !== null && (
-        <Button variant="quiet" className={styles.reuse} aria-describedby={wordsId} onPress={() => onReuse(again)} data-reuse>
+        <Button variant="quiet" className={styles.reuse} aria-label={t("ask.log.reuseNamed", { request: opening(again.intent), time: dateTime(at) })} onPress={() => onReuse(again)} data-reuse>
           {t("ask.log.reuse")}
         </Button>
       )}
