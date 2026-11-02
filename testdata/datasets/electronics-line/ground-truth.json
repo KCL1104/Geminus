@@ -13,7 +13,7 @@
     "file": "ground-truth-model.json",
     "domain": "electronics_line",
     "template": "electronics_assembly_test_line",
-    "model_hash": "sha256:60dcb4b9ba2b5fe80536a55b254a942fb7a7830c5af130e8d6c56daa92ef1539",
+    "model_hash": "sha256:dec09f7f71d9cbda9b4b5ed394cf2c2f3671079458826dba4ee76e1b16e7480e",
     "note": "The electronics line pack's template (ELECTRONICS_LINE §4.1, §4.2, §4.4; T-051), all parameters synthetic. A model created from the template has another model ID and name, and so another hash; what the engine runs is the same."
   },
   "anchor": "2026-09-28T00:00:00+08:00",

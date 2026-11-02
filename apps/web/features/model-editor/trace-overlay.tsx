@@ -140,8 +140,16 @@ export const OverlayContext = createContext<{ readonly active: boolean; readonly
 
 /**
  * A flow on the canvas: React Flow's smoothstep link, drawn as its built-in
- * edge draws it (the same path, label and arrow), with chevrons along it
- * while no run plays, and its polyline reported to the overlay while one does.
+ * edge draws it (the same path and arrow), with chevrons along it while no
+ * run plays, and its polyline reported to the overlay while one does.
+ *
+ * Its label (a decision's probability) is not in the link's own SVG group,
+ * where a link drawn later would cross it, but in React Flow's edge-label
+ * layer: above every link and under the cards, on a backing of the canvas's
+ * ground (canvas.module.css .edgeLabel), at the point React Flow gives it.
+ * The link is an image to assistive tech (role="img" with its name), so the
+ * label is hidden from it, as its SVG text was; the step's properties say
+ * the probability.
  */
 export const FlowEdge = memo(function FlowEdge({
   id,
@@ -152,11 +160,6 @@ export const FlowEdge = memo(function FlowEdge({
   sourcePosition = Position.Bottom,
   targetPosition = Position.Top,
   label,
-  labelStyle,
-  labelShowBg,
-  labelBgStyle,
-  labelBgPadding,
-  labelBgBorderRadius,
   style,
   markerEnd,
   markerStart,
@@ -173,23 +176,16 @@ export const FlowEdge = memo(function FlowEdge({
   const chevrons = active ? "" : chevronPath(points);
   return (
     <>
-      {/* Under the link and its label: the label's backing covers a chevron behind it. */}
+      {/* Under the link; the label, in the layer above every link, covers a chevron behind it. */}
       {chevrons !== "" && <path className={styles.chevrons} d={chevrons} data-chevrons="" />}
-      <BaseEdge
-        path={path}
-        labelX={labelX}
-        labelY={labelY}
-        label={label}
-        labelStyle={labelStyle}
-        labelShowBg={labelShowBg}
-        labelBgStyle={labelBgStyle}
-        labelBgPadding={labelBgPadding}
-        labelBgBorderRadius={labelBgBorderRadius}
-        style={style}
-        markerEnd={markerEnd}
-        markerStart={markerStart}
-        interactionWidth={interactionWidth}
-      />
+      <BaseEdge path={path} style={style} markerEnd={markerEnd} markerStart={markerStart} interactionWidth={interactionWidth} />
+      {label !== undefined && label !== null && label !== "" && (
+        <EdgeLabelRenderer>
+          <div className={styles.edgeLabel} style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }} aria-hidden="true" data-edge-label="">
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      )}
     </>
   );
 });

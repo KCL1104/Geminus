@@ -2720,11 +2720,11 @@
  "reproducibility": {
   "seed": 2026,
   "replications": 5,
-  "model_hash": "sha256:a05ebecba161c7bb2c11e0957c1b6fd3adc284b00b961db45ca24efb8848b23b",
-  "effective_model_hash": "sha256:a05ebecba161c7bb2c11e0957c1b6fd3adc284b00b961db45ca24efb8848b23b",
+  "model_hash": "sha256:370cd093f1d619aaaeaab1da102a4557ebff1921bcf27ca9c34654205ee2a2b8",
+  "effective_model_hash": "sha256:370cd093f1d619aaaeaab1da102a4557ebff1921bcf27ca9c34654205ee2a2b8",
   "config_hash": "sha256:ba803f2b79901ba352bf9a6c9a1bfe428b986bf79ad53dc2db8a553a759dd7f6",
   "dataset_manifest_hash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-  "result_digest": "sha256:311f9244d7becc6cbec68c4d92c05a130616e295906402b0c18344d5968ea1d9"
+  "result_digest": "sha256:2b9cc0e1d262f0dde671b618ba8b6b05e07e6a220c46cacfd9e7af17aed2c5d5"
  },
  "trace": {
   "available": false,

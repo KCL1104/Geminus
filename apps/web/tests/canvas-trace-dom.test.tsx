@@ -7,7 +7,7 @@
 // playback (only Play resumes it); without a run nothing of it stays.
 import { Profiler, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
-import { getSmoothStepPath, type EdgeProps, Position } from "@xyflow/react";
+import { getSmoothStepPath, type EdgeProps, Position, ReactFlow } from "@xyflow/react";
 import { Canvas, type CanvasPlayback } from "../features/model-editor/canvas";
 import { pathPoints } from "../features/model-editor/trace-geometry";
 import { createRegistry, FlowEdge, OverlayContext } from "../features/model-editor/trace-overlay";
@@ -235,6 +235,34 @@ describe("a link on the canvas", () => {
     expect(drawn.hasAttribute("id")).toBe(false);
     const chevrons = document.querySelector("[data-chevrons]")!;
     expect(chevrons.getAttribute("d")).toMatch(/^M[\d.]+ [\d.]+L/);
+  });
+
+  // 2026-11-02 (canvas layout): a decision's probability sits above every link, never inside its
+  // own link's group (where a link drawn later would cross it): in React
+  // Flow's edge-label layer, over the links and under the cards, on a
+  // backing (canvas.module.css .edgeLabel), hidden from assistive tech as
+  // it was inside the link's role="img" group.
+  it("draws a decision's probability in React Flow's edge-label layer, above every link, not in its own link", async () => {
+    const [, labelX, labelY] = getSmoothStepPath(ends);
+    await mount(
+      <div style={{ width: 800, height: 600 }}>
+        <ReactFlow nodes={[]} edges={[]}>
+          <svg>
+            <FlowEdge {...({ id: "ict_result__q_fct", source: "ict_result", target: "q_fct", label: "95%", markerEnd: "url(#arrow)", ...ends } as unknown as EdgeProps)} />
+          </svg>
+        </ReactFlow>
+      </div>,
+    );
+    await settle();
+    const layer = document.querySelector(".react-flow__edgelabel-renderer")!;
+    const label = layer.querySelector<HTMLElement>("[data-edge-label]");
+    expect(label?.textContent).toBe("95%");
+    expect(label?.getAttribute("aria-hidden")).toBe("true");
+    // Centred on the point React Flow gives the label, in canvas units.
+    expect(label?.style.transform).toBe(`translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`);
+    // Nothing of it in the link itself: no SVG text, no SVG backing.
+    expect(document.querySelector(".react-flow__edge-path")?.getAttribute("d")).toBe(getSmoothStepPath(ends)[0]);
+    expect(document.querySelector(".react-flow__edge-text, .react-flow__edge-textbg, svg text")).toBeNull();
   });
 
   it("reports its polyline to the overlay while a run plays, and drops its chevrons", async () => {

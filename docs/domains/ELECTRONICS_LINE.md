@@ -407,7 +407,7 @@ This section records what the T-051 hackathon slice has implemented. Details the
 | Burn-in `burn_in_chamber` | 9 chambers, 24/7, TTF exp(10080), TTR tri(60, 120, 480); batch min 20, max 40, max_wait 120, constant 480 per batch; yield 0.995, defects return to FCT debug | Same as above |
 | Debug `debug_operator`, packing `pack_station` | 4 people, 2 stations, calendar; `shift_capacity` equals capacity in both shifts (numbers unchanged; there for D-057 per-shift staffing scenarios) | §4.2; D-117 (g) |
 | Buffers | `q_aoi` 20, `q_ict` 10, `q_fct` 10, `q_burnin` 120, `q_pack` 500; unlimited before SMT, touch-up, debug and retest | §4.1 |
-| 2D positions | The main line is in the first row (x from left to right); each station's touch-up, debug and retest loops are below it; processes sorted by x, then by y, give the row order of the Marey chart (SMT, AOI, touch-up, ICT, ICT debug, ICT retest, FCT, FCT debug, FCT retest, burn-in, packing) | D-117 (g) |
+| 2D positions | The main line is in the first row (x from left to right); each station's touch-up, debug and retest loops are below it (since 2026-11-02 the ICT and FCT failure steps have a row of their own under their test results, with the debug-and-retest loop under that, so no link runs behind a card on the canvas); processes sorted by x, then by y, give the row order of the Marey chart (SMT, AOI, touch-up, ICT, ICT debug, ICT retest, FCT, FCT debug, FCT retest, burn-in, packing) | D-117 (g) |
 
 Names come in two languages, en and zh-Hant (`templates/*.zh-Hant.names.json`); IDs and all other content are the same in both languages.
 

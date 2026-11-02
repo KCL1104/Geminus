@@ -6,7 +6,9 @@
 // the comparison kernel's answer for them (internal/results/compare); the
 // baseline's result digest is the template's regression lock (internal/domainpack/electronicsline/testdata/
 // template-run-lock.json). The generator and the schema check are in
-// checks/evidence/2026-11-01-H-073-s3/. Synthetic model, English names.
+// checks/evidence/2026-11-01-H-073-s3/; it was run again on 2026-11-02 when
+// the template's 2D positions moved (the model and the two Results' hashes
+// changed, the comparison did not). Synthetic model, English names.
 // Tests only: the files are read, never bundled (see board-line-objects.ts).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
