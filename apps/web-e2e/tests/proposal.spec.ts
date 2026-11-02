@@ -126,6 +126,72 @@ test("asks from the model page and lands on the proposal it created", async ({ p
   await expect(page.locator("[data-proposal-status]")).toHaveText(en["proposal.status.ready"], { timeout: 15_000 });
 });
 
+// The owner's decision of 2026-11-02: Ask AI is a prompt composer with the
+// model's earlier requests above it. In a real browser: Enter sends, and
+// Shift+Enter is a new line; the request grows from about three lines to a
+// cap and then scrolls inside the box; the box and its tool row stay inside
+// the 360 px panel; the earlier requests stand above it, newest last, each a
+// link of its own; at 390 px nothing scrolls sideways.
+test("the composer: Shift+Enter is a new line, Enter sends, and the request grows to a cap, then scrolls", async ({ page }) => {
+  await open(page, "/ui-gallery/editor?state=clean", "en");
+  const ask = page.locator("[data-ask]");
+  const box = ask.locator("[data-composer]");
+  const field = ask.getByLabel(en["ask.intent"]);
+  await expect(field).toHaveAttribute("placeholder", en["ask.placeholder"]);
+  const empty = await field.evaluate((e) => e.getBoundingClientRect().height);
+  const lineHeight = await field.evaluate((e) => parseFloat(getComputedStyle(e).lineHeight));
+  // About three lines when empty.
+  expect(empty).toBeGreaterThanOrEqual(3 * lineHeight);
+  expect(empty).toBeLessThan(4.5 * lineHeight);
+  await field.click();
+  await page.keyboard.type("Burn-in batches of 48 boards");
+  for (let i = 0; i < 4; i++) {
+    await page.keyboard.press("Shift+Enter");
+    await page.keyboard.type(`line ${i + 2}`);
+  }
+  await expect(field).toHaveValue("Burn-in batches of 48 boards\nline 2\nline 3\nline 4\nline 5");
+  const five = await field.evaluate((e) => e.getBoundingClientRect().height);
+  expect(five, "it grew with the lines").toBeGreaterThan(empty);
+  for (let i = 0; i < 20; i++) await page.keyboard.press("Shift+Enter");
+  const capped = await field.evaluate((e) => ({ h: e.getBoundingClientRect().height, scroll: e.scrollHeight, client: e.clientHeight }));
+  expect(capped.h, "it stops at a cap").toBeLessThan(14 * lineHeight);
+  expect(capped.scroll, "then scrolls inside itself").toBeGreaterThan(capped.client);
+  // The box holds the request, the chips and Send, inside the panel.
+  const panel = await page.locator("[data-ask]").evaluate((e) => e.getBoundingClientRect());
+  const frame = await box.evaluate((e) => e.getBoundingClientRect());
+  expect(frame.left).toBeGreaterThanOrEqual(panel.left);
+  expect(frame.right).toBeLessThanOrEqual(panel.right);
+  const send = box.getByRole("button", { name: en["ask.send"] });
+  const at = await send.evaluate((e) => e.getBoundingClientRect());
+  expect(at.right).toBeLessThanOrEqual(frame.right);
+  expect(at.bottom).toBeLessThanOrEqual(frame.bottom);
+  expect(await violations(page), "the composer").toEqual([]);
+  await field.press("Enter");
+  await page.waitForURL("**/ui-gallery/proposal?state=generating");
+});
+
+for (const width of [390, 1280]) {
+  test(`at ${width}px, the earlier requests stand above the composer, newest last, each its own link, nothing wider than the page`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "/ui-gallery/editor?state=requests", "en");
+    const list = page.locator("[data-earlier]");
+    await expect(list.getByRole("heading", { level: 3 })).toHaveText(en["ask.log.title"]);
+    const links = list.locator("[data-request] a");
+    await expect(links).toHaveCount(3);
+    const hrefs = await links.evaluateAll((as) => as.map((a) => a.getAttribute("href")));
+    expect(new Set(hrefs).size).toBe(3);
+    await expect(links.last()).toContainText(en["ask.log.photo"]);
+    const listBottom = await list.evaluate((e) => e.getBoundingClientRect().bottom);
+    const boxTop = await page.locator("[data-composer]").evaluate((e) => e.getBoundingClientRect().top);
+    expect(listBottom).toBeLessThanOrEqual(boxTop);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), "no horizontal scroll").toBe(true);
+    // Each row's words take at most two lines.
+    const tall = await list.locator("[data-request-text]").evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)));
+    for (const lines of tall) expect(lines).toBeLessThanOrEqual(2.05);
+    expect(await violations(page), "the earlier requests").toEqual([]);
+  });
+}
+
 test("shows hostile words from the AI as text: no markup, no link, no decision", async ({ page }) => {
   await open(page, "/ui-gallery/proposal?state=hostile", "en");
   const p = sampleFor("hostile").proposal;
@@ -319,11 +385,13 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     const ask = page.locator("[data-ask]");
     const box = ask.getByRole("checkbox", { name: en["ask.research"] });
     await expect(box).not.toBeChecked();
-    await expect(box).toHaveAccessibleDescription(en["ask.researchHint"]);
+    // 2026-11-02 (the composer): its line shows under the box only while it is ticked, as its description.
+    await expect(ask).not.toContainText(en["ask.researchHint"]);
     await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
     await keyTo(page, box);
     await page.keyboard.press("Space");
     await expect(box).toBeChecked();
+    await expect(box).toHaveAccessibleDescription(en["ask.researchHint"]);
     expect(await violations(page), "the model page, research ticked").toEqual([]);
     await keyTo(page, ask.getByRole("button", { name: en["ask.send"] }));
     await page.keyboard.press("Enter");
@@ -408,11 +476,14 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
     await expect(ask.getByLabel(en["ask.intent"])).toBeVisible();
     const choice = ask.locator("[data-model-choice]");
     await expect(choice).toHaveCount(1);
-    await expect(choice).toContainText(en["ask.modelHint.muse-spark-1.3"]);
+    // 2026-11-02 (the composer): the chip in the tool row, its line under the box as its description.
+    const hint = ask.locator("[data-model-hint]");
+    await expect(hint).toHaveText(en["ask.modelHint.muse-spark-1.3"]);
+    await expect(choice.getByRole("button")).toHaveAccessibleDescription(en["ask.modelHint.muse-spark-1.3"]);
     expect(await violations(page), "the model page").toEqual([]);
     await choice.getByRole("button").click();
     await page.getByRole("option", { name: en["ai.model.muse-wonder-1.0"] }).click();
-    await expect(choice).toContainText("For harder changes. It thinks longer: several minutes, costs more.");
+    await expect(hint).toHaveText("For harder changes. It thinks longer: several minutes, costs more.");
     expect(await violations(page), "the model page on Muse Wonder").toEqual([]);
     await ask.getByLabel(en["ask.intent"]).fill("Add a third reviewer");
     await keyTo(page, ask.getByRole("button", { name: en["ask.send"] }));

@@ -488,6 +488,11 @@ createServer(async (req, res) => {
     const sent = await photoPost(org, membership.role, url.pathname, key, form);
     return json(res, sent.status, sent.body, { "x-request-id": rid });
   }
+  // The composer's earlier requests (2026-11-02) read the model's AI investigations where the page offers them;
+  // this fake runs none, so it answers as the API does with investigations off (openapi listInvestigations 503).
+  if (req.method === "GET" && membership && /^\/v1\/models\/[^/]+\/investigations$/.test(url.pathname)) {
+    return json(res, 503, { error: { code: "SERVICE_UNAVAILABLE", message: "AI investigations are not available here", request_id: rid, details: [{ path: "", reason: "investigations are off in this deployment", code: "INVESTIGATIONS_OFF" }] } }, { "x-request-id": rid });
+  }
   const found = req.method === "GET" && membership ? tenantGet(org, url.pathname) : null;
   if (found !== null) return json(res, 200, found[0], { "x-request-id": rid, ...found[1] });
   const answered = req.method === "POST" && membership ? tenantPost(org, membership.role, url.pathname, key, payload) : null;
