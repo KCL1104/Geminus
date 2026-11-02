@@ -131,7 +131,10 @@ test("asks from the model page and lands on the proposal it created", async ({ p
 // Shift+Enter is a new line; the request grows from about three lines to a
 // cap and then scrolls inside the box; the box and its tool row stay inside
 // the 360 px panel; the earlier requests stand above it, newest last, each a
-// link of its own; at 390 px nothing scrolls sideways.
+// link of its own; at 390 px nothing scrolls sideways. H-079: each row is
+// named by the person's words, with Reuse beside the link (not in it), which
+// puts the words back in the box and sends nothing; where the primary
+// pointer is coarse (a phone), Enter is a new line and the send key sends.
 test("the composer: Shift+Enter is a new line, Enter sends, and the request grows to a cap, then scrolls", async ({ page }) => {
   await open(page, "/ui-gallery/editor?state=clean", "en");
   const ask = page.locator("[data-ask]");
@@ -181,6 +184,20 @@ for (const width of [390, 1280]) {
     const hrefs = await links.evaluateAll((as) => as.map((a) => a.getAttribute("href")));
     expect(new Set(hrefs).size).toBe(3);
     await expect(links.last()).toContainText(en["ask.log.photo"]);
+    // H-079: the person's words name the others; Reuse stands beside each link, inside its row and the panel, at least 24 px (WCAG 2.5.8).
+    await expect(links.first().locator("[data-request-text]")).toHaveText("Make the burn-in batches bigger.");
+    const reuse = list.getByRole("button", { name: en["ask.log.reuse"] });
+    await expect(reuse).toHaveCount(2);
+    await expect(list.locator("[data-request] a button")).toHaveCount(0);
+    const panelBox = await page.locator("[data-ask]").evaluate((e) => e.getBoundingClientRect());
+    for (const box of await reuse.evaluateAll((bs) => bs.map((b) => { const r = b.getBoundingClientRect(); const row = b.closest("[data-request]")!.getBoundingClientRect(); return { r: { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height }, row: { top: row.top, bottom: row.bottom } }; }))) {
+      expect(box.r.width).toBeGreaterThanOrEqual(24);
+      expect(box.r.height).toBeGreaterThanOrEqual(24);
+      expect(box.r.left).toBeGreaterThanOrEqual(panelBox.left);
+      expect(box.r.right).toBeLessThanOrEqual(panelBox.right);
+      expect(box.r.top).toBeGreaterThanOrEqual(box.row.top);
+      expect(box.r.bottom).toBeLessThanOrEqual(box.row.bottom);
+    }
     const listBottom = await list.evaluate((e) => e.getBoundingClientRect().bottom);
     const boxTop = await page.locator("[data-composer]").evaluate((e) => e.getBoundingClientRect().top);
     expect(listBottom).toBeLessThanOrEqual(boxTop);
@@ -191,6 +208,44 @@ for (const width of [390, 1280]) {
     expect(await violations(page), "the earlier requests").toEqual([]);
   });
 }
+
+test("Reuse from the keyboard puts an earlier request's words back in the box, focused, and sends nothing", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await open(page, "/ui-gallery/editor?state=requests", "en");
+  const before = page.url();
+  const row = page.locator("[data-earlier] [data-request]").nth(1);
+  const reuse = row.getByRole("button", { name: en["ask.log.reuse"] });
+  await reuse.focus();
+  expect(await focusIsVisible(page)).toBe(true);
+  await page.keyboard.press("Enter");
+  const field = page.locator("[data-ask]").getByLabel(en["ask.intent"]);
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue("What if the reflow oven ran 10% faster?");
+  // The caret at the end of the words, ready to add to them.
+  expect(await field.evaluate((e) => [(e as HTMLTextAreaElement).selectionStart, (e as HTMLTextAreaElement).value.length])).toEqual([39, 39]);
+  expect(page.url()).toBe(before);
+  expect(await violations(page), "after Reuse").toEqual([]);
+});
+
+test.describe("where the primary pointer is coarse (a phone's keyboard)", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test("Enter is a new line and the send key sends", async ({ page }) => {
+    await open(page, "/ui-gallery/editor?state=clean", "en");
+    expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches), "the emulated phone's pointer").toBe(true);
+    const ask = page.locator("[data-ask]");
+    const field = ask.getByLabel(en["ask.intent"]);
+    await expect(field).toHaveAttribute("enterkeyhint", "enter");
+    await expect(field).toHaveAccessibleDescription(new RegExp(en["ask.keys.touch"].replace(/[.;]/g, "\\$&")));
+    await field.tap();
+    await page.keyboard.type("Burn-in batches of 48 boards");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("in two ovens");
+    await expect(field).toHaveValue("Burn-in batches of 48 boards\nin two ovens");
+    expect(page.url()).toContain("/ui-gallery/editor");
+    await ask.locator("[data-composer]").getByRole("button", { name: en["ask.send"] }).tap();
+    await page.waitForURL("**/ui-gallery/proposal?state=generating");
+  });
+});
 
 test("shows hostile words from the AI as text: no markup, no link, no decision", async ({ page }) => {
   await open(page, "/ui-gallery/proposal?state=hostile", "en");
@@ -282,7 +337,7 @@ for (const locale of locales) {
 // fixed (fake/proposal-answer.json): no AI is called, and the fake does not
 // do the server's review. The fake's tenant data is put back before and
 // after each test (POST /__reset), so the other specs see version 1.
-type ApiCall = { method: string; path: string; org: string | null; cookie: string | null; hasAuth: boolean; key?: string | null; body?: unknown };
+type ApiCall = { method: string; path: string; query: string; org: string | null; cookie: string | null; hasAuth: boolean; key?: string | null; body?: unknown };
 const apiCalls = async (request: APIRequestContext): Promise<ApiCall[]> => ((await (await request.get(`${PROVIDER}/__state`)).json()) as { apiCalls: ApiCall[] }).apiCalls;
 const fixedAnswer = JSON.parse(readFileSync(join(import.meta.dirname, "../fake/proposal-answer.json"), "utf8")) as Record<"en" | "zh-Hant", { summary: string; assumptions: string[] }>;
 const fixture = JSON.parse(readFileSync(join(import.meta.dirname, "../../../testdata/contracts/valid-draft-with-issues.json"), "utf8")) as { base_version_id: string; revision: number; ir: { domain: string } };
@@ -372,6 +427,21 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       await expectBand(page, "2", domainIn(t));
       await expect(page.locator("[data-draft-status]")).toContainText(fill(t["draft.revision"], { revision: String(fixture.revision + 1) }));
       expect(await violations(page), "the model on version 2").toEqual([]);
+
+      // H-079: the request stands above the composer in the person's words, as the server stored them, read newest first in one small page.
+      const row = page.locator("[data-earlier] [data-request]");
+      await expect(row).toHaveCount(1);
+      await expect(row.locator("[data-request-text]")).toHaveText("Add a third reviewer");
+      await expect(row.locator("[data-request-state]")).toHaveText(fill(t["ask.log.state.approved.version"], { version: "2" }));
+      const reads = (await apiCalls(request)).filter((c) => c.method === "GET" && c.path === `/v1/models/${tenant.MODEL}/ai-proposals`);
+      expect(reads.length).toBeGreaterThan(0);
+      for (const c of reads) expect(Object.fromEntries(new URLSearchParams(c.query))).toEqual({ order: "newest", limit: "10" });
+      // Reuse puts it back in the box; nothing more reaches the API.
+      const sentBefore = (await apiCalls(request)).filter((c) => c.method === "POST").length;
+      await row.getByRole("button", { name: t["ask.log.reuse"] }).click();
+      await expect(page.locator("[data-ask]").getByLabel(t["ask.intent"])).toHaveValue("Add a third reviewer");
+      await expect(page.locator("[data-ask]").getByLabel(t["ask.intent"])).toBeFocused();
+      expect((await apiCalls(request)).filter((c) => c.method === "POST")).toHaveLength(sentBefore);
     });
   }
 
