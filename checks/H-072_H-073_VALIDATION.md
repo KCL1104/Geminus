@@ -1,6 +1,6 @@
 # H-072 + H-073 validation report: the line in motion, and the pre-freeze audit's five slices, merged
 
-**Date: 2026-11-02 | Status: built by workflow agents, each slice reviewed and its confirmed findings fixed; the merge reviewed again (no High/Medium); local gates below; screenshot baselines not yet re-taken; not deployed, no live call | Decisions: H-072, H-073, H-074, H-075 (and H-027, H-039, H-055 kept)**
+**Date: 2026-11-02 | Status: built by workflow agents, each slice reviewed and its confirmed findings fixed; the merge reviewed again (no High/Medium); local gates below; screenshot baselines re-taken in CI and accepted by the owner (H-076); not yet deployed, no live call | Decisions: H-072, H-073, H-074, H-075 (and H-027, H-039, H-055 kept)**
 
 Branch `h07x-int`: local `main` (H-073's decision commit 0280b3d and H-074's 0c69eaa) + `h073-int` (the five H-073 slices and their integration) + `h072` (the line in motion), merged in 285c169 and 333c527.
 
@@ -44,7 +44,7 @@ Found by the merged branch's own gates and fixed:
 
 ## 4. Not run
 
-- Screenshot comparisons (`E2E_SCREENSHOTS=1`): only in CI's pinned container. New baselines are needed for the results gallery (the relabel, the proof card, the line in motion), the landing (copy), the signed-in canvas (the motion strip) and the new `state=still` results shots; a person accepts them.
+- Screenshot comparisons (`E2E_SCREENSHOTS=1`): only in CI's pinned container, so not locally. CI run 41374165022 (update_screenshots, on tmp/h07x-screenshots at db3a28e; all six jobs green) re-took the 72: 64 the same, 8 changed (canvas at 1280 px, the landing at 390 px), 8 new (`ui-gallery-results-state-still-*`) in place of the 8 the spec no longer takes. The owner accepted them side by side (H-076); every committed baseline equals that run's artifact byte for byte.
 - Screenshots of the build without Muse Wonder: no baselines (H-069).
 - `make integration-test` and `make db-go-test` over every package: NOT RUN; only the touched packages ran against the throwaway DB.
 - `make backend-race` over every package: NOT RUN; the touched packages ran with `-race`.
