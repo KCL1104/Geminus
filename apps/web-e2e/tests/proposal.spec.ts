@@ -433,7 +433,8 @@ test.describe("signed in, through the BFF, on the fake API's proposals", () => {
       await expect(row).toHaveCount(1);
       await expect(row.locator("[data-request-text]")).toHaveText("Add a third reviewer");
       await expect(row.locator("[data-request-state]")).toHaveText(fill(t["ask.log.state.approved.version"], { version: "2" }));
-      const reads = (await apiCalls(request)).filter((c) => c.method === "GET" && c.path === `/v1/models/${tenant.MODEL}/ai-proposals`);
+      // (The fake records the whole run's calls: this test's are those after `before`.)
+      const reads = (await apiCalls(request)).slice(before).filter((c) => c.method === "GET" && c.path === `/v1/models/${tenant.MODEL}/ai-proposals`);
       expect(reads.length).toBeGreaterThan(0);
       for (const c of reads) expect(Object.fromEntries(new URLSearchParams(c.query))).toEqual({ order: "newest", limit: "10" });
       // Reuse puts it back in the box; nothing more reaches the API.
