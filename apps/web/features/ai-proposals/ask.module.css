@@ -1,6 +1,7 @@
 /* Ask AI at the top of the 2D editor's side panel (H-040), as a prompt
-   composer (the owner's decision of 2026-11-02): the model's earlier
-   requests as hairline rows, then one bordered box holding the request and,
+   composer (the owner's decision of 2026-11-02, H-079): the model's earlier
+   requests as hairline rows, each a link and a quiet Reuse beside it, then
+   one bordered box holding the request and,
    along its bottom edge, a tool row of chips and the send key; under the
    box, an option's line while it is on, the version line and the data
    notice. Tokens only; the box's focus is the Accent, since it is the AI's. */
@@ -28,14 +29,21 @@
   border-top: 1px solid var(--gm-color-rule);
 }
 
-.log > li {
+/* A row: the link takes the width; Reuse, a quiet key, stands beside it at
+   the first line, never inside it (one control, one action). */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
   border-bottom: 1px solid var(--gm-color-rule);
 }
 
-/* A row is one link: the words on top, its state and time under them. */
+/* The link: the words on top, its state, kind and time under them. */
 .entry {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-width: 0;
   gap: var(--gm-space-hair);
   padding: var(--gm-space-md) var(--gm-space-sm);
   color: var(--gm-color-ink);
@@ -72,6 +80,17 @@
 .state {
   color: var(--gm-color-ink-2);
   font-weight: var(--gm-font-weight-medium);
+}
+
+/* Reuse: a quiet key centred on the row's first line of words (8 px of
+   padding, then a 20 px line), its ring inside the panel's edge. */
+.reuse {
+  flex: none;
+  margin-top: var(--gm-space-hair);
+}
+
+.reuse:focus-visible {
+  outline-offset: calc(-1 * var(--gm-focus-width));
 }
 
 .note,

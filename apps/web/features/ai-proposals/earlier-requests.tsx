@@ -1,18 +1,23 @@
 "use client";
 // "Earlier requests", above Ask AI's composer (the owner's decision of
-// 2026-11-02; request-log.ts reads them): the model's latest few requests to
-// the AI, oldest first, so the newest stands right above the composer. Each
-// row is one link to its page (a proposal's or an investigation's), named by
-// what the server gives: the AI's summary as text in its own <bdi>, with
-// what hides or reorders text made visible (shown.ts), or what the AI was
-// asked to make; then its state in the server's words, that it came from a
-// photo, and its time. Its words take two lines at most; the page has the
-// rest. One line says what the list is not: each request starts from the
-// model's latest version, and the AI does not see these. The rail's AI
-// proposals already links to the whole list, so there is no second link to
-// it (H-027); the line says older ones are there. With none there is no
-// list; a failed read says so with a retry, and the composer under it works
-// as ever. Nothing here sends anything.
+// 2026-11-02, H-079; request-log.ts reads them): the model's latest few
+// requests to the AI, oldest first, so the newest stands right above the
+// composer. Each row is a link to its page (a proposal's or an
+// investigation's) and, beside it, Reuse. The link is named by the person's
+// own words, as text in its own <bdi> with what hides or reorders text made
+// visible (shown.ts), two lines at most (the page has the rest); a photo
+// request says it came from a photo, since it has no words. Under them, in
+// one line: the state in the server's words, what it asked for (a change or
+// a scenario, or that the AI acts on it), and its time. Reuse puts the
+// words, the mode and the model back in the composer (onReuse) and sends
+// nothing; a photo has nothing to reuse, so no Reuse. Reuse is a quiet
+// button beside the link, never inside it, named "Reuse" and described by
+// the words it puts back. One line says what the list is: this model's
+// latest requests from anyone in the organization, each starting from the
+// latest version, which the AI does not see. The rail's AI proposals already
+// links to the whole list, so there is no second link to it (H-027); the
+// line says older ones are there. With none there is no list; a failed read
+// says so with a retry, and the composer under it works as ever.
 import Link from "next/link";
 import { type ReactNode, useId } from "react";
 import { useRemote } from "../../app/_components/use-remote";
@@ -20,14 +25,16 @@ import { useApi } from "../../lib/api/provider";
 import type { Model } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
 import { Button } from "../../ui/button";
-import { type Entry, loadRequestLog, MAX_PAGES, requestState } from "./request-log";
+import { type Entry, loadRequestLog, type Reused, reused, requestState, wordsOf } from "./request-log";
 import { visible } from "./shown";
 import styles from "./ask.module.css";
 
-export function EarlierRequests({ model, investigations }: {
+export function EarlierRequests({ model, investigations, onReuse }: {
   model: Model;
   /** The panel starts AI investigations (H-061 A8): list its own too. */
   investigations: boolean;
+  /** Reuse was pressed: put this back in the composer (nothing is sent). */
+  onReuse: (r: Reused) => void;
 }) {
   const api = useApi();
   const { t, gap } = useI18n();
@@ -46,20 +53,13 @@ export function EarlierRequests({ model, investigations }: {
     );
   }
   const log = remote.data;
-  if (log.tooMany) {
-    return (
-      <p className={styles.note} data-earlier-note>
-        {t("ask.log.tooMany", { count: MAX_PAGES * 100 })}
-      </p>
-    );
-  }
   if (log.entries.length === 0) return null;
   return (
     <section className={styles.earlier} aria-labelledby={headingId} data-earlier>
       <h3 id={headingId}>{t("ask.log.title")}</h3>
       <ol className={styles.log}>
         {log.entries.map((e) => (
-          <Row key={e.kind === "proposal" ? e.proposal.proposal_id : e.investigation.id} entry={e} latest={model.latest_version} />
+          <Row key={e.kind === "proposal" ? e.proposal.proposal_id : e.investigation.id} entry={e} latest={model.latest_version} onReuse={onReuse} />
         ))}
       </ol>
       <p className={styles.note} data-earlier-note>
@@ -75,37 +75,40 @@ export function EarlierRequests({ model, investigations }: {
   );
 }
 
-function Row({ entry, latest }: { entry: Entry; latest: Model["latest_version"] }) {
+function Row({ entry, latest, onReuse }: { entry: Entry; latest: Model["latest_version"]; onReuse: (r: Reused) => void }) {
   const { t, dateTime } = useI18n();
+  const wordsId = useId();
   const state = requestState(entry, latest);
   const sep = t("ask.log.sep");
+  const own = wordsOf(entry);
+  const again = reused(entry);
   let href: string;
-  let words: ReactNode;
-  let kind: string | null = null;
-  let photo = false;
   let at: string;
+  // Without its own words a request is named by what it was: a photo, or (a server before H-079) what it asked for.
+  let words: ReactNode;
+  // What it asked for, under the words, unless the words already say it.
+  let kind: string | null;
   if (entry.kind === "proposal") {
     const p = entry.proposal;
     href = `/proposals/${p.proposal_id}`;
     at = p.created_at;
-    photo = p.source_image !== undefined;
-    const summary = typeof p.summary === "string" && p.summary.trim() !== "" ? p.summary : null;
-    // The AI's summary names it; without one, what it was asked to make (and the kind is not said twice).
-    words = summary !== null ? <bdi>{visible(summary, "prose")}</bdi> : t(`ask.mode.${p.mode}`);
-    if (summary !== null) kind = t(`proposals.mode.${p.mode}`);
+    const photo = p.source_image !== undefined;
+    words = own !== null ? <bdi>{visible(own, "prose")}</bdi> : photo ? t("ask.log.photo") : t(`ask.mode.${p.mode}`);
+    kind = own !== null || photo ? t(`proposals.mode.${p.mode}`) : null;
   } else {
     const i = entry.investigation;
     href = `/investigations/${i.id}`;
     at = i.created_at;
-    words = t(`ask.log.investigation.${i.mode}`);
+    words = own !== null ? <bdi>{visible(own, "prose")}</bdi> : t(`ask.log.investigation.${i.mode}`);
+    kind = own !== null ? t(`ask.log.investigation.${i.mode}`) : null;
   }
   return (
-    <li data-request>
+    <li className={styles.row} data-request>
       <Link href={href} className={styles.entry}>
-        <span className={styles.words} data-request-text>
+        <span id={wordsId} className={styles.words} data-request-text>
           {words}
         </span>
-        <span className={styles.meta}>
+        <span className={styles.meta} data-request-meta>
           <span className={styles.state} data-request-state>
             {t(state.key, state.version === undefined ? {} : { version: state.version })}
           </span>
@@ -115,16 +118,15 @@ function Row({ entry, latest }: { entry: Entry; latest: Model["latest_version"] 
               {kind}
             </>
           )}
-          {photo && (
-            <>
-              {sep}
-              {t("ask.log.photo")}
-            </>
-          )}
           {sep}
           <time dateTime={at}>{dateTime(at)}</time>
         </span>
       </Link>
+      {again !== null && (
+        <Button variant="quiet" className={styles.reuse} aria-describedby={wordsId} onPress={() => onReuse(again)} data-reuse>
+          {t("ask.log.reuse")}
+        </Button>
+      )}
     </li>
   );
 }

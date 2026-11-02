@@ -1,37 +1,33 @@
 // The model's earlier requests to the AI, above Ask AI's composer (the
-// owner's decision of 2026-11-02): its latest few, read from what the API
-// already lists (listProposals, and where the page starts AI investigations
-// listInvestigations), with no contract change. What a row shows is the
-// server's: the state (its status, in words), the time, what the AI was
-// asked to make, whether a photo was sent, and the AI's own summary.
-// Neither list carries a request's own words (the server keeps them but
-// does not return them), so a proposal is named by the AI's summary, or
-// without one by what it was asked to make; nothing here can put a
-// request's words back in the composer. A proposal an AI investigation
-// asked for is the AI's, not a person's request; an investigation started
-// under an explanation ("Let the AI test these") is not this panel's.
-// listProposals lists the oldest first, so the pages are read to the end
-// (at most MAX_PAGES) to reach the newest; with more than that, the newest
-// cannot be reached and none is shown. Nothing here is sent to the AI: each
-// request starts from the model's latest version on its own.
+// owner's decision of 2026-11-02, H-079): its latest few, read from the
+// newest page of listProposals (order=newest, a small limit) and, where the
+// page starts AI investigations, of listInvestigations (newest first), so
+// the panel reads one page of each, never the whole list. What a row shows
+// is the server's: the request's own words (the proposal's or the
+// investigation's intent, as stored; a photo proposal has none), what it was
+// asked to make, whether a photo was sent, the state (its status, in words)
+// and the time. A proposal an AI investigation asked for is the AI's, not a
+// person's request; an investigation started under an explanation ("Let
+// the AI test these") is not this panel's. Every member of the organization
+// reads these words (the owner accepted it, H-079). Nothing here is sent to
+// the AI: each request starts from the model's latest version on its own,
+// and Reuse only puts a request's words back in the composer (reused).
 import type { ApiClient, Result } from "../../lib/api/client";
-import type { Investigation, Model, Proposal } from "../../lib/contracts";
+import type { Investigation, Model, Proposal, ProposalModel } from "../../lib/contracts";
 import type { MessageKey } from "../../lib/i18n/translate";
 
 /** How many requests the panel shows. */
 export const SHOWN = 3;
-/** How many pages of listProposals (100 each) the panel reads at most. */
-export const MAX_PAGES = 10;
+/** How many of each list the panel reads: its one newest page (room for the AI's own proposals, which are not shown). */
+export const READ = 10;
 
 export type Entry = { kind: "proposal"; proposal: Proposal } | { kind: "investigation"; investigation: Investigation };
 
 export type RequestLog = {
   /** The newest requests, at most SHOWN, oldest first: the newest is last, nearest the composer. */
   entries: Entry[];
-  /** Older requests were left out of entries. */
+  /** Older requests were left out of entries (more on the page, or a page after it). */
   older: boolean;
-  /** listProposals has more pages than MAX_PAGES: its newest were not reached, so entries is empty. */
-  tooMany: boolean;
 };
 
 const at = (e: Entry) => (e.kind === "proposal" ? e.proposal.created_at : e.investigation.created_at);
@@ -43,42 +39,27 @@ const byTime = (a: Entry, b: Entry) => (at(a) === at(b) ? (id(a) < id(b) ? -1 : 
 const investigationsOff = (r: Result<unknown>) => !r.ok && r.problem.details[0]?.code === "INVESTIGATIONS_OFF";
 
 /**
- * Reads the model's earlier requests. investigations: the page starts them
- * (H-061 A8), so its own (source "request") are listed too. The first
- * failed read is the answer; investigations being off is not a failure.
+ * Reads the model's earlier requests: the newest page of its proposals
+ * and, where the page starts them (H-061 A8), of its investigations (its
+ * own, source "request"). The first failed read is the answer;
+ * investigations being off is not a failure.
  */
 export async function loadRequestLog(api: ApiClient, modelId: string, opts: { investigations: boolean; signal?: AbortSignal }): Promise<Result<RequestLog>> {
-  const people: Proposal[] = [];
-  let cursor: string | undefined;
-  let pages = 0;
-  let requestId: string | null = null;
-  for (;;) {
-    const r = await api.listProposals(modelId, { cursor, signal: opts.signal });
-    if (!r.ok) return r;
-    requestId = r.requestId;
-    // Only the newest SHOWN + 1 of each page are kept: enough to say whether older ones were left out.
-    people.push(...r.data.items.filter((p) => p.investigation === undefined));
-    people.splice(0, Math.max(0, people.length - (SHOWN + 1)));
-    pages++;
-    if (r.data.next_cursor === null) break;
-    if (pages >= MAX_PAGES) return { ok: true, data: { entries: [], older: false, tooMany: true }, requestId, etag: null };
-    cursor = r.data.next_cursor;
-  }
-  const entries: Entry[] = people.map((proposal) => ({ kind: "proposal", proposal }));
-  let moreInvestigations = false;
+  const r = await api.listProposals(modelId, { order: "newest", limit: READ, signal: opts.signal });
+  if (!r.ok) return r;
+  const entries: Entry[] = r.data.items.filter((p) => p.investigation === undefined).map((proposal) => ({ kind: "proposal", proposal }));
+  let more = r.data.next_cursor !== null;
   if (opts.investigations) {
-    // Newest first: the first page holds the newest.
-    const r = await api.listInvestigations(modelId, { signal: opts.signal });
-    if (!r.ok && !investigationsOff(r)) return r;
-    if (r.ok) {
-      const own = r.data.items.filter((i) => i.source === "request");
-      entries.push(...own.slice(0, SHOWN + 1).map((investigation) => ({ kind: "investigation" as const, investigation })));
-      moreInvestigations = own.length > SHOWN + 1 || r.data.next_cursor !== null;
+    const i = await api.listInvestigations(modelId, { limit: READ, signal: opts.signal });
+    if (!i.ok && !investigationsOff(i)) return i;
+    if (i.ok) {
+      entries.push(...i.data.items.filter((x) => x.source === "request").map((investigation) => ({ kind: "investigation" as const, investigation })));
+      more ||= i.data.next_cursor !== null;
     }
   }
   entries.sort(byTime);
   const shown = entries.slice(-SHOWN);
-  return { ok: true, data: { entries: shown, older: entries.length > shown.length || moreInvestigations, tooMany: false }, requestId, etag: null };
+  return { ok: true, data: { entries: shown, older: more || entries.length > shown.length }, requestId: r.requestId, etag: null };
 }
 
 /** A request's state in words: the message and, for a change that became the latest version, its number. */
@@ -86,14 +67,34 @@ export type State = { key: MessageKey; version?: string };
 
 /**
  * The state of a request as the server gives it (its status), never
- * guessed. An approved change says which version it became when the
+ * guessed. A ready proposal whose base is no longer the model's latest can
+ * never be approved, so it says it is out of date, as its own page does
+ * (H-079). An approved change says which version it became when the
  * server's new_version_id is the model's latest version, and otherwise only
  * that it became a new one (the list does not say which).
  */
 export function requestState(e: Entry, latest: Model["latest_version"]): State {
   if (e.kind === "investigation") return { key: `ask.log.state.investigation.${e.investigation.status}` };
   const p = e.proposal;
+  if (p.status === "ready" && p.base_version_id !== latest.id) return { key: "ask.log.state.stale" };
   if (p.status !== "approved") return { key: `ask.log.state.${p.status}` };
   if (p.mode === "scenario") return { key: "ask.log.state.approved.scenario" };
   return p.new_version_id !== undefined && p.new_version_id === latest.id ? { key: "ask.log.state.approved.version", version: String(latest.version) } : { key: "ask.log.state.approved.edit" };
+}
+
+/** What Reuse puts back in the composer (H-079): the request's words, its mode, and the model it named (null: none, so the deployment's default answered it). */
+export type Reused = { intent: string; mode: Proposal["mode"]; model: ProposalModel | null };
+
+/** A request's own words, or null when it has none (a photo, or a server before H-079). */
+export function wordsOf(e: Entry): string | null {
+  const w = e.kind === "proposal" ? e.proposal.intent : e.investigation.intent;
+  return typeof w === "string" && w.trim() !== "" ? w : null;
+}
+
+/** What Reuse puts back for e; null when it has no words to reuse. */
+export function reused(e: Entry): Reused | null {
+  const intent = wordsOf(e);
+  if (intent === null) return null;
+  if (e.kind === "proposal") return { intent, mode: e.proposal.mode, model: e.proposal.requested_model ?? null };
+  return { intent, mode: e.investigation.mode, model: e.investigation.proposal_model };
 }

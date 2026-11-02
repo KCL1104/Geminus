@@ -13,15 +13,21 @@
 // 2. Enter sends; Shift+Enter is a new line; Enter while an input method
 //    composes never sends; an empty or over-limit request never sends and
 //    says why; a second Enter while sending does nothing. The composer's
-//    description says so for screen readers.
+//    description says so for screen readers. H-079: where the primary
+//    pointer is coarse (a touch keyboard has no Shift+Enter), Enter is a new
+//    line and only the send button sends; the description and enterKeyHint
+//    follow, and follow a change of the pointer.
 // 3. Earlier requests: the model's latest few requests from this panel (the
 //    people's proposals, and where the panel starts them its investigations),
 //    newest nearest the composer, each a link to its page with its state in
-//    the server's words and its time; a photo request says it came from a
-//    photo. listProposals and listInvestigations carry no request's words, so
-//    a proposal is named by the AI's summary (or what it was asked to make),
-//    and the panel says so. No list when there are none; a failed read says
-//    so with a retry and never blocks the composer.
+//    the server's words and its time. H-079: each shows the person's words
+//    (the proposal's and the investigation's intent), a photo request says it
+//    came from a photo, a ready proposal on an older version says it is out
+//    of date, and Reuse puts the words, the mode and (if still offered) the
+//    model back in the composer, sends nothing and moves the focus there. The
+//    panel reads the newest page alone (listProposals order=newest, a small
+//    limit). No list when there are none; a failed read says so with a retry
+//    and never blocks the composer.
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SAMPLE_MODEL_ID } from "../app/ui-gallery/editor/sample-line";
@@ -39,7 +45,40 @@ import { createTranslator } from "../lib/i18n/translate";
 import { key, mount, press, settle, violations } from "./ui-harness";
 
 vi.setConfig({ testTimeout: 120_000 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
+/** The primary pointer as matchMedia("(pointer: coarse)") answers it, and a way to change it (as a tablet's keyboard docking would). */
+function primaryPointer(coarse: boolean) {
+  const listeners = new Set<(e: MediaQueryListEvent) => void>();
+  let matches = coarse;
+  const query = "(pointer: coarse)";
+  const list = {
+    get matches() {
+      return matches;
+    },
+    media: query,
+    onchange: null,
+    addEventListener: (_: string, l: (e: MediaQueryListEvent) => void) => listeners.add(l),
+    removeEventListener: (_: string, l: (e: MediaQueryListEvent) => void) => listeners.delete(l),
+    addListener: (l: (e: MediaQueryListEvent) => void) => listeners.add(l),
+    removeListener: (l: (e: MediaQueryListEvent) => void) => listeners.delete(l),
+    dispatchEvent: () => true,
+  } as unknown as MediaQueryList;
+  const original = window.matchMedia.bind(window);
+  vi.spyOn(window, "matchMedia").mockImplementation((q: string) => (q === query ? list : original(q)));
+  return {
+    async set(next: boolean) {
+      matches = next;
+      await act(async () => {
+        for (const l of listeners) l({ matches: next, media: query } as MediaQueryListEvent);
+      });
+      await settle();
+    },
+  };
+}
 
 const en = createTranslator("en");
 const zh = createTranslator("zh-Hant");
@@ -122,6 +161,7 @@ async function keyDown(field: HTMLTextAreaElement, init: KeyboardEventInit & { k
 }
 const creates = (api: ProposalStandIn) => api.calls.filter((c) => c.method === "POST" && c.path.endsWith("/ai-proposals"));
 const lists = (api: ProposalStandIn) => api.calls.filter((c) => c.method === "GET" && c.path.endsWith("/ai-proposals"));
+const reuse = (row: Element) => row.querySelector<HTMLButtonElement>("[data-reuse]");
 const earlier = (el: Element) => ask(el).querySelector<HTMLElement>("[data-earlier]");
 const rows = (el: Element) => [...(earlier(el)?.querySelectorAll<HTMLElement>("[data-request]") ?? [])];
 
@@ -286,6 +326,49 @@ describe("Enter to send (2026-11-02)", () => {
     expect(creates(api)).toHaveLength(1);
   });
 
+  it.each(["en", "zh-Hant"] as const)("in %s, where the primary pointer is coarse, makes Enter a new line and leaves sending to the send button", async (locale) => {
+    primaryPointer(true);
+    const t = createTranslator(locale);
+    const { el, api, created } = await modelPage({ locale });
+    const field = fieldOf(ask(el), t("ask.intent"));
+    expect(field.getAttribute("enterkeyhint")).toBe("enter");
+    expect(described(field)).toEqual([t("ask.intentHint", { version: "1" }), t("ask.dataNotice"), t("ask.keys.touch")]);
+    await type(field, "Burn-in batches of 48 boards");
+    // Enter is the text area's own: a new line, never a send.
+    expect(await keyDown(field, { key: "Enter" })).toBe(false);
+    expect(await keyDown(field, { key: "Enter", isComposing: true })).toBe(false);
+    await settle();
+    expect(creates(api)).toEqual([]);
+    await press(button(composer(el)!, t("ask.send")));
+    await waitFor(() => created.length === 1, "the proposal");
+    expect(creates(api)).toHaveLength(1);
+    expect(await violations()).toEqual([]);
+  });
+
+  it("follows a change of the primary pointer: Enter sends again once it is fine, and the description and the key's hint say so", async () => {
+    const pointer = primaryPointer(false);
+    const { el, api, created } = await modelPage();
+    const field = fieldOf(ask(el), en("ask.intent"));
+    expect([field.getAttribute("enterkeyhint"), described(field).at(-1)]).toEqual(["send", en("ask.keys")]);
+    await pointer.set(true);
+    expect([field.getAttribute("enterkeyhint"), described(field).at(-1)]).toEqual(["enter", en("ask.keys.touch")]);
+    await type(field, "Burn-in batches of 48 boards");
+    expect(await keyDown(field, { key: "Enter" })).toBe(false);
+    expect(creates(api)).toEqual([]);
+    await pointer.set(false);
+    expect([field.getAttribute("enterkeyhint"), described(field).at(-1)]).toEqual(["send", en("ask.keys")]);
+    expect(await keyDown(field, { key: "Enter" })).toBe(true);
+    await waitFor(() => created.length === 1, "the proposal");
+  });
+
+  it("says the keys in both languages", () => {
+    for (const k of ["ask.keys", "ask.keys.touch"] as const) {
+      expect(en(k), k).not.toBe("");
+      expect(zh(k), k).not.toBe(en(k));
+    }
+    expect(en("ask.keys.touch")).toBe("Enter starts a new line; the send button sends.");
+  });
+
   it("does not send on Enter while the editor has unsaved edits, and names the reason as the request's description", async () => {
     const { el, api } = await modelPage();
     const n = el.querySelector<HTMLElement>('.react-flow__node[data-id="smt"]')!;
@@ -317,7 +400,9 @@ describe("the request's state in the server's words (2026-11-02)", () => {
   it.each([
     [{ status: "generating" }, "ask.log.state.generating"],
     [{ status: "needs_input" }, "ask.log.state.needs_input"],
-    [{ status: "ready" }, "ask.log.state.ready"],
+    [{ status: "ready", base_version_id: versionId(2) }, "ask.log.state.ready"],
+    // H-079: on an older version it can never be approved, so it is not "Ready to review".
+    [{ status: "ready", base_version_id: versionId(1) }, "ask.log.state.stale"],
     [{ status: "invalid" }, "ask.log.state.invalid"],
     [{ status: "failed" }, "ask.log.state.failed"],
     [{ status: "rejected" }, "ask.log.state.rejected"],
@@ -339,25 +424,31 @@ describe("the request's state in the server's words (2026-11-02)", () => {
   });
 
   it("words every state in both languages", () => {
-    for (const k of ["generating", "needs_input", "ready", "invalid", "failed", "rejected", "conflicted", "applied", "approved.edit", "approved.scenario", "investigation.running", "investigation.finished", "investigation.stopped"] as const) {
+    for (const k of ["generating", "needs_input", "ready", "stale", "invalid", "failed", "rejected", "conflicted", "applied", "approved.edit", "approved.scenario", "investigation.running", "investigation.finished", "investigation.stopped"] as const) {
       expect(en(`ask.log.state.${k}`), k).not.toBe("");
       expect(zh(`ask.log.state.${k}`), k).not.toBe(en(`ask.log.state.${k}`));
     }
     expect(en("ask.log.state.approved.version", { version: "4" })).toBe("Approved as version 4");
     expect(en("ask.log.state.ready")).toBe("Ready to review");
+    // The words the proposal's own page opens its state line with.
+    expect(en("proposal.status.stale").startsWith(`${en("ask.log.state.stale")}:`)).toBe(true);
+    expect(zh("proposal.status.stale").startsWith(`${zh("ask.log.state.stale")}：`)).toBe(true);
     expect(en("ask.log.state.needs_input")).toBe("The AI needs your input");
   });
 });
 
-describe("earlier requests above the composer (2026-11-02)", () => {
-  it("shows no list when the model has none", async () => {
+describe("earlier requests above the composer (2026-11-02, H-079)", () => {
+  /** What listProposals and listInvestigations were asked: their query, as the client sent it. */
+  const query = (c: { query: string }) => Object.fromEntries(new URLSearchParams(c.query));
+
+  it("shows no list when the model has none, after one read of the newest page", async () => {
     const { el, api } = await modelPage();
-    expect(lists(api)).toHaveLength(1);
+    expect(lists(api).map(query)).toEqual([{ order: "newest", limit: "10" }]);
     expect(earlier(el)).toBeNull();
     expect(text(ask(el))).not.toContain(en("ask.log.title"));
   });
 
-  it.each(["en", "zh-Hant"] as const)("in %s, lists the latest three people's requests, newest nearest the composer, each a link to its page with its state and time", async (locale) => {
+  it.each(["en", "zh-Hant"] as const)("in %s, lists the latest three people's requests in their words, newest nearest the composer, each a link to its page with its state and time", async (locale) => {
     const t = createTranslator(locale);
     const { el } = await modelPage({ locale, earlier: earlierRequests() });
     const list = earlier(el)!;
@@ -368,35 +459,49 @@ describe("earlier requests above the composer (2026-11-02)", () => {
     const [a, b, c] = rows(el);
     expect(rows(el)).toHaveLength(3);
     expect(rows(el).map((r) => r.querySelector("a")!.getAttribute("href"))).toEqual([proposalId(93), proposalId(94), proposalId(95)].map((id) => `/proposals/${id}`));
-    // The AI's summary names a proposal; without one, what it was asked to make.
-    expect(text(a!.querySelector("[data-request-text]"))).toBe("The request does not say which step's batches should change, or to what size.");
-    expect(text(b!.querySelector("[data-request-text]"))).toBe(t("ask.mode.scenario"));
-    expect(text(c!.querySelector("[data-request-text]"))).toBe(t("ask.mode.edit"));
+    // The person's words name a request (never the AI's summary); a photo request says it came from a photo.
+    expect(text(a!.querySelector("[data-request-text]"))).toBe("Make the burn-in batches bigger.");
+    expect(text(b!.querySelector("[data-request-text]"))).toBe("What if the reflow oven ran 10% faster?");
+    expect(text(c!.querySelector("[data-request-text]"))).toBe(t("ask.log.photo"));
+    expect(text(ask(el))).not.toContain("The request does not say which step's batches should change");
     expect(text(a!.querySelector("[data-request-state]"))).toBe(t("ask.log.state.needs_input"));
     expect(text(b!.querySelector("[data-request-state]"))).toBe(t("ask.log.state.failed"));
     expect(text(c!.querySelector("[data-request-state]"))).toBe(t("ask.log.state.generating"));
-    // A photo request says so.
-    expect(text(c)).toContain(t("ask.log.photo"));
-    expect(text(a)).not.toContain(t("ask.log.photo"));
+    // What each asked for, under the words.
+    expect(text(a!.querySelector("[data-request-meta]"))).toContain(t("proposals.mode.edit"));
+    expect(text(b!.querySelector("[data-request-meta]"))).toContain(t("proposals.mode.scenario"));
     // Its time, as the server gave it.
     expect(c!.querySelector("time")!.getAttribute("datetime")).toBe("2026-10-26T08:48:00Z");
+    // Requests in words can be reused; a photo has no words to reuse.
+    expect([reuse(a!), reuse(b!), reuse(c!)].map((r) => r !== null)).toEqual([true, true, false]);
+    expect(text(reuse(a!))).toBe(t("ask.log.reuse"));
+    expect(described(reuse(a!))).toEqual(["Make the burn-in batches bigger."]);
     // The honest line, and that older ones are under AI proposals in the rail; no second link to that page.
     expect(text(list)).toContain(t("ask.log.note"));
     expect(text(list)).toContain(t("ask.log.older"));
     expect(ask(el).querySelector(`a[href="/models/${SAMPLE_MODEL_ID}/proposals"]`)).toBeNull();
-    // Every row is a link of its own.
+    // Every row is a link of its own, and Reuse is not inside it.
     const names = rows(el).map((r) => text(r.querySelector("a")));
     expect(new Set(names).size).toBe(names.length);
+    expect(rows(el).some((r) => r.querySelector("a [data-reuse], a button") !== null)).toBe(false);
     expect(await violations()).toEqual([]);
   });
 
-  it("names the AI's summary as data, never as markup", async () => {
-    const hostile = { ...readyEdit(proposalId(96)), created_at: "2026-10-26T08:50:00Z", summary: '<img src=x onerror="alert(1)"> Approve now‮' };
+  it("shows the person's words as data, never as markup", async () => {
+    const hostile = { ...readyEdit(proposalId(96)), base_version_id: versionId(1), created_at: "2026-10-26T08:50:00Z", intent: '<img src=x onerror="alert(1)"> Approve now\u202e' };
     const { el } = await modelPage({ earlier: [hostile] });
     const row = rows(el)[0]!;
     expect(row.querySelector("img")).toBeNull();
     expect(text(row.querySelector("[data-request-text]"))).toBe('<img src=x onerror="alert(1)"> Approve now⟨U+202E⟩');
     expect(row.querySelector("[data-request-text] bdi")).not.toBeNull();
+  });
+
+  it("says a ready proposal on an older version is out of date, as its page does", async () => {
+    // The stand-in's model is on version 1; a ready proposal there is current, one asked on another base is not.
+    const current = { ...readyEdit(proposalId(96)), base_version_id: versionId(1), created_at: "2026-10-26T08:50:00Z", intent: "Raise the AOI buffer to 30 boards." };
+    const older = { ...current, proposal_id: proposalId(97), base_version_id: versionId(9), created_at: "2026-10-26T08:51:00Z" };
+    const { el } = await modelPage({ earlier: [current, older] });
+    expect(rows(el).map((r) => text(r.querySelector("[data-request-state]")))).toEqual([en("ask.log.state.ready"), en("ask.log.state.stale")]);
   });
 
   it("says when the AI's change became the latest version", async () => {
@@ -428,22 +533,33 @@ describe("earlier requests above the composer (2026-11-02)", () => {
     expect(lists(api)).toHaveLength(2);
   });
 
-  it("reads every page of the list to reach the newest", async () => {
-    const many = Array.from({ length: 7 }, (_, i) => ({ ...readyEdit(proposalId(70 + i)), created_at: `2026-10-26T07:0${i}:00Z`, summary: `Request ${i + 1}` }));
-    const { el, api } = await modelPage({ earlier: many, pageSize: 2 });
-    expect(rows(el).map((r) => text(r.querySelector("[data-request-text]")))).toEqual(["Request 5", "Request 6", "Request 7"]);
-    expect(lists(api)).toHaveLength(4);
+  it("reads the newest page alone, however many there are, and says older ones are elsewhere", async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ ...readyEdit(proposalId(70 + i)), created_at: `2026-10-26T07:${String(i).padStart(2, "0")}:00Z`, intent: `Request ${i + 1}` }));
+    const { el, api } = await modelPage({ earlier: many });
+    expect(rows(el).map((r) => text(r.querySelector("[data-request-text]")))).toEqual(["Request 23", "Request 24", "Request 25"]);
+    expect(lists(api).map(query)).toEqual([{ order: "newest", limit: "10" }]);
+    expect(text(earlier(el))).toContain(en("ask.log.older"));
   });
 
-  it("with investigations, lists the ones this panel started, and a deployment without them changes nothing", async () => {
+  it("does not say older ones are elsewhere when the page holds them all", async () => {
+    const few = earlierRequests().slice(3);
+    const { el } = await modelPage({ earlier: few });
+    expect(rows(el)).toHaveLength(3);
+    expect(text(earlier(el))).not.toContain(en("ask.log.older"));
+  });
+
+  it("with investigations, lists the ones this panel started in their words, and a deployment without them changes nothing", async () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
     const fromPanel = sampleInvestigation("running");
-    const fromAnalysis: Investigation = { ...sampleInvestigation("finished"), id: investigationId(3), source: "analysis", source_analysis_id: analysisId(1), created_at: "2026-11-01T07:00:00Z" };
-    const { el } = await modelPage({ act: true, earlier: earlierRequests(), investigations: [fromAnalysis, fromPanel] });
+    const fromAnalysis: Investigation = { ...sampleInvestigation("finished"), id: investigationId(3), source: "analysis", source_analysis_id: analysisId(1), intent: undefined, created_at: "2026-11-01T07:00:00Z" };
+    const { el, api } = await modelPage({ act: true, earlier: earlierRequests(), investigations: [fromAnalysis, fromPanel] });
+    expect(api.calls.filter((c) => c.path.endsWith("/investigations")).map(query)).toEqual([{ limit: "10" }]);
     const last = rows(el).at(-1)!;
     expect(last.querySelector("a")!.getAttribute("href")).toBe(`/investigations/${fromPanel.id}`);
-    expect(text(last.querySelector("[data-request-text]"))).toBe(en("ask.log.investigation.scenario"));
+    expect(text(last.querySelector("[data-request-text]"))).toBe(fromPanel.intent);
+    expect(text(last.querySelector("[data-request-meta]"))).toContain(en("ask.log.investigation.scenario"));
     expect(text(last.querySelector("[data-request-state]"))).toBe(en("ask.log.state.investigation.running"));
+    expect(reuse(last)).not.toBeNull();
     expect(ask(el).querySelector(`a[href="/investigations/${fromAnalysis.id}"]`)).toBeNull();
     expect(await violations()).toEqual([]);
 
@@ -459,5 +575,71 @@ describe("earlier requests above the composer (2026-11-02)", () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", undefined);
     const { api } = await modelPage({ act: true, earlier: earlierRequests() });
     expect(api.calls.filter((c) => c.path.endsWith("/investigations"))).toEqual([]);
+  });
+});
+
+describe("Reuse (H-079)", () => {
+  const status = (el: Element) => [...ask(el).querySelectorAll("[role=status]")].map(text).join(" ");
+
+  it.each(["en", "zh-Hant"] as const)("in %s, puts a request's words and what it asked for back in the composer, sends nothing, and moves the focus there", async (locale) => {
+    const t = createTranslator(locale);
+    const { el, api } = await modelPage({ locale, earlier: earlierRequests() });
+    const field = fieldOf(ask(el), t("ask.intent"));
+    await type(field, "Something else, typed first");
+    const [, b] = rows(el);
+    await press(reuse(b!));
+    expect(field.value).toBe("What if the reflow oven ran 10% faster?");
+    expect(text(trigger(composer(el)!, t("ask.mode")))).toBe(t("ask.mode.scenario"));
+    expect(document.activeElement).toBe(field);
+    // Said to a screen reader: it is back in the box, and nothing was sent.
+    expect(status(el)).toContain(t("ask.log.reused"));
+    await settle();
+    expect(creates(api)).toEqual([]);
+    expect(api.calls.filter((c) => c.method !== "GET")).toEqual([]);
+    // The version line follows the mode, as when it is chosen.
+    expect(text(ask(el).querySelector("[data-version-line]"))).toContain(t("ask.modeHint.scenario", { version: "1" }));
+    // Typing again ends the note; sending is the person's own, as ever.
+    await type(field, "What if the reflow oven ran 20% faster?");
+    expect(status(el)).not.toContain(t("ask.log.reused"));
+    expect(await violations()).toEqual([]);
+  });
+
+  it("puts the model back only while it is still offered", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
+    const { el } = await modelPage({ earlier: earlierRequests() });
+    const [a, b] = rows(el);
+    const model = () => text(trigger(composer(el)!, en("ask.model")));
+    // b asked Muse Wonder 1.0 by name; a named none, so the deployment's model, the default, answered it.
+    await press(reuse(b!));
+    expect(model()).toBe(en("ai.model.muse-wonder-1.0"));
+    await press(reuse(a!));
+    expect(model()).toBe(en("ai.model.muse-spark-1.3"));
+    expect(text(trigger(composer(el)!, en("ask.mode")))).toBe(en("ask.mode.edit"));
+  });
+
+  it("keeps the default model where Muse Wonder is not offered, and sends the request as the default's", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
+    const { el, api, created } = await modelPage({ earlier: earlierRequests() });
+    const [, b] = rows(el);
+    await press(reuse(b!));
+    expect(trigger(composer(el)!, en("ask.model"))).toBeNull();
+    await press(button(composer(el)!, en("ask.send")));
+    await waitFor(() => created.length === 1, "the proposal");
+    expect(creates(api).map((c) => c.body)).toEqual([{ base_version_id: api.baseVersionId, mode: "scenario", intent: "What if the reflow oven ran 10% faster?", output_locale: "en" }]);
+  });
+
+  it("puts an investigation's words, mode and model back, as a proposal's", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
+    const edit: Investigation = { ...sampleInvestigation("edit"), proposal_model: "muse-wonder-1.0", created_at: "2026-11-01T08:00:00Z" };
+    const { el, api } = await modelPage({ act: true, earlier: earlierRequests(), investigations: [edit] });
+    const last = rows(el).at(-1)!;
+    await press(reuse(last));
+    const field = fieldOf(ask(el), en("ask.intent"));
+    expect(field.value).toBe(edit.intent);
+    expect(text(trigger(composer(el)!, en("investigation.mode")) ?? trigger(composer(el)!, en("ask.mode")))).toBe(en("ask.mode.edit"));
+    expect(text(trigger(composer(el)!, en("ask.model")))).toBe(en("ai.model.muse-wonder-1.0"));
+    expect(document.activeElement).toBe(field);
+    expect(api.calls.filter((c) => c.method !== "GET")).toEqual([]);
   });
 });

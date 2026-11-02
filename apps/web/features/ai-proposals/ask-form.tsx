@@ -58,7 +58,14 @@
 // Enter while sending does nothing; the composer's description says the
 // keys. Above it, the model's earlier requests (EarlierRequests). The photo
 // path stays a request of its own under the composer, since it takes no
-// words. What is sent, and when, is what it was.
+// words. What is sent, and when, is what it was. H-079: an earlier request's
+// Reuse puts its words, its mode and its model (only while this build still
+// offers it; a request that named none, the default) back in the box, sends
+// nothing, says so to a screen reader and moves the focus to the request,
+// at the end of its words; what was in the box is replaced. Where the
+// primary pointer is coarse (useCoarsePointer: a touch keyboard has no
+// Shift+Enter), Enter makes a new line and only the send key sends; the
+// keyboard's Enter key says so (enterKeyHint) and so does the description.
 import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Label, TextArea, TextField as AriaTextField } from "react-aria-components";
 import { ProblemView } from "../../app/_components/problem-view";
@@ -77,9 +84,11 @@ import { PlannerChoice, RunSettings } from "../investigations/act-fields";
 import { DEFAULT_PLANNER, investigationsOffered } from "../investigations/flags";
 import { type ActIssue, fromRequest, OBJECTIVES, parseActRunForm } from "../investigations/request";
 import { defaultRunForm, type RunField, type RunForm } from "../simulations/run-config";
+import { useCoarsePointer } from "./coarse-pointer";
 import { EarlierRequests } from "./earlier-requests";
-import { DEFAULT_MODEL, ModelChip, modelField, ModelHint } from "./model-choice";
+import { DEFAULT_MODEL, ModelChip, modelField, ModelHint, offeredModels } from "./model-choice";
 import { PhotoForm } from "./photo-form";
+import type { Reused } from "./request-log";
 import { askPrefill, clearAskPrefill } from "./station-research";
 import styles from "./ask.module.css";
 
@@ -88,9 +97,13 @@ type Mode = ProposalRequest["mode"];
 /** The most characters a request takes (http.schema.json ProposalRequest.intent and InvestigationFromRequest.intent: maxLength 20,000, counted in code points). */
 export const MAX_INTENT = 20_000;
 
-/** Enter sends (the composer, 2026-11-02): not with Shift (a new line), and never while an input method is composing. */
-export function sendsOnEnter(e: Pick<KeyboardEvent, "key" | "shiftKey" | "keyCode" | "nativeEvent">): boolean {
-  if (e.key !== "Enter" || e.shiftKey) return false;
+/**
+ * Enter sends (the composer, 2026-11-02): not with Shift (a new line), never
+ * while an input method is composing, and (H-079) never where the primary
+ * pointer is coarse (touch): there Enter is a new line and the send key sends.
+ */
+export function sendsOnEnter(e: Pick<KeyboardEvent, "key" | "shiftKey" | "keyCode" | "nativeEvent">, touch = false): boolean {
+  if (touch || e.key !== "Enter" || e.shiftKey) return false;
   return !(e.nativeEvent.isComposing || e.keyCode === 229 || e.nativeEvent.keyCode === 229);
 }
 
@@ -170,6 +183,12 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const busy = useRef(false);
   const sent = useRef<{ request: string; key: string } | null>(null);
   const field = useRef<HTMLTextAreaElement>(null);
+  // H-079: a touch keyboard's Enter is a new line; an earlier request put back by Reuse.
+  const touch = useCoarsePointer();
+  const [reusedNote, setReusedNote] = useState(false);
+  // Each Reuse, counted, so the same request reused twice still takes the focus.
+  const [reuses, setReuses] = useState(0);
+  const focusAfterReuse = useRef(false);
   const latest = model.latest_version;
   const blocked = blockedReason !== null;
 
@@ -179,7 +198,26 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
     if (el === null) return;
     el.style.height = "auto";
     if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight}px`;
-  }, [intent]);
+    // Reused: the focus on the request, at the end of the words put back.
+    if (focusAfterReuse.current) {
+      focusAfterReuse.current = false;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  }, [intent, reuses]);
+
+  /** Reuse (H-079): the earlier request's words, mode and model in the box; nothing is sent. */
+  const reuse = (r: Reused) => {
+    setIntent(r.intent);
+    setMode(r.mode);
+    const named = r.model ?? DEFAULT_MODEL;
+    if (offeredModels().includes(named)) setAiModel(named);
+    setMissing(false);
+    setTooLong(null);
+    setReusedNote(true);
+    setReuses((n) => n + 1);
+    focusAfterReuse.current = true;
+  };
 
   const send = async () => {
     if (busy.current || blocked) return;
@@ -200,6 +238,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
     setMissing(false);
     setTooLong(null);
     setProblem(null);
+    setReusedNote(false);
     let body: ProposalRequest | InvestigationRequest = { base_version_id: latest.id, mode, intent: words, output_locale: locale, ...(research ? { research: true } : {}), ...modelField(aiModel) };
     if (acting) {
       // A scenario's run settings are checked at their fields first; an edit takes none.
@@ -232,7 +271,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (!sendsOnEnter(e)) return;
+    if (!sendsOnEnter(e, touch)) return;
     // Enter never makes a new line here: it sends, or, while sending waits, does nothing.
     e.preventDefault();
     void send();
@@ -251,7 +290,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   return (
     <section className={styles.ask} data-ask aria-labelledby={headingId}>
       <h2 id={headingId}>{t("ask.title")}</h2>
-      <EarlierRequests model={model} investigations={canAct} />
+      <EarlierRequests model={model} investigations={canAct} onReuse={reuse} />
       {prefill !== null && (
         <p id={prefillId} className={`${styles.hint} ${styles.prefill}`} data-prefilled>
           {t("ask.prefill.stationTimes.note")}
@@ -263,6 +302,7 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           value={intent}
           onChange={(v) => {
             setIntent(v);
+            setReusedNote(false);
             if (missing && v.trim() !== "") setMissing(false);
             if (tooLong !== null && [...v.trim()].length <= MAX_INTENT) setTooLong(null);
           }}
@@ -272,10 +312,10 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
           aria-describedby={describedBy}
         >
           <Label className={styles.offscreen}>{t("ask.intent")}</Label>
-          <TextArea ref={field} className={styles.input} rows={3} placeholder={t("ask.placeholder")} enterKeyHint="send" onKeyDown={onKeyDown} />
+          <TextArea ref={field} className={styles.input} rows={3} placeholder={t("ask.placeholder")} enterKeyHint={touch ? "enter" : "send"} onKeyDown={onKeyDown} />
         </AriaTextField>
         <span id={keysId} className={styles.offscreen}>
-          {t("ask.keys")}
+          {t(touch ? "ask.keys.touch" : "ask.keys")}
         </span>
         <div className={styles.tools} data-tools>
           <Select
@@ -372,6 +412,8 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
         </div>
       )}
       <StatusRegion message={sending ? t(acting ? "investigation.starting" : "ask.sending") : null} />
+      {/* Reused: said to a screen reader, since the box shows it already. */}
+      <StatusRegion quiet message={reusedNote ? t("ask.log.reused") : null} />
     </section>
   );
 }
