@@ -78,13 +78,23 @@
   border-radius: var(--gm-radius-sm);
 }
 
-.canvas :global(.react-flow__edge-text) {
-  fill: var(--gm-color-ink-2);
+/* A decision's probability on its link (the canvas-layout decision of
+   2026-11-02): in React Flow's edge-label layer, so above every link and
+   under the cards, on a backing of the canvas's ground, so no line runs
+   through it. trace-overlay.tsx (FlowEdge) centres it on the point React
+   Flow gives; tests/canvas-routes.test.ts reads its size from here. */
+.edgeLabel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0 var(--gm-space-xs);
+  border-radius: var(--gm-radius-sm);
+  background: var(--gm-color-ground);
+  color: var(--gm-color-ink-2);
   font-size: var(--gm-font-size-label);
-}
-
-.canvas :global(.react-flow__edge-textbg) {
-  fill: var(--gm-color-ground);
+  line-height: var(--gm-line-height-label);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 /* React Flow's attribution stays (ADR-021, H-009 (4)), legible in both themes. */
