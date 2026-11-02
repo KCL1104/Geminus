@@ -8,6 +8,7 @@
       "mode": "scenario",
       "source": "request",
       "source_analysis_id": null,
+      "intent": "Find a change that lowers the median lead time without a new line.",
       "objective": {
         "metric_path": "/metrics/lead_time_minutes/p50",
         "better": "lower"

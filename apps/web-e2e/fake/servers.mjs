@@ -195,7 +195,10 @@ const version = {
 // the live demo's are. H-065: the proposal names the model its request named
 // (requested_model), in every state, as the server does; one on Muse Wonder
 // stays generating for three reads (it thinks longer), so its page's note
-// can be seen.
+// can be seen. H-079: the proposal carries its request's words (intent) in
+// every state, as the server stores them (a photo's has none); listProposals
+// lists newest first with order=newest, a page of the limit at a time, as
+// openapi has it (an order other than oldest or newest is 400).
 const answer = JSON.parse(readFileSync(new URL("./proposal-answer.json", import.meta.url), "utf8"));
 const jcs = (v) =>
   Array.isArray(v) ? `[${v.map(jcs).join(",")}]` : v !== null && typeof v === "object" ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${jcs(v[k])}`).join(",")}}` : JSON.stringify(v);
@@ -250,8 +253,17 @@ const modelNow = () => ({
   latest_version: { id: latest().id, version: latest().version },
 });
 
-/** What a member of org may GET: path → [body, extra headers]. */
-function tenantGet(org, path) {
+/** listProposals' page of items as openapi has it (H-079): oldest first, or newest first with order=newest; the limit's first items (the fake's lists are short: no cursor is issued past them). */
+function proposalPage(items, query) {
+  const order = query.get("order") ?? "oldest";
+  if (order !== "oldest" && order !== "newest") return null;
+  const all = order === "newest" ? [...items].reverse() : items;
+  const limit = Number(query.get("limit") ?? 50);
+  return { items: all.slice(0, limit), next_cursor: all.length > limit ? Buffer.from(`${order}:${limit}`).toString("base64url") : null };
+}
+
+/** What a member of org may GET: path → [body, extra headers], or "bad" for a refused query. */
+function tenantGet(org, path, query = new URLSearchParams()) {
   if (path === "/v1/projects") return [{ items: projects[org] ?? [], next_cursor: null }, org === ORG ? { "set-cookie": "api_cookie=1" } : {}];
   if (org !== LINE) return null;
   if (path === `/v1/projects/${PRJ_LINE}/models`) return [{ items: [modelNow(), ...[...live.created.values()].map((c) => c.model)], next_cursor: null }, {}];
@@ -260,7 +272,10 @@ function tenantGet(org, path) {
     if (path === `/v1/models/${c.model.id}/draft`) return [c.draft, { etag: `"draft-revision-${c.draft.revision}"` }];
     if (path === `/v1/model-versions/${c.version.id}`) return [c.version, {}];
     if (path === `/v1/models/${c.model.id}/versions`) return [{ items: [c.version], next_cursor: null }, {}];
-    if (path === `/v1/models/${c.model.id}/ai-proposals`) return [{ items: [...live.photos.values()].filter((p) => p.proposal.model_id === c.model.id).map((p) => p.proposal), next_cursor: null }, {}];
+    if (path === `/v1/models/${c.model.id}/ai-proposals`) {
+      const page = proposalPage([...live.photos.values()].filter((p) => p.proposal.model_id === c.model.id).map((p) => p.proposal), query);
+      return page === null ? "bad" : [page, {}];
+    }
     if ([`/v1/model-versions/${c.version.id}/scenarios`, `/v1/models/${c.model.id}/simulations`].includes(path)) return [{ items: [], next_cursor: null }, {}];
   }
   const photo = path.startsWith("/v1/ai-proposals/") ? live.photos.get(path.slice("/v1/ai-proposals/".length)) : undefined;
@@ -272,7 +287,10 @@ function tenantGet(org, path) {
   // The model's lists (H-042: the rail's Scenarios, AI proposals and Runs pages) in the server's order: versions newest first, proposals and runs oldest first.
   if (path === `/v1/models/${model.id}/versions`) return [{ items: [...live.versions].reverse(), next_cursor: null }, {}];
   if (live.versions.some((x) => path === `/v1/model-versions/${x.id}/scenarios`)) return [{ items: [], next_cursor: null }, {}];
-  if (path === `/v1/models/${model.id}/ai-proposals`) return [{ items: [...live.proposals.values()].map((x) => x.proposal), next_cursor: null }, {}];
+  if (path === `/v1/models/${model.id}/ai-proposals`) {
+    const page = proposalPage([...live.proposals.values()].map((x) => x.proposal), query);
+    return page === null ? "bad" : [page, {}];
+  }
   if (path === `/v1/models/${model.id}/simulations`) return [{ items: [], next_cursor: null }, {}];
   const s = path.startsWith("/v1/ai-proposals/") ? live.proposals.get(path.slice("/v1/ai-proposals/".length)) : undefined;
   if (s) {
@@ -322,7 +340,7 @@ function tenantPost(org, role, path, key, payload) {
     if (payload.base_version_id !== latest().id) return refusal(409, "MODEL_VERSION_CONFLICT", "base_version_id is not the model's latest version", [{ path: "/base_version_id", reason: "not the model's latest version" }]);
     const id = serial("aip", "P", live.proposals.size + 1);
     const server = {
-      proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, created_by: USER, created_at: ASKED, requires_confirmation: true,
+      proposal_id: id, organization_id: LINE, model_id: model.id, base_version_id: payload.base_version_id, mode: payload.mode, intent: payload.intent, created_by: USER, created_at: ASKED, requires_confirmation: true,
       ...(typeof payload.model === "string" ? { requested_model: payload.model } : {}),
     };
     const words = answer[payload.output_locale === "zh-Hant" ? "zh-Hant" : "en"];
@@ -493,7 +511,8 @@ createServer(async (req, res) => {
   if (req.method === "GET" && membership && /^\/v1\/models\/[^/]+\/investigations$/.test(url.pathname)) {
     return json(res, 503, { error: { code: "SERVICE_UNAVAILABLE", message: "AI investigations are not available here", request_id: rid, details: [{ path: "", reason: "investigations are off in this deployment", code: "INVESTIGATIONS_OFF" }] } }, { "x-request-id": rid });
   }
-  const found = req.method === "GET" && membership ? tenantGet(org, url.pathname) : null;
+  const found = req.method === "GET" && membership ? tenantGet(org, url.pathname, url.searchParams) : null;
+  if (found === "bad") return json(res, 400, { error: { code: "INVALID_REQUEST", message: "order must be oldest or newest, once", request_id: rid, details: [{ path: "", reason: "order" }] } }, { "x-request-id": rid });
   if (found !== null) return json(res, 200, found[0], { "x-request-id": rid, ...found[1] });
   const answered = req.method === "POST" && membership ? tenantPost(org, membership.role, url.pathname, key, payload) : null;
   if (answered !== null) return json(res, answered.status, answered.body, { "x-request-id": rid });

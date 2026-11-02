@@ -338,20 +338,22 @@ export const otherChange = {
  * The model's earlier requests to the AI (the 2026-11-02 composer's
  * "Earlier requests"), as listProposals lists them, oldest first: one per
  * kind the list says apart (an approved edit, a scenario rejected, a photo
- * the AI is still reading, one the AI needs input on, one that failed), and
- * a proposal an AI investigation asked for, which is not a person's request.
- * Sample data written for review; no AI was called. IDs from 90 up, apart
- * from the ones a stand-in gives the proposals asked for on its page.
+ * the AI is still reading, one the AI needs input on, one that failed and
+ * named Muse Wonder 1.0), and a proposal an AI investigation asked for,
+ * which is not a person's request. Each asked in words carries its words
+ * (intent, H-079; the investigation's, its idea); the photo has none. Sample
+ * data written for review; no AI was called. IDs from 90 up, apart from the
+ * ones a stand-in gives the proposals asked for on its page.
  */
 export function earlierRequests(): Proposal[] {
   const at = (minute: number) => `2026-10-26T08:${String(minute).padStart(2, "0")}:00Z`;
   const asked = (n: number, minute: number, mode: Proposal["mode"]) => ({ ...server(proposalId(n), mode), created_at: at(minute) });
   return [
-    { ...readyEdit(proposalId(90)), ...asked(90, 5, "edit"), status: "approved", new_version_id: versionId(2), ...decided },
-    { ...readyScenario(proposalId(91)), ...asked(91, 12, "scenario"), status: "rejected", ...decided },
-    { ...readyScenario(proposalId(92)), ...asked(92, 20, "scenario"), status: "ready", investigation: { id: "inv_01M4YDQK00E1ECTR0N1C5V0001", index: 1 } },
-    { ...asked(93, 31, "edit"), status: "needs_input", summary: "The request does not say which step's batches should change, or to what size." },
-    { ...asked(94, 40, "scenario"), status: "failed", error: { error: { code: "SERVICE_UNAVAILABLE", message: "the AI provider did not answer in time", request_id: REQUEST } } },
+    { ...readyEdit(proposalId(90)), ...asked(90, 5, "edit"), intent: "Raise the AOI buffer to 30 boards.", status: "approved", new_version_id: versionId(2), ...decided },
+    { ...readyScenario(proposalId(91)), ...asked(91, 12, "scenario"), intent: "What if a second ICT tester is added?", status: "rejected", ...decided },
+    { ...readyScenario(proposalId(92)), ...asked(92, 20, "scenario"), intent: "Try a second ICT tester.", status: "ready", investigation: { id: "inv_01M4YDQK00E1ECTR0N1C5V0001", index: 1 } },
+    { ...asked(93, 31, "edit"), intent: "Make the burn-in batches bigger.", status: "needs_input", summary: "The request does not say which step's batches should change, or to what size." },
+    { ...asked(94, 40, "scenario"), intent: "What if the reflow oven ran 10% faster?", requested_model: "muse-wonder-1.0", status: "failed", error: { error: { code: "SERVICE_UNAVAILABLE", message: "the AI provider did not answer in time", request_id: REQUEST } } },
     { ...asked(95, 48, "edit"), status: "generating", source_image: samplePhoto, requested_model: "muse-wonder-1.0" },
   ];
 }

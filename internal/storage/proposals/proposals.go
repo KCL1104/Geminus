@@ -272,6 +272,34 @@ func List(ctx context.Context, tx pgx.Tx, org, modelID string, after *Position, 
 	return out, rows.Err()
 }
 
+// ListNewest returns up to limit proposals of the model newest first
+// (created_at, then id, both descending; H-079), before the position if
+// one is given. As List, it filters by organization next to RLS.
+func ListNewest(ctx context.Context, tx pgx.Tx, org, modelID string, before *Position, limit int) ([]Proposal, error) {
+	var rows pgx.Rows
+	var err error
+	if before == nil {
+		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE p.organization_id=$1 AND p.model_id=$2
+			ORDER BY p.created_at DESC, p.id DESC LIMIT $3`, org, modelID, limit)
+	} else {
+		rows, err = tx.Query(ctx, `SELECT `+columns+from+` WHERE p.organization_id=$1 AND p.model_id=$2
+			AND (p.created_at, p.id) < ($3, $4) ORDER BY p.created_at DESC, p.id DESC LIMIT $5`, org, modelID, before.CreatedAt, before.ID, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Proposal
+	for rows.Next() {
+		p, err := scan(rows, org)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
 // Generated is what a proposal's job writes when it is generated: the
 // status (ready, needs_input or invalid) and the content that status holds.
 type Generated struct {

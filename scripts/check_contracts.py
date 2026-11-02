@@ -243,6 +243,7 @@ def main() -> dict[str, Any]:
             ('createInvestigation','request','from_analysis'):'valid-investigation-request-from-analysis.json',
             ('createInvestigation','202','accepted'):'valid-investigation-accepted.json',
             ('listInvestigations','200','page'):'valid-investigations-page.json',
+            ('listProposals','200','newest_first'):'valid-proposals-newest-page.json',
             ('getInvestigation','200','running'):'valid-investigation-running.json',
             ('getInvestigation','200','finished'):'valid-investigation-finished.json',
             ('getInvestigation','200','edit_written'):'valid-investigation-edit-written.json',

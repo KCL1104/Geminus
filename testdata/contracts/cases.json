@@ -3511,6 +3511,53 @@
       "expected_error_paths": [
         "/ai_edit"
       ]
+    },
+    {
+      "id": "valid-proposals-newest-page",
+      "instance": "testdata/contracts/valid-proposals-newest-page.json",
+      "schema": "schemas/http.schema.json#/$defs/Proposals",
+      "valid": true,
+      "layer": "schema"
+    },
+    {
+      "id": "invalid-proposal-photo-with-intent",
+      "instance": "testdata/contracts/invalid-proposal-photo-with-intent.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-proposal-empty-intent",
+      "instance": "testdata/contracts/invalid-proposal-empty-intent.json",
+      "schema": "schemas/proposal.schema.json",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/intent"
+      ]
+    },
+    {
+      "id": "invalid-investigation-from-analysis-with-intent",
+      "instance": "testdata/contracts/invalid-investigation-from-analysis-with-intent.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        ""
+      ]
+    },
+    {
+      "id": "invalid-investigation-empty-intent",
+      "instance": "testdata/contracts/invalid-investigation-empty-intent.json",
+      "schema": "schemas/investigation.schema.json#/$defs/Investigation",
+      "valid": false,
+      "layer": "schema",
+      "expected_error_paths": [
+        "/intent"
+      ]
     }
   ]
 }

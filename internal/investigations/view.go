@@ -23,35 +23,38 @@ import (
 
 // Investigation is investigation.schema.json#/$defs/Investigation.
 type Investigation struct {
-	ID               string                `json:"id"`
-	OrganizationID   string                `json:"organization_id"`
-	ModelID          string                `json:"model_id"`
-	BaseVersionID    string                `json:"base_version_id"`
-	Mode             string                `json:"mode"`
-	Source           string                `json:"source"`
-	SourceAnalysisID *string               `json:"source_analysis_id"`
-	Objective        *Objective            `json:"objective"`
-	OutputLocale     string                `json:"output_locale"`
-	Research         bool                  `json:"research"`
-	ProposalModel    string                `json:"proposal_model"`
-	Planner          Planner               `json:"planner"`
-	Status           string                `json:"status"`
-	Reason           *string               `json:"reason"`
-	Activity         Activity              `json:"activity"`
-	Caps             store.Caps            `json:"caps"`
-	Used             Used                  `json:"used"`
-	RunConfig        *simulation.RunConfig `json:"run_config"`
-	BaselineRunID    *string               `json:"baseline_run_id"`
-	Steps            []Step                `json:"steps"`
-	Candidates       []Candidate           `json:"candidates"`
-	Best             *Best                 `json:"best"`
-	AIOutcome        *string               `json:"ai_outcome"`
-	ClosingLine      *ClosingLine          `json:"closing_line"`
-	Stop             *StopRecord           `json:"stop"`
-	DeadlineAt       string                `json:"deadline_at"`
-	CreatedBy        string                `json:"created_by"`
-	CreatedAt        string                `json:"created_at"`
-	FinishedAt       *string               `json:"finished_at"`
+	ID               string  `json:"id"`
+	OrganizationID   string  `json:"organization_id"`
+	ModelID          string  `json:"model_id"`
+	BaseVersionID    string  `json:"base_version_id"`
+	Mode             string  `json:"mode"`
+	Source           string  `json:"source"`
+	SourceAnalysisID *string `json:"source_analysis_id"`
+	// Intent is the person's words as stored (H-079), read-only; nil for
+	// an investigation started from an analysis (0019), and left out.
+	Intent        *string               `json:"intent,omitzero"`
+	Objective     *Objective            `json:"objective"`
+	OutputLocale  string                `json:"output_locale"`
+	Research      bool                  `json:"research"`
+	ProposalModel string                `json:"proposal_model"`
+	Planner       Planner               `json:"planner"`
+	Status        string                `json:"status"`
+	Reason        *string               `json:"reason"`
+	Activity      Activity              `json:"activity"`
+	Caps          store.Caps            `json:"caps"`
+	Used          Used                  `json:"used"`
+	RunConfig     *simulation.RunConfig `json:"run_config"`
+	BaselineRunID *string               `json:"baseline_run_id"`
+	Steps         []Step                `json:"steps"`
+	Candidates    []Candidate           `json:"candidates"`
+	Best          *Best                 `json:"best"`
+	AIOutcome     *string               `json:"ai_outcome"`
+	ClosingLine   *ClosingLine          `json:"closing_line"`
+	Stop          *StopRecord           `json:"stop"`
+	DeadlineAt    string                `json:"deadline_at"`
+	CreatedBy     string                `json:"created_by"`
+	CreatedAt     string                `json:"created_at"`
+	FinishedAt    *string               `json:"finished_at"`
 }
 
 // Planner is InvestigationPlanner: "Done by Muse Spark 1.3 (Meta) for you".
@@ -159,7 +162,7 @@ func (s *Service) view(ctx context.Context, tx tenant.Tx, inv store.Investigatio
 		return Investigation{}, err
 	}
 	v := Investigation{ID: inv.ID, OrganizationID: org, ModelID: inv.ModelID, BaseVersionID: inv.BaseVersionID, Mode: string(inv.Mode),
-		Source: string(inv.Source), SourceAnalysisID: inv.SourceAnalysisID, OutputLocale: inv.OutputLocale, Research: inv.Research,
+		Source: string(inv.Source), SourceAnalysisID: inv.SourceAnalysisID, Intent: inv.Intent, OutputLocale: inv.OutputLocale, Research: inv.Research,
 		ProposalModel: inv.ProposalModel, Planner: Planner{Provider: plannerProvider, Model: inv.PlannerModel, PromptTemplateVersion: inv.PromptTemplateVersion},
 		Status: string(inv.Status), Caps: inv.Caps, BaselineRunID: inv.BaselineRunID, Steps: []Step{}, Candidates: []Candidate{},
 		AIOutcome: inv.AIOutcome, DeadlineAt: timestamp(inv.DeadlineAt), CreatedBy: inv.CreatedBy, CreatedAt: timestamp(inv.CreatedAt),

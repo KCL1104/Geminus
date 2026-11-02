@@ -28,9 +28,13 @@
 // and its version the labels of a change an AI investigation wrote.
 // The composer's earlier requests (2026-11-02): listProposals answers the
 // model's proposals oldest first, as the server does (the given earlier
-// ones, the sample and those asked for here), a page of pageSize at a time
-// with an opaque cursor; listInvestigations the given investigations
-// (newest first) or a refusal; refuseList refuses the next listProposals.
+// ones, the sample and those asked for here), or newest first with
+// order=newest (H-079), a page of the request's limit (or pageSize, when
+// smaller) at a time with an opaque cursor bound to the order (one of the
+// other order is 400, as the server's); listInvestigations the given
+// investigations (newest first, up to the limit) or a refusal; refuseList
+// refuses the next listProposals. H-079: a proposal asked for in words
+// carries its words (intent), as the server's does; a photo's has none.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
 import type { Approval, Draft, Investigation, InvestigationRequest, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { investigationId } from "../investigation/samples";
@@ -63,7 +67,7 @@ export type ProposalStandInOptions = {
   aiEdit?: { investigation: string; proposal: string };
   /** The model's proposals from before the page opened (listProposals lists them first, by created_at). */
   earlier?: Proposal[];
-  /** How many proposals a listProposals page holds (the server's limit, 100, by default). */
+  /** The most proposals a listProposals page holds, when fewer than the request's limit (the server's default is 50). */
   pageSize?: number;
   /** The next listProposals is refused with this. */
   refuseList?: Refusal;
@@ -71,7 +75,7 @@ export type ProposalStandInOptions = {
   investigations?: Investigation[] | Refusal;
 };
 
-export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
+export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null; /** The query string ("" or "?…"). */ query: string };
 
 /** What a multipart request carried, as a call records it: its parts in order, the fields, and the file's name, type and size. */
 export type FormCall = { parts: string[]; base_version_id: string | null; output_locale: string | null; model: string | null; file: { name: string; type: string; size: number } | null };
@@ -238,28 +242,36 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         if (req.model !== undefined) answer.generated_by = { ...(answer.generated_by ?? { provider: "meta" }), provider: "meta", model: req.model };
         // H-065: the proposal names the model its request named, in every state, as the server does.
         const requested = req.model !== undefined ? { requested_model: req.model } : {};
-        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, ...requested };
-        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id, ...requested }, polls: opts.generatingPolls ?? 2 });
+        // H-079: the request's words, as stored, in every state.
+        const generating: Proposal = { proposal_id: id, organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: req.base_version_id, mode: req.mode, intent: req.intent, status: "generating", created_by: USER, created_at: CLOCK, requires_confirmation: true, ...requested };
+        proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id, intent: req.intent, ...requested }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });
     }
-    // listProposals as the server answers it: oldest first (created_at, then ID), a page at a time, the cursor opaque.
+    // listProposals as the server answers it: oldest first (created_at, then ID), or newest first (order=newest, H-079), a page at a time, the cursor opaque and bound to the order.
     if (method === "GET" && path === `${m}/ai-proposals`) {
       if (listRefusal !== undefined) {
         const r = listRefusal;
         listRefusal = undefined;
         return error(r.status, r.code, r.message, r.details);
       }
+      const order = query.get("order") ?? "oldest";
+      if (order !== "oldest" && order !== "newest") return error(400, "INVALID_REQUEST", "order must be oldest or newest, once", [{ path: "", reason: "order" }]);
       const all = [...(opts.earlier ?? []), ...[...proposals.values()].map((x) => x.proposal)].sort((a, b) => (a.created_at === b.created_at ? (a.proposal_id < b.proposal_id ? -1 : 1) : a.created_at < b.created_at ? -1 : 1));
-      const size = opts.pageSize ?? 100;
-      const from = query.get("cursor") === null ? 0 : Number(atob(query.get("cursor")!));
-      const next = from + size < all.length ? btoa(String(from + size)) : null;
+      if (order === "newest") all.reverse();
+      const size = Math.min(opts.pageSize ?? 100, Number(query.get("limit") ?? 50));
+      const cursor = query.get("cursor");
+      const [cursorOrder, at] = cursor === null ? [order, "0"] : atob(cursor).split(":");
+      if (cursorOrder !== order) return error(400, "INVALID_REQUEST", "the cursor is not valid for this list", [{ path: "", reason: "cursor" }]);
+      const from = Number(at);
+      const next = from + size < all.length ? btoa(`${order}:${from + size}`) : null;
       return json(200, { items: all.slice(from, from + size), next_cursor: next });
     }
     if (method === "GET" && path === `${m}/investigations`) {
       const given = opts.investigations ?? [];
       if (!Array.isArray(given)) return error(given.status, given.code, given.message, given.details);
-      return json(200, { items: given, next_cursor: null });
+      const size = Number(query.get("limit") ?? 50);
+      return json(200, { items: given.slice(0, size), next_cursor: given.length > size ? btoa(`newest:${size}`) : null });
     }
     // H-061 A8: createInvestigation as openapi.yaml answers it (202 with the investigation's ID); the stand-in runs no agent.
     if (method === "POST" && path === `${m}/investigations`) {
@@ -386,7 +398,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     const form = init?.body instanceof FormData ? init.body : undefined;
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : form !== undefined ? formCall(form) : undefined;
     const key = headers.get("Idempotency-Key") ?? undefined;
-    calls.push({ method, path: url.pathname, key, body, contentType: headers.get("Content-Type") });
+    calls.push({ method, path: url.pathname, key, body, contentType: headers.get("Content-Type"), query: url.search });
     return respond(method, url.pathname, key, headers.get("If-Match"), body, form, url.searchParams);
   }) as typeof globalThis.fetch;
 

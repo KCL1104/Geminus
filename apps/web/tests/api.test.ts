@@ -368,7 +368,7 @@ describe("model writes and versions (T-013)", () => {
 
   it("calls each operation at the contract's method and path", async () => {
     const ok = () => json(200, { items: [], next_cursor: null });
-    const f = fakeFetch(...Array.from({ length: 20 }, ok));
+    const f = fakeFetch(...Array.from({ length: 22 }, ok));
     const client = api(f);
     const seen: Record<string, number> = {};
     const record = (id: string) => (seen[id] = f.calls.length - 1);
@@ -417,6 +417,13 @@ describe("model writes and versions (T-013)", () => {
     await client.listAnalyses(SCENARIO_RUN, BASELINE_RUN, { limit: 1 });
     record("listAnalyses");
     expect(Object.fromEntries(f.calls[seen.listAnalyses!]!.url.searchParams)).toEqual({ baseline_run_id: BASELINE_RUN, limit: "1" });
+    // H-079: the newest page alone, small, for the composer's earlier requests; the rail's list keeps its query.
+    await client.listProposals(MODEL, { order: "newest", limit: 10 });
+    const newest = f.calls.at(-1)!;
+    expect([newest.init.method, newest.url.pathname, Object.fromEntries(newest.url.searchParams)]).toEqual(["GET", `/api/v1/models/${MODEL}/ai-proposals`, { order: "newest", limit: "10" }]);
+    await client.listInvestigations(MODEL, { limit: 10 });
+    const investigations = f.calls.at(-1)!;
+    expect([investigations.url.pathname, Object.fromEntries(investigations.url.searchParams)]).toEqual([`/api/v1/models/${MODEL}/investigations`, { limit: "10" }]);
     // An ID of another kind is refused before any request.
     const before = f.calls.length;
     expect((await client.listSimulations(PROJECT)).ok).toBe(false);

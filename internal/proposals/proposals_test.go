@@ -71,6 +71,7 @@ func TestRefused(t *testing.T) {
 		ErrStaleBase:     httpapi.ModelVersionConflict,
 		ErrInvalidCursor: httpapi.InvalidRequest,
 		ErrInvalidLimit:  httpapi.InvalidRequest,
+		ErrInvalidOrder:  httpapi.InvalidRequest,
 		&RequestError{Issues: []model.ValidationIssue{issue}}: httpapi.RequestValidationFailed,
 		&UnavailableError{Availability: NotConfigured}:        httpapi.AIProviderNotConfigured,
 		&UnavailableError{Availability: PolicyNotApproved}:    httpapi.AIPolicyNotApproved,
@@ -149,7 +150,8 @@ func members(t *testing.T, p Proposal) map[string]bool {
 // its decision record, and a conflicted one no comment (T-026, D-068); every
 // state with an answer names the provider and model that wrote it (H-043).
 func TestPublicMatchesTheContract(t *testing.T) {
-	base := []string{"proposal_id", "organization_id", "model_id", "base_version_id", "mode", "status", "created_by", "created_at", "requires_confirmation"}
+	// H-079: every state carries the request's words (intent).
+	base := []string{"proposal_id", "organization_id", "model_id", "base_version_id", "mode", "intent", "status", "created_by", "created_at", "requires_confirmation"}
 	reviewed := append(slices.Clone(base), "summary", "assumptions", "risk_level", "confidence", "changes", "expected_effects", "validation",
 		"patch_hash", "dataset_bindings", "server_risk_level", "provider_risk_claim", "generated_by")
 	asked := append(slices.Clone(base), "summary", "assumptions", "questions", "generated_by")
@@ -298,26 +300,41 @@ func TestFailureErrors(t *testing.T) {
 func TestCursor(t *testing.T) {
 	org, mdl := ids.New("org"), ids.New("mdl")
 	pos := store.Position{CreatedAt: time.Date(2026, 10, 20, 1, 2, 3, 456789000, time.UTC), ID: ids.New("aip")}
-	c := encodeCursor(org, mdl, pos)
-	got, err := decodeCursor(c, org, mdl)
+	c := encodeCursor(org, mdl, OldestFirst, pos)
+	got, err := decodeCursor(c, org, mdl, OldestFirst)
 	if err != nil || !got.CreatedAt.Equal(pos.CreatedAt) || got.ID != pos.ID {
 		t.Fatalf("%v %v", got, err)
 	}
+	// H-079: newest first is a list of its own; its cursor is bound to it.
+	n := encodeCursor(org, mdl, NewestFirst, pos)
+	if got, err := decodeCursor(n, org, mdl, NewestFirst); err != nil || !got.CreatedAt.Equal(pos.CreatedAt) || got.ID != pos.ID {
+		t.Fatalf("newest first: %v %v", got, err)
+	}
+	// A cursor issued before H-079 is the oldest-first list's, as it was.
+	before := base64.RawURLEncoding.EncodeToString([]byte(`{"v":1,"o":"` + org + `","l":"ai-proposals","m":"` + mdl + `","t":"` + timestamp(pos.CreatedAt) + `","i":"` + pos.ID + `"}`))
+	if before != c {
+		t.Errorf("the oldest-first cursor changed: %s, was %s", c, before)
+	}
 	for name, bad := range map[string]func() (store.Position, error){
-		"another organization": func() (store.Position, error) { return decodeCursor(c, ids.New("org"), mdl) },
-		"another model":        func() (store.Position, error) { return decodeCursor(c, org, ids.New("mdl")) },
-		"not base64":           func() (store.Position, error) { return decodeCursor("!!", org, mdl) },
+		"another organization":         func() (store.Position, error) { return decodeCursor(c, ids.New("org"), mdl, OldestFirst) },
+		"another model":                func() (store.Position, error) { return decodeCursor(c, org, ids.New("mdl"), OldestFirst) },
+		"not base64":                   func() (store.Position, error) { return decodeCursor("!!", org, mdl, OldestFirst) },
+		"oldest first's, newest first": func() (store.Position, error) { return decodeCursor(c, org, mdl, NewestFirst) },
+		"newest first's, oldest first": func() (store.Position, error) { return decodeCursor(n, org, mdl, OldestFirst) },
+		"newest first's, another organization": func() (store.Position, error) {
+			return decodeCursor(n, ids.New("org"), mdl, NewestFirst)
+		},
 		"a run cursor": func() (store.Position, error) {
 			data, _ := json.Marshal(cursor{Version: 1, Org: org, List: "simulations", Model: mdl, After: timestamp(pos.CreatedAt), ID: pos.ID})
-			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl)
+			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl, OldestFirst)
 		},
 		"another kind of ID": func() (store.Position, error) {
 			data, _ := json.Marshal(cursor{Version: 1, Org: org, List: cursorList, Model: mdl, After: timestamp(pos.CreatedAt), ID: ids.New("sim")})
-			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl)
+			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl, OldestFirst)
 		},
 		"an extra member": func() (store.Position, error) {
 			data := []byte(`{"v":1,"o":"` + org + `","l":"ai-proposals","m":"` + mdl + `","t":"` + timestamp(pos.CreatedAt) + `","i":"` + pos.ID + `","x":1}`)
-			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl)
+			return decodeCursor(base64.RawURLEncoding.EncodeToString(data), org, mdl, OldestFirst)
 		},
 	} {
 		if _, err := bad(); !errors.Is(err, ErrInvalidCursor) {

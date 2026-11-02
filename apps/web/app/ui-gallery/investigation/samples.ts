@@ -63,7 +63,8 @@ const candidate = (over: Partial<Investigation["candidates"][number]> = {}): Inv
 
 const base: Investigation = {
   id: investigationId(1), organization_id: ORG, model_id: SAMPLE_MODEL_ID, base_version_id: versionId(1), mode: "scenario", source: "request",
-  source_analysis_id: null, objective: { metric_path: "/metrics/lead_time_minutes/p50", better: "lower" }, output_locale: "en", research: false,
+  // H-079: the person's words, as the server stored them.
+  source_analysis_id: null, intent: "Find a change that lowers the median lead time without a new line.", objective: { metric_path: "/metrics/lead_time_minutes/p50", better: "lower" }, output_locale: "en", research: false,
   proposal_model: "muse-spark-1.3", planner: { provider: "meta", model: "muse-spark-1.3", prompt_template_version: "investigator-0.1.0" },
   status: "running", reason: null, activity: { state: "waiting" }, caps: budget, used: { what_ifs: 1, runs: 2, explanations: 0, steps: 3 },
   run_config: runConfig, baseline_run_id: runId(1), steps: [proposeStep(IDEA, NOTE), saveStep, runStep(false)], candidates: [candidate()],
@@ -104,7 +105,7 @@ export function sampleInvestigation(state: SampleState): Investigation {
         closing_line: { key: "not_compared", candidate_index: null, metric_path: null, absolute_delta: null, relative_delta: null, compared: 0, draft_revision: null },
         stop: { by: OTHER_USER, at: at(40) }, finished_at: at(40) };
     case "edit":
-      return { ...base, id: investigationId(2), mode: "edit", objective: null, status: "finished", reason: "draft_written", activity: { state: "ended" },
+      return { ...base, id: investigationId(2), mode: "edit", intent: "Model the two ICT testers as one step with capacity 2.", objective: null, status: "finished", reason: "draft_written", activity: { state: "ended" },
         caps: { what_ifs: 1, runs: 0, explanations: 0, steps: 14, minutes: 20 }, used: { what_ifs: 1, runs: 0, explanations: 0, steps: 2 }, run_config: null, baseline_run_id: null,
         steps: [
           { seq: 1, tool: "propose_model_edit", arguments: { idea: "Model the two ICT testers as one step with capacity 2." }, status: "done", effect: { proposal_id: proposalId(2) }, error: null, note: null, requested_at: at(5), resolved_at: at(6), observed_at: at(30) },

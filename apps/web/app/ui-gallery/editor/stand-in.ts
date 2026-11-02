@@ -43,7 +43,7 @@ export type StandInOptions = {
   rejectNextSave?: { path: string; reason: string; code: string }[];
   /** The model's runs (none by default). */
   runs?: StandInRun[];
-  /** The model's AI proposals, oldest first, as listProposals answers them (none by default). */
+  /** The model's AI proposals, oldest first (none by default); listProposals answers them in the order asked for (H-079: order=newest), up to the limit. */
   requests?: Proposal[];
 };
 
@@ -115,7 +115,7 @@ export function createStandIn(opts: StandInOptions) {
   const error = (status: number, code: string, message: string, details?: unknown[]) => json(status, { error: { code, message, request_id: REQUEST, ...(details ? { details } : {}) } });
   const stale = (ifMatch: string | null) => parseDraftETag(ifMatch ?? "") !== revision;
 
-  async function respond(method: string, path: string, ifMatch: string | null, body: unknown): Promise<Response> {
+  async function respond(method: string, path: string, ifMatch: string | null, body: unknown, query: URLSearchParams = new URLSearchParams()): Promise<Response> {
     const base = `/api/v1/models/${opts.modelId}`;
     if (method === "GET" && path === base) return json(200, model());
     if (method === "GET" && path === `${base}/draft`) return json(200, draft(), draftETag(revision));
@@ -124,7 +124,11 @@ export function createStandIn(opts: StandInOptions) {
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}/scenarios`) return json(200, { items: [], next_cursor: null });
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(1)}`) return json(200, firstVersion());
     if (method === "GET" && path === `${base}/simulations`) return json(200, { items: runs.map((r) => r.run), next_cursor: null });
-    if (method === "GET" && path === `${base}/ai-proposals`) return json(200, { items: opts.requests ?? [], next_cursor: null });
+    if (method === "GET" && path === `${base}/ai-proposals`) {
+      const all = query.get("order") === "newest" ? [...(opts.requests ?? [])].reverse() : (opts.requests ?? []);
+      const size = Number(query.get("limit") ?? 50);
+      return json(200, { items: all.slice(0, size), next_cursor: all.length > size ? "c3RhbmQtaW4" : null });
+    }
     const sim = /^\/api\/v1\/simulations\/([^/]+)\/(results|trace)$/.exec(path);
     if (method === "GET" && sim) {
       const r = runById(sim[1]!);
@@ -180,7 +184,7 @@ export function createStandIn(opts: StandInOptions) {
     const headers = new Headers(init?.headers);
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
     calls.push({ method, path: url.pathname, ifMatch: headers.get("If-Match"), body });
-    return respond(method, url.pathname, headers.get("If-Match"), body);
+    return respond(method, url.pathname, headers.get("If-Match"), body, url.searchParams);
   }) as typeof globalThis.fetch;
 
   return {

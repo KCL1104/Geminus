@@ -18,11 +18,15 @@ import (
 // Proposal is proposal.schema.json: the server's resource. Members a state
 // does not hold are left out.
 type Proposal struct {
-	ProposalID           string                 `json:"proposal_id"`
-	OrganizationID       string                 `json:"organization_id"`
-	ModelID              string                 `json:"model_id"`
-	BaseVersionID        string                 `json:"base_version_id"`
-	Mode                 string                 `json:"mode"`
+	ProposalID     string `json:"proposal_id"`
+	OrganizationID string `json:"organization_id"`
+	ModelID        string `json:"model_id"`
+	BaseVersionID  string `json:"base_version_id"`
+	Mode           string `json:"mode"`
+	// Intent is the request's words as the row stores them (H-079),
+	// read-only, in every state; empty for a photo proposal (0017), which
+	// was asked for without words, and then left out.
+	Intent               string                 `json:"intent,omitzero"`
 	Status               string                 `json:"status"`
 	CreatedBy            string                 `json:"created_by"`
 	CreatedAt            string                 `json:"created_at"`
@@ -316,7 +320,7 @@ func nonNil[T any](s []T) []T {
 // created it (requestID only if that is unknown).
 func Public(p store.Proposal, requestID string) (Proposal, error) {
 	out := Proposal{ProposalID: p.ID, OrganizationID: p.OrganizationID, ModelID: p.ModelID, BaseVersionID: p.BaseVersionID,
-		Mode: p.Mode, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
+		Mode: p.Mode, Intent: p.Intent, Status: string(p.Status), CreatedBy: p.CreatedBy, CreatedAt: timestamp(p.CreatedAt), RequiresConfirmation: true}
 	if im := p.Image; im != nil {
 		out.SourceImage = &SourceImage{MediaType: im.MediaType, Width: im.Width, Height: im.Height, SizeBytes: im.Size, ContentHash: im.SHA256}
 	}
