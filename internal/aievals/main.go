@@ -246,6 +246,9 @@ func MainWith(ctx context.Context, args []string, getenv func(string) string, st
 	report, runErr := Run(ctx, Config{Client: client, Budget: budget, Packs: reg, Root: *root, Cases: cases, Only: caseIDs, Locale: *locale,
 		Provider: string(ai.Provider), Approval: ai.Approval.ID(), Model: ai.Model, Kind: kind, CapNanoUSD: capNano, Spent: meter.Spent, RunID: runID,
 		Now: func() time.Time { return start }})
+	if report != nil {
+		report.BaseURL = config.BaseURLOf(ai.Credentials) // "custom" or "", never the URL
+	}
 	summary := func() string {
 		return fmt.Sprintf("ai-eval-live: %s run %s of %s: %d case(s) run, %d passed, golden %d/%d, gates %v, complete %v, cost USD %s (committed %s, cap %s), %d input and %d output tokens, spend warnings %v",
 			kind, runID, ai.Model, report.Run, report.Passed, report.Golden.Passed, report.Golden.Total, report.Gates, report.Complete,
@@ -515,6 +518,9 @@ func photoSmoke(ctx context.Context, ai config.AI, root, dir, loc, flagConcepts 
 	}
 	report, runErr := run.Run(ctx, PhotoConfig{Packs: reg, Root: root, Locale: loc, Provider: string(v.Provider), Approval: approval, Model: v.Model,
 		SegmentationModel: v.SegmentationModel, CapNanoUSD: capNano, RunID: runID, Concepts: override, Now: func() time.Time { return start }}, in)
+	if report != nil {
+		report.BaseURL = config.BaseURLOf(v.Credentials) // "custom" or "", never the URL
+	}
 	if runErr != nil {
 		fmt.Fprintf(stdout, "ai-eval-live: %s run %s of %s stopped: cost USD %s (committed %s)\n", PhotoSmokeKind, runID, v.Model,
 			spend.FormatUSD(run.Spent()), spend.FormatUSD(run.Committed()))

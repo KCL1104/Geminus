@@ -90,8 +90,18 @@ type server struct {
 }
 
 func newServer(t *testing.T, scripts map[string][]reply) *server {
+	return startServer(t, scripts, httptest.NewServer)
+}
+
+// newTLSServer is newServer over HTTPS (its certificate trusted only by
+// s.srv.Client()), for a backend New builds: the base URL it takes is https.
+func newTLSServer(t *testing.T, scripts map[string][]reply) *server {
+	return startServer(t, scripts, httptest.NewTLSServer)
+}
+
+func startServer(t *testing.T, scripts map[string][]reply, start func(http.Handler) *httptest.Server) *server {
 	s := &server{t: t, scripts: scripts, hits: map[string]int{}}
-	s.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.srv = start(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
 			// The client gave up in the middle of its body (a deadline or a

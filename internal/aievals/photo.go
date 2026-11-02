@@ -295,9 +295,13 @@ type PhotoConfig struct {
 // (checks/ai-evals/live-smoke-photo-*.json): no prompt, answer text, box
 // (only its size as a share of the frame), image byte or key.
 type PhotoReport struct {
-	Suite             string `json:"suite"`
-	Kind              string `json:"kind"`
-	Provider          string `json:"provider"`
+	Suite    string `json:"suite"`
+	Kind     string `json:"kind"`
+	Provider string `json:"provider"`
+	// BaseURL is config.BaseURLCustom when the run reached the provider
+	// through the owner's GEMINUS_META_BASE_URL, never the URL; absent for
+	// the provider's own API.
+	BaseURL           string `json:"base_url,omitzero"`
 	Model             string `json:"model"`
 	SegmentationModel string `json:"segmentation_model"`
 	// Served are the models the provider named in its answers (the judge's

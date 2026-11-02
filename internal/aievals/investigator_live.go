@@ -115,6 +115,7 @@ func investigatorLive(ctx context.Context, ai config.AI, root, dir, loc, planner
 		Budget: budget, Packs: reg, Cases: cases, Only: only, Planner: planner, Transcript: mode, Locale: loc, Live: true, Spent: meter.Spent})
 	if report != nil {
 		report.Provider, report.Approval, report.RunID, report.StartedAt = string(ai.Provider), ai.Approval.ID(), runID, start.Format(time.RFC3339)
+		report.BaseURL = config.BaseURLOf(ai.Credentials)
 		report.CapUSD, report.CostUSD = spend.FormatUSD(capNano), spend.FormatUSD(meter.Spent())
 	}
 	summary := func() string {

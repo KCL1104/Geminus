@@ -23,6 +23,8 @@ type conn struct {
 	label   string
 	key     secret.Secret
 	baseURL string
+	// custom: baseURL is the owner's (Config.BaseURL), not productionURL.
+	custom  bool
 	client  *http.Client
 	now     func() time.Time
 	sleep   func(context.Context, time.Duration) error
@@ -276,7 +278,7 @@ func (c *conn) post(ctx context.Context, t *tally, path string, body []byte, att
 // (https://dev.meta.ai/docs/authentication: "Pass the key as a Bearer
 // token in the Authorization header"), nothing else of it anywhere. The
 // error of a failed attempt never leaves this package: it may name the
-// URL.
+// URL, whose path under the owner's base URL carries a secret.
 func (c *conn) attempt(ctx context.Context, path string, body []byte, attemptTimeout time.Duration) (exchange, error) {
 	actx, cancel := context.WithTimeout(ctx, attemptTimeout)
 	defer cancel()

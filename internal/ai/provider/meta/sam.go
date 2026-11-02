@@ -51,7 +51,16 @@ func NewSegmenter(cfg Config) (*Segmenter, error) {
 	if cfg.Model != a.SegmentationModel() {
 		return nil, errors.New("meta: the model is not the approval's segmentation model")
 	}
-	return newSegmenter(cfg, productionURL, nil, a.AllowsRole, true)
+	base, err := baseURLOf(cfg)
+	if err != nil {
+		return nil, err
+	}
+	s, err := newSegmenter(cfg, base, nil, a.AllowsRole, true)
+	if err != nil {
+		return nil, err
+	}
+	s.c.custom = cfg.BaseURL != ""
+	return s, nil
 }
 
 func newSegmenter(cfg Config, baseURL string, client *http.Client, allows func(string) bool, images bool) (*Segmenter, error) {
@@ -66,6 +75,10 @@ func newSegmenter(cfg Config, baseURL string, client *http.Client, allows func(s
 }
 
 func (s *Segmenter) Name() string { return "meta" }
+
+// CustomBaseURL reports whether the segmenter sends to a base URL of the
+// owner's (Config.BaseURL) instead of the provider's own API; never which.
+func (s *Segmenter) CustomBaseURL() bool { return s.c.custom }
 
 // SegmentModel is the model each call is priced at.
 func (s *Segmenter) SegmentModel() string { return s.model }

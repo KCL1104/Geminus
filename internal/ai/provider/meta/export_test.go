@@ -11,7 +11,8 @@ import (
 )
 
 // NewForTest points the Muse Spark backend at a local test server.
-// Test-only: no production code can change the provider URL. It serves
+// Test-only: production code changes the provider URL only through
+// Config.BaseURL (the owner's GEMINUS_META_BASE_URL), which New checks. It serves
 // every role, takes images and researches for the proposal roles (SetRoles,
 // SetImages and SetResearch narrow it): its zero Approval names none.
 func NewForTest(cfg Config, baseURL string, client *http.Client) (*Backend, error) {
@@ -70,6 +71,11 @@ func connOf(v any) *conn {
 	}
 	panic("not a backend")
 }
+
+// SetTransport replaces the backend's HTTP transport with a local TLS
+// server's (its client's, which trusts the server's certificate); the base
+// URL New took and the no-redirect rule stay.
+func SetTransport(v any, rt http.RoundTripper) { connOf(v).client.Transport = rt }
 
 // SetClock replaces the backend's clock (the 402 cooldown).
 func SetClock(v any, now func() time.Time) { connOf(v).now = now }

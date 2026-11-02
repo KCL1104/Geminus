@@ -560,11 +560,14 @@ OWNER_VALUES = {
     ("worker", "GEMINUS_ANTHROPIC_API_KEY_A"): "OWNER-ANTHROPIC-A-SENTINEL-77c1",
     ("worker", "GEMINUS_ANTHROPIC_API_KEY_B"): "OWNER-ANTHROPIC-B-SENTINEL-08d2",
     ("worker", "GEMINUS_MUSE_API_KEY"): "OWNER-MUSE-KEY-SENTINEL-5e6b",
+    # The H-083 follow-up: the Meta base URL's path carries the owner's proxy secret.
+    ("worker", "GEMINUS_META_BASE_URL"): "https://owner-proxy.example/OWNER-META-BASE-URL-SENTINEL-9c2e/",
     ("worker", "GEMINUS_AI_LIVE"): "OWNER-LIVE-SWITCH-SENTINEL-on",
     # Not in variables.json: a value the deployer has no use for is not kept either.
     ("worker", "OWNER_EXTRA_SETTING"): "UNLISTED-VALUE-SENTINEL-41aa",
 }
-OWNER_SECRETS = ("BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY")
+OWNER_SECRETS = ("BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY",
+                 "GEMINUS_META_BASE_URL")
 
 
 def read(path) -> str:
@@ -739,12 +742,13 @@ def main() -> int:
         want_builds = {s: dict(json.load(open(ROOT / f"deploy/railway/{s}.railway.json"))["build"], watchPatterns=[]) for s in want_files}
         if st.get("builds") != want_builds:
             failures.append(f"Dockerfile builds: {st.get('builds')}, want {want_builds}")
-        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE",
+        owner = {"BFF_OIDC_CLIENT_SECRET", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_BASE_URL",
+                 "GEMINUS_AI_LIVE",
                  "AI_POLICY_APPROVAL", "AI_MODEL", "AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL"}
         for svc, vs in st["vars"].items():
             if owner & set(vs):
                 failures.append(f"the deployer set the owner's {sorted(owner & set(vs))} on {svc}")
-        if {"GEMINUS_AI_LIVE", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_MUSE_API_KEY"} & set(st["vars"].get("api", {})):
+        if {"GEMINUS_AI_LIVE", "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_BASE_URL"} & set(st["vars"].get("api", {})):
             failures.append("the deployer gave the API an AI key or the live switch")
         if st["vars"]["api"].get("AI_PROVIDER") != "disabled" or st["vars"]["worker"].get("WORKER_ORGANIZATION_IDS") != "org_01M5W4RHAFH8Q7Y8PNQT1RAF4T":
             failures.append("AI_PROVIDER or WORKER_ORGANIZATION_IDS not as expected")

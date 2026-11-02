@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -62,6 +63,18 @@ import (
 // explicitly; nothing reads ANTHROPIC_API_KEY or MODEL_API_KEY (D-018). A
 // key is a secret.Secret: it prints as [redacted], and everything else
 // names it by label.
+//
+// GEMINUS_META_BASE_URL (the H-083 follow-up) is where the Meta key is
+// sent instead of the provider's own API: the owner's forwarding proxy,
+// whose path carries a secret. It is read as the key is (only once Meta
+// live AI is on, for either path), must be an absolute https URL with a
+// host and a plain path (RFC 3986 characters; no user information, query,
+// fragment, empty or dot segment, white space or control character), is
+// normalised to end with "/" and kept as a secret.Secret on the Meta
+// credential (AICredential.BaseURL); a value that does not check refuses
+// startup with an error that names the variable, never the value. What
+// may be said of it is BaseURLOf's "custom". Unset is the provider's own
+// API.
 //
 // LoadAI is the worker's (and the live eval's). The API never holds a key:
 // it decides whether it accepts proposals, and photos, with LoadAPIAI, the
@@ -152,6 +165,28 @@ func (v AIVision) LiveEnabled() bool { return liveFor(v.Provider, v.Approval, tr
 type AICredential struct {
 	Label string
 	Key   secret.Secret
+	// BaseURL is where the key is sent instead of the provider's own API:
+	// GEMINUS_META_BASE_URL, checked and ending with "/", on the Meta
+	// credential only; "" for the provider's own API. Its path carries a
+	// secret: it prints as [redacted], and only BaseURLOf's label is ever
+	// logged or reported.
+	BaseURL secret.Secret
+}
+
+// BaseURLCustom is what a log line or a report says of a credential sent
+// to a base URL of its own (GEMINUS_META_BASE_URL): never the URL.
+const BaseURLCustom = "custom"
+
+// BaseURLOf is what may be said of where creds are sent: BaseURLCustom
+// when any names a base URL of its own, "" when all go to the provider's
+// own API.
+func BaseURLOf(creds []AICredential) string {
+	for _, c := range creds {
+		if c.BaseURL != "" {
+			return BaseURLCustom
+		}
+	}
+	return ""
 }
 
 // AIBudget overrides the provider's default budget; a zero field keeps the
@@ -182,6 +217,11 @@ const (
 	museKeyVar   = "GEMINUS_MUSE_API_KEY"
 	museKeyLabel = "meta"
 )
+
+// metaBaseURLVar is the Meta key's base URL when it is not the provider's
+// own API (the H-083 follow-up: the owner's forwarding proxy, whose path
+// carries a secret); unset, the provider's own API.
+const metaBaseURLVar = "GEMINUS_META_BASE_URL"
 
 // liveSwitch is the operator's switch (T-053).
 const liveSwitch = "GEMINUS_AI_LIVE"
@@ -407,6 +447,11 @@ func loadLive(getenv func(string) string, p AIProvider, approval, approvalVar, m
 		creds, cerrs = loadKeys(getenv)
 	case AIProviderMeta:
 		creds, cerrs = loadMuseKey(getenv)
+		base, berrs := loadMetaBaseURL(getenv)
+		cerrs = append(cerrs, berrs...)
+		if len(cerrs) == 0 {
+			creds[0].BaseURL = base
+		}
 	}
 	if len(cerrs) > 0 {
 		return live{}, "", cerrs
@@ -512,6 +557,67 @@ func loadMuseKey(getenv func(string) string) ([]AICredential, []error) {
 // museKeyShape is the documented key shape, LLM_ and the numeric ID and
 // the secret, separated by underscores.
 var museKeyShape = regexp.MustCompile(`^LLM_[0-9]+_\S+$`)
+
+// loadMetaBaseURL reads GEMINUS_META_BASE_URL (the H-083 follow-up), as
+// loadMuseKey reads the key: "" when unset (the provider's own API), the
+// checked base URL ending with "/" otherwise. The error names the
+// variable, never the value: its path carries a secret.
+func loadMetaBaseURL(getenv func(string) string) (secret.Secret, []error) {
+	raw := getenv(metaBaseURLVar)
+	if raw == "" {
+		return "", nil
+	}
+	base, ok := metaBaseURL(raw)
+	if !ok {
+		return "", []error{&Error{metaBaseURLVar, CodeInvalid,
+			"must be an absolute https URL with a host and a plain path: RFC 3986 characters only (no unexpanded ${{...}} reference), no user information, query, fragment, empty or dot segment, white space or control character (the value is not shown)"}}
+	}
+	return secret.Secret(base), nil
+}
+
+// metaBaseURL is raw as a base URL the Meta adapter joins its paths onto
+// (v1/messages, v1/messages/count_tokens, v1/responses), ending with "/";
+// false unless raw is at most 2048 bytes of valid UTF-8 without white
+// space or control characters, starts with "https://", parses with a host
+// and no user information, query or fragment, and its path is written in
+// RFC 3986's characters (pathChar) with no empty, "." or ".." segment
+// (decoded: "%2e%2e" is ".."), so the path it is sent to keeps raw's prefix
+// exactly. internal/ai/provider/meta checks the same again.
+func metaBaseURL(raw string) (string, bool) {
+	if len(raw) > 2048 || !utf8.ValidString(raw) || !strings.HasPrefix(raw, "https://") ||
+		strings.ContainsFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) || strings.ContainsAny(raw, "?#\\") {
+		return "", false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Opaque != "" || u.User != nil || u.Host == "" || u.Hostname() == "" ||
+		u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return "", false
+	}
+	path, ok := strings.CutPrefix(raw, "https://"+u.Host)
+	if !ok || strings.ContainsFunc(path, func(r rune) bool { return !pathChar(r) }) {
+		return "", false
+	}
+	if p := strings.TrimSuffix(u.Path, "/"); p != "" {
+		for _, seg := range strings.Split(p[1:], "/") {
+			if seg == "" || seg == "." || seg == ".." {
+				return "", false
+			}
+		}
+	}
+	if !strings.HasSuffix(raw, "/") {
+		raw += "/"
+	}
+	return raw, true
+}
+
+// pathChar reports whether r may be written in a base URL's path as is
+// (RFC 3986 pchar and "/": unreserved, sub-delims, ":", "@", "%" of an
+// escape url.Parse checked). So an unexpanded Railway reference
+// (${{NAME}}), which would send every call to a path the proxy does not
+// know, is refused at startup.
+func pathChar(r rune) bool {
+	return r < 0x80 && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~!$&'()*+,;=:@%/", r))
+}
 
 // loadKeys reads both credentials (T-053: both provider organizations of
 // D-018). A key with white space around it or a control character in it

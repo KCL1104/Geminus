@@ -150,6 +150,10 @@ type Report struct {
 	Suite    string `json:"suite"`
 	Kind     string `json:"kind"`
 	Provider string `json:"provider"`
+	// BaseURL is config.BaseURLCustom when the run reached the provider
+	// through the owner's GEMINUS_META_BASE_URL (the H-083 follow-up), never
+	// the URL; absent for the provider's own API.
+	BaseURL string `json:"base_url,omitzero"`
 	// Model is the approved model; Served the models the provider named
 	// in its answers.
 	Model    string   `json:"model"`

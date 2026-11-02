@@ -103,7 +103,20 @@ func withEnv(m map[string]string, kv ...string) map[string]string {
 // A run: the spend record's open line before any call, one-call planner
 // turns on the planner asked for, the report of its own name with the pass
 // bar and no AI text, the line closed with what it cost.
+// Through the owner's base URL (GEMINUS_META_BASE_URL, the H-083
+// follow-up) the report says so ("base_url": "custom") and holds no part of
+// it; direct, it names none.
 func TestTheInvestigatorSuiteRuns(t *testing.T) {
+	for name, base := range map[string]string{"direct": "", "through a base URL": "https://proxy-test.example.workers.dev/PROXY-SECRET-SENTINEL-a1d4/"} {
+		t.Run(name, func(t *testing.T) { testTheInvestigatorSuiteRuns(t, base) })
+	}
+}
+
+func testTheInvestigatorSuiteRuns(t *testing.T, base string) {
+	env := liveH029()
+	if base != "" {
+		env["GEMINUS_META_BASE_URL"] = base
+	}
 	root := contracttest.Root(t)
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, aievals.RecordName), nil, 0o644); err != nil {
@@ -131,7 +144,7 @@ func TestTheInvestigatorSuiteRuns(t *testing.T) {
 	backend := &plannerBilled{Backend: f}
 	var out, errb bytes.Buffer
 	code := aievals.MainWith(context.Background(), []string{"-root", root, "-dir", dir, "-suite", "investigator", "-planner", "muse-wonder-1.0",
-		"-cases", "INV-001,INV-004"}, func(k string) string { return liveH029()[k] }, &out, &errb,
+		"-cases", "INV-001,INV-004"}, func(k string) string { return env[k] }, &out, &errb,
 		aievals.Backends{Text: func(config.AI) (provider.Billable, error) { return backend, nil }})
 	if code != aievals.ExitOK {
 		t.Fatalf("exit %d: %s %s", code, out.String(), errb.String())
@@ -166,6 +179,14 @@ func TestTheInvestigatorSuiteRuns(t *testing.T) {
 		r.CapUSD != "4.000000000" && !strings.HasPrefix(r.CapUSD, "4") {
 		t.Errorf("the report %+v", r)
 	}
+	if want := map[bool]string{true: config.BaseURLCustom, false: ""}[base != ""]; r.BaseURL != want {
+		t.Errorf("base_url %q, want %q", r.BaseURL, want)
+	}
+	for _, leak := range []string{"PROXY-SECRET-SENTINEL", "proxy-test", "workers.dev"} {
+		if bytes.Contains(data, []byte(leak)) || strings.Contains(out.String()+errb.String(), leak) {
+			t.Errorf("%q is in the report or the output", leak)
+		}
+	}
 	for _, o := range r.Outcomes {
 		if len(o.TurnMillis) != o.PlannerTurns || o.CostNanoUSD <= 0 {
 			t.Errorf("%s: %d latencies for %d turns, cost %d", o.ID, len(o.TurnMillis), o.PlannerTurns, o.CostNanoUSD)
@@ -183,5 +204,8 @@ func TestTheInvestigatorSuiteRuns(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(string(record)), "\n")
 	if len(lines) != 2 || !strings.Contains(lines[0], `"kind":"investigator"`) || !strings.Contains(lines[1], `"event":"close"`) {
 		t.Errorf("the spend record %q", record)
+	}
+	if bytes.Contains(record, []byte("PROXY-SECRET-SENTINEL")) || bytes.Contains(record, []byte("proxy-test")) {
+		t.Errorf("the spend record holds the base URL: %q", record)
 	}
 }

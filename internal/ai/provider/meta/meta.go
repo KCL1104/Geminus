@@ -24,9 +24,14 @@
 // approval's data policy does not name, before any I/O.
 //
 // As implemented (PROPOSED D-121):
-//   - The base URL is the constant https://api.meta.ai/; only the tests
-//     change it (export_test.go). The key goes as a bearer token only, and
-//     never with a redirect (none is followed).
+//   - The base URL is the constant https://api.meta.ai/ unless the owner's
+//     GEMINUS_META_BASE_URL names another (Config.BaseURL, the H-083
+//     follow-up: a forwarding proxy whose path carries a secret; checked
+//     here again: https, a host, a plain path, ending with "/"), and the
+//     tests' local server (export_test.go). Every path is joined under it,
+//     so its prefix is kept; it is never in an error, a log line or the
+//     metadata (CustomBaseURL says only that one is set). The key goes as a
+//     bearer token only, and never with a redirect (none is followed).
 //   - One key, so nothing to fail over to (D-018's two organizations are
 //     Anthropic's): 401 and 403 disable it until the process restarts, 402
 //     rests it for billingCooldown; both are credentials_exhausted. 429 and
@@ -46,7 +51,7 @@
 //     refused (invalid_output), its usage settled all the same.
 //   - Errors name the HTTP status and an error type from the documented
 //     list (errorTypes), any other "other"; never the provider's message,
-//     the key or the URL.
+//     the key or the URL (the base URL included).
 //
 // Research (H-046 (2); https://dev.meta.ai/docs/search-grounding and the
 // Messages page's "Tools", retrieved 2026-10-29; the coordinator's probe of
@@ -115,12 +120,15 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/kcl1104/geminus/internal/ai/provider"
 	"github.com/kcl1104/geminus/internal/ai/provider/structured"
@@ -131,8 +139,9 @@ import (
 )
 
 // productionURL is the provider's API ("Base URL | https://api.meta.ai",
-// https://dev.meta.ai/docs/protocols/messages). Tests use a local server
-// instead (export_test.go); no configuration changes it.
+// https://dev.meta.ai/docs/protocols/messages): the base URL unless
+// Config.BaseURL names another (the owner's GEMINUS_META_BASE_URL). Tests
+// use a local server instead (export_test.go).
 const productionURL = "https://api.meta.ai/"
 
 const (
@@ -195,6 +204,56 @@ type Config struct {
 	Model string
 	// Credential is the one key the approval covers.
 	Credential Credential
+	// BaseURL is where the key and every request go instead of
+	// productionURL: the owner's GEMINUS_META_BASE_URL (internal/config
+	// checked it; New and NewSegmenter check it again), "" for the
+	// provider's own API. Its path carries a secret: it prints as
+	// [redacted] and is never in an error.
+	BaseURL secret.Secret
+}
+
+// ErrBaseURL: Config.BaseURL is not a base URL the adapter sends to. It
+// never names the value.
+var ErrBaseURL = errors.New("meta: the base URL must be an absolute https URL with a host and a plain path, without user information, query or fragment")
+
+// baseURLOf is the base URL cfg's requests are joined under: productionURL
+// when cfg names none, else cfg.BaseURL checked and ending with "/"
+// (ErrBaseURL otherwise): at most 2048 bytes of valid UTF-8 without white
+// space or control characters, starting with "https://", with a host and
+// no user information, query or fragment, its path in RFC 3986's
+// characters without an empty, "." or ".." segment (decoded), as
+// internal/config checks it at startup.
+func baseURLOf(cfg Config) (string, error) {
+	raw := cfg.BaseURL.Reveal()
+	if raw == "" {
+		return productionURL, nil
+	}
+	if len(raw) > 2048 || !utf8.ValidString(raw) || !strings.HasPrefix(raw, "https://") ||
+		strings.ContainsFunc(raw, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) || strings.ContainsAny(raw, "?#\\") {
+		return "", ErrBaseURL
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Opaque != "" || u.User != nil || u.Host == "" || u.Hostname() == "" ||
+		u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return "", ErrBaseURL
+	}
+	path, ok := strings.CutPrefix(raw, "https://"+u.Host)
+	if !ok || strings.ContainsFunc(path, func(r rune) bool {
+		return r >= 0x80 || !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("-._~!$&'()*+,;=:@%/", r))
+	}) {
+		return "", ErrBaseURL
+	}
+	if p := strings.TrimSuffix(u.Path, "/"); p != "" {
+		for _, seg := range strings.Split(p[1:], "/") {
+			if seg == "" || seg == "." || seg == ".." {
+				return "", ErrBaseURL
+			}
+		}
+	}
+	if !strings.HasSuffix(raw, "/") {
+		raw += "/"
+	}
+	return raw, nil
 }
 
 // Credential is the API key and its label.
@@ -258,10 +317,15 @@ func New(cfg Config) (*Backend, error) {
 	if cfg.Model != cfg.Approval.Model() {
 		return nil, errors.New("meta: the model is not the approval's model")
 	}
-	b, err := newBackend(cfg, productionURL, nil, cfg.Approval.AllowsRole, cfg.Approval.AllowsImages())
+	base, err := baseURLOf(cfg)
 	if err != nil {
 		return nil, err
 	}
+	b, err := newBackend(cfg, base, nil, cfg.Approval.AllowsRole, cfg.Approval.AllowsImages())
+	if err != nil {
+		return nil, err
+	}
+	b.c.custom = cfg.BaseURL != ""
 	b.research = cfg.Approval.AllowsResearch
 	b.chooses = cfg.Approval.AllowsModel
 	b.tools = cfg.Approval.AllowsTools // H-061 §9: the investigator only
@@ -282,6 +346,10 @@ func newBackend(cfg Config, baseURL string, client *http.Client, allows func(str
 }
 
 func (b *Backend) Name() string { return "meta" }
+
+// CustomBaseURL reports whether the backend sends to a base URL of the
+// owner's (Config.BaseURL) instead of the provider's own API; never which.
+func (b *Backend) CustomBaseURL() bool { return b.c.custom }
 
 // AcceptsImages: the approval's data policy names images (H-029, H-033:
 // demo images).

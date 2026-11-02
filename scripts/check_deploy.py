@@ -325,8 +325,9 @@ def railway(known: set) -> dict:
 # proposals' (T-053 I5) and the photo path's (the T-056 follow-up, D-124).
 API_AI_SETTINGS = ("AI_PROVIDER", "AI_POLICY_APPROVAL", "AI_MODEL", "GEMINUS_AI_LIVE",
                    "AI_VISION_PROVIDER", "AI_VISION_POLICY_APPROVAL", "AI_VISION_MODEL")
-# The live adapters' keys (internal/config/ai.go), which only the worker holds.
-LIVE_KEYS = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY"}
+# The live adapters' keys (internal/config/ai.go), which only the worker holds, and the Meta key's base URL,
+# whose path carries a secret (GEMINUS_META_BASE_URL, the H-083 follow-up).
+LIVE_KEYS = {"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_BASE_URL"}
 
 
 def api_key_variables() -> set:

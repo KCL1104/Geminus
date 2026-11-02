@@ -169,9 +169,13 @@ type InvestigatorConfig struct {
 // InvestigatorReport is the suite's report: tool names, states, codes and
 // counts, never AI text.
 type InvestigatorReport struct {
-	Suite           string                `json:"suite"`
-	Kind            string                `json:"kind"`
-	Provider        string                `json:"provider,omitzero"`
+	Suite    string `json:"suite"`
+	Kind     string `json:"kind"`
+	Provider string `json:"provider,omitzero"`
+	// BaseURL is config.BaseURLCustom when the live run reached the
+	// provider through the owner's GEMINUS_META_BASE_URL, never the URL;
+	// absent for the provider's own API (and the fake).
+	BaseURL         string                `json:"base_url,omitzero"`
 	Approval        string                `json:"approval,omitzero"`
 	Planner         string                `json:"planner_model"`
 	Transcript      string                `json:"transcript"`

@@ -42,7 +42,7 @@
         "INVESTIGATION_PLANNER_MODELS": {"value": "muse-spark-1.3", "about": "H-061 slice A7, section 14 gate 2: Muse Wonder 1.0 is added only after the recorded pass of its evaluation"}
       },
       "forbidden": ["GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_API_KEY", "ANTHROPIC_API_KEY",
-        "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY",
+        "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY", "GEMINUS_META_BASE_URL",
         "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_WORKER_DB_PASSWORD",
         "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "GEMINUS_UI_GALLERY"]
     },
@@ -76,7 +76,8 @@
         "AI_VISION_MODEL": {"secret": false, "source": "owner", "required": false},
         "GEMINUS_ANTHROPIC_API_KEY_A": {"secret": true, "source": "owner", "required": false},
         "GEMINUS_ANTHROPIC_API_KEY_B": {"secret": true, "source": "owner", "required": false},
-        "GEMINUS_MUSE_API_KEY": {"secret": true, "source": "owner", "required": false}
+        "GEMINUS_MUSE_API_KEY": {"secret": true, "source": "owner", "required": false},
+        "GEMINUS_META_BASE_URL": {"secret": true, "source": "owner", "required": false, "about": "The H-083 follow-up: the base URL the Meta key and every Meta request go to instead of https://api.meta.ai/, the owner's forwarding proxy (https://<host>/<secret>/); its path carries a secret, so it is sealed, set by the owner through stdin and never by deploy.sh; unset is the provider's own API (docs/runbooks/deploy.md §4.4, §7.1)"}
       },
       "forbidden": ["GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_MIGRATOR_DB_PASSWORD", "GEMINUS_PROVISION_DATABASE_URL", "GEMINUS_API_DB_PASSWORD",
         "BFF_OIDC_CLIENT_SECRET", "SESSION_KEYS", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
@@ -102,7 +103,8 @@
       },
       "forbidden": ["DATABASE_URL", "GEMINUS_API_DB_PASSWORD", "GEMINUS_WORKER_DB_PASSWORD", "GEMINUS_MIGRATOR_DB_PASSWORD",
         "GEMINUS_MIGRATE_DATABASE_URL", "GEMINUS_PROVISION_DATABASE_URL", "OBJECT_STORAGE_S3_SECRET_ACCESS_KEY",
-        "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_AI_LIVE", "AI_API_KEY", "GEMINUS_UI_GALLERY"]
+        "GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_BASE_URL", "GEMINUS_AI_LIVE", "AI_API_KEY",
+        "GEMINUS_UI_GALLERY"]
     }
   }
 }

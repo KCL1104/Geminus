@@ -40,7 +40,7 @@ func TestRequestShape(t *testing.T) {
 	for _, k := range []string{"MODEL_API_KEY", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"} {
 		t.Setenv(k, "LLM_111111_from-the-environment")
 	}
-	for _, k := range []string{"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL", "META_BASE_URL", "HTTPS_PROXY_TRAP"} {
+	for _, k := range []string{"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL", "META_BASE_URL", "GEMINUS_META_BASE_URL", "HTTPS_PROXY_TRAP"} {
 		t.Setenv(k, trap.URL)
 	}
 	s := newServer(t, map[string][]reply{messagesPath: {ok(answerJ)}})

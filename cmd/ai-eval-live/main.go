@@ -19,9 +19,11 @@
 // results. The report, the record and the summary keep no prompt, answer
 // text, image or key. AI_PROVIDER picks the adapter: Claude's (anthropic,
 // H-018) or the Meta Model API's Muse Spark (meta, H-029 amended by H-033,
-// with GEMINUS_MUSE_API_KEY); the photo smoke's are the photo path's, as
-// the worker builds them: Muse Spark as the judge and the approval's
-// segmentation model (SAM 3.1) as the segmenter.
+// with GEMINUS_MUSE_API_KEY, sent to the owner's GEMINUS_META_BASE_URL when
+// set, as the worker's: the reports then say "base_url": "custom", never
+// the URL); the photo smoke's are the photo path's, as the worker builds
+// them: Muse Spark as the judge and the approval's segmentation model (SAM
+// 3.1) as the segmenter.
 package main
 
 import (
@@ -66,7 +68,8 @@ func liveBackend(ai config.AI) (provider.Billable, error) {
 			return nil, errors.New("live AI on the Meta Model API takes one key")
 		}
 		c := ai.Credentials[0]
-		b, err := meta.New(meta.Config{Approval: ai.Approval, Model: ai.Model, Credential: meta.Credential{Label: c.Label, Key: c.Key}})
+		b, err := meta.New(meta.Config{Approval: ai.Approval, Model: ai.Model, Credential: meta.Credential{Label: c.Label, Key: c.Key},
+			BaseURL: c.BaseURL}) // GEMINUS_META_BASE_URL, as the worker's
 		if err != nil {
 			return nil, err
 		}
@@ -88,11 +91,12 @@ func livePhoto(v config.AIVision) (provider.Billable, provider.BillableSegmenter
 		return nil, nil, errors.New("the photo path on the Meta Model API takes one key and a segmentation model")
 	}
 	c := meta.Credential{Label: v.Credentials[0].Label, Key: v.Credentials[0].Key}
-	judge, err := meta.New(meta.Config{Approval: v.Approval, Model: v.Model, Credential: c})
+	base := v.Credentials[0].BaseURL // GEMINUS_META_BASE_URL, as the worker's
+	judge, err := meta.New(meta.Config{Approval: v.Approval, Model: v.Model, Credential: c, BaseURL: base})
 	if err != nil {
 		return nil, nil, err
 	}
-	seg, err := meta.NewSegmenter(meta.Config{Approval: v.Approval, Model: v.SegmentationModel, Credential: c})
+	seg, err := meta.NewSegmenter(meta.Config{Approval: v.Approval, Model: v.SegmentationModel, Credential: c, BaseURL: base})
 	if err != nil {
 		return nil, nil, err
 	}

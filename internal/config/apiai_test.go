@@ -18,9 +18,10 @@ import (
 // (apivision_test.go).
 
 // apiKeyNames are the AI key variables the API refuses (hard-coded here, so
-// a name dropped from the code's list fails).
+// a name dropped from the code's list fails), and the Meta base URL, whose
+// path carries a secret (the H-083 follow-up): the worker's alone.
 var apiKeyNames = []string{"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_API_KEY",
-	"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY"}
+	"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY", "GEMINUS_META_BASE_URL"}
 
 // apiSettings are all the API's AI loader may read besides the key
 // variables, whose presence it checks: the proposals' settings and the

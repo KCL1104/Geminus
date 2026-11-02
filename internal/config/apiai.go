@@ -126,11 +126,13 @@ const CodeKeyForbidden = "key_forbidden"
 // apiKeyVars are the AI key variables the API refuses (T-053 I5): the live
 // adapters' keys, the Meta key's earlier name, the legacy AI_API_KEY, and
 // the defaults of the provider SDKs and documentation, which nothing in this
-// build reads (D-018). scripts/check_deploy.py reads this list:
-// deploy/railway/variables.json forbids each of them on the API.
+// build reads (D-018); and the Meta key's base URL (GEMINUS_META_BASE_URL,
+// the H-083 follow-up), whose path carries a secret: the worker's alone.
+// scripts/check_deploy.py reads this list: deploy/railway/variables.json
+// forbids each of them on the API.
 var apiKeyVars = []string{
 	"GEMINUS_ANTHROPIC_API_KEY_A", "GEMINUS_ANTHROPIC_API_KEY_B", "GEMINUS_MUSE_API_KEY", "GEMINUS_META_API_KEY",
-	"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY",
+	"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "AI_API_KEY", "MODEL_API_KEY", "GEMINUS_META_BASE_URL",
 }
 
 // LoadAPIAI reads the API's AI settings (APIAI). All problems are reported

@@ -85,3 +85,42 @@ func TestThePhotoBackendsAreThePhotoPaths(t *testing.T) {
 		}
 	}
 }
+
+// The H-083 follow-up: with GEMINUS_META_BASE_URL the live eval's Meta
+// adapters send where the worker's do, the text backend and the photo
+// smoke's judge and segmenter alike; without it, to the provider's own
+// API. Built here, never called.
+func TestTheBackendsTakeTheMetaBaseURL(t *testing.T) {
+	env := func(kv ...string) func(string) string {
+		m := map[string]string{"AI_PROVIDER": "meta", "AI_POLICY_APPROVAL": "H-029", "AI_MODEL": "muse-spark-1.3",
+			"GEMINUS_MUSE_API_KEY": "LLM_000000000000_test-key-not-a-real-key", "GEMINUS_AI_LIVE": "on"}
+		for i := 0; i+1 < len(kv); i += 2 {
+			m[kv[i]] = kv[i+1]
+		}
+		return func(k string) string { return m[k] }
+	}
+	custom := func(b any) bool {
+		c, ok := b.(interface{ CustomBaseURL() bool })
+		return ok && c.CustomBaseURL()
+	}
+	for name, c := range map[string]struct {
+		env  func(string) string
+		want bool
+	}{
+		"set":   {env("GEMINUS_META_BASE_URL", "https://proxy-test.example.workers.dev/PROXY-SECRET-SENTINEL-2b8e/"), true},
+		"unset": {env(), false},
+	} {
+		ai, err := config.LoadAI(c.env)
+		if err != nil || !ai.LiveEnabled() || !ai.Vision.LiveEnabled() {
+			t.Fatalf("%s: %+v %v", name, ai, err)
+		}
+		b, err := liveBackend(ai)
+		if err != nil || custom(b) != c.want {
+			t.Errorf("%s: the text backend %T: %v", name, b, err)
+		}
+		judge, seg, err := livePhoto(ai.Vision)
+		if err != nil || custom(judge) != c.want || custom(seg) != c.want {
+			t.Errorf("%s: the photo backends %T %T: %v", name, judge, seg, err)
+		}
+	}
+}

@@ -316,7 +316,8 @@ func liveBackend(p config.AIProvider, a aiapproval.Approval, model string, creds
 		if len(creds) != 1 {
 			return nil, errors.New("live AI on the Meta Model API takes one key")
 		}
-		b, err := meta.New(meta.Config{Approval: a, Model: model, Credential: meta.Credential{Label: creds[0].Label, Key: creds[0].Key}})
+		b, err := meta.New(meta.Config{Approval: a, Model: model, Credential: meta.Credential{Label: creds[0].Label, Key: creds[0].Key},
+			BaseURL: creds[0].BaseURL}) // GEMINUS_META_BASE_URL, or "" for the provider's own API
 		if err != nil {
 			return nil, err
 		}
@@ -362,7 +363,7 @@ func photoBackends(v config.AIVision) (provider.Backend, provider.SegmentBackend
 		if v.SegmentationModel != "" {
 			c := v.Credentials[0]
 			s, err := meta.NewSegmenter(meta.Config{Approval: v.Approval, Model: v.SegmentationModel,
-				Credential: meta.Credential{Label: c.Label, Key: c.Key}})
+				Credential: meta.Credential{Label: c.Label, Key: c.Key}, BaseURL: c.BaseURL})
 			if err != nil {
 				return nil, nil, err
 			}
@@ -507,15 +508,23 @@ func run(ctx context.Context, getenv func(string) string, stderr io.Writer, buil
 		return exitNotImplemented
 	}
 	// Whether live AI is on, and the typed reason when it is off (T-053),
-	// for the proposals and the photo path (T-055); never a key.
+	// for the proposals and the photo path (T-055); never a key. With the
+	// owner's GEMINUS_META_BASE_URL, base_url says "custom", never the URL
+	// (its path carries a secret).
+	baseURL := func(creds []config.AICredential) []any {
+		if b := config.BaseURLOf(creds); b != "" {
+			return []any{"base_url", b}
+		}
+		return nil
+	}
 	if live := ai.Provider == config.AIProviderAnthropic || ai.Provider == config.AIProviderMeta; live && ai.LiveEnabled() {
-		log.Info("live AI is on", "provider", string(ai.Provider), "model", ai.Model, "code", "LIVE_AI_ON")
+		log.Info("live AI is on", append([]any{"provider", string(ai.Provider), "model", ai.Model, "code", "LIVE_AI_ON"}, baseURL(ai.Credentials)...)...)
 	} else if live {
 		log.Info("live AI is off", "provider", string(ai.Provider), "code", strings.ToUpper(ai.LiveOff))
 	}
 	if v := ai.Vision; v.Provider == config.AIProviderAnthropic || v.Provider == config.AIProviderMeta {
 		if v.LiveEnabled() {
-			log.Info("the photo path is on", "provider", string(v.Provider), "model", v.Model, "code", "PHOTO_PATH_ON")
+			log.Info("the photo path is on", append([]any{"provider", string(v.Provider), "model", v.Model, "code", "PHOTO_PATH_ON"}, baseURL(v.Credentials)...)...)
 		} else {
 			log.Info("the photo path is off", "provider", string(v.Provider), "code", strings.ToUpper(v.LiveOff))
 		}
