@@ -118,6 +118,9 @@ func Refused(err error) error {
 			Details: []httpapi.Detail{{Path: "/base_version_id", Reason: "not the latest version"}}}
 	case errors.Is(err, ErrInvalidCursor):
 		return httpapi.InvalidCursor()
+	case errors.Is(err, ErrInvalidOrder):
+		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "order must be oldest or newest, once",
+			Details: []httpapi.Detail{{Path: "", Reason: "order"}}}
 	case errors.Is(err, ErrInvalidLimit):
 		return &httpapi.Error{Code: httpapi.InvalidRequest, Message: "limit must be one integer from 1 to 100",
 			Details: []httpapi.Detail{{Path: "", Reason: "limit"}}}
@@ -158,12 +161,34 @@ func (h handlers) list(w http.ResponseWriter, r *http.Request, sc tenant.Scope) 
 	if err != nil {
 		return err
 	}
-	page, err := h.s.List(r.Context(), sc, httpapi.RequestID(r.Context()), modelID, cursor, limit)
+	order, err := listOrder(r)
+	if err != nil {
+		return err
+	}
+	page, err := h.s.List(r.Context(), sc, httpapi.RequestID(r.Context()), modelID, cursor, limit, order)
 	if err != nil {
 		return Refused(err)
 	}
 	httpapi.WriteJSON(w, 200, page)
 	return nil
+}
+
+// listOrder reads listProposals' order (H-079): oldest first when absent;
+// "oldest" or "newest" once, or 400 naming it.
+func listOrder(r *http.Request) (Order, error) {
+	q, err := httpapi.Query(r)
+	if err != nil {
+		return "", err
+	}
+	vs, ok := q["order"]
+	if !ok {
+		return OldestFirst, nil
+	}
+	if len(vs) == 1 && (Order(vs[0]) == OldestFirst || Order(vs[0]) == NewestFirst) {
+		return Order(vs[0]), nil
+	}
+	return "", &httpapi.Error{Code: httpapi.InvalidRequest, Message: "order must be oldest or newest, once",
+		Details: []httpapi.Detail{{Path: "", Reason: "order"}}}
 }
 
 func (h handlers) get(w http.ResponseWriter, r *http.Request, sc tenant.Scope) error {

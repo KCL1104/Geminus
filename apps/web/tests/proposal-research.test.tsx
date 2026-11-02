@@ -55,8 +55,8 @@ const fieldOf = (el: Element, label: string) => {
 };
 /** The opt-in's native checkbox, inside its label (React Aria). */
 const optIn = (el: Element, label: string) => {
-  const l = [...el.querySelectorAll("label")].find((x) => text(x) === label);
-  const input = l?.querySelector<HTMLInputElement>("input[type=checkbox]");
+  // By its name: the composer's chip (2026-11-02) shows the start of it and is named by aria-label.
+  const input = [...el.querySelectorAll<HTMLInputElement>("input[type=checkbox]")].find((x) => (x.getAttribute("aria-label") ?? text(x.closest("label"))) === label);
   if (!input) throw new Error(`no checkbox ${label}`);
   return input;
 };
@@ -118,22 +118,28 @@ const sources = (el: Element) => el.querySelector('[data-section="sources"]');
 const writtenBy = (el: Element, label: string) => [...el.querySelectorAll("header dl > div")].map((d) => text(d)).find((d) => d.startsWith(label));
 
 describe("the opt-in on the model page", () => {
-  it.each(["en", "zh-Hant"] as const)("is off by default, says in %s that the description is used for a web search and that a photo is never researched, and names both lines as its description", async (locale) => {
+  // 2026-11-02 (the composer): the opt-in is a chip in the composer's tool
+  // row, and its lines show under the box only while it is ticked, as its
+  // description; ticked, before anything is sent, they say it.
+  it.each(["en", "zh-Hant"] as const)("is off by default, and ticked says in %s that the description is used for a web search and that a photo is never researched, naming both lines as its description", async (locale) => {
     const t = createTranslator(locale);
     const { el } = await modelPage({ locale });
     // The sample line's pack reads photos, so the photo button is offered beside Send.
     expect(el.querySelector("[data-photo]")).not.toBeNull();
     const box = optIn(ask(el), t("ask.research"));
     expect(box.checked).toBe(false);
-    const described = (box.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
-    expect(described.map((id) => text(document.getElementById(id)))).toEqual([t("ask.researchHint"), t("ask.researchHint.photo")]);
+    const described = () => (optIn(ask(el), t("ask.research")).getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
+    expect(described()).toEqual([]);
+    expect(text(ask(el))).not.toContain(t("ask.researchHint"));
+    await tick(box);
+    expect(described().map((id) => text(document.getElementById(id)))).toEqual([t("ask.researchHint"), t("ask.researchHint.photo")]);
     expect(await violations()).toEqual([]);
   });
 
   it("never researches a photo, ticked or not, and says so (review round 1, L3)", async () => {
     const { el, api, created } = await modelPage();
-    expect(text(ask(el).querySelector("[data-research-photo]"))).toBe(en("ask.researchHint.photo"));
     await tick(optIn(ask(el), en("ask.research")));
+    expect(text(ask(el).querySelector("[data-research-photo]"))).toBe(en("ask.researchHint.photo"));
     const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;
     const png = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3])], "line.png", { type: "image/png", lastModified: 1_700_000_000_000 });
     await act(async () => {
@@ -236,7 +242,8 @@ describe("a researched proposal's page", () => {
     expect(en("ai.webSearch", { writer: "Muse Spark 1.3 (Meta)", count: 4 })).toBe("Muse Spark 1.3 (Meta), with web search: 4 queries");
     expect(en("ai.webSearch", { writer: "Muse Spark 1.3 (Meta)", count: 1 })).toBe("Muse Spark 1.3 (Meta), with web search: 1 query");
     expect(en("ai.webSearch.none", { writer: "Muse Spark 1.3 (Meta)" })).toBe("Muse Spark 1.3 (Meta), with web search on: no searches made");
-    expect(en("ask.research")).toBe("Research real-world data on the web first (Meta search)");
+    // 2026-11-02: the composer's chip, in the owner's words.
+    expect(en("ask.research")).toBe("Research on the web first (Meta search)");
   });
 
   it("keeps the Written-by line as it was for a proposal not researched, and shows no sources", async () => {

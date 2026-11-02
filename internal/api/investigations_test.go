@@ -253,6 +253,20 @@ func TestInvestigationRoutes(t *testing.T) {
 		t.Fatalf("list: %d %s", l.status, l.body)
 	}
 	valid(t, l, "investigation.schema.json#/$defs/Investigations")
+	// H-079: read and listed with the person's words, as stored.
+	if got := decode[struct {
+		Intent string `json:"intent"`
+	}](t, g); got.Intent != "Find a faster pipeline" {
+		t.Errorf("get: intent %q", got.Intent)
+	}
+	if got := decode[struct {
+		Items []struct {
+			ID     string `json:"id"`
+			Intent string `json:"intent"`
+		} `json:"items"`
+	}](t, l); len(got.Items) != 1 || got.Items[0].ID != acc.ID || got.Items[0].Intent != "Find a faster pipeline" {
+		t.Errorf("list: %+v", got.Items)
+	}
 	if r := e.do("GET", "/v1/investigations/"+acc.ID, e.b.Members[tenant.Owner].Subject, e.b.ID, nil, ""); r.status != 503 && r.status != 404 {
 		t.Errorf("another organization: %d %s", r.status, r.body)
 	}

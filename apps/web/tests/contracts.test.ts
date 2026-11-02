@@ -34,6 +34,7 @@ import type {
   ProposalAccepted,
   ProposalOutput,
   ProposalRequest,
+  Proposals,
   Reject,
   ReleaseSchedule,
   SaveMapping,
@@ -204,6 +205,29 @@ const invalidProposal: Proposal = {
 // T-056: a proposal asked for with a photo, as createImageProposal stores
 // it: an edit with the server's record of the image (its type, pixels,
 // size and digest), never its file name or metadata.
+// H-079: listProposals?order=newest&limit=3: newest first, each with its request's words; a photo's has none.
+const newestPage: Proposals = {
+  items: [
+    {
+      proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZD", organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH", model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+      base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR", mode: "edit", status: "generating", created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+      created_at: "2026-10-26T08:48:00Z", requires_confirmation: true, intent: "Burn-in takes boards in batches of 48; model that.",
+    },
+    {
+      proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZC", organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH", model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+      base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR", mode: "scenario", status: "generating", created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+      created_at: "2026-10-26T08:40:00Z", requires_confirmation: true, intent: "What if the AOI buffer held 30 boards?",
+    },
+    {
+      proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZB", organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH", model_id: "mdl_01M4YDQK004AGVNEGJQJ1NMM0N",
+      base_version_id: "mv_01M4YDQK00FRYWV7GS7X1QCXZR", mode: "edit", status: "generating", created_by: "usr_01M4YDQK0016KTK4JM6KAHZ6BR",
+      created_at: "2026-10-26T08:31:00Z", requires_confirmation: true,
+      source_image: { media_type: "image/png", width: 1200, height: 520, size_bytes: 21843, content_hash: "sha256:1111111111111111111111111111111111111111111111111111111111111111" },
+    },
+  ],
+  next_cursor: "eyJ2IjoxLCJsIjoiYWktcHJvcG9zYWxzLW5ld2VzdCJ9",
+};
+
 const photoProposal: Proposal = {
   proposal_id: "aip_01M4YDQK00ADN261CME3WV5HZB",
   organization_id: "org_01M4YDQK00Y5H2929M9WWZWTVH",
@@ -528,6 +552,8 @@ const editWritten: Investigation = {
   mode: "edit",
   source: "request",
   source_analysis_id: null,
+  // H-079: the person's words, as the server stored them.
+  intent: "Model the two ICT testers as one step with capacity 2.",
   objective: null,
   output_locale: "en",
   research: false,
@@ -644,6 +670,7 @@ describe("generated contract types match the shared fixtures", () => {
     ["valid-proposal-accepted.json", proposalAccepted],
     ["valid-proposal-invalid.json", invalidProposal],
     ["valid-proposal-generating-from-image.json", photoProposal],
+    ["valid-proposals-newest-page.json", newestPage],
     ["valid-canonical-event-station.json", stationEvent],
     ["valid-approval-edit.json", approvalEdit],
     ["valid-approve.json", approveBody],
@@ -694,6 +721,8 @@ describe("generated contract types match the shared fixtures", () => {
 
 // Each line below must be a type error; remove the directive and tsc fails.
 export const rejected = {
+  // @ts-expect-error H-079: a request's words are text
+  intentNotText: { ...photoProposal, intent: 48 } satisfies Proposal,
   // @ts-expect-error unknown member on a closed object
   unknownMember: { ...minimalIR, script: "rm -rf /" } satisfies ModelIR,
   // @ts-expect-error node type outside the schema enum

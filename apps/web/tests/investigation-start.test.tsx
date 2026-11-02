@@ -253,10 +253,9 @@ const button = (el: ParentNode, name: string) => {
   return b;
 };
 const ask = (el: Element) => el.querySelector<HTMLElement>("[data-ask]")!;
-const checkbox = (el: Element, label: string) => {
-  const l = [...el.querySelectorAll("label")].find((x) => text(x) === label);
-  return l?.querySelector<HTMLInputElement>("input[type=checkbox]") ?? null;
-};
+// By its name: the composer's chip (2026-11-02) shows the start or the end of it and is named by aria-label.
+const checkbox = (el: Element, label: string) =>
+  [...el.querySelectorAll<HTMLInputElement>("input[type=checkbox]")].find((x) => (x.getAttribute("aria-label") ?? text(x.closest("label"))) === label) ?? null;
 const fieldOf = (el: Element, label: string) => {
   const l = [...el.querySelectorAll("label")].find((x) => text(x) === label);
   if (!l) throw new Error(`no field ${label}`);
@@ -449,6 +448,8 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
     ];
     for (const words of proposal) expect(text(form), "unticked").toContain(words);
     await tick(checkbox(form, tr("investigation.act")));
+    // 2026-11-02: research's line shows only while research is ticked.
+    await tick(checkbox(form, tr("ask.research")));
     const acting = text(form);
     for (const words of proposal) expect(acting).not.toContain(words);
     // No "The AI proposes" as the mode's label: the mode is chosen under the acting one.
@@ -460,6 +461,7 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
     expect(acting).toContain(tr(mode === "edit" ? "investigation.research.edit" : "investigation.research"));
     if (mode === "edit") expect(acting).not.toContain(tr("investigation.research"));
     expect(await violations()).toEqual([]);
+    await tick(checkbox(form, tr("ask.research")));
     await tick(checkbox(form, tr("investigation.act")));
     for (const words of proposal) expect(text(form), "unticked again").toContain(words);
     expect(text(form)).not.toContain(tr("investigation.intentHint", { version: String(latest) }));

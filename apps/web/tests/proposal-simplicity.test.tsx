@@ -89,7 +89,8 @@ async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise
 
 const text = (el: Element | null | undefined) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
 const button = (el: ParentNode, name: string) => {
-  const b = [...el.querySelectorAll("button")].find((x) => text(x) === name);
+  // By its accessible name: an icon key (the composer's send, 2026-11-02) is named by its aria-label.
+  const b = [...el.querySelectorAll("button")].find((x) => (x.getAttribute("aria-label") ?? text(x)) === name);
   if (!b) throw new Error(`no button "${name}"`);
   return b;
 };

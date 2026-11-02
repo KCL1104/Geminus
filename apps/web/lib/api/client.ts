@@ -107,6 +107,9 @@ export function newIdempotencyKey(): string {
 export type ApiClient = ReturnType<typeof createApiClient>;
 
 /** createImageProposal's form fields besides the file (openapi createImageProposal, T-056; model: H-049). */
+/** listProposals' order (openapi listProposals, the order query parameter; H-079): oldest first, the default, or newest first. */
+export type ProposalOrder = "oldest" | "newest";
+
 export type ImageProposalFields = { base_version_id: string; output_locale?: ProposalRequest["output_locale"]; model?: ProposalModel };
 
 const badKey = (): Failed => ({ ok: false, problem: invalidRequestProblem("An Idempotency-Key is 8 to 128 visible ASCII characters.") });
@@ -373,10 +376,15 @@ export function createApiClient(cfg: ClientConfig) {
       form.append("file", file, "photo");
       return call<ProposalAccepted>({ method: "POST", path: `/models/${modelId}/ai-proposals/image`, body: form, idempotencyKey: key, signal: opts.signal });
     },
-    /** The model's AI proposals, oldest first, a page of up to 100 (H-042: the AI proposals page). */
-    async listProposals(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}) {
+    /**
+     * The model's AI proposals, a page after the cursor: oldest first, up to
+     * 100 (H-042: the AI proposals page); with order "newest", newest first
+     * (H-079: the composer's earlier requests read one small page, limit).
+     * The cursor is bound to the order it came with.
+     */
+    async listProposals(modelId: string, opts: { cursor?: string; order?: ProposalOrder; limit?: number; signal?: AbortSignal } = {}) {
       if (!isID("mdl", modelId)) return notFound("The model");
-      return call<Proposals>({ method: "GET", path: `/models/${modelId}/ai-proposals`, query: { cursor: opts.cursor, limit: "100" }, signal: opts.signal });
+      return call<Proposals>({ method: "GET", path: `/models/${modelId}/ai-proposals`, query: { cursor: opts.cursor, limit: String(opts.limit ?? 100), order: opts.order }, signal: opts.signal });
     },
     /** A proposal as the server holds it: its state, and the server's validation and risk beside the AI's claim (T-025, D-027). */
     async getProposal(proposalId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Proposal>> {
@@ -551,9 +559,9 @@ export function createApiClient(cfg: ClientConfig) {
       });
     },
     /** The model's AI investigations, newest first, a page of up to 100 (H-061). */
-    async listInvestigations(modelId: string, opts: { cursor?: string; signal?: AbortSignal } = {}): Promise<Result<Investigations>> {
+    async listInvestigations(modelId: string, opts: { cursor?: string; limit?: number; signal?: AbortSignal } = {}): Promise<Result<Investigations>> {
       if (!isID("mdl", modelId)) return notFound("The model");
-      return call<Investigations>({ method: "GET", path: `/models/${modelId}/investigations`, query: { cursor: opts.cursor, limit: "100" }, signal: opts.signal });
+      return call<Investigations>({ method: "GET", path: `/models/${modelId}/investigations`, query: { cursor: opts.cursor, limit: String(opts.limit ?? 100) }, signal: opts.signal });
     },
     /** An investigation as the server holds it: the AI's steps (the ledger's rows), the server's candidates, ranking and closing line, and the AI's claim (H-061). */
     async getInvestigation(investigationId: string, opts: { signal?: AbortSignal } = {}): Promise<Result<Investigation>> {

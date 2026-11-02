@@ -6,6 +6,7 @@
   "mode": "edit",
   "source": "request",
   "source_analysis_id": null,
+  "intent": "Model the two ICT testers as one step with capacity 2.",
   "objective": null,
   "output_locale": "en",
   "research": false,

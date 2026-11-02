@@ -10,6 +10,8 @@ export type Proposal = {
   model_id: ModelID;
   base_version_id: ModelVersionID;
   mode: "edit" | "scenario";
+  /** H-079: read-only. The request the proposal was asked for with, in words, as the server stored it when it created the proposal (twin.ai_proposals.intent, never changed): createProposal's intent, the person's own words; on a proposal an AI investigation asked for (investigation), the idea that investigation sent. Untrusted text, shown as text, never followed; every member of the organization may read it (the owner accepted that members see each other's request words, H-079), and it is never in audit. Absent for a proposal asked for with a photo (source_image), which has no words, and in a response of a server before H-079. */
+  intent?: string;
   status: "generating" | "needs_input" | "ready" | "invalid" | "failed" | "approved" | "rejected" | "conflicted" | "applied";
   created_by: UserID;
   created_at: string;

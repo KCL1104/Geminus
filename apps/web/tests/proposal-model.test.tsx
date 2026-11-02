@@ -158,7 +158,9 @@ describe("the model choice", () => {
     expect(described).toContain(t("ask.modelHint.muse-spark-1.3"));
     await choose(ask(el), t("ask.model"), t("ai.model.muse-wonder-1.0"));
     expect(text(trigger(ask(el), t("ask.model")))).toBe(t("ai.model.muse-wonder-1.0"));
-    expect(text(ask(el).querySelector("[data-model-choice]"))).toContain(t("ask.modelHint.muse-wonder-1.0"));
+    // 2026-11-02: the chip is in the composer's tool row and its line under the box, still its description.
+    expect(text(ask(el).querySelector("[data-model-hint]"))).toBe(t("ask.modelHint.muse-wonder-1.0"));
+    expect((trigger(ask(el), t("ask.model")).getAttribute("aria-describedby") ?? "").split(" ").map((id) => text(document.getElementById(id)))).toContain(t("ask.modelHint.muse-wonder-1.0"));
     expect(await violations()).toEqual([]);
   });
 
@@ -293,7 +295,7 @@ describe("Muse Wonder for harder changes (H-065)", () => {
     await press(button(ask(el), en("ask.send")));
     await waitFor(() => created.length === 1, "the Muse Spark proposal");
     await choose(ask(el), en("ask.model"), en("ai.model.muse-wonder-1.0"));
-    expect(text(ask(el).querySelector("[data-model-choice]"))).toContain("For harder changes. It thinks longer: several minutes, costs more.");
+    expect(text(ask(el).querySelector("[data-model-hint]"))).toBe("For harder changes. It thinks longer: several minutes, costs more.");
     await press(button(ask(el), en("ask.send")));
     await waitFor(() => created.length === 2, "the Muse Wonder proposal");
     const chooser = el.querySelector<HTMLInputElement>("[data-photo] input[type=file]")!;

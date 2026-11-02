@@ -20,8 +20,9 @@ const askedAbout: Record<string, string[]> = {};
 // as aria-disabled with its reason on screen beside it (DESIGN.md Buttons,
 // Disabled). That is a step of a shipped flow, not a disabled-forever
 // placeholder; the rule there is that every blocked control says why. The
-// same editor with a run in motion (H-072) is held to the same rule.
-const blockedWithReason = new Set(["/ui-gallery/editor", ...editorMotionPreviews]);
+// same editor with a run in motion (H-072), and with the model's earlier
+// requests above Ask AI's composer (2026-11-02), is held to the same rule.
+const blockedWithReason = new Set(["/ui-gallery/editor", "/ui-gallery/editor?state=requests", ...editorMotionPreviews]);
 
 /** The visible controls of the page: links by where they go, buttons by name. */
 async function controls(page: Page) {

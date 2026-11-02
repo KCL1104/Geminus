@@ -24,8 +24,11 @@ export type SelectProps = Omit<AriaSelectProps<SelectItem>, "className" | "child
   /**
    * field: a form's label (13.5 px, 600). strip: the app strip's small
    * label, which a phone hides visually; it stays the control's name.
+   * chip: a compact capsule in a composer's tool row (Ask AI, 2026-11-02):
+   * the chosen value is its visible words, and the label, hidden from
+   * sight, stays the start of its name.
    */
-  variant?: "field" | "strip";
+  variant?: "field" | "strip" | "chip";
   /** The value can be long (a name a person gave): cut it short with an ellipsis; the list and the control's name keep it whole. */
   clipValue?: boolean;
 };
@@ -33,7 +36,7 @@ export type SelectProps = Omit<AriaSelectProps<SelectItem>, "className" | "child
 /** A single choice from a short list: a labelled button that opens a listbox. */
 export function Select({ label, items, value, onChange, variant = "field", clipValue = false, ...props }: SelectProps) {
   const select = (
-    <AriaSelect {...props} value={value} onChange={(key) => key !== null && onChange?.(String(key))} className={cx(styles.select, variant === "strip" && styles.strip)}>
+    <AriaSelect {...props} value={value} onChange={(key) => key !== null && onChange?.(String(key))} className={cx(styles.select, variant === "strip" && styles.strip, variant === "chip" && styles.chip)}>
       <Label className={styles.label}>{label}</Label>
       <AriaButton className={styles.trigger}>
         <SelectValue className={cx(styles.value, clipValue && styles.clip)} />

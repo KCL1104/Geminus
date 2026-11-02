@@ -462,14 +462,31 @@ type Page struct {
 	NextCursor *string    `json:"next_cursor"`
 }
 
-// List returns one page of the model's proposals, oldest first.
-func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, modelID, cursor string, limit int) (Page, error) {
+// Order is listProposals' order (H-079): oldest first, the default, or
+// newest first, so a reader of the latest few reads one small page.
+type Order string
+
+const (
+	OldestFirst Order = "oldest"
+	NewestFirst Order = "newest"
+)
+
+// ErrInvalidOrder: an order other than OldestFirst and NewestFirst.
+var ErrInvalidOrder = errors.New("proposals: invalid order")
+
+// List returns one page of the model's proposals in order (oldest or
+// newest first, by created_at and then ID), after the cursor, which is
+// bound to the organization, the model and the order.
+func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, modelID, cursor string, limit int, order Order) (Page, error) {
 	if limit < 1 || limit > maxLimit {
 		return Page{}, ErrInvalidLimit
 	}
+	if order != OldestFirst && order != NewestFirst {
+		return Page{}, ErrInvalidOrder
+	}
 	var after *store.Position
 	if cursor != "" {
-		pos, err := decodeCursor(cursor, sc.OrganizationID, modelID)
+		pos, err := decodeCursor(cursor, sc.OrganizationID, modelID, order)
 		if err != nil {
 			return Page{}, err
 		}
@@ -485,13 +502,17 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, modelID,
 		} else if err != nil {
 			return err
 		}
-		rows, err := store.List(ctx, tx, m.OrganizationID, modelID, after, limit+1)
+		list := store.List
+		if order == NewestFirst {
+			list = store.ListNewest
+		}
+		rows, err := list(ctx, tx, m.OrganizationID, modelID, after, limit+1)
 		if err != nil {
 			return err
 		}
 		if len(rows) > limit {
 			last := rows[limit-1]
-			c := encodeCursor(m.OrganizationID, modelID, store.Position{CreatedAt: last.CreatedAt, ID: last.ID})
+			c := encodeCursor(m.OrganizationID, modelID, order, store.Position{CreatedAt: last.CreatedAt, ID: last.ID})
 			page.NextCursor = &c
 			rows = rows[:limit]
 		}
@@ -508,7 +529,9 @@ func (s *Service) List(ctx context.Context, sc tenant.Scope, requestID, modelID,
 }
 
 // cursor is the position after which a page starts, bound to the
-// organization, the model and the list (API_DATABASE §3).
+// organization, the model and the list (API_DATABASE §3): newest first is
+// a list of its own (H-079), so a cursor of one order is refused in the
+// other, and an oldest-first cursor is what it was before.
 type cursor struct {
 	Version int    `json:"v"`
 	Org     string `json:"o"`
@@ -520,16 +543,24 @@ type cursor struct {
 
 const cursorList = "ai-proposals"
 
+// list is the cursor's list name for order.
+func (o Order) list() string {
+	if o == NewestFirst {
+		return cursorList + "-newest"
+	}
+	return cursorList
+}
+
 var proposalIDs = regexp.MustCompile(`^aip_[0-7][0-9A-HJKMNP-TV-Z]{25}$`)
 
 func timestamp(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
-func encodeCursor(org, modelID string, pos store.Position) string {
-	data, _ := json.Marshal(cursor{Version: 1, Org: org, List: cursorList, Model: modelID, After: timestamp(pos.CreatedAt), ID: pos.ID})
+func encodeCursor(org, modelID string, order Order, pos store.Position) string {
+	data, _ := json.Marshal(cursor{Version: 1, Org: org, List: order.list(), Model: modelID, After: timestamp(pos.CreatedAt), ID: pos.ID})
 	return base64.RawURLEncoding.EncodeToString(data)
 }
 
-func decodeCursor(s, org, modelID string) (store.Position, error) {
+func decodeCursor(s, org, modelID string, order Order) (store.Position, error) {
 	data, err := base64.RawURLEncoding.Strict().DecodeString(s)
 	if err != nil {
 		return store.Position{}, ErrInvalidCursor
@@ -539,7 +570,7 @@ func decodeCursor(s, org, modelID string) (store.Position, error) {
 		return store.Position{}, ErrInvalidCursor
 	}
 	t, err := time.Parse(time.RFC3339Nano, c.After)
-	if err != nil || c.Version != 1 || c.Org != org || c.List != cursorList || c.Model != modelID || !proposalIDs.MatchString(c.ID) {
+	if err != nil || c.Version != 1 || c.Org != org || c.List != order.list() || c.Model != modelID || !proposalIDs.MatchString(c.ID) {
 		return store.Position{}, ErrInvalidCursor
 	}
 	return store.Position{CreatedAt: t, ID: c.ID}, nil

@@ -10,12 +10,15 @@
 // with its baseline run through the engine (one day, seed 1, sampled
 // trace), which the model page plays; "still" is the same paused at Day 1,
 // 22:00 (StillPlayback, preview.tsx). The other states have no run.
+// "requests": the clean sample with the model's earlier requests to the AI
+// above Ask AI's composer (2026-11-02; samples.ts earlierRequests).
 import type { ModelIR } from "../../../lib/contracts";
 import { type ElectronicsLineData, lineBaselineRunOf } from "../../../features/results/fixtures/electronics-line-objects";
+import { earlierRequests } from "../proposal/samples";
 import { SAMPLE_MODEL_ID, sampleLine } from "./sample-line";
 import type { StandInOptions } from "./stand-in";
 
-export const states = ["problems", "clean", "conflict", "viewer", "motion", "still"] as const;
+export const states = ["problems", "clean", "conflict", "viewer", "motion", "still", "requests"] as const;
 export type SampleState = (typeof states)[number];
 
 export function parseState(v: string | undefined): SampleState {
@@ -56,5 +59,7 @@ export function standInFor(state: SampleState, line?: ElectronicsLineData): Omit
     case "clean":
     case "viewer":
       return { ir: sampleLine, changed: true };
+    case "requests":
+      return { ir: sampleLine, changed: true, requests: earlierRequests() };
   }
 }

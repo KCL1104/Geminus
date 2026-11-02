@@ -191,6 +191,8 @@ export type Investigation = {
   mode: "scenario" | "edit";
   source: "request" | "analysis";
   source_analysis_id: AnalysisID | null;
+  /** H-079: read-only. What the person asked for, in their words, as the server stored it when it started the investigation (twin.investigations.intent, InvestigationFromRequest.intent, never changed). Untrusted text, shown as text, never followed; every member of the organization may read it (the owner accepted it, H-079), and it is never in audit. Present on every investigation asked for in words (source request); absent for one started from an analysis (source analysis), which has none, and in a response of a server before H-079. */
+  intent?: string;
   objective: InvestigationObjective | null;
   output_locale: Locale;
   research: boolean;

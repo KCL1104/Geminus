@@ -1,0 +1,256 @@
+/* Ask AI at the top of the 2D editor's side panel (H-040), as a prompt
+   composer (the owner's decision of 2026-11-02, H-079): the model's earlier
+   requests as hairline rows, each a link and a quiet Reuse beside it, then
+   one bordered box holding the request and,
+   along its bottom edge, a tool row of chips and the send key; under the
+   box, an option's line while it is on, the version line and the data
+   notice. Tokens only; the box's focus is the Accent, since it is the AI's. */
+.ask {
+  margin: 0 0 var(--gm-space-xl);
+}
+
+.ask h2 {
+  margin-top: 0;
+}
+
+/* Earlier requests: oldest first, so the newest stands right above the box. */
+.earlier {
+  margin: 0 0 var(--gm-space-section);
+}
+
+.earlier h3 {
+  margin: 0 0 var(--gm-space-sm);
+}
+
+.log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+/* A row: the link takes the width; Reuse, a quiet key, stands beside it at
+   the first line, never inside it (one control, one action). */
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
+  border-bottom: 1px solid var(--gm-color-rule);
+}
+
+/* The link: the words on top, its state, kind and time under them. */
+.entry {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: var(--gm-space-hair);
+  padding: var(--gm-space-md) var(--gm-space-sm);
+  color: var(--gm-color-ink);
+  text-decoration: none;
+  transition: background-color var(--gm-motion);
+}
+
+.entry:hover {
+  background: var(--gm-color-hover);
+}
+
+/* The ring inside the row: the panel scrolls and would cut one outside it. */
+.entry:focus-visible {
+  outline-offset: calc(-1 * var(--gm-focus-width));
+}
+
+/* Two lines at most; the request's page has the rest. */
+.words {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.meta {
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  overflow-wrap: anywhere;
+}
+
+.state {
+  color: var(--gm-color-ink-2);
+  font-weight: var(--gm-font-weight-medium);
+}
+
+/* Reuse: a quiet key centred on the row's first line of words (8 px of
+   padding, then a 20 px line), its ring inside the panel's edge. */
+.reuse {
+  flex: none;
+  margin-top: var(--gm-space-hair);
+}
+
+.reuse:focus-visible {
+  outline-offset: calc(-1 * var(--gm-focus-width));
+}
+
+.note,
+.hint,
+.reason {
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.note {
+  margin-top: var(--gm-space-sm);
+}
+
+.failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-sm) var(--gm-space-md);
+  margin: 0 0 var(--gm-space-section);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.failed p {
+  margin: 0;
+}
+
+.prefill {
+  margin: 0 0 var(--gm-space-sm);
+}
+
+/* The composer: one box, as a field is drawn (Edge, Raised), at the card's corner. */
+.composer {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gm-color-edge);
+  border-radius: var(--gm-radius-lg);
+  background: var(--gm-color-raised);
+  box-shadow: var(--gm-shadow-control);
+  transition: border-color var(--gm-motion);
+}
+
+.composer:hover {
+  border-color: var(--gm-color-ink-2);
+}
+
+/* Anything in it has the focus: the AI's accent. */
+.composer:focus-within {
+  border-color: var(--gm-color-accent);
+}
+
+/* The request itself has the focus: the one focus ring, around the whole box. */
+.composer:has(.input:focus-visible) {
+  outline: var(--gm-focus-ring);
+  outline-offset: var(--gm-focus-offset);
+}
+
+/* Invalid: a red border, doubled by an inset ring of the same red, as a field. */
+.composer[data-invalid] {
+  border-color: var(--gm-color-error);
+  box-shadow: inset 0 0 0 1px var(--gm-color-error);
+}
+
+.field {
+  display: block;
+}
+
+/* About three lines when empty; it grows with the words to ten, then scrolls inside itself. */
+.input {
+  display: block;
+  width: 100%;
+  min-height: calc(3 * var(--gm-line-height-title) + 2 * var(--gm-space-md));
+  max-height: calc(10 * var(--gm-line-height-title) + 2 * var(--gm-space-md));
+  padding: var(--gm-space-md) var(--gm-space-cell) 0;
+  border: 0;
+  border-radius: var(--gm-radius-lg);
+  background: transparent;
+  color: var(--gm-color-ink);
+  font: inherit;
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  overflow-y: auto;
+  resize: none;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.input::placeholder {
+  color: var(--gm-color-ink-3);
+  opacity: 1;
+}
+
+/* Along the box's bottom edge: the chips in reading order, wrapping, and
+   the send key last, at the right of the last line. */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-sm);
+  padding: var(--gm-space-sm);
+}
+
+/* The send key: an icon key, square, the panel's one AI action. */
+.composer .send {
+  flex: none;
+  margin-inline-start: auto;
+  padding: 0;
+}
+
+/* Read by a screen reader, not shown: the request's label and its keys. */
+.offscreen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Under the box: the error and the blocked reason, then an option's line while it is on, then the version line and the notice. */
+.error {
+  margin: var(--gm-space-sm) 0 0;
+  color: var(--gm-color-error);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+}
+
+.reason {
+  margin-top: var(--gm-space-sm);
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--gm-space-xs);
+  margin: var(--gm-space-sm) 0 0;
+}
+
+.notes > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* The photo path: a request of its own (it takes no words), under the composer. */
+.photoRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gm-space-md) var(--gm-space-gutter);
+  margin: var(--gm-space-gutter) 0 0;
+}
+
+.problem {
+  margin: var(--gm-space-gutter) 0 0;
+}

@@ -39,7 +39,8 @@ async function waitFor(check: () => boolean, what: string, ms = 10_000): Promise
 }
 
 const text = (el: Element | null | undefined) => (el?.textContent ?? "").replace(/\s+/g, " ").trim();
-const buttons = (el: ParentNode, name: string) => [...el.querySelectorAll<HTMLButtonElement>("button")].filter((x) => text(x) === name);
+// By its accessible name: an icon key (the composer's send, 2026-11-02) is named by its aria-label.
+const buttons = (el: ParentNode, name: string) => [...el.querySelectorAll<HTMLButtonElement>("button")].filter((x) => (x.getAttribute("aria-label") ?? text(x)) === name);
 const button = (el: ParentNode, name: string) => {
   const b = buttons(el, name)[0];
   if (!b) throw new Error(`no button "${name}"`);
@@ -54,7 +55,8 @@ const fieldOf = (el: Element, label: string) => {
   return document.getElementById(l.htmlFor) as HTMLTextAreaElement;
 };
 const optIn = (el: Element, label: string) => {
-  const input = [...el.querySelectorAll("label")].find((x) => text(x) === label)?.querySelector<HTMLInputElement>("input[type=checkbox]");
+  // By its name: the composer's chip (2026-11-02) shows the start of it and is named by aria-label.
+  const input = [...el.querySelectorAll<HTMLInputElement>("input[type=checkbox]")].find((x) => (x.getAttribute("aria-label") ?? text(x.closest("label"))) === label);
   if (!input) throw new Error(`no checkbox ${label}`);
   return input;
 };

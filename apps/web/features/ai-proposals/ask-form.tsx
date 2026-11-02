@@ -43,7 +43,31 @@
 // research is ticked, a change to the model is chosen, and a line above the
 // field (also the field's description) says where it came from; nothing is
 // sent until the person sends it. Without one, the form is what it was.
-import { useEffect, useId, useRef, useState } from "react";
+// The owner's decision of 2026-11-02: the form is a mainstream prompt
+// composer. One bordered box holds the request (about three lines, growing
+// to ten, then scrolling inside itself) and, along its bottom edge, a tool
+// row: what the AI proposes and the model as compact select chips, "Let the
+// AI act on it" (where it exists) and research as toggle chips, and the
+// send key at the right, an icon key named "Send to the AI" (or "Start the
+// AI" while acting), the panel's one AI action. An option's line shows
+// under the box only while it is on, as its description; the version line
+// and the data notice are always under it. Enter sends and Shift+Enter is a
+// new line; Enter while an input method composes never sends; an empty
+// request or one over 20,000 characters is not sent and the box says why
+// (nothing is cut while typing), with the focus on the request; a second
+// Enter while sending does nothing; the composer's description says the
+// keys. Above it, the model's earlier requests (EarlierRequests). The photo
+// path stays a request of its own under the composer, since it takes no
+// words. What is sent, and when, is what it was. H-079: an earlier request's
+// Reuse puts its words, its mode and its model (only while this build still
+// offers it; a request that named none, the default) back in the box, sends
+// nothing, says so to a screen reader and moves the focus to the request,
+// at the end of its words; what was in the box is replaced. Where the
+// primary pointer is coarse (useCoarsePointer: a touch keyboard has no
+// Shift+Enter), Enter makes a new line and only the send key sends; the
+// keyboard's Enter key says so (enterKeyHint) and so does the description.
+import { type KeyboardEvent, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { Label, TextArea, TextField as AriaTextField } from "react-aria-components";
 import { ProblemView } from "../../app/_components/problem-view";
 import { newIdempotencyKey } from "../../lib/api/client";
 import type { Problem } from "../../lib/api/problem";
@@ -54,19 +78,34 @@ import type { MessageKey } from "../../lib/i18n/translate";
 import { Button } from "../../ui/button";
 import { Checkbox } from "../../ui/checkbox";
 import { SendIcon } from "../../ui/icons";
-import { TextField } from "../../ui/field";
 import { Select } from "../../ui/select";
 import { StatusRegion } from "../../ui/status";
 import { PlannerChoice, RunSettings } from "../investigations/act-fields";
 import { DEFAULT_PLANNER, investigationsOffered } from "../investigations/flags";
 import { type ActIssue, fromRequest, OBJECTIVES, parseActRunForm } from "../investigations/request";
 import { defaultRunForm, type RunField, type RunForm } from "../simulations/run-config";
-import { DEFAULT_MODEL, ModelChoice, modelField } from "./model-choice";
+import { useCoarsePointer } from "./coarse-pointer";
+import { EarlierRequests } from "./earlier-requests";
+import { DEFAULT_MODEL, ModelChip, modelField, ModelHint, offeredModels } from "./model-choice";
 import { PhotoForm } from "./photo-form";
+import type { Reused } from "./request-log";
 import { askPrefill, clearAskPrefill } from "./station-research";
-import styles from "./proposal.module.css";
+import styles from "./ask.module.css";
 
 type Mode = ProposalRequest["mode"];
+
+/** The most characters a request takes (http.schema.json ProposalRequest.intent and InvestigationFromRequest.intent: maxLength 20,000, counted in code points). */
+export const MAX_INTENT = 20_000;
+
+/**
+ * Enter sends (the composer, 2026-11-02): not with Shift (a new line), never
+ * while an input method is composing, and (H-079) never where the primary
+ * pointer is coarse (touch): there Enter is a new line and the send key sends.
+ */
+export function sendsOnEnter(e: Pick<KeyboardEvent, "key" | "shiftKey" | "keyCode" | "nativeEvent">, touch = false): boolean {
+  if (touch || e.key !== "Enter" || e.shiftKey) return false;
+  return !(e.nativeEvent.isComposing || e.keyCode === 229 || e.nativeEvent.keyCode === 229);
+}
 
 /** What the form says for a refusal it knows: web research this deployment cannot do (H-046 (2)), a model it does not offer (H-049), and why an investigation could not start (H-061 A8). */
 export function advice(p: Problem): MessageKey | undefined {
@@ -115,6 +154,11 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const researchHintId = useId();
   const researchPhotoId = useId();
   const prefillId = useId();
+  const intentHintId = useId();
+  const modeHintId = useId();
+  const modelHintId = useId();
+  const keysId = useId();
+  const errorId = useId();
   // H-073 (5): the request left for this model, read once when the form opens and then forgotten.
   const [prefill] = useState(() => askPrefill(model.id));
   useEffect(() => clearAskPrefill(model.id), [model.id]);
@@ -123,6 +167,8 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const [research, setResearch] = useState(prefill?.research ?? false);
   const [aiModel, setAiModel] = useState<ProposalModel>(DEFAULT_MODEL);
   const [missing, setMissing] = useState(false);
+  // The request's length in characters when it was over MAX_INTENT at the last send, or null.
+  const [tooLong, setTooLong] = useState<number | null>(null);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [sending, setSending] = useState(false);
   // H-061 A8: the AI acts on it (an investigation), its run settings, aim and planner.
@@ -136,17 +182,63 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
   const actHintId = useId();
   const busy = useRef(false);
   const sent = useRef<{ request: string; key: string } | null>(null);
+  const field = useRef<HTMLTextAreaElement>(null);
+  // H-079: a touch keyboard's Enter is a new line; an earlier request put back by Reuse.
+  const touch = useCoarsePointer();
+  const [reusedNote, setReusedNote] = useState(false);
+  // Each Reuse, counted, so the same request reused twice still takes the focus.
+  const [reuses, setReuses] = useState(0);
+  const focusAfterReuse = useRef(false);
   const latest = model.latest_version;
+  const blocked = blockedReason !== null;
+
+  // The request grows with its words up to the box's cap (CSS max-height), then scrolls inside itself.
+  useLayoutEffect(() => {
+    const el = field.current;
+    if (el === null) return;
+    el.style.height = "auto";
+    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight}px`;
+    // Reused: the focus on the request, at the end of the words put back.
+    if (focusAfterReuse.current) {
+      focusAfterReuse.current = false;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
+  }, [intent, reuses]);
+
+  /** Reuse (H-079): the earlier request's words, mode and model in the box; nothing is sent. */
+  const reuse = (r: Reused) => {
+    setIntent(r.intent);
+    setMode(r.mode);
+    const named = r.model ?? DEFAULT_MODEL;
+    if (offeredModels().includes(named)) setAiModel(named);
+    setMissing(false);
+    setTooLong(null);
+    setReusedNote(true);
+    setReuses((n) => n + 1);
+    focusAfterReuse.current = true;
+  };
 
   const send = async () => {
-    if (busy.current) return;
+    if (busy.current || blocked) return;
     const words = intent.trim();
     if (words === "") {
       setMissing(true);
+      setTooLong(null);
+      field.current?.focus();
+      return;
+    }
+    const length = [...words].length;
+    if (length > MAX_INTENT) {
+      setMissing(false);
+      setTooLong(length);
+      field.current?.focus();
       return;
     }
     setMissing(false);
+    setTooLong(null);
     setProblem(null);
+    setReusedNote(false);
     let body: ProposalRequest | InvestigationRequest = { base_version_id: latest.id, mode, intent: words, output_locale: locale, ...(research ? { research: true } : {}), ...modelField(aiModel) };
     if (acting) {
       // A scenario's run settings are checked at their fields first; an edit takes none.
@@ -178,104 +270,150 @@ export function AskForm({ model, blockedReason, onCreated, onReload, photo = fal
     else setProblem(r.problem);
   };
 
+  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!sendsOnEnter(e, touch)) return;
+    // Enter never makes a new line here: it sends, or, while sending waits, does nothing.
+    e.preventDefault();
+    void send();
+  };
+
   const reload = async () => {
     const failed = await onReload();
     setProblem(failed);
   };
 
+  const invalid = missing || tooLong !== null;
+  // What the request says of itself: where a filled-in request came from, why sending waits, the version, the notice, the keys.
+  const describedBy = [prefill !== null ? prefillId : null, blocked ? reasonId : null, invalid ? errorId : null, intentHintId, noticeId, keysId].filter(Boolean).join(" ");
+  const researchDescribedBy = research ? (photo && !acting ? `${researchHintId} ${researchPhotoId}` : researchHintId) : undefined;
+
   return (
     <section className={styles.ask} data-ask aria-labelledby={headingId}>
       <h2 id={headingId}>{t("ask.title")}</h2>
+      <EarlierRequests model={model} investigations={canAct} onReuse={reuse} />
       {prefill !== null && (
-        <p id={prefillId} className={styles.hint} data-prefilled>
+        <p id={prefillId} className={`${styles.hint} ${styles.prefill}`} data-prefilled>
           {t("ask.prefill.stationTimes.note")}
         </p>
       )}
-      <TextField
-        multiline
-        rows={3}
-        label={t("ask.intent")}
-        autoFocus={prefill !== null}
-        aria-describedby={prefill !== null ? prefillId : undefined}
-        // H-061 A8 review round 1: while the AI acts on it, no word of a proposal's approval (REQ-019).
-        description={t(acting ? "investigation.intentHint" : "ask.intentHint", { version: String(latest.version) })}
-        notice={{ id: noticeId, text: t("ask.dataNotice") }}
-        value={intent}
-        onChange={(v) => {
-          setIntent(v);
-          if (missing && v.trim() !== "") setMissing(false);
-        }}
-        maxLength={20000}
-        isInvalid={missing}
-        errorMessage={t("ask.intentRequired")}
-      />
-      <div className={styles.askMode}>
-        <Select
-          label={t(acting ? "investigation.mode" : "ask.mode")}
-          items={[
-            { id: "edit", label: t("ask.mode.edit") },
-            { id: "scenario", label: t("ask.mode.scenario") },
-          ]}
-          value={mode}
-          onChange={(id) => setMode(id === "scenario" ? "scenario" : "edit")}
-        />
-        <p className={styles.hint}>
-          {mode === "edit"
-            ? t(acting ? "investigation.modeHint.edit" : "ask.modeHint.edit", { version: String(latest.version + 1) })
-            : t(acting ? "investigation.modeHint.scenario" : "ask.modeHint.scenario", { version: String(latest.version) })}
-        </p>
-      </div>
-      <ModelChoice value={aiModel} onChange={setAiModel} />
-      {canAct && (
-        // H-061 A8: the AI acts on it for the person, within the caps; off by default.
-        <div className={styles.askResearch} data-act>
-          <Checkbox isSelected={act} onChange={setAct} aria-describedby={actHintId}>
-            {t("investigation.act")}
+      <div className={styles.composer} data-composer data-invalid={invalid || undefined}>
+        <AriaTextField
+          className={styles.field}
+          value={intent}
+          onChange={(v) => {
+            setIntent(v);
+            setReusedNote(false);
+            if (missing && v.trim() !== "") setMissing(false);
+            if (tooLong !== null && [...v.trim()].length <= MAX_INTENT) setTooLong(null);
+          }}
+          isInvalid={invalid}
+          validationBehavior="aria"
+          autoFocus={prefill !== null}
+          aria-describedby={describedBy}
+        >
+          <Label className={styles.offscreen}>{t("ask.intent")}</Label>
+          <TextArea ref={field} className={styles.input} rows={3} placeholder={t("ask.placeholder")} enterKeyHint={touch ? "enter" : "send"} onKeyDown={onKeyDown} />
+        </AriaTextField>
+        <span id={keysId} className={styles.offscreen}>
+          {t(touch ? "ask.keys.touch" : "ask.keys")}
+        </span>
+        <div className={styles.tools} data-tools>
+          <Select
+            variant="chip"
+            label={t(acting ? "investigation.mode" : "ask.mode")}
+            items={[
+              { id: "edit", label: t("ask.mode.edit") },
+              { id: "scenario", label: t("ask.mode.scenario") },
+            ]}
+            value={mode}
+            onChange={(id) => setMode(id === "scenario" ? "scenario" : "edit")}
+            aria-describedby={modeHintId}
+          />
+          <ModelChip value={aiModel} onChange={setAiModel} hintId={modelHintId} />
+          {/* A toggle chip shows the start or the end of its option's name, which stays its whole name (WCAG 2.5.3). */}
+          {canAct && (
+            // H-061 A8: the AI acts on it for the person, within the caps; off by default.
+            <Checkbox variant="chip" isSelected={act} onChange={setAct} aria-label={t("investigation.act")} aria-describedby={act ? actHintId : undefined} data-act>
+              {t("investigation.act.chip")}
+            </Checkbox>
+          )}
+          <Checkbox variant="chip" isSelected={research} onChange={setResearch} aria-label={t("ask.research")} aria-describedby={researchDescribedBy} data-research>
+            {t("ask.research.chip")}
           </Checkbox>
+          <Button
+            variant="ai"
+            className={styles.send}
+            icon={<SendIcon />}
+            aria-label={t(acting ? "investigation.start" : "ask.send")}
+            blocked={blocked}
+            aria-describedby={blocked ? reasonId : undefined}
+            onPress={() => void send()}
+          />
+        </div>
+      </div>
+      {invalid && (
+        <p id={errorId} className={styles.error}>
+          {tooLong !== null ? t("ask.intentTooLong", { count: tooLong, max: MAX_INTENT }) : t("ask.intentRequired")}
+        </p>
+      )}
+      {blocked && (
+        <p id={reasonId} className={styles.reason}>
+          {blockedReason}
+        </p>
+      )}
+      <div className={styles.notes}>
+        <ModelHint value={aiModel} id={modelHintId} className={styles.hint} />
+        {acting && (
           <p id={actHintId} className={styles.hint}>
             {t(mode === "edit" ? "investigation.actHint.edit" : "investigation.actHint.scenario")}
           </p>
-        </div>
-      )}
-      {acting && mode === "scenario" && <RunSettings unit={timeUnit} form={runForm} onForm={setRunForm} issues={runIssues} objective={objective} onObjective={setObjective} />}
-      {acting && <PlannerChoice value={planner} onChange={setPlanner} />}
-      <div className={styles.askResearch}>
-        <Checkbox isSelected={research} onChange={setResearch} aria-describedby={photo && !acting ? `${researchHintId} ${researchPhotoId}` : researchHintId} data-research>
-          {t("ask.research")}
-        </Checkbox>
-        <p id={researchHintId} className={styles.hint}>
-          {t("ask.researchHint")}
-          {acting && (
-            <>
-              {gap}
-              {t(mode === "edit" ? "investigation.research.edit" : "investigation.research")}
-            </>
-          )}
-        </p>
-        {photo && !acting && (
+        )}
+        {research && (
+          <p id={researchHintId} className={styles.hint}>
+            {t("ask.researchHint")}
+            {acting && (
+              <>
+                {gap}
+                {t(mode === "edit" ? "investigation.research.edit" : "investigation.research")}
+              </>
+            )}
+          </p>
+        )}
+        {research && photo && !acting && (
           <p id={researchPhotoId} className={styles.hint} data-research-photo>
             {t("ask.researchHint.photo")}
           </p>
         )}
+        {acting && mode === "scenario" && <RunSettings unit={timeUnit} form={runForm} onForm={setRunForm} issues={runIssues} objective={objective} onObjective={setObjective} />}
+        {acting && <PlannerChoice value={planner} onChange={setPlanner} />}
+        {/* H-061 A8 review round 1: while the AI acts on it, no word of a proposal's approval (REQ-019). */}
+        <p className={styles.hint} data-version-line>
+          <span id={intentHintId}>{t(acting ? "investigation.intentHint" : "ask.intentHint", { version: String(latest.version) })}</span>
+          {gap}
+          <span id={modeHintId}>
+            {mode === "edit"
+              ? t(acting ? "investigation.modeHint.edit" : "ask.modeHint.edit", { version: String(latest.version + 1) })
+              : t(acting ? "investigation.modeHint.scenario" : "ask.modeHint.scenario", { version: String(latest.version) })}
+          </span>
+        </p>
+        <p id={noticeId} className={styles.hint}>
+          {t("ask.dataNotice")}
+        </p>
       </div>
-      <div className={styles.askRow}>
-        <Button variant="ai" icon={<SendIcon />} blocked={blockedReason !== null} aria-describedby={blockedReason !== null ? reasonId : undefined} onPress={() => void send()}>
-          {t(acting ? "investigation.start" : "ask.send")}
-        </Button>
-        {photo && !acting && <PhotoForm model={model} aiModel={aiModel} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />}
-        {blockedReason !== null && (
-          <p id={reasonId} className={styles.reason}>
-            {blockedReason}
-          </p>
-        )}
-      </div>
+      {photo && !acting && (
+        <div className={styles.photoRow}>
+          <PhotoForm model={model} aiModel={aiModel} blockedReason={blockedReason} reasonId={reasonId} noticeId={noticeId} onCreated={onCreated} />
+        </div>
+      )}
       {problem && (
-        <>
+        <div className={styles.problem}>
           <ProblemView problem={problem} headingLevel={3} guidance={advice(problem)} />
           {problem.code === "MODEL_VERSION_CONFLICT" && <Button onPress={() => void reload()}>{t("ask.reload")}</Button>}
-        </>
+        </div>
       )}
       <StatusRegion message={sending ? t(acting ? "investigation.starting" : "ask.sending") : null} />
+      {/* Reused: said to a screen reader, since the box shows it already. */}
+      <StatusRegion quiet message={reusedNote ? t("ask.log.reused") : null} />
     </section>
   );
 }

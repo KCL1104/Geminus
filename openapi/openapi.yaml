@@ -933,7 +933,11 @@ paths:
         table. T-025: any member; the model''s proposals oldest first (created_at, then ID), each as getProposal shows
         it, except that generated_by.segmenter never has boxes here (H-052: only getProposal carries a photo''s boxes;
         the segmenter''s provider, model and objects stay); the cursor is bound to the organization, the model and
-        this list.'
+        this list. H-079: order=newest lists them newest first (created_at, then ID, both descending), so a reader of
+        the latest few (the model page''s earlier requests) reads one small page instead of every page; the cursor is
+        bound to the order too, and one of the other order is 400 INVALID_REQUEST (reason cursor). Each item carries
+        its request''s words (intent), as getProposal does: only this organization''s proposals of this model, under
+        the same application filter and row-level security as before.'
       tags:
       - Proposals
       x-origin: PROPOSED
@@ -950,6 +954,17 @@ paths:
           $ref: ../schemas/common.schema.json#/$defs/ModelID
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/Limit'
+      - name: order
+        in: query
+        required: false
+        description: 'H-079: oldest (the default: created_at, then ID, ascending) or newest (both descending). Any
+          other value, or the parameter twice, is 400 INVALID_REQUEST (reason order).'
+        schema:
+          type: string
+          enum:
+          - oldest
+          - newest
+          default: oldest
       responses:
         '200':
           description: Success.
@@ -960,6 +975,47 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/http.schema.json#/$defs/Proposals
+              examples:
+                newest_first:
+                  summary: order=newest&limit=3 (H-079); each item with its request's words, a photo's without any
+                  value:
+                    items:
+                    - proposal_id: aip_01M4YDQK00ADN261CME3WV5HZD
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      mode: edit
+                      status: generating
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                      created_at: '2026-10-26T08:48:00Z'
+                      requires_confirmation: true
+                      intent: Burn-in takes boards in batches of 48; model that.
+                    - proposal_id: aip_01M4YDQK00ADN261CME3WV5HZC
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      mode: scenario
+                      status: generating
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                      created_at: '2026-10-26T08:40:00Z'
+                      requires_confirmation: true
+                      intent: What if the AOI buffer held 30 boards?
+                    - proposal_id: aip_01M4YDQK00ADN261CME3WV5HZB
+                      organization_id: org_01M4YDQK00Y5H2929M9WWZWTVH
+                      model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
+                      base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
+                      mode: edit
+                      status: generating
+                      created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
+                      created_at: '2026-10-26T08:31:00Z'
+                      requires_confirmation: true
+                      source_image:
+                        media_type: image/png
+                        width: 1200
+                        height: 520
+                        size_bytes: 21843
+                        content_hash: sha256:1111111111111111111111111111111111111111111111111111111111111111
+                    next_cursor: eyJ2IjoxLCJsIjoiYWktcHJvcG9zYWxzLW5ld2VzdCJ9
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1212,7 +1268,9 @@ paths:
         and reviewed the second answer as the first; the proposal''s state is that review''s, and generated_by.revised_after_check
         is true. A second request that failed leaves the first answer''s outcome, without the flag. H-065: requested_model
         is the model the request named (H-049), in every state, absent when it named none; a call on muse-wonder-1.0
-        may take up to 900 s, and its repair as long again.'
+        may take up to 900 s, and its repair as long again. H-079: intent is the request''s words as the server
+        stored them (read-only; never changed, never in audit), in every state; absent for a proposal asked for
+        with a photo. Every member of the organization may read them.'
       tags:
       - Proposals
       x-origin: SOURCE
@@ -1246,6 +1304,7 @@ paths:
                     model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
                     base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
                     mode: edit
+                    intent: Raise the tester capacity to 3.
                     status: generating
                     created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
                     created_at: '2026-10-20T08:30:00Z'
@@ -1271,6 +1330,7 @@ paths:
                     model_id: mdl_01M4YDQK004AGVNEGJQJ1NMM0N
                     base_version_id: mv_01M4YDQK00FRYWV7GS7X1QCXZR
                     mode: edit
+                    intent: Raise the tester capacity to 3.
                     status: ready
                     created_by: usr_01M4YDQK0016KTK4JM6KAHZ6BR
                     created_at: '2026-10-20T08:30:00Z'
@@ -4345,8 +4405,9 @@ paths:
       description: 'H-061 (PROPOSED, pending the owner''s confirmation of the D-008 amendment, ADR-032, the worker grants,
         the approval-record change and the background clock copy). Behind GEMINUS_INVESTIGATIONS, off by default: while it
         is off this route answers 503 SERVICE_UNAVAILABLE with details[0].code INVESTIGATIONS_OFF and changes nothing. Any
-        member; the model''s investigations newest first (created_at, then ID), each as getInvestigation shows it; the cursor
-        is bound to the organization, the model and this list.'
+        member; the model''s investigations newest first (created_at, then ID), each as getInvestigation shows it (H-079:
+        with intent, the person''s words, on one asked for in words); the cursor is bound to the organization, the model
+        and this list.'
       tags:
       - Investigations
       x-origin: PROPOSED
@@ -4385,6 +4446,7 @@ paths:
                       mode: scenario
                       source: request
                       source_analysis_id: null
+                      intent: Find a change that lowers the median lead time without a new line.
                       objective:
                         metric_path: /metrics/lead_time_minutes/p50
                         better: lower
@@ -4578,7 +4640,8 @@ paths:
         ended was not carried out); candidates carry the API''s own comparison of each what-if run against the baseline (the
         figures the AI was shown); best and closing_line are the server''s ranking and words, ai_outcome only the AI''s claim.
         With no worker alive past deadline_at, activity still says what was last recorded and the next createInvestigation
-        by the requester ends it with time_limit.'
+        by the requester ends it with time_limit. H-079: intent is the person''s words as the server stored them
+        (read-only; never in audit) on an investigation asked for in words; absent for one started from an analysis.'
       tags:
       - Investigations
       x-origin: PROPOSED
@@ -4614,6 +4677,7 @@ paths:
                     mode: scenario
                     source: request
                     source_analysis_id: null
+                    intent: Find a change that lowers the median lead time without a new line.
                     objective:
                       metric_path: /metrics/lead_time_minutes/p50
                       better: lower
@@ -4718,6 +4782,7 @@ paths:
                     mode: scenario
                     source: request
                     source_analysis_id: null
+                    intent: Find a change that lowers the median lead time without a new line.
                     objective:
                       metric_path: /metrics/lead_time_minutes/p50
                       better: lower
@@ -4890,6 +4955,7 @@ paths:
                     mode: edit
                     source: request
                     source_analysis_id: null
+                    intent: Model the two ICT testers as one step with capacity 2.
                     objective: null
                     output_locale: en
                     research: false
@@ -5035,6 +5101,7 @@ paths:
                     mode: scenario
                     source: request
                     source_analysis_id: null
+                    intent: Find a change that lowers the median lead time without a new line.
                     objective:
                       metric_path: /metrics/lead_time_minutes/p50
                       better: lower

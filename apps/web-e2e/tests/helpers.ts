@@ -43,6 +43,8 @@ export const sheet = { light: "rgb(250, 250, 250)", dark: "rgb(10, 10, 10)" } as
 /** The routes there are; pages that need a session show their signed-out state. */
 export const routes = [
   "/", "/projects", "/projects/prj_01M4YDQK00TA00000000000001", "/models/mdl_01M4YDQK00TA00000000000001", "/no-such-page", "/ui-gallery", "/ui-gallery/editor", "/auth/error?reason=expired",
+  // 2026-11-02: the model page's composer with the model's earlier requests above it.
+  "/ui-gallery/editor?state=requests",
   ...editorMotionPreviews,
   // T-032: a scenario and its runs' results (signed out), and the results view's review page in each state.
   "/scenarios/scn_01M4YDQK00TA00000000000001",

@@ -124,11 +124,13 @@ describe("asking the AI for a change on the model page", () => {
     const field = fieldOf(form, t("ask.intent"));
     const described = (x: Element) => (x.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean);
     expect(described(field)).toContain(line.id);
-    expect(described(field).map((id) => text(document.getElementById(id)))).toEqual([t("ask.intentHint", { version: "1" }), t("ask.dataNotice")]);
-    // Under the field: after the text area and its hint, before what to make and Send.
+    // 2026-11-02: the composer's description also says the keys (Enter sends, Shift+Enter a new line).
+    expect(described(field).map((id) => text(document.getElementById(id)))).toEqual([t("ask.intentHint", { version: "1" }), t("ask.dataNotice"), t("ask.keys")]);
+    // Under the composer's box (2026-11-02): after the text area, its Send button and the version line.
     const hint = document.getElementById(described(field)[0]!)!;
     const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-    expect([follows(field, line), follows(hint, line), follows(line, button(form, t("ask.send")))]).toEqual([true, true, true]);
+    expect([follows(field, line), follows(hint, line), follows(button(form, t("ask.send")), line)]).toEqual([true, true, true]);
+    expect(form.querySelector("[data-composer]")?.contains(line)).toBe(false);
     expect(line.closest("label")).toBeNull();
     // The photo is sent to the AI as well (this model's pack reads photos).
     const photo = button(form, t("photo.choose"));

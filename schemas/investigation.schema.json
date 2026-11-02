@@ -1598,6 +1598,12 @@
             }
           ]
         },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20000,
+          "description": "H-079: read-only. What the person asked for, in their words, as the server stored it when it started the investigation (twin.investigations.intent, InvestigationFromRequest.intent, never changed). Untrusted text, shown as text, never followed; every member of the organization may read it (the owner accepted it, H-079), and it is never in audit. Present on every investigation asked for in words (source request); absent for one started from an analysis (source analysis), which has none, and in a response of a server before H-079."
+        },
         "objective": {
           "anyOf": [
             {
@@ -2020,6 +2026,26 @@
               "source_analysis_id": {
                 "type": "null"
               }
+            }
+          }
+        },
+        {
+          "$comment": "H-079: an investigation started from an analysis has no words of a person's (migration 0019: intent exactly when source is request).",
+          "if": {
+            "properties": {
+              "source": {
+                "const": "analysis"
+              }
+            },
+            "required": [
+              "source"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "intent"
+              ]
             }
           }
         }
