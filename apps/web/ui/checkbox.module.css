@@ -44,3 +44,53 @@
   border-color: var(--gm-color-rule);
   background: var(--gm-color-well);
 }
+
+/* In a composer's tool row (Ask AI, 2026-11-02): a capsule with a small box
+   and the option's words. Ticked, the box is filled and checked (not the
+   colour alone), and the capsule takes the AI's accent, since the option is
+   what the AI does. */
+.chip {
+  gap: var(--gm-space-sm);
+  min-height: calc(var(--gm-control-height) - var(--gm-space-xs));
+  padding: 0 var(--gm-space-cell) 0 var(--gm-space-md);
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-raised);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+  line-height: var(--gm-line-height-label);
+  white-space: nowrap;
+  transition: background-color var(--gm-motion), border-color var(--gm-motion), color var(--gm-motion);
+}
+
+.chip[data-focus-visible] {
+  border-radius: var(--gm-radius-full);
+}
+
+.chip[data-hovered] {
+  background: var(--gm-color-hover);
+  color: var(--gm-color-ink);
+}
+
+.chip .box {
+  width: 14px;
+  height: 14px;
+}
+
+.chip .box svg {
+  width: 12px;
+  height: 12px;
+}
+
+.chip[data-selected] {
+  border-color: var(--gm-color-accent);
+  background: var(--gm-color-accent-wash);
+  color: var(--gm-color-ink);
+}
+
+.chip[data-selected] .box {
+  border-color: var(--gm-color-accent-fill);
+  background: var(--gm-color-accent-fill);
+  color: var(--gm-color-on-accent);
+}

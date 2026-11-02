@@ -11,6 +11,9 @@
 // and every request is on the default. H-065: Muse Wonder is the choice for
 // harder changes, and its line says it thinks longer (several minutes) and
 // costs more; still off in production builds until live tests pass.
+// 2026-11-02: in Ask AI's composer the same choice is a chip of the tool
+// row (ModelChip): the same models, default and offer, its line under the
+// box (ModelHint) as its description.
 import { useId } from "react";
 import type { ProposalModel } from "../../lib/contracts";
 import { useI18n } from "../../lib/i18n/provider";
@@ -48,5 +51,35 @@ export function ModelChoice({ value, onChange, label }: {
         {t(`ask.modelHint.${value}`)}
       </p>
     </div>
+  );
+}
+
+/** Ask AI's composer (2026-11-02): the same choice as a chip of its tool row; hintId names the line ModelHint shows under the box. Nothing when there is one model. */
+export function ModelChip({ value, onChange, hintId }: { value: ProposalModel; onChange: (model: ProposalModel) => void; hintId: string }) {
+  const { t } = useI18n();
+  const models = offeredModels();
+  if (models.length < 2) return null;
+  return (
+    <span data-model-choice>
+      <Select
+        variant="chip"
+        label={t("ask.model")}
+        items={models.map((id) => ({ id, label: t(`ai.model.${id}`) }))}
+        value={value}
+        onChange={(id) => onChange(models.find((m) => m === id) ?? DEFAULT_MODEL)}
+        aria-describedby={hintId}
+      />
+    </span>
+  );
+}
+
+/** ModelChip's line, what the chosen model means; nothing when there is one model. */
+export function ModelHint({ value, id, className }: { value: ProposalModel; id: string; className?: string }) {
+  const { t } = useI18n();
+  if (offeredModels().length < 2) return null;
+  return (
+    <p id={id} className={className} data-model-hint>
+      {t(`ask.modelHint.${value}`)}
+    </p>
   );
 }

@@ -10,9 +10,10 @@
 // indices shift; they never appear or go away by themselves. The model's
 // runs (H-072: the line in motion) are given to it too, completed runs of
 // version 1 with their Result and trace as the engine wrote them; it starts
-// none.
+// none. The model's earlier requests to the AI (the composer's list,
+// 2026-11-02) are given to it too, and listProposals answers them.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
-import type { Draft, JsonPatch, Model, ModelIR, ModelVersion, Result as SimulationResult, Run, TraceArtifact, ValidationIssue } from "../../../lib/contracts";
+import type { Draft, JsonPatch, Model, ModelIR, ModelVersion, Proposal, Result as SimulationResult, Run, TraceArtifact, ValidationIssue } from "../../../lib/contracts";
 import { applyPatch, parsePointer, pointer } from "../../../features/model-editor/patch";
 import { SAMPLE_PROPOSAL_ID } from "../proposal/samples";
 
@@ -42,6 +43,8 @@ export type StandInOptions = {
   rejectNextSave?: { path: string; reason: string; code: string }[];
   /** The model's runs (none by default). */
   runs?: StandInRun[];
+  /** The model's AI proposals, oldest first, as listProposals answers them (none by default). */
+  requests?: Proposal[];
 };
 
 export type Call = { method: string; path: string; ifMatch: string | null; body: unknown };
@@ -121,6 +124,7 @@ export function createStandIn(opts: StandInOptions) {
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(version)}/scenarios`) return json(200, { items: [], next_cursor: null });
     if (method === "GET" && path === `/api/v1/model-versions/${versionId(1)}`) return json(200, firstVersion());
     if (method === "GET" && path === `${base}/simulations`) return json(200, { items: runs.map((r) => r.run), next_cursor: null });
+    if (method === "GET" && path === `${base}/ai-proposals`) return json(200, { items: opts.requests ?? [], next_cursor: null });
     const sim = /^\/api\/v1\/simulations\/([^/]+)\/(results|trace)$/.exec(path);
     if (method === "GET" && sim) {
       const r = runById(sim[1]!);

@@ -32,6 +32,43 @@
   }
 }
 
+/* In a composer's tool row (Ask AI, 2026-11-02): a compact capsule whose
+   visible words are the chosen value; the label is hidden from sight and
+   stays the start of the control's name. */
+.chip {
+  position: relative;
+}
+
+/* One ring, the capsule's own (the trigger's), not a second around the chip. */
+.chip[data-focus-visible] {
+  outline: none;
+}
+
+.chip .label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.chip .trigger {
+  gap: var(--gm-space-xs);
+  min-height: calc(var(--gm-control-height) - var(--gm-space-xs));
+  padding: 0 var(--gm-space-sm) 0 var(--gm-space-cell);
+  border-radius: var(--gm-radius-full);
+  box-shadow: none;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+  white-space: nowrap;
+}
+
+.chip .trigger[data-hovered] {
+  color: var(--gm-color-ink);
+}
+
 .trigger {
   display: inline-flex;
   align-items: center;

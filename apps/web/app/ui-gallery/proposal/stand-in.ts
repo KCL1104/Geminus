@@ -26,8 +26,13 @@
 // H-061 A8: createInvestigation answers 202
 // with a new investigation's ID (no agent runs), and aiEdit gives the draft
 // and its version the labels of a change an AI investigation wrote.
+// The composer's earlier requests (2026-11-02): listProposals answers the
+// model's proposals oldest first, as the server does (the given earlier
+// ones, the sample and those asked for here), a page of pageSize at a time
+// with an opaque cursor; listInvestigations the given investigations
+// (newest first) or a refusal; refuseList refuses the next listProposals.
 import { draftETag, parseDraftETag } from "../../../lib/api/etag";
-import type { Approval, Draft, InvestigationRequest, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
+import type { Approval, Draft, Investigation, InvestigationRequest, JsonPatch, Model, ModelIR, ModelVersion, Proposal, ProposalRequest, Scenario } from "../../../lib/contracts";
 import { investigationId } from "../investigation/samples";
 import { applyPatch } from "../../../features/model-editor/patch";
 import { SAMPLE_MODEL_ID, sampleLine } from "../editor/sample-line";
@@ -56,6 +61,14 @@ export type ProposalStandInOptions = {
   proposal?: Partial<Proposal>;
   /** H-061 A8: the draft holds a change an AI investigation wrote, and the version it is on includes one (Draft.ai_edit, ModelVersion.ai_edit). */
   aiEdit?: { investigation: string; proposal: string };
+  /** The model's proposals from before the page opened (listProposals lists them first, by created_at). */
+  earlier?: Proposal[];
+  /** How many proposals a listProposals page holds (the server's limit, 100, by default). */
+  pageSize?: number;
+  /** The next listProposals is refused with this. */
+  refuseList?: Refusal;
+  /** listInvestigations' items, newest first (none by default), or its refusal (every time). */
+  investigations?: Investigation[] | Refusal;
 };
 
 export type Call = { method: string; path: string; key: string | undefined; body: unknown; contentType: string | null };
@@ -119,6 +132,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
   const photos = new Map<string, Uint8Array<ArrayBuffer>>();
   const answers = new Map<string, { fingerprint: string; status: number; body: unknown }>();
   let refusal = opts.refuseNext;
+  let listRefusal = opts.refuseList;
   let held: (() => void)[] = [];
   let newerOnApprove = sample?.newer === "onApprove";
 
@@ -189,7 +203,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     s.proposal = { ...s.proposal, ...change, decided_by: USER, decided_at: CLOCK };
   };
 
-  async function respond(method: string, path: string, key: string | undefined, ifMatch: string | null, body: unknown, form?: FormData): Promise<Response> {
+  async function respond(method: string, path: string, key: string | undefined, ifMatch: string | null, body: unknown, form?: FormData, query: URLSearchParams = new URLSearchParams()): Promise<Response> {
     const m = `/api/v1/models/${SAMPLE_MODEL_ID}`;
     if (method === "GET" && path === m) return json(200, model());
     if (method === "GET" && path === `${m}/draft`) return json(200, draftBody(), draftETag(draft.revision));
@@ -228,6 +242,24 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
         proposals.set(id, { proposal: generating, answer: { ...answer, base_version_id: req.base_version_id, ...requested }, polls: opts.generatingPolls ?? 2 });
         return { status: 202, body: { proposal_id: id, status: "generating" }, keep: true };
       });
+    }
+    // listProposals as the server answers it: oldest first (created_at, then ID), a page at a time, the cursor opaque.
+    if (method === "GET" && path === `${m}/ai-proposals`) {
+      if (listRefusal !== undefined) {
+        const r = listRefusal;
+        listRefusal = undefined;
+        return error(r.status, r.code, r.message, r.details);
+      }
+      const all = [...(opts.earlier ?? []), ...[...proposals.values()].map((x) => x.proposal)].sort((a, b) => (a.created_at === b.created_at ? (a.proposal_id < b.proposal_id ? -1 : 1) : a.created_at < b.created_at ? -1 : 1));
+      const size = opts.pageSize ?? 100;
+      const from = query.get("cursor") === null ? 0 : Number(atob(query.get("cursor")!));
+      const next = from + size < all.length ? btoa(String(from + size)) : null;
+      return json(200, { items: all.slice(from, from + size), next_cursor: next });
+    }
+    if (method === "GET" && path === `${m}/investigations`) {
+      const given = opts.investigations ?? [];
+      if (!Array.isArray(given)) return error(given.status, given.code, given.message, given.details);
+      return json(200, { items: given, next_cursor: null });
     }
     // H-061 A8: createInvestigation as openapi.yaml answers it (202 with the investigation's ID); the stand-in runs no agent.
     if (method === "POST" && path === `${m}/investigations`) {
@@ -355,7 +387,7 @@ export function createProposalStandIn(opts: ProposalStandInOptions) {
     const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : form !== undefined ? formCall(form) : undefined;
     const key = headers.get("Idempotency-Key") ?? undefined;
     calls.push({ method, path: url.pathname, key, body, contentType: headers.get("Content-Type") });
-    return respond(method, url.pathname, key, headers.get("If-Match"), body, form);
+    return respond(method, url.pathname, key, headers.get("If-Match"), body, form, url.searchParams);
   }) as typeof globalThis.fetch;
 
   return {
