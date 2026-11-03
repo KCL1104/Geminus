@@ -89,7 +89,7 @@ export const en = {
   "landing.meta.named": "Each proposal and explanation names the model that wrote it.",
   "landing.meta.searchName": "Web search",
   "landing.meta.tool": "Meta Model API tool",
-  "landing.shot.proposed.alt": "DryLine proposal on the live demo, written by Muse Spark 1.3 (Meta) and ready for review: a scenario for the electronics assembly and test line that raises the FCT testers from 3 to 4 and the buffer before FCT from 10 to 20 boards, with the AI's assumptions. Checked by DryLine, low risk, beside the AI's own claim, low risk at 72% confidence. The decision: Approve and save the scenario, or Reject.",
+  "landing.shot.proposed.alt": "DryLine proposal on the live demo, written by Muse Spark 1.3 (Meta) and ready for review: a scenario for the electronics assembly and test line that raises the FCT testers from 3 to 4 and the buffer before FCT from 10 to 20 boards, with the AI's assumptions. Checked by Geminus (the product's former name), low risk, beside the AI's own claim, low risk at 72% confidence. The decision: Approve and save the scenario, or Reject.",
   "landing.shot.proposed.caption": "Live demo, 29 Oct 2026: Muse Spark 1.3 turned its own suggestion into a scenario for a person to decide.",
   "landing.industries.title": "Start from a template",
   "landing.industries.intro": "Each template is a synthetic plant. One simulation engine runs them all.",

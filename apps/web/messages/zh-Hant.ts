@@ -88,7 +88,7 @@ export const zhHant: Catalog = {
   "landing.meta.named": "每份提案和解讀都標出是哪個模型寫的。",
   "landing.meta.searchName": "網路搜尋",
   "landing.meta.tool": "Meta Model API 工具",
-  "landing.shot.proposed.alt": "線上示範的 DryLine 提案，由 Muse Spark 1.3（Meta）撰寫、等待審閱：電子組裝與測試產線的一個情境，把 FCT 測試機從 3 台增加到 4 台，FCT 前的緩衝從 10 片增加到 20 片，並附上 AI 的假設。DryLine 檢查為低風險，AI 自稱低風險、信心 72%。決定：批准並儲存情境，或拒絕。",
+  "landing.shot.proposed.alt": "線上示範的 DryLine 提案，由 Muse Spark 1.3（Meta）撰寫、等待審閱：電子組裝與測試產線的一個情境，把 FCT 測試機從 3 台增加到 4 台，FCT 前的緩衝從 10 片增加到 20 片，並附上 AI 的假設。Geminus（產品舊名）檢查為低風險，AI 自稱低風險、信心 72%。決定：批准並儲存情境，或拒絕。",
   "landing.shot.proposed.caption": "線上示範，2026 年 10 月 29 日：Muse Spark 1.3 把自己的建議寫成情境，等人決定。",
   "landing.industries.title": "從範本開始",
   "landing.industries.intro": "每個範本都是一座合成的工廠，全部由同一個模擬引擎來跑。",

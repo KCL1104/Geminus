@@ -61,7 +61,7 @@ The product must let users see the difference between two operations: "save the 
 
 ## Brand Commitments
 
-The product name is **DryLine** (pronounced "DRY-line": a dry run of the line), written with a capital D and L, possessive DryLine's, and kept in Latin letters in zh-Hant. It was Geminus until 2026-11-03 (H-087). There is no logo, brand color or tone-of-voice guide yet (H-012); these are built by the design system and approved by the owner.
+The product name is **DryLine** (pronounced "DRY-line": a dry run of the line), written with a capital D and L, possessive DryLine's, and kept in Latin letters in zh-Hant. It was Geminus until 2026-11-03 (H-087). The brand mark (two offset squares, the twin) and the one accent color are set by the design system in DESIGN.md (H-041, H-042); there is no tone-of-voice guide yet.
 
 The visual constraint the owner set (H-012): the dark theme uses grey-black, not blue.
 
