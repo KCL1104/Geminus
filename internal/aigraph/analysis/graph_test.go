@@ -107,14 +107,15 @@ type calls struct {
 }
 
 type observed struct {
-	md  provider.Metadata
-	err error
+	call int
+	md   provider.Metadata
+	err  error
 }
 
-func (c *calls) called(_ context.Context, md provider.Metadata, err error) {
+func (c *calls) called(_ context.Context, call int, md provider.Metadata, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.seen = append(c.seen, observed{md, err})
+	c.seen = append(c.seen, observed{call, md, err})
 }
 
 func (c *calls) all() []observed {
@@ -264,7 +265,9 @@ func TestAnInvestigationsAnalysisCarriesItsRule(t *testing.T) {
 
 // Each failure is an *analysis.Error of its kind, carrying what the
 // handler maps (the cause, the reasons, the call's metadata, the issues);
-// nothing before the call reaches the provider or the observer.
+// nothing before the call reaches the provider or the observer. A failed
+// call is not asked again; an ungrounded answer is, once (H-086 (R)): the
+// fake repeats it, so the second is ungrounded too, with its own issues.
 func TestFailuresAreTyped(t *testing.T) {
 	ungrounded, err := json.Marshal(provider.AnalysisOutput{
 		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "Throughput rose by 4242.5."},
@@ -284,6 +287,7 @@ func TestFailuresAreTyped(t *testing.T) {
 		budget provider.Budget
 		kind   analysis.Kind
 		called bool
+		calls  int // with called: 1 unless set
 		check  func(t *testing.T, e *analysis.Error)
 	}{
 		{name: "the version does not decode", change: func(in *analysis.Input) { in.Version.IR = []byte(`{"model_id":`) }, kind: analysis.VersionUndecodable},
@@ -336,9 +340,13 @@ func TestFailuresAreTyped(t *testing.T) {
 				}
 			}},
 		{name: "the answer is ungrounded", script: func(f *fake.Backend) { f.Script(provider.RoleAnalyst, question, ungrounded) },
-			kind: analysis.Ungrounded, called: true, check: func(t *testing.T, e *analysis.Error) {
+			kind: analysis.Ungrounded, called: true, calls: 2, check: func(t *testing.T, e *analysis.Error) {
 				if len(e.Issues) == 0 || e.Issues[0].Code != analyst.NumberUnverified || e.Issues[0].Path != "/scenario/summary" || e.Metadata == nil || e.Metadata.OutputHash == "" {
 					t.Errorf("%+v %+v", e.Issues, e.Metadata)
+				}
+				if r := e.Recheck; r == nil || r.Outcome != analysis.RecheckUngrounded || r.Issues != len(e.Issues) || r.Call == nil ||
+					!strings.HasSuffix(r.Call.TemplateVersion, "+reground-0.1.0") || e.Metadata.TemplateVersion != "analyst-0.3.3" {
+					t.Errorf("the re-ask %+v", r)
 				}
 			}},
 	} {
@@ -368,11 +376,18 @@ func TestFailuresAreTyped(t *testing.T) {
 			if c.check != nil {
 				c.check(t, e)
 			}
-			if n := len(f.Requests()); (n == 1) != c.called || n > 1 {
-				t.Errorf("%d provider requests", n)
+			calls := 0
+			if c.called {
+				calls = max(1, c.calls)
 			}
-			if n := len(obs.all()); (n == 1) != c.called || n > 1 {
-				t.Errorf("observed %d calls", n)
+			if n := len(f.Requests()); n != calls {
+				t.Errorf("%d provider requests, want %d", n, calls)
+			}
+			if n := len(obs.all()); n != calls {
+				t.Errorf("observed %d calls, want %d", n, calls)
+			}
+			if c.kind != analysis.Ungrounded && e.Recheck != nil {
+				t.Errorf("a failure that is not the check's was asked again: %+v", e.Recheck)
 			}
 			if !c.called && e.Metadata != nil {
 				t.Errorf("metadata before any call: %+v", e.Metadata)
@@ -487,7 +502,10 @@ func TestCancellation(t *testing.T) {
 		}
 		var answered []error
 		g, err = analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
-			Called: func(_ context.Context, _ provider.Metadata, err error) { answered = append(answered, err); cancel() }})
+			Called: func(_ context.Context, _ int, _ provider.Metadata, err error) {
+				answered = append(answered, err)
+				cancel()
+			}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -595,7 +613,9 @@ func TestTheObserverGetsTheCallersContext(t *testing.T) {
 			}
 			var seen []any
 			g, err := analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
-				Called: func(ctx context.Context, _ provider.Metadata, _ error) { seen = append(seen, ctx.Value(callerKey{})) }})
+				Called: func(ctx context.Context, _ int, _ provider.Metadata, _ error) {
+					seen = append(seen, ctx.Value(callerKey{}))
+				}})
 			if err != nil {
 				t.Fatal(err)
 			}

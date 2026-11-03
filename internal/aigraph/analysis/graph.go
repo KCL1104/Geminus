@@ -2,9 +2,11 @@
 // slice E2 of docs/design/H-056_INVESTIGATIONS_ON_EINO.md §6.4): the
 // orchestration of an explanation of simulation results, from what the
 // analysis job read under its lease to the checked analysis, as a DAG of
-// five nodes:
+// five nodes and, since H-086 (R), the one re-ask of an answer the check
+// refused as its branch:
 //
 //		decode → compare → build_context → generate → ground
+//		                                               ↳ recheck_context → generate_2 → ground_2
 //
 //	  - decode: the analyzed run's version (model.Decode), the model's domain
 //	    pack, the stored results (strictly) and the run's frozen patch;
@@ -21,7 +23,33 @@
 //	    the model the answer names, the output bound, the strict decoding of
 //	    the answer and no-store;
 //	  - ground: the server's check of the answer against what it supplied
-//	    (analyst.Check).
+//	    (analyst.Check);
+//	  - recheck_context (H-086 (R), the owner's choice of 2026-11-03): an
+//	    answer the check refused is asked again once, when the client handed
+//	    it back (provider.AnalysisResult.Prior) and the attempt has not
+//	    stopped: the follow-up (aicontext.ReviseAnalysis) is the first prompt
+//	    again, the model's own answer as its turn and the check's issues
+//	    (code, path and the rule the code stands for), at most
+//	    aicontext.MaxRepairIssues;
+//	  - generate_2: the second call, through the same metered ChatModel as
+//	    the first (its own reservation and settlement, the analyst's output
+//	    bound and timeouts, the same attribution, so an investigation's
+//	    ceiling counts it);
+//	  - ground_2: the same check of the second answer against the same
+//	    supplied data, never loosened.
+//
+// Only the check's refusal is asked again: a failed first call (a provider
+// error, a spend cap, a truncated or schema-invalid answer, a cancellation)
+// ends the graph as before, and so does an attempt that stopped before the
+// re-ask (the check's refusal is then final, as before: no attempt asks, and
+// pays, again). The second answer, when it passes, is the analysis (Output,
+// with its Recheck); when it does not, the analysis is ungrounded with the
+// second answer's issues. A second call that fails, whatever its error (the
+// attempt stopping during it included), leaves the first refusal as it was:
+// Ungrounded with the first answer's issues, the Recheck saying how it
+// failed. Nothing asks a third time: the branch has no cycle. Neither answer
+// is kept but the analysis that passed: the first answer goes back to the
+// model in memory only (provider.PriorAnswer).
 //
 // Every failure ends the graph with an *Error of its Kind, carrying what
 // the job handler (internal/analyses/analyzer) maps to the job's failure and
@@ -56,6 +84,7 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/cloudwego/eino/compose"
@@ -79,6 +108,10 @@ const (
 	NodeContext  = "build_context"
 	NodeGenerate = "generate"
 	NodeGround   = "ground"
+	// H-086 (R): the one re-ask of an answer the check refused.
+	NodeRecheckContext  = "recheck_context"
+	NodeRecheckGenerate = "generate_2"
+	NodeRecheckGround   = "ground_2"
 )
 
 // PackLookup finds a model's domain pack; *domainpack.Registry is one.
@@ -94,10 +127,11 @@ type Config struct {
 	// Budget bounds the context the graph builds; it is the client's.
 	Budget provider.Budget
 	Packs  PackLookup
-	// Called, when set, is told of each provider call as it returns: its
+	// Called, when set, is told of each provider call as it returns: which
+	// call of the analysis it was (1, or 2 for the re-ask, H-086 (R)), its
 	// metadata and the client's error (nil when the call answered). The job
 	// handler logs it.
-	Called func(ctx context.Context, md provider.Metadata, err error)
+	Called func(ctx context.Context, call int, md provider.Metadata, err error)
 }
 
 // Version is the analyzed run's model version as the job read it.
@@ -133,10 +167,49 @@ type Input struct {
 	Investigation bool
 }
 
-// Output is the checked analysis and its call's metadata.
+// Output is the checked analysis and the first call's metadata; Recheck
+// is set when the analysis is the re-ask's answer (H-086 (R)).
 type Output struct {
 	Analysis provider.AnalysisOutput
 	Metadata provider.Metadata
+	Recheck  *Recheck
+}
+
+// What the one re-ask came to (Recheck.Outcome; the stored metadata's
+// repair.outcome and the audit's repair, H-086 (R)).
+const (
+	// RecheckGrounded: the second answer passed the check and is the
+	// analysis.
+	RecheckGrounded = "grounded"
+	// RecheckUngrounded: the check refused the second answer too; the
+	// analysis is ungrounded with its issues.
+	RecheckUngrounded = "ungrounded"
+	// RecheckFailed: the second call failed (Code says how); the first
+	// answer's refusal stands.
+	RecheckFailed = "failed"
+)
+
+// Recheck is what the one re-ask of an answer the check refused did (H-086
+// (R)): never an answer or a prompt.
+type Recheck struct {
+	// Issues is how many of the first answer's issues the follow-up listed,
+	// NotListed how many it left out.
+	Issues, NotListed int
+	// Outcome is RecheckGrounded, RecheckUngrounded or RecheckFailed.
+	Outcome string
+	// Code is a failed second call's code: "AI_" and the provider client's
+	// code in upper case, as a job failure names it (INTERNAL for an error
+	// that is not the client's).
+	Code string
+	// Call is the second call's metadata (also when it failed: what it
+	// cost).
+	Call *provider.Metadata
+}
+
+// Revised reports whether the second answer was checked: the analysis, or
+// the issues it fails with, are the second answer's.
+func (r *Recheck) Revised() bool {
+	return r != nil && (r.Outcome == RecheckGrounded || r.Outcome == RecheckUngrounded)
 }
 
 // Kind is what failed.
@@ -163,8 +236,13 @@ const (
 	// Metadata).
 	CallFailed Kind = "call_failed"
 	// Ungrounded: the answer is not grounded in the results (Issues and
-	// Metadata).
+	// Metadata; Recheck when it was asked again, H-086 (R): the issues are
+	// then the second answer's, unless the second call failed).
 	Ungrounded Kind = "ungrounded"
+	// RecheckRefused: the follow-up of an answer the check refused cannot be
+	// built (Err, an aicontext error: the server's own fault; Metadata and
+	// Issues are the first answer's).
+	RecheckRefused Kind = "recheck_refused"
 )
 
 // Error is a failed analysis. Its text names only the kind: no cause,
@@ -175,10 +253,14 @@ type Error struct {
 	Err error
 	// Reasons are why the server does not compare the runs (NotComparable).
 	Reasons []string
-	// Metadata is the call's (CallFailed, Ungrounded); nil before a call.
+	// Metadata is the call's (CallFailed, Ungrounded, RecheckRefused: the
+	// first call's); nil before a call.
 	Metadata *provider.Metadata
-	// Issues are why the answer is not grounded (Ungrounded).
+	// Issues are why the answer is not grounded (Ungrounded, RecheckRefused).
 	Issues []analyst.Issue
+	// Recheck is what the one re-ask did (Ungrounded; nil when there was
+	// none).
+	Recheck *Recheck
 }
 
 func (e *Error) Error() string { return "analysis: " + string(e.Kind) }
@@ -188,7 +270,7 @@ func (e *Error) Unwrap() error { return e.Err }
 
 // Graph is the compiled analyst graph.
 type Graph struct {
-	r compose.Runnable[Input, Output]
+	r compose.Runnable[Input, *ended]
 }
 
 // New checks cfg and compiles the graph.
@@ -205,9 +287,9 @@ func New(cfg Config) (*Graph, error) {
 	}
 	n := &nodes{model: m, budget: cfg.Budget, packs: cfg.Packs, called: cfg.Called}
 	if n.called == nil {
-		n.called = func(context.Context, provider.Metadata, error) {}
+		n.called = func(context.Context, int, provider.Metadata, error) {}
 	}
-	g := compose.NewGraph[Input, Output]()
+	g := compose.NewGraph[Input, *ended]()
 	for _, s := range []struct {
 		key  string
 		node *compose.Lambda
@@ -217,14 +299,37 @@ func New(cfg Config) (*Graph, error) {
 		{NodeContext, compose.InvokableLambda(guard(n.buildContext))},
 		{NodeGenerate, compose.InvokableLambda(guard(n.generate))},
 		{NodeGround, compose.InvokableLambda(guard(n.ground))},
+		{NodeRecheckContext, compose.InvokableLambda(guard(n.recheckContext))},
+		{NodeRecheckGenerate, compose.InvokableLambda(guard(n.generateAgain))},
+		{NodeRecheckGround, compose.InvokableLambda(guard(n.groundAgain))},
 	} {
 		if err := g.AddLambdaNode(s.key, s.node); err != nil {
 			return nil, fmt.Errorf("analysis: %w", err)
 		}
 	}
 	for _, e := range [][2]string{{compose.START, NodeDecode}, {NodeDecode, NodeCompare}, {NodeCompare, NodeContext},
-		{NodeContext, NodeGenerate}, {NodeGenerate, NodeGround}, {NodeGround, compose.END}} {
+		{NodeContext, NodeGenerate}, {NodeGenerate, NodeGround}, {NodeRecheckGenerate, NodeRecheckGround}, {NodeRecheckGround, compose.END}} {
 		if err := g.AddEdge(e[0], e[1]); err != nil {
+			return nil, fmt.Errorf("analysis: %w", err)
+		}
+	}
+	// H-086 (R): a refused answer is asked again only when ground chose it,
+	// and the second call is made only when its follow-up was built.
+	for _, b := range []struct {
+		from, to string
+		pick     func(*ended) bool
+	}{
+		{NodeGround, NodeRecheckContext, func(e *ended) bool { return e.reask }},
+		{NodeRecheckContext, NodeRecheckGenerate, func(e *ended) bool { return e.recheck != nil }},
+	} {
+		to, pick := b.to, b.pick
+		branch := compose.NewGraphBranch(func(_ context.Context, e *ended) (string, error) {
+			if pick(e) {
+				return to, nil
+			}
+			return compose.END, nil
+		}, map[string]bool{to: true, compose.END: true})
+		if err := g.AddBranch(b.from, branch); err != nil {
 			return nil, fmt.Errorf("analysis: %w", err)
 		}
 	}
@@ -245,7 +350,7 @@ func (g *Graph) Run(ctx context.Context, in Input) (Output, error) {
 	// the attempt's themselves (attempt), so the run's own never ends.
 	out, err := g.r.Invoke(context.WithValue(context.WithoutCancel(ctx), attemptKey{}, ctx), in)
 	if err == nil {
-		return out, nil
+		return out.outcome()
 	}
 	var p *nodePanic
 	if errors.As(err, &p) {
@@ -263,7 +368,7 @@ type nodes struct {
 	model  *einomodel.Metered
 	budget provider.Budget
 	packs  PackLookup
-	called func(context.Context, provider.Metadata, error)
+	called func(context.Context, int, provider.Metadata, error)
 }
 
 // What each node hands the next.
@@ -289,7 +394,40 @@ type (
 		*prompted
 		result provider.AnalysisResult
 	}
+	// ended is what the check made of the first answer (ground) and of the
+	// re-ask's (ground_2), and what the re-ask did: the graph's end.
+	ended struct {
+		*answered
+		first   checked
+		reask   bool                     // ground: the refused answer is asked again
+		ask     provider.AnalysisContext // recheck_context: the follow-up
+		answer  *provider.AnalysisResult // generate_2: the second answer; nil when the call failed
+		second  *checked                 // ground_2: the second answer's check; nil without one
+		recheck *Recheck
+	}
+	// checked is one answer as the check left it: the analysis to store, or
+	// the issues.
+	checked struct {
+		out    provider.AnalysisOutput
+		issues []analyst.Issue
+	}
 )
+
+// outcome is the graph's end as Run returns it: the checked analysis (the
+// second answer's when it was asked again and passed), or Ungrounded with
+// the issues of the last answer the check saw. The metadata is the first
+// call's; the re-ask's is in the Recheck.
+func (e *ended) outcome() (Output, error) {
+	md := e.result.Metadata
+	last := e.first
+	if e.second != nil {
+		last = *e.second
+	}
+	if len(last.issues) > 0 {
+		return Output{}, &Error{Kind: Ungrounded, Issues: last.issues, Metadata: &md, Recheck: e.recheck}
+	}
+	return Output{Analysis: last.out, Metadata: md, Recheck: e.recheck}, nil
+}
 
 // result decodes a stored Result strictly.
 func result(data []byte) (*simulation.Result, error) {
@@ -376,7 +514,18 @@ func (n *nodes) buildContext(_ context.Context, c *compared) (*prompted, error) 
 }
 
 func (n *nodes) generate(ctx context.Context, p *prompted) (*answered, error) {
-	ac := p.prompt.Context
+	res, md, err := n.ask(ctx, p.prompt.Context)
+	n.called(ctx, 1, md, err)
+	if err != nil {
+		return nil, &Error{Kind: CallFailed, Err: err, Metadata: &md}
+	}
+	return &answered{prompted: p, result: res}, nil
+}
+
+// ask is one explanation call through the metered ChatModel: the sealed
+// prompt's own texts, the context in the user message, and the client's
+// result, or its error (the client's own) and the call's metadata.
+func (n *nodes) ask(ctx context.Context, ac provider.AnalysisContext) (provider.AnalysisResult, provider.Metadata, error) {
 	msgs := []*schema.Message{
 		{Role: schema.System, Content: ac.Prompt.System},
 		{Role: schema.User, Content: ac.Prompt.User(), Extra: map[string]any{einomodel.CallKey: &einomodel.Call{Analysis: &ac}}},
@@ -388,26 +537,92 @@ func (n *nodes) generate(ctx context.Context, p *prompted) (*answered, error) {
 		if errors.As(err, &ce) {
 			md, cause = ce.Metadata, ce.Err
 		}
-		n.called(ctx, md, cause)
-		return nil, &Error{Kind: CallFailed, Err: cause, Metadata: &md}
+		return provider.AnalysisResult{}, md, cause
 	}
 	r, _ := msg.Extra[einomodel.ResultKey].(*einomodel.Result)
 	if r == nil || r.Analysis == nil {
 		// Metered answers every explanation with its typed result.
 		panic("analysis: the metered chat model answered without its result")
 	}
-	n.called(ctx, r.Analysis.Metadata, nil)
-	return &answered{prompted: p, result: *r.Analysis}, nil
+	return *r.Analysis, r.Analysis.Metadata, nil
 }
 
-func (n *nodes) ground(_ context.Context, a *answered) (Output, error) {
-	out, issues := analyst.Check(analyst.Input{Output: a.result.Output, Allowed: a.prompt.Allowed, Supplied: a.prompt.Supplied,
+// check is the server's check of an answer against what the first context
+// supplied (the re-ask supplies nothing more).
+func check(a *answered, answer provider.AnalysisOutput) checked {
+	out, issues := analyst.Check(analyst.Input{Output: answer, Allowed: a.prompt.Allowed, Supplied: a.prompt.Supplied,
 		Names: a.prompt.Names, Scenario: a.scen, Baseline: a.base, Comparison: a.comparison})
-	md := a.result.Metadata
-	if len(issues) > 0 {
-		return Output{}, &Error{Kind: Ungrounded, Issues: issues, Metadata: &md}
+	return checked{out: out, issues: issues}
+}
+
+// ground checks the first answer and decides whether a refused one is asked
+// again (H-086 (R)): only when the client handed it back and the attempt
+// has not stopped (a stopped attempt's refusal is final, as before).
+func (n *nodes) ground(ctx context.Context, a *answered) (*ended, error) {
+	e := &ended{answered: a, first: check(a, a.result.Output)}
+	e.reask = len(e.first.issues) > 0 && a.result.Prior.Present() && ctx.Err() == nil
+	return e, nil
+}
+
+// recheckContext is the follow-up of the refused answer
+// (aicontext.ReviseAnalysis): its issues, at most aicontext.MaxRepairIssues,
+// and the record the re-ask starts. An attempt that stopped since the check
+// asks nothing (no record: the first refusal stands).
+func (n *nodes) recheckContext(ctx context.Context, e *ended) (*ended, error) {
+	if ctx.Err() != nil {
+		return e, nil
 	}
-	return Output{Analysis: out, Metadata: md}, nil
+	listed := e.first.issues[:min(len(e.first.issues), aicontext.MaxRepairIssues)]
+	issues := make([]aicontext.CheckIssue, len(listed))
+	for i, is := range listed {
+		issues[i] = aicontext.CheckIssue{Code: is.Code, Path: is.Path}
+	}
+	notListed := len(e.first.issues) - len(issues)
+	ask, err := aicontext.ReviseAnalysis(e.prompt.Context, e.result.Prior, issues, notListed)
+	if err != nil {
+		md := e.result.Metadata
+		return nil, &Error{Kind: RecheckRefused, Err: err, Metadata: &md, Issues: e.first.issues}
+	}
+	e.ask, e.recheck = ask, &Recheck{Issues: len(issues), NotListed: notListed}
+	return e, nil
+}
+
+// generateAgain is the re-ask's call, metered like the first (its own
+// reservation). A call that fails, whatever its error, leaves the first
+// refusal standing; the record says how it failed.
+func (n *nodes) generateAgain(ctx context.Context, e *ended) (*ended, error) {
+	res, md, err := n.ask(ctx, e.ask)
+	n.called(ctx, 2, md, err)
+	e.recheck.Call = &md
+	if err != nil {
+		e.recheck.Outcome, e.recheck.Code = RecheckFailed, codeOf(err)
+		return e, nil
+	}
+	e.answer = &res
+	return e, nil
+}
+
+// groundAgain checks the second answer exactly as the first, against the
+// same supplied data.
+func (n *nodes) groundAgain(_ context.Context, e *ended) (*ended, error) {
+	if e.answer == nil {
+		return e, nil
+	}
+	second := check(e.answered, e.answer.Output)
+	e.second, e.recheck.Outcome = &second, RecheckGrounded
+	if len(second.issues) > 0 {
+		e.recheck.Outcome = RecheckUngrounded
+	}
+	return e, nil
+}
+
+// codeOf is a failed call's code as a job failure names it; INTERNAL for an
+// error that is not the provider client's.
+func codeOf(err error) string {
+	if c := provider.CodeOf(err); c != "" {
+		return "AI_" + strings.ToUpper(string(c))
+	}
+	return "INTERNAL"
 }
 
 // Panic is a node's panic as Run raises it again in the caller's

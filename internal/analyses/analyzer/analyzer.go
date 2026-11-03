@@ -13,9 +13,14 @@
 // completion, under the lease (handler.Run.Finish).
 //
 // An answer that is not grounded (a metric the results do not hold, a
-// delta that is not the comparison's, a number nobody supplied) fails the
-// job for good (ANALYSIS_UNGROUNDED), and the analysis follows it to failed
-// (0018): nothing the answer says is stored. A provider failure is the
+// delta that is not the comparison's, a number nobody supplied) is asked
+// again once, in the same attempt, with the check's issues (H-086 (R), the
+// graph's re-ask): a second answer that passes is the analysis, stored with
+// the first call's metadata and "repair" (what the re-ask did and its
+// call's metadata, as a proposal's repair is, H-057); one that does not, or
+// a second call that fails, fails the job for good (ANALYSIS_UNGROUNDED),
+// and the analysis follows it to failed (0018): nothing either answer says
+// is stored. A provider failure is the
 // job's failure, retried while the provider may recover. Provider calls and
 // long work run outside every transaction.
 //
@@ -179,15 +184,16 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		return err
 	}
 	attr := provider.Attribution{TargetType: "ai_analysis", TargetID: p.AnalysisID, RequestID: p.RequestID}
-	out, meta, issues, err := h.analyze(ctx, org, st, attr)
+	a, err := h.analyze(ctx, org, st, attr)
 	if err != nil {
 		// What a call that produced nothing cost is audited all the same
 		// (best effort; the worker records the failure either way).
 		var f *jobs.Failure
-		if errors.As(err, &f) && ctx.Err() == nil && meta != nil {
+		if errors.As(err, &f) && ctx.Err() == nil && a.meta != nil {
 			if aerr := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
-				m := auditMeta(*meta)
-				m["code"], m["retryable"], m["issues"] = f.Code, f.Retryable, issues
+				m := auditMeta(*a.meta)
+				m["code"], m["retryable"], m["issues"] = f.Code, f.Retryable, a.issues
+				recheckAuditMeta(m, a.recheck)
 				return appendAudit(ctx, tx, "analysis.attempt_failed", m)
 			}); aerr != nil {
 				h.cfg.Log.WarnContext(ctx, "recording a failed analysis attempt failed", "organization_id", org, "analysis_id", p.AnalysisID, "error", aerr.Error())
@@ -195,11 +201,12 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		return err
 	}
+	out, meta := a.out, a.meta
 	analysis, err := json.Marshal(out)
 	if err != nil {
 		return err
 	}
-	metadata, err := json.Marshal(meta)
+	metadata, err := storedMetadata(*meta, a.recheck)
 	if err != nil {
 		return err
 	}
@@ -219,6 +226,7 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		}
 		m := auditMeta(*meta)
 		m["deltas"], m["conclusions"], m["experiments"] = len(out.Delta), len(out.Bottleneck), len(out.SuggestedNextExperiments)
+		recheckAuditMeta(m, a.recheck)
 		return appendAudit(ctx, tx, "analysis.generate", m)
 	})
 }
@@ -319,13 +327,25 @@ func providerFailure(err error) error {
 	return failure("AI_"+strings.ToUpper(string(pe.Code)), message, pe.Retryable())
 }
 
+// analyzed is what analyze came to: the analysis to store (none with a
+// failure), the first call's metadata (nil before a call), the number of
+// issues an ungrounded answer had (the last one the check saw) and what the
+// one re-ask did (H-086 (R); nil when there was none).
+type analyzed struct {
+	out     provider.AnalysisOutput
+	meta    *provider.Metadata
+	issues  int
+	recheck *analysis.Recheck
+}
+
 // analyze runs the analyst graph (internal/aigraph/analysis) on what the
 // attempt read, outside any transaction: it decodes the inputs, compares
 // the runs, builds the context, asks the provider (the graph tells logCall
-// of the call as it returns) and checks the answer. It returns the analysis
-// to store and the call's metadata, or the failure and, after a call, its
-// metadata and the number of issues an ungrounded answer had.
-func (h *Handler) analyze(ctx context.Context, org string, st started, attr provider.Attribution) (provider.AnalysisOutput, *provider.Metadata, int, error) {
+// of each call as it returns), checks the answer and asks a refused one
+// again once (H-086 (R)). It returns the analysis to store and the first
+// call's metadata, or the failure and, after a call, that metadata, the
+// number of issues an ungrounded answer had and the re-ask's record.
+func (h *Handler) analyze(ctx context.Context, org string, st started, attr provider.Attribution) (analyzed, error) {
 	in := analysis.Input{
 		OrganizationID: org,
 		Version:        analysis.Version{ID: st.version.ID, ModelID: st.version.ModelID, IR: st.version.IR},
@@ -347,52 +367,59 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 	}
 	out, err := h.graph.Run(ctx, in)
 	if err == nil {
-		return out.Analysis, &out.Metadata, 0, nil
+		return analyzed{out: out.Analysis, meta: &out.Metadata, recheck: out.Recheck}, nil
 	}
-	none := provider.AnalysisOutput{}
 	var e *analysis.Error
 	if !errors.As(err, &e) {
-		return none, nil, 0, err // Eino's own error (a bug in the graph's wiring): the worker records INTERNAL
+		return analyzed{}, err // Eino's own error (a bug in the graph's wiring): the worker records INTERNAL
 	}
 	switch e.Kind {
 	case analysis.VersionUndecodable:
-		return none, nil, 0, failure(InputInvalid, "the analyzed run's version does not decode", false)
+		return analyzed{}, failure(InputInvalid, "the analyzed run's version does not decode", false)
 	case analysis.DomainNotServed:
-		return none, nil, 0, failure(InputInvalid, "the model's domain is not served by this worker", false)
+		return analyzed{}, failure(InputInvalid, "the model's domain is not served by this worker", false)
 	case analysis.ResultUndecodable:
-		return none, nil, 0, failure(InputInvalid, "a stored result does not decode", false)
+		return analyzed{}, failure(InputInvalid, "a stored result does not decode", false)
 	case analysis.PatchUndecodable:
-		return none, nil, 0, failure(InputInvalid, "the analyzed run's patch does not decode", false)
+		return analyzed{}, failure(InputInvalid, "the analyzed run's patch does not decode", false)
 	case analysis.CompareFailed:
 		h.cfg.Log.ErrorContext(ctx, "comparing an analysis's runs failed", "organization_id", org, "analysis_id", st.analysis.ID, "error", e.Err.Error())
-		return none, nil, 0, failure(InputInvalid, "the analysis's runs cannot be compared", false)
+		return analyzed{}, failure(InputInvalid, "the analysis's runs cannot be compared", false)
 	case analysis.NotComparable:
 		// The API refuses such a pair; a job that has one stops before the paid call.
-		return none, nil, 0, failure(NotComparable, "the server does not compare the analysis's runs ("+strings.Join(e.Reasons, ", ")+")", false)
+		return analyzed{}, failure(NotComparable, "the server does not compare the analysis's runs ("+strings.Join(e.Reasons, ", ")+")", false)
 	case analysis.ComparisonUnencodable:
-		return none, nil, 0, e.Err
+		return analyzed{}, e.Err
 	case analysis.ContextRefused:
 		if aicontext.CodeOf(e.Err) == aicontext.TooLarge {
-			return none, nil, 0, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
+			return analyzed{}, failure("AI_CONTEXT_TOO_LARGE", providerMessages[provider.CodeContextTooLarge], false)
 		}
 		h.cfg.Log.WarnContext(ctx, "building an analysis context failed", "organization_id", org, "analysis_id", st.analysis.ID, "code", string(aicontext.CodeOf(e.Err)))
-		return none, nil, 0, failure(InputInvalid, "the analysis's stored request cannot be built into a context", false)
+		return analyzed{}, failure(InputInvalid, "the analysis's stored request cannot be built into a context", false)
 	case analysis.CallFailed:
 		if ctx.Err() != nil {
-			return none, nil, 0, e.Err // the attempt is stopping: the worker records it, or nothing
+			return analyzed{}, e.Err // the attempt is stopping: the worker records it, or nothing
 		}
-		return none, e.Metadata, 0, providerFailure(e.Err)
+		return analyzed{meta: e.Metadata}, providerFailure(e.Err)
 	case analysis.Ungrounded:
-		// The first issue's code and path are the server's own words.
-		return none, e.Metadata, len(e.Issues), failure(Ungrounded,
+		// The first issue's code and path are the server's own words (the
+		// last answer the check saw: the re-ask's when it answered).
+		return analyzed{meta: e.Metadata, issues: len(e.Issues), recheck: e.Recheck}, failure(Ungrounded,
 			fmt.Sprintf("the AI answer is not grounded in the results (%s at %s)", e.Issues[0].Code, e.Issues[0].Path), false)
+	case analysis.RecheckRefused:
+		// The server's own fault after a paid call: a retry would ask, and
+		// pay, again, so the attempt fails for good.
+		h.cfg.Log.ErrorContext(ctx, "building an analysis's re-ask failed", "organization_id", org, "analysis_id", st.analysis.ID, "code", string(aicontext.CodeOf(e.Err)))
+		return analyzed{meta: e.Metadata, issues: len(e.Issues)}, failure(InputInvalid, "the server could not build the follow-up of the ungrounded answer", false)
 	}
-	return none, nil, 0, err // a kind this handler does not know: the worker records INTERNAL
+	return analyzed{}, err // a kind this handler does not know: the worker records INTERNAL
 }
 
 // logCall is the provider call's operational log line: labels, latency,
 // tokens, cost and the outcome code; never the prompt, the answer or a key.
-func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
+// The re-ask's line (call 2, H-086 (R)) also says call_attempt 2, as a
+// proposal's repair's does; the first call's line is as it was.
+func (h *Handler) logCall(ctx context.Context, call int, m provider.Metadata, err error) {
 	code := "OK"
 	switch c := provider.CodeOf(err); {
 	case err == nil:
@@ -401,9 +428,13 @@ func (h *Handler) logCall(ctx context.Context, m provider.Metadata, err error) {
 	default:
 		code = "AI_" + strings.ToUpper(string(c))
 	}
-	h.cfg.Log.InfoContext(ctx, "ai provider call ended", "provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
+	attrs := []any{"provider", m.Provider, "model", m.Model, "credential_label", m.Credential,
 		"role", string(m.Role), "latency_ms", m.LatencyMillis, "input_tokens", m.Usage.InputTokens, "output_tokens", m.Usage.OutputTokens,
-		"provider_request_id", m.ProviderRequestID, "code", code, "cost_nano_usd", m.CostNanoUSD, "spend_reservation_id", m.SpendReservation)
+		"provider_request_id", m.ProviderRequestID, "code", code, "cost_nano_usd", m.CostNanoUSD, "spend_reservation_id", m.SpendReservation}
+	if call > 1 {
+		attrs = append([]any{"call_attempt", call}, attrs...)
+	}
+	h.cfg.Log.InfoContext(ctx, "ai provider call ended", attrs...)
 	if m.SpendUnsettled {
 		h.cfg.Log.WarnContext(ctx, "settling a live AI spend reservation failed", "spend_reservation_id", m.SpendReservation, "spend_unsettled", true)
 	}
@@ -428,4 +459,60 @@ func auditMeta(m provider.Metadata) map[string]any {
 		out["cost_nano_usd"], out["spend_reservation_id"], out["spend_unsettled"] = m.CostNanoUSD, m.SpendReservation, m.SpendUnsettled
 	}
 	return out
+}
+
+// recheckMeta is what the stored metadata says of the one re-ask (H-086
+// (R)), as a proposal's says of its repair (H-057): what came of it
+// (grounded: the second answer is the analysis; a completed analysis has
+// no other), how many issues the follow-up listed and left out, and the
+// second call's metadata (no prompt, no answer, no key).
+type recheckMeta struct {
+	Outcome   string             `json:"outcome"`
+	Code      string             `json:"code,omitzero"`
+	Issues    int                `json:"issues"`
+	NotListed int                `json:"issues_not_listed,omitzero"`
+	Call      *provider.Metadata `json:"call,omitzero"`
+}
+
+// storedMetadata is the completed analysis's provider metadata: the first
+// call's, byte for byte as before when there was no re-ask, and with its
+// "repair" when there was (internal/proposals FromMetadata reads its outcome
+// for generated_by.revised_after_check).
+func storedMetadata(meta provider.Metadata, rec *analysis.Recheck) ([]byte, error) {
+	if rec == nil {
+		return json.Marshal(meta)
+	}
+	return json.Marshal(struct {
+		provider.Metadata `json:",inline"`
+		Repair            recheckMeta `json:"repair"`
+	}{meta, recheckMeta{Outcome: rec.Outcome, Code: rec.Code, Issues: rec.Issues, NotListed: rec.NotListed, Call: rec.Call}})
+}
+
+// recheckAuditMeta adds to an audit event's metadata what it records of the
+// one re-ask (the catalogue's recheck fields, named as a proposal's repair
+// fields): what came of it, a failed call's code, how many issues it listed,
+// and the second call's template, hashes, tokens, latency, provider request
+// ID and spend; never the prompt or either answer.
+func recheckAuditMeta(out map[string]any, rec *analysis.Recheck) {
+	if rec == nil {
+		return
+	}
+	out["repair"], out["repair_issues"] = rec.Outcome, rec.Issues
+	if rec.Code != "" {
+		out["repair_code"] = rec.Code
+	}
+	c := rec.Call
+	if c == nil {
+		return
+	}
+	out["repair_input_tokens"], out["repair_output_tokens"], out["repair_latency_ms"] = c.Usage.InputTokens, c.Usage.OutputTokens, c.LatencyMillis
+	for k, v := range map[string]string{"repair_prompt_template_version": audit.Label(c.TemplateVersion), "repair_input_hash": c.InputHash,
+		"repair_output_hash": c.OutputHash, "repair_provider_request_id": audit.Label(c.ProviderRequestID)} {
+		if v != "" {
+			out[k] = v
+		}
+	}
+	if c.SpendReservation != "" {
+		out["repair_cost_nano_usd"], out["repair_spend_reservation_id"], out["repair_spend_unsettled"] = c.CostNanoUSD, c.SpendReservation, c.SpendUnsettled
+	}
 }

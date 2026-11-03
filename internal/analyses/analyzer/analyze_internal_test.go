@@ -10,9 +10,13 @@ package analyzer
 // hashes of its system and user texts) and every log line are pinned in
 // testdata/analyze-goldens.json, written once from the orchestration before
 // it moved onto the Eino graph (GEMINUS_WRITE_ANALYZER_GOLDENS=1) and never
-// rewritten by the slice that moved it. The database side (the job's
-// completion, the audit events, a failed analysis) is internal/api's
-// analyses_test.go (make integration-test).
+// rewritten by the slice that moved it. H-086 (R) changed one path on
+// purpose (an ungrounded answer is now asked again once:
+// the-answer-is-ungrounded) and added the re-ask's (the cases named
+// reask-...); every other case's golden is byte for byte as before
+// (checks/H-086_R_VALIDATION.md). The database side (the job's completion,
+// the audit events, a failed analysis) is internal/api's analyses_test.go
+// (make integration-test).
 
 import (
 	"bytes"
@@ -159,19 +163,21 @@ func (c cancelling) Complete(ctx context.Context, req provider.Request) (provide
 type outcome struct {
 	// Result: "analysis", "failure" (a *jobs.Failure) or "error" (any
 	// other error, which the worker records as INTERNAL or not at all).
-	Result    string           `json:"result"`
-	Code      string           `json:"code,omitzero"`
-	Message   string           `json:"message,omitzero"`
-	Retryable bool             `json:"retryable,omitzero"`
-	Error     string           `json:"error,omitzero"`
-	Canceled  bool             `json:"canceled,omitzero"` // errors.Is(err, context.Canceled)
-	Metadata  jsontext.Value   `json:"metadata,omitzero"` // latency zeroed, a reservation ID as "set"
-	Issues    int              `json:"issues"`
-	Analysis  jsontext.Value   `json:"analysis,omitzero"`
-	Requests  []request        `json:"requests"`
-	Charges   []charge         `json:"charges,omitzero"`
-	Settled   []settlement     `json:"settled,omitzero"`
-	Logs      []map[string]any `json:"logs"`
+	Result    string         `json:"result"`
+	Code      string         `json:"code,omitzero"`
+	Message   string         `json:"message,omitzero"`
+	Retryable bool           `json:"retryable,omitzero"`
+	Error     string         `json:"error,omitzero"`
+	Canceled  bool           `json:"canceled,omitzero"` // errors.Is(err, context.Canceled)
+	Metadata  jsontext.Value `json:"metadata,omitzero"` // latency zeroed, a reservation ID as "set"
+	Issues    int            `json:"issues"`
+	Analysis  jsontext.Value `json:"analysis,omitzero"`
+	// Recheck is the re-ask's record (H-086 (R)), as metadata is shown.
+	Recheck  jsontext.Value   `json:"recheck,omitzero"`
+	Requests []request        `json:"requests"`
+	Charges  []charge         `json:"charges,omitzero"`
+	Settled  []settlement     `json:"settled,omitzero"`
+	Logs     []map[string]any `json:"logs"`
 }
 
 type request struct {
@@ -184,6 +190,8 @@ type request struct {
 	User            string `json:"user_sha256"`
 	MaxOutputTokens int64  `json:"max_output_tokens"`
 	Model           string `json:"model,omitzero"`
+	// Revision: the request is a re-ask (H-086 (R)): its follow-up's hash.
+	Revision string `json:"revision_sha256,omitzero"`
 }
 
 type charge struct {
@@ -234,7 +242,8 @@ func setup(t *testing.T, client *provider.Client, packs PackLookup, budget provi
 // observe runs analyze once and records what it did.
 func observe(t *testing.T, ctx context.Context, h *Handler, f *fake.Backend, l *ledger, buf *bytes.Buffer, st started) outcome {
 	t.Helper()
-	out, meta, issues, err := h.analyze(ctx, tOrg, st, tAttr)
+	a, err := h.analyze(ctx, tOrg, st, tAttr)
+	out, meta, issues := a.out, a.meta, a.issues
 	o := outcome{Result: "analysis", Issues: issues, Requests: []request{}, Logs: []map[string]any{}}
 	var fl *jobs.Failure
 	switch {
@@ -263,10 +272,30 @@ func observe(t *testing.T, ctx context.Context, h *Handler, f *fake.Backend, l *
 		}
 		o.Analysis = b
 	}
+	if rc := a.recheck; rc != nil {
+		c := *rc
+		if c.Call != nil {
+			m := *c.Call
+			m.LatencyMillis = 0
+			if m.SpendReservation != "" {
+				m.SpendReservation = "set"
+			}
+			c.Call = &m
+		}
+		b, merr := json.Marshal(c, json.Deterministic(true))
+		if merr != nil {
+			t.Fatal(merr)
+		}
+		o.Recheck = b
+	}
 	for _, r := range f.Requests() {
-		o.Requests = append(o.Requests, request{Role: string(r.Prompt.Role), TemplateVersion: r.Prompt.TemplateVersion, Locale: string(r.Prompt.Locale),
+		req := request{Role: string(r.Prompt.Role), TemplateVersion: r.Prompt.TemplateVersion, Locale: string(r.Prompt.Locale),
 			InputHash: r.Prompt.InputHash, Schema: r.OutputSchema, System: digest(r.Prompt.System), User: digest(r.Prompt.User()),
-			MaxOutputTokens: r.MaxOutputTokens, Model: r.Model})
+			MaxOutputTokens: r.MaxOutputTokens, Model: r.Model}
+		if rv := r.Prompt.Revision; rv != nil {
+			req.Revision = digest(rv.User())
+		}
+		o.Requests = append(o.Requests, req)
 	}
 	if l != nil {
 		l.mu.Lock()
@@ -299,6 +328,34 @@ func invented(t *testing.T) []byte {
 		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "Throughput rose by 4242.5."},
 		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
 		SuggestedNextExperiments: []provider.Experiment{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// fixedAnswer is invented's answer as the re-ask fixes it (H-086 (R)): the
+// figure nobody supplied left out.
+func fixedAnswer(t *testing.T) []byte {
+	t.Helper()
+	b, err := json.Marshal(provider.AnalysisOutput{
+		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "Throughput rose with the second server."},
+		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
+		SuggestedNextExperiments: []provider.Experiment{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
+// inventedAgain is a second answer the check refuses for another reason: a
+// promised outcome and an experiment named by a figure nobody supplied.
+func inventedAgain(t *testing.T) []byte {
+	t.Helper()
+	b, err := json.Marshal(provider.AnalysisOutput{
+		Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: "A second server is guaranteed to help."},
+		Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
+		SuggestedNextExperiments: []provider.Experiment{{Name: "Add 4242 servers", Hypothesis: "More servers may help.", RequiresConfirmation: true}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +454,39 @@ func cases(t *testing.T) map[string]func(t *testing.T) outcome {
 			return plain(t, fixture(t), func(f *fake.Backend) { f.Script(provider.RoleAnalyst, tQuestion, []byte(`{"scenario":{}}`)) }, nil, none)
 		},
 		"the-answer-is-ungrounded": func(t *testing.T) outcome {
+			// H-086 (R): asked again once; the fake repeats itself.
 			return plain(t, fixture(t), func(f *fake.Backend) { f.Script(provider.RoleAnalyst, tQuestion, invented(t)) }, nil, none)
+		},
+		"reask-grounded": func(t *testing.T) outcome {
+			return plain(t, fixture(t), func(f *fake.Backend) {
+				f.Script(provider.RoleAnalyst, tQuestion, invented(t))
+				f.ScriptRevision(provider.RoleAnalyst, tQuestion, fixedAnswer(t))
+			}, nil, none)
+		},
+		"reask-grounded-metered": func(t *testing.T) outcome {
+			f := fake.New()
+			f.Script(provider.RoleAnalyst, tQuestion, invented(t))
+			f.ScriptRevision(provider.RoleAnalyst, tQuestion, fixedAnswer(t))
+			l := &ledger{m: provider.NewMemoryMeter(1_000_000_000_000)}
+			client, err := provider.NewMetered(billed{f}, provider.DefaultBudget(), l)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var buf bytes.Buffer
+			h := setup(t, client, nil, none, &buf)
+			return observe(t, context.Background(), h, f, l, &buf, fixture(t))
+		},
+		"reask-ungrounded-again": func(t *testing.T) outcome {
+			return plain(t, fixture(t), func(f *fake.Backend) {
+				f.Script(provider.RoleAnalyst, tQuestion, invented(t))
+				f.ScriptRevision(provider.RoleAnalyst, tQuestion, inventedAgain(t))
+			}, nil, none)
+		},
+		"reask-call-fails": func(t *testing.T) outcome {
+			return plain(t, fixture(t), func(f *fake.Backend) {
+				f.Script(provider.RoleAnalyst, tQuestion, invented(t))
+				f.FailRevision(provider.RoleAnalyst, tQuestion, provider.NewError(provider.CodeUnavailable, 503, ""))
+			}, nil, none)
 		},
 		"cancelled-during-the-call": func(t *testing.T) outcome {
 			f := fake.New()
@@ -496,7 +585,11 @@ func TestAnalyzeOutcomes(t *testing.T) {
 		{"the-provider-is-unavailable", "failure", "AI_UNAVAILABLE", true, 1, true},
 		{"the-provider-fails-with-another-error", "failure", "AI_UNAVAILABLE", true, 1, true},
 		{"the-answer-is-not-an-analysis", "failure", "AI_INVALID_OUTPUT", false, 1, true},
-		{"the-answer-is-ungrounded", "failure", Ungrounded, false, 1, true},
+		{"the-answer-is-ungrounded", "failure", Ungrounded, false, 2, true},
+		{"reask-grounded", "analysis", "", false, 2, true},
+		{"reask-grounded-metered", "analysis", "", false, 2, true},
+		{"reask-ungrounded-again", "failure", Ungrounded, false, 2, true},
+		{"reask-call-fails", "failure", Ungrounded, false, 2, true},
 		{"cancelled-during-the-call", "error", "", false, 0, false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -512,6 +605,28 @@ func TestAnalyzeOutcomes(t *testing.T) {
 			}
 			if c.name == "explained-metered" && (len(o.Charges) != 1 || len(o.Settled) != 1 || o.Charges[0].Target != "ai_analysis:"+tAnalysis+":"+tRequest) {
 				t.Errorf("metered: %+v %+v", o.Charges, o.Settled)
+			}
+			// H-086 (R): the re-ask's own reservation, charged to the same
+			// analysis, and its own settlement.
+			if c.name == "reask-grounded-metered" && (len(o.Charges) != 2 || len(o.Settled) != 2 || o.Charges[1].Target != o.Charges[0].Target) {
+				t.Errorf("the re-ask metered: %+v %+v", o.Charges, o.Settled)
+			}
+			var rc struct {
+				Outcome string
+				Code    string
+			}
+			if o.Recheck != nil {
+				if err := json.Unmarshal(o.Recheck, &rc); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want := map[string]string{"the-answer-is-ungrounded": "ungrounded", "reask-grounded": "grounded", "reask-grounded-metered": "grounded",
+				"reask-ungrounded-again": "ungrounded", "reask-call-fails": "failed"}[c.name]
+			if rc.Outcome != want || (want == "failed") != (rc.Code == "AI_UNAVAILABLE") {
+				t.Errorf("the re-ask's record %s, want %q", o.Recheck, want)
+			}
+			if want != "" && (len(o.Logs) != 2 || o.Logs[1]["call_attempt"] != float64(2) || o.Logs[0]["call_attempt"] != nil) {
+				t.Errorf("the calls' lines %v", o.Logs)
 			}
 		})
 	}
@@ -532,7 +647,8 @@ func TestAnalyzeCancelledBeforeTheCall(t *testing.T) {
 	h := setup(t, client, nil, provider.Budget{}, &buf)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, meta, issues, err := h.analyze(ctx, tOrg, fixture(t), tAttr)
+	a, err := h.analyze(ctx, tOrg, fixture(t), tAttr)
+	meta, issues := a.meta, a.issues
 	var fl *jobs.Failure
 	if !errors.Is(err, context.Canceled) || errors.As(err, &fl) || meta != nil || issues != 0 {
 		t.Errorf("cancelled: %v (failure %v), metadata %v, %d issues", err, fl, meta, issues)

@@ -108,6 +108,18 @@ func valid() []audit.Event {
 			"output_locale": "zh-Hant", "question": true}),
 		w("analysis.generate", "ai_analysis", ana, with(provider(), "attempt", 1, "deltas", 3, "conclusions", 2, "experiments", 1)),
 		w("analysis.attempt_failed", "ai_analysis", ana, with(provider(), "attempt", 1, "code", "ANALYSIS_UNGROUNDED", "retryable", false, "issues", 2)),
+		// H-086 (R): the one re-ask of an explanation the check refused: it
+		// passed (the analysis is the second answer), it was refused again,
+		// or its call failed.
+		w("analysis.generate", "ai_analysis", ana, with(provider(), "attempt", 1, "deltas", 0, "conclusions", 1, "experiments", 2,
+			"repair", "grounded", "repair_issues", 2, "repair_prompt_template_version", "analyst-0.3.3+reground-0.1.0",
+			"repair_input_hash", hash("a"), "repair_output_hash", hash("b"), "repair_input_tokens", int64(41000), "repair_output_tokens", int64(9000),
+			"repair_latency_ms", int64(80000), "repair_provider_request_id", "req-meta-2", "repair_cost_nano_usd", int64(400_000_000),
+			"repair_spend_reservation_id", ids.New("asr"), "repair_spend_unsettled", false)),
+		w("analysis.attempt_failed", "ai_analysis", ana, with(provider(), "attempt", 1, "code", "ANALYSIS_UNGROUNDED", "retryable", false, "issues", 1,
+			"repair", "ungrounded", "repair_issues", 2)),
+		w("analysis.attempt_failed", "ai_analysis", ana, with(provider(), "attempt", 1, "code", "ANALYSIS_UNGROUNDED", "retryable", false, "issues", 2,
+			"repair", "failed", "repair_code", "AI_QUOTA_EXCEEDED", "repair_issues", 2)),
 		u("proposal.conflict", "ai_proposal", aip, map[string]any{"mode": "scenario", "model_id": mdl, "base_version_id": mv, "latest_version_id": mv2}),
 		u("proposal.approve", "ai_proposal", aip, map[string]any{"mode": "edit", "model_id": mdl, "base_version_id": mv, "patch_hash": hash("e"),
 			"server_risk_level": "high", "risk_level": "high", "new_version_id": mv2, "version": 3, "draft_out_of_date": false}),
@@ -299,6 +311,21 @@ func TestRefused(t *testing.T) {
 		"an ID as a number":            meta("model_id", 7),
 		"a nested map":                 meta("model_id", map[string]any{"x": csvRow}),
 		"a key of free text":           meta(csvRow, 1),
+		// H-086 (R): a re-ask's outcome is one of its own, never a proposal's
+		// repair outcome on an analysis (nor the reverse), and never text.
+		"a proposal's repair outcome on an analysis": func(e *audit.Event) {
+			*e = audit.Event{ActorType: audit.Worker, ActorID: worker, Action: "analysis.attempt_failed", TargetType: "ai_analysis", TargetID: ana,
+				RequestID: req, Metadata: with(provider(), "attempt", 1, "code", "ANALYSIS_UNGROUNDED", "retryable", false, "issues", 1, "repair", "ready")}
+		},
+		"a re-ask's outcome on a proposal": func(e *audit.Event) {
+			*e = audit.Event{ActorType: audit.Worker, ActorID: worker, Action: "proposal.attempt_failed", TargetType: "ai_proposal", TargetID: aip,
+				RequestID: req, Metadata: with(provider(), "attempt", 1, "code", "AI_TIMEOUT", "retryable", true, "repair", "grounded")}
+		},
+		"the re-ask's answer": func(e *audit.Event) {
+			*e = audit.Event{ActorType: audit.Worker, ActorID: worker, Action: "analysis.generate", TargetType: "ai_analysis", TargetID: ana,
+				RequestID: req, Metadata: with(provider(), "attempt", 1, "deltas", 0, "conclusions", 0, "experiments", 0, "repair", "grounded",
+					"repair_summary", "SENTINEL")}
+		},
 	} {
 		e := base
 		e.Metadata = maps.Clone(base.Metadata)

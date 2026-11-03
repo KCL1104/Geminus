@@ -2,10 +2,12 @@
 // (prompts/<role>/system.md), so the context builder sends exactly the
 // reviewed files, never a copy. A template's first line names its
 // prompt_template_version, which every provider call records (AI_SPEC §10).
-// Two are not a role's own: research (H-046 (2)), appended to a proposal
-// role's system text, and repair (H-057), the text of the follow-up turn of
-// a proposal's one repair; the prompt's version names them after the
-// role's ("modeler-0.2.0+repair-0.1.0"). A role that calls tools (the
+// Three are not a role's own: research (H-046 (2)), appended to a proposal
+// role's system text, repair (H-057), the text of the follow-up turn of a
+// proposal's one repair, and reground (H-086 (R)), the text of the
+// follow-up turn of the one re-ask of an explanation the server's grounding
+// check refused; the prompt's version names them after the role's
+// ("modeler-0.2.0+repair-0.1.0", "analyst-0.3.3+reground-0.1.0"). A role that calls tools (the
 // investigator, H-061 §9) also has prompts/<role>/tools.md: the tools'
 // descriptions, prompt text versioned with its template (ToolDescriptions).
 package prompts

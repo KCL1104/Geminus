@@ -28,7 +28,8 @@ func TestAnInvestigationsAnalysisIsAskedWithItsRule(t *testing.T) {
 		h := setup(t, c, nil, provider.DefaultBudget(), &buf)
 		st := fixture(t)
 		st.investigation = labelled
-		_, meta, issues, err := h.analyze(context.Background(), tOrg, st, tAttr)
+		a, err := h.analyze(context.Background(), tOrg, st, tAttr)
+		meta, issues := a.meta, a.issues
 		if err != nil || meta == nil || issues != 0 {
 			t.Fatalf("labelled %v: %v, %d issues", labelled, err, issues)
 		}

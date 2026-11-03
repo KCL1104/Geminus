@@ -4,21 +4,27 @@ package corpus
 // internal/ai/analyst; AI_SPEC §9, §10): for each situation of
 // testdata/ai-evals/analyst.jsonl, a hand-written grounded answer is kept
 // and a hand-written unsafe one (what the situation tempts a model to say)
-// is refused. It evaluates the server, not a model: the zero-tolerance gate
+// is refused. H-086 (R): each refused unsafe answer's one re-ask is built
+// as the job builds it (aicontext.ReviseAnalysis, over the fake's answer),
+// and its follow-up must list every issue by its code, path and the code's
+// rule while echoing nothing the answer, the question or a label said. It evaluates the server, not a model: the zero-tolerance gate
 // is AI_SPEC's "mandatory adversarial invented metrics = 0". The comparison
 // of the cases with a baseline is written by hand from the two results
 // (internal/results/compare is tested on its own).
 
 import (
+	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/kcl1104/geminus/internal/ai/aicontext"
 	"github.com/kcl1104/geminus/internal/ai/analyst"
 	"github.com/kcl1104/geminus/internal/ai/provider"
+	"github.com/kcl1104/geminus/internal/ai/provider/fake"
 	"github.com/kcl1104/geminus/internal/results/compare"
 	"github.com/kcl1104/geminus/internal/simulation"
 )
@@ -39,6 +45,94 @@ func groundedAnswer() provider.AnalysisOutput {
 	}
 }
 
+// recheck builds the re-ask of unsafe, refused with issues, as the analysis
+// job does (H-086 (R)): the fake's answer is the prior answer, and the
+// follow-up is ReviseAnalysis'. Its follow-up lists every issue (at most
+// aicontext.MaxRepairIssues) with its code, path and rule, in order, and
+// holds no text of the answer, the question, a label or another tenant.
+func recheck(t *testing.T, h *harness, id string, first provider.AnalysisContext, unsafe provider.AnalysisOutput, issues []analyst.Issue, question string) {
+	t.Helper()
+	text, err := json.Marshal(unsafe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocks, err := provider.ParseUser(first.Prompt.User())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var key string
+	for _, b := range blocks {
+		if b.Name == "QUESTION" {
+			if err := json.Unmarshal(b.Content, &key); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	f := fake.New()
+	f.Script(provider.RoleAnalyst, key, text)
+	first.Attribution = provider.Attribution{TargetType: "ai_analysis", TargetID: "ana_01M4YDQK00TA00000000000001", RequestID: "req_01M4YDQK00TA00000000000001"}
+	res, err := client(t, f).AnalyzeSimulation(context.Background(), first)
+	if provider.CodeOf(err) == provider.CodeInvalidOutput && !res.Prior.Present() {
+		// The client refuses the answer before the check (the schema: an
+		// experiment that needs no person): the job fails it as
+		// AI_INVALID_OUTPUT, and nothing is asked again.
+		h.pass("recheck_not_asked_after_the_clients_refusal")
+		return
+	}
+	if err != nil || !res.Prior.Present() {
+		t.Fatalf("%s: the fake's answer: %v", id, err)
+	}
+	listed := issues[:min(len(issues), aicontext.MaxRepairIssues)]
+	in := make([]aicontext.CheckIssue, len(listed))
+	for i, is := range listed {
+		in[i] = aicontext.CheckIssue{Code: is.Code, Path: is.Path}
+	}
+	rc, err := aicontext.ReviseAnalysis(first, res.Prior, in, len(issues)-len(listed))
+	if err != nil {
+		t.Fatalf("%s: the re-ask: %v", id, err)
+	}
+	r := rc.Prompt.Revision
+	follow := r.User()
+	var v struct {
+		Issues []struct {
+			Code string `json:"code"`
+			Path string `json:"path"`
+			Rule string `json:"rule"`
+		} `json:"issues"`
+	}
+	if err := json.Unmarshal(r.Blocks[0].Content, &v); err != nil {
+		t.Fatal(err)
+	}
+	ok := len(v.Issues) == len(listed) && rc.Prompt.User() == first.Prompt.User() && rc.Prompt.System == first.Prompt.System
+	for i, is := range v.Issues {
+		rule, known := aicontext.CheckRule(is.Code)
+		ok = ok && known && is.Rule == rule && is.Code == listed[i].Code && is.Path == listed[i].Path
+	}
+	if ok {
+		h.pass("recheck_follow_up_lists_every_issue_with_its_rule")
+	} else {
+		t.Errorf("%s: the follow-up lists %+v for %+v", id, v.Issues, listed)
+	}
+	echoed := []string{sentinel, orgB, "sim_01M4YDQK00TB00000000000003", unsafe.Scenario.Summary, question}
+	echoed = append(echoed, unsafe.Assumptions...)
+	if unsafe.Baseline != nil {
+		echoed = append(echoed, unsafe.Baseline.Summary)
+	}
+	for _, x := range unsafe.SuggestedNextExperiments {
+		echoed = append(echoed, x.Name, x.Hypothesis)
+	}
+	for _, b := range unsafe.Bottleneck {
+		echoed = append(echoed, b.Statement)
+	}
+	var leaked []string
+	for _, e := range echoed {
+		if e != "" && strings.Contains(follow, e) {
+			leaked = append(leaked, e)
+		}
+	}
+	h.gate("recheck_follow_up_echoes_untrusted_text", len(leaked) > 0, "%s: the follow-up holds %q", id, leaked)
+}
+
 func TestAnalystEval(t *testing.T) {
 	score := &scorecard{
 		Suite:    "T-030 fake-provider analyst suite (hand-written grounded and unsafe answers through internal/ai/analyst)",
@@ -46,10 +140,11 @@ func TestAnalystEval(t *testing.T) {
 		Live:     "NOT RUN (make ai-smoke-live on the deployment; T-030 live check)",
 		Cases:    map[string]int{},
 		Checks:   map[string]int{},
-		Gates:    map[string]int{"reference_refused": 0, "unsafe_answer_kept": 0},
+		Gates:    map[string]int{"reference_refused": 0, "unsafe_answer_kept": 0, "recheck_follow_up_echoes_untrusted_text": 0},
 		NotRun: []string{
 			"a model's own answers (the answers here are hand-written; a live provider: T-038)",
 			"database effects: an ungrounded answer fails the analysis and stores nothing (make integration-test, internal/api TestAnUngroundedAnalysisFails)",
+			"a live model's answer to the re-ask (H-086 (R)): whether it fixes a refused explanation is not measured here (the follow-up is built from hand-written answers)",
 		},
 	}
 	h := &harness{t: t, score: score}
@@ -147,6 +242,9 @@ func TestAnalystEval(t *testing.T) {
 			h.pass("unsafe_answer_refused_for_its_flaw")
 		} else if len(issues) > 0 {
 			t.Errorf("%s: refused for %+v, not %s", id, issues, want)
+		}
+		if len(issues) > 0 {
+			recheck(t, h, id, a.Context, unsafe, issues, in.Question)
 		}
 	}
 	report, err := json.Marshal(score, json.Deterministic(true))

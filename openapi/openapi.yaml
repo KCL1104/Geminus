@@ -4091,8 +4091,13 @@ paths:
     get:
       operationId: getAnalysis
       summary: Read analysis and evidence
-      description: D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
-        table.
+      description: 'D-012 (approved) P0 workflow completion endpoint; not explicitly listed in original core endpoint
+        table. H-086 (R): when the server''s grounding check refused the AI''s first explanation, the worker asked
+        the AI once more in the same job, with the check''s issues (code, JSON Pointer path and the rule the code
+        stands for), and checked the second answer exactly as the first; a completed analysis that is that second
+        answer has generated_by.revised_after_check true. A second answer refused too, or a second request that
+        failed, leaves the analysis failed with ANALYSIS_UNGROUNDED, as a refused first answer was. The second call
+        is reserved and settled on its own under the same spend caps.'
       tags:
       - Analyses
       x-origin: PROPOSED
