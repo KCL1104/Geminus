@@ -20,9 +20,13 @@
 // call's metadata, as a proposal's repair is, H-057); one that does not, or
 // a second call that fails, fails the job for good (ANALYSIS_UNGROUNDED),
 // and the analysis follows it to failed (0018): nothing either answer says
-// is stored. A provider failure is the
-// job's failure, retried while the provider may recover. Provider calls and
-// long work run outside every transaction.
+// is stored. The re-ask is a second paid call, so an analysis an
+// investigation asked for is asked again only while that investigation
+// still runs, read again under the lease just before (H-061 §12: no paid
+// call once it has ended; a stop does not end this attempt's context); once
+// it has ended, or when that read fails, the first refusal stands. A
+// provider failure is the job's failure, retried while the provider may
+// recover. Provider calls and long work run outside every transaction.
 //
 // The AI only suggests (AGENTS.md §2): the analysis is text for a person,
 // its experiments hypotheses a person may choose; nothing it says runs or
@@ -155,6 +159,11 @@ type started struct {
 	// investigation: an AI investigation asked for the analysis (H-061):
 	// its context gains investigation-rules-1.
 	investigation bool
+	// stillRuns, for an investigation's analysis, reads again under the
+	// lease whether its investigation still runs (Handle sets it): asked
+	// before a refused answer's re-ask, the second paid call (H-061 §12,
+	// H-086 (R)).
+	stillRuns func(ctx context.Context) (bool, error)
 }
 
 // JobCancelled is the code of an analysis whose investigation has ended
@@ -182,6 +191,9 @@ func (h *Handler) Handle(ctx context.Context, hr handler.Run) error {
 		return err
 	}); err != nil {
 		return err
+	}
+	if st.investigation {
+		st.stillRuns = stillRuns(hr, org, p.AnalysisID)
 	}
 	attr := provider.Attribution{TargetType: "ai_analysis", TargetID: p.AnalysisID, RequestID: p.RequestID}
 	a, err := h.analyze(ctx, org, st, attr)
@@ -342,7 +354,8 @@ type analyzed struct {
 // attempt read, outside any transaction: it decodes the inputs, compares
 // the runs, builds the context, asks the provider (the graph tells logCall
 // of each call as it returns), checks the answer and asks a refused one
-// again once (H-086 (R)). It returns the analysis to store and the first
+// again once (H-086 (R)), an investigation's only while the investigation
+// still runs (mayAskAgain). It returns the analysis to store and the first
 // call's metadata, or the failure and, after a call, that metadata, the
 // number of issues an ungrounded answer had and the re-ask's record.
 func (h *Handler) analyze(ctx context.Context, org string, st started, attr provider.Attribution) (analyzed, error) {
@@ -355,6 +368,9 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 		OutputLocale:   st.analysis.OutputLocale,
 		Attribution:    attr, // what the spend ledger charges the call to (T-053)
 		Investigation:  st.investigation,
+	}
+	if st.investigation {
+		in.MayAskAgain = h.mayAskAgain(org, st)
 	}
 	if st.analysis.Question != nil {
 		in.Question = *st.analysis.Question
@@ -411,8 +427,55 @@ func (h *Handler) analyze(ctx context.Context, org string, st started, attr prov
 		// pay, again, so the attempt fails for good.
 		h.cfg.Log.ErrorContext(ctx, "building an analysis's re-ask failed", "organization_id", org, "analysis_id", st.analysis.ID, "code", string(aicontext.CodeOf(e.Err)))
 		return analyzed{meta: e.Metadata, issues: len(e.Issues)}, failure(InputInvalid, "the server could not build the follow-up of the ungrounded answer", false)
+	case analysis.RecheckUnchecked:
+		// Whether the investigation still runs could not be read: nothing
+		// was asked again, and the first refusal stands, not retried (a
+		// retry would ask, and pay, again). A stop that ended the read is
+		// the attempt's, as before the re-ask.
+		if ctx.Err() == nil {
+			h.cfg.Log.ErrorContext(ctx, "reading an analysis's investigation before its re-ask failed; the first refusal stands",
+				"organization_id", org, "analysis_id", st.analysis.ID, "error", e.Err.Error())
+		}
+		return analyzed{meta: e.Metadata, issues: len(e.Issues)}, failure(Ungrounded,
+			fmt.Sprintf("the AI answer is not grounded in the results (%s at %s)", e.Issues[0].Code, e.Issues[0].Path), false)
 	}
 	return analyzed{}, err // a kind this handler does not know: the worker records INTERNAL
+}
+
+// stillRuns reads, in a short transaction under hr's lease, whether the
+// investigation that asked for analysis id still runs before its deadline
+// (investigations.LabelOf, the read start makes): the Checkpoint's error,
+// the attempt's stop included, is its error.
+func stillRuns(hr handler.Run, org, id string) func(context.Context) (bool, error) {
+	return func(ctx context.Context) (bool, error) {
+		var running bool
+		err := hr.Checkpoint(ctx, func(ctx context.Context, tx tenant.Tx) error {
+			var err error
+			_, running, err = investigations.LabelOf(ctx, tx, org, investigations.LabelledAnalysis, id)
+			return err
+		})
+		return running && err == nil, err
+	}
+}
+
+// mayAskAgain is the graph's question before the re-ask of an
+// investigation's analysis (analysis.Input.MayAskAgain): whether the
+// investigation still runs, read again (started.stillRuns, under the
+// lease), so that no paid call is made once it has ended (H-061 §12). A
+// labelled analysis without that read asks nothing more. An ended
+// investigation's refused answer is not asked again, and the log says so.
+func (h *Handler) mayAskAgain(org string, st started) func(context.Context) (bool, error) {
+	return func(ctx context.Context) (bool, error) {
+		if st.stillRuns == nil {
+			return false, nil
+		}
+		running, err := st.stillRuns(ctx)
+		if err == nil && !running {
+			h.cfg.Log.InfoContext(ctx, "the analysis's investigation has ended; its refused answer is not asked again",
+				"organization_id", org, "analysis_id", st.analysis.ID)
+		}
+		return running, err
+	}
 }
 
 // logCall is the provider call's operational log line: labels, latency,

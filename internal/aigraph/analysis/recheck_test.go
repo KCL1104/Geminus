@@ -11,6 +11,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -407,5 +408,129 @@ func TestTheFollowUpListsAtMostItsBound(t *testing.T) {
 	}
 	if follow := reqs[len(reqs)-1].Prompt.Revision.User(); strings.Contains(follow, "900") || strings.Contains(follow, "minutes") {
 		t.Error("the follow-up quotes the answer")
+	}
+}
+
+// asked is an Input.MayAskAgain that answers may and err, and records each
+// question: how many calls the observer had seen by then, and the
+// question's context value of callerKey.
+type asked struct {
+	mu    sync.Mutex
+	obs   *calls
+	may   bool
+	err   error
+	after []int
+	value []any
+}
+
+func (a *asked) ask(ctx context.Context) (bool, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.after = append(a.after, len(a.obs.all()))
+	a.value = append(a.value, ctx.Value(callerKey{}))
+	return a.may, a.err
+}
+
+func (a *asked) times() []int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return slices.Clone(a.after)
+}
+
+// H-061 §12 and §13 with H-086 (R): the re-ask is a second paid call, so an
+// analysis whose Input.MayAskAgain is set (an investigation's: the job
+// handler reads whether the investigation still runs) asks it once, after
+// the first call and before the follow-up is built, under the attempt's
+// context. When it may not (the investigation has ended since the attempt
+// started), nothing more is sent, reserved or recorded: the first refusal
+// stands, as after a stop. When it cannot tell, the graph ends as
+// RecheckUnchecked with the first answer's issues and the first call's
+// metadata, nothing asked again. When it may, the re-ask is as before.
+func TestTheReaskAsksWhetherItMayFirst(t *testing.T) {
+	errRead := errors.New("the investigation could not be read")
+	for name, c := range map[string]struct {
+		may bool
+		err error
+	}{
+		"it may":         {may: true},
+		"it may not":     {},
+		"it cannot tell": {err: errRead},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := fake.New()
+			f.Script(provider.RoleAnalyst, question, explanation(t, firstSummary))
+			f.ScriptRevision(provider.RoleAnalyst, question, explanation(t, fixedSummary))
+			l := &ledger{m: provider.NewMemoryMeter(1_000_000_000_000)}
+			mc, err := provider.NewMetered(billed{f}, provider.DefaultBudget(), l)
+			if err != nil {
+				t.Fatal(err)
+			}
+			obs := &calls{}
+			q := &asked{obs: obs, may: c.may, err: c.err}
+			in := input(t)
+			in.MayAskAgain = q.ask
+			out, err := graph(t, mc, packs(t), provider.DefaultBudget(), obs).Run(context.WithValue(context.Background(), callerKey{}, "the attempt"), in)
+			if got := q.times(); len(got) != 1 || got[0] != 1 || q.value[0] != "the attempt" {
+				t.Errorf("asked after %v calls with %v, want once, after the first call, under the attempt's context", got, q.value)
+			}
+			if c.may {
+				if err != nil || out.Recheck == nil || out.Recheck.Outcome != analysis.RecheckGrounded || len(f.Requests()) != 2 || len(l.charges) != 2 {
+					t.Errorf("%v %+v, %d requests, %d charges", err, out.Recheck, len(f.Requests()), len(l.charges))
+				}
+				return
+			}
+			var e *analysis.Error
+			want := analysis.Ungrounded
+			if c.err != nil {
+				want = analysis.RecheckUnchecked
+			}
+			if !errors.As(err, &e) || e.Kind != want || e.Recheck != nil || (c.err != nil) != errors.Is(err, errRead) {
+				t.Fatalf("%v %+v, want %s with no re-ask", err, e, want)
+			}
+			if len(e.Issues) != 1 || e.Issues[0].Code != analyst.NumberUnverified || e.Issues[0].Path != "/scenario/summary" ||
+				e.Metadata == nil || e.Metadata.TemplateVersion != "analyst-0.3.3" || e.Metadata.SpendReservation == "" {
+				t.Errorf("the issues %+v, metadata %+v: want the first answer's and the first call's", e.Issues, e.Metadata)
+			}
+			if len(f.Requests()) != 1 || len(l.charges) != 1 || len(l.settled) != 1 || len(obs.all()) != 1 {
+				t.Errorf("%d requests, %d charges, %d settled, %d observed: want the first call only", len(f.Requests()), len(l.charges), len(l.settled), len(obs.all()))
+			}
+			if strings.Contains(err.Error(), "4242") || strings.Contains(err.Error(), "investigation") {
+				t.Errorf("the error's text carries more than its kind: %q", err.Error())
+			}
+		})
+	}
+
+	// Nothing is asked when there is nothing to ask again: a grounded first
+	// answer, a failed first call, an attempt stopped before the re-ask.
+	for name, c := range map[string]struct {
+		script func(*fake.Backend)
+		stop   bool
+	}{
+		"a grounded answer": {script: func(f *fake.Backend) { f.Script(provider.RoleAnalyst, question, explanation(t, fixedSummary)) }},
+		"a failed first call": {script: func(f *fake.Backend) {
+			f.Fail(provider.RoleAnalyst, question, provider.NewError(provider.CodeUnavailable, 503, ""))
+		}},
+		"a stop before the re-ask": {script: func(f *fake.Backend) { f.Script(provider.RoleAnalyst, question, explanation(t, firstSummary)) }, stop: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := fake.New()
+			c.script(f)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			cfg := analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t)}
+			if c.stop {
+				cfg.Called = func(context.Context, int, provider.Metadata, error) { cancel() }
+			}
+			g, err := analysis.New(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			q := &asked{obs: &calls{}, may: true}
+			in := input(t)
+			in.MayAskAgain = q.ask
+			if _, err := g.Run(ctx, in); len(q.times()) != 0 || len(f.Requests()) != 1 {
+				t.Errorf("%v: asked %d times, %d requests", err, len(q.times()), len(f.Requests()))
+			}
+		})
 	}
 }

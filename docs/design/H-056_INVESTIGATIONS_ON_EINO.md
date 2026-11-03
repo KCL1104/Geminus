@@ -395,7 +395,7 @@ The tools' effects reuse reviewed code that A3 extracts from each Create, which 
 | Run settings for AI runs | replications 1..10; horizon ≤ 28 days in the model's unit; warmup < horizon; trace none or sampled; default H-047; frozen per investigation | request schema + service; run trigger (config_hash) |
 | Engine limits per run | unchanged D-007: 300 s wall, 10,000,000 events, 100,000 active entities, 10,000 visits, 100,000 trace events; limit failures never retried | runs.freeze / runner (unchanged) |
 | Explanations | 4 (one per what-if + one retry) | ai_analyses.investigation_index CHECK 1..4 + UNIQUE |
-| AI calls | ≤ 10 (3 proposals × at most 2 with H-057's repair + 4 analyses); research ≤ 1 (first proposal, only if ticked) | caps above |
+| AI calls | ≤ 14 (3 proposals × at most 2 with H-057's repair + 4 analyses × at most 2 with H-086 (R)'s re-ask); research ≤ 1 (first proposal, only if ticked) | caps above |
 | Server steps | 14 | investigations.step CHECK 0..14, +1 per advance |
 | Wall time | 20 minutes from creation | deadline_at CHECK; decide() |
 | Concurrency | 1 running investigation per person per organization | partial UNIQUE index |

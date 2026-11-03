@@ -26,10 +26,12 @@
 //	    (analyst.Check);
 //	  - recheck_context (H-086 (R), the owner's choice of 2026-11-03): an
 //	    answer the check refused is asked again once, when the client handed
-//	    it back (provider.AnalysisResult.Prior) and the attempt has not
-//	    stopped: the follow-up (aicontext.ReviseAnalysis) is the first prompt
-//	    again, the model's own answer as its turn and the check's issues
-//	    (code, path and the rule the code stands for), at most
+//	    it back (provider.AnalysisResult.Prior), the attempt has not stopped
+//	    and Input.MayAskAgain, when set, says it may (an investigation's
+//	    analysis: its investigation still runs, H-061 §12, read again by the
+//	    job handler just before): the follow-up (aicontext.ReviseAnalysis) is
+//	    the first prompt again, the model's own answer as its turn and the
+//	    check's issues (code, path and the rule the code stands for), at most
 //	    aicontext.MaxRepairIssues;
 //	  - generate_2: the second call, through the same metered ChatModel as
 //	    the first (its own reservation and settlement, the analyst's output
@@ -42,8 +44,11 @@
 // error, a spend cap, a truncated or schema-invalid answer, a cancellation)
 // ends the graph as before, and so does an attempt that stopped before the
 // re-ask (the check's refusal is then final, as before: no attempt asks, and
-// pays, again). The second answer, when it passes, is the analysis (Output,
-// with its Recheck); when it does not, the analysis is ungrounded with the
+// pays, again), and so does an analysis Input.MayAskAgain does not let ask
+// again (an investigation that has ended: no paid call after its end; the
+// refusal is then final too; its error ends the graph as RecheckUnchecked,
+// nothing asked again). The second answer, when it passes, is the analysis
+// (Output, with its Recheck); when it does not, the analysis is ungrounded with the
 // second answer's issues. A second call that fails, whatever its error (the
 // attempt stopping during it included), leaves the first refusal as it was:
 // Ungrounded with the first answer's issues, the Recheck saying how it
@@ -165,6 +170,15 @@ type Input struct {
 	// Investigation: an AI investigation asked for the analysis (its row
 	// carries the label, H-061): the context gains investigation-rules-1.
 	Investigation bool
+	// MayAskAgain, when set, is asked once before an answer the check
+	// refused is asked again, the second paid call (H-086 (R)): for an
+	// investigation's analysis, whether its investigation still runs (H-061
+	// §12: no paid call once it has ended), which the job handler reads
+	// again under the lease (the graph reads no storage). False asks nothing
+	// more: the first refusal stands, as after a stop. Its error ends the
+	// graph as RecheckUnchecked, with nothing asked again. Nil asks again
+	// with no such question (a person's analysis).
+	MayAskAgain func(ctx context.Context) (bool, error)
 }
 
 // Output is the checked analysis and the first call's metadata; Recheck
@@ -243,6 +257,10 @@ const (
 	// built (Err, an aicontext error: the server's own fault; Metadata and
 	// Issues are the first answer's).
 	RecheckRefused Kind = "recheck_refused"
+	// RecheckUnchecked: whether an answer the check refused may be asked
+	// again could not be learned (Err, Input.MayAskAgain's error; Metadata
+	// and Issues are the first answer's): nothing was asked again.
+	RecheckUnchecked Kind = "recheck_unchecked"
 )
 
 // Error is a failed analysis. Its text names only the kind: no cause,
@@ -253,10 +271,11 @@ type Error struct {
 	Err error
 	// Reasons are why the server does not compare the runs (NotComparable).
 	Reasons []string
-	// Metadata is the call's (CallFailed, Ungrounded, RecheckRefused: the
-	// first call's); nil before a call.
+	// Metadata is the call's (CallFailed, Ungrounded, RecheckRefused,
+	// RecheckUnchecked: the first call's); nil before a call.
 	Metadata *provider.Metadata
-	// Issues are why the answer is not grounded (Ungrounded, RecheckRefused).
+	// Issues are why the answer is not grounded (Ungrounded, RecheckRefused,
+	// RecheckUnchecked).
 	Issues []analyst.Issue
 	// Recheck is what the one re-ask did (Ungrounded; nil when there was
 	// none).
@@ -566,11 +585,24 @@ func (n *nodes) ground(ctx context.Context, a *answered) (*ended, error) {
 
 // recheckContext is the follow-up of the refused answer
 // (aicontext.ReviseAnalysis): its issues, at most aicontext.MaxRepairIssues,
-// and the record the re-ask starts. An attempt that stopped since the check
-// asks nothing (no record: the first refusal stands).
+// and the record the re-ask starts. An attempt that stopped since the check,
+// and an analysis Input.MayAskAgain does not let ask again (an
+// investigation that has ended since the attempt started, H-061 §12), ask
+// nothing (no record: the first refusal stands); MayAskAgain's error ends
+// the graph (RecheckUnchecked), nothing asked again.
 func (n *nodes) recheckContext(ctx context.Context, e *ended) (*ended, error) {
 	if ctx.Err() != nil {
 		return e, nil
+	}
+	if may := e.in.MayAskAgain; may != nil {
+		ok, err := may(ctx)
+		if err != nil {
+			md := e.result.Metadata
+			return nil, &Error{Kind: RecheckUnchecked, Err: err, Metadata: &md, Issues: e.first.issues}
+		}
+		if !ok {
+			return e, nil
+		}
 	}
 	listed := e.first.issues[:min(len(e.first.issues), aicontext.MaxRepairIssues)]
 	issues := make([]aicontext.CheckIssue, len(listed))

@@ -85,6 +85,7 @@ type env struct {
 	effects *effect.Service
 	fake    *fake.Backend
 	w       *worker.Worker
+	wscope  *workerscope.Worker // the worker login's scope, for a loop of other handlers
 }
 
 func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
@@ -133,7 +134,7 @@ func setup(t *testing.T) *env {
 		t.Fatal(err)
 	}
 	db := tenant.New(api)
-	e := &env{admin: admin, org: org, other: other, db: db, reg: reg, fake: f, w: w,
+	e := &env{admin: admin, org: org, other: other, db: db, reg: reg, fake: f, w: w, wscope: scope,
 		models:  &models.Service{DB: db, Packs: reg},
 		props:   &proposals.Service{DB: db, AI: proposals.Available, Policy: fast},
 		runs:    &runs.Service{DB: db, Packs: reg, Objects: fs, Policy: fast},

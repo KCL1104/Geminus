@@ -14,7 +14,7 @@ What the slice does (AI_SPEC §9, the H-086 (R) paragraph):
 
 | Part | Change | Files |
 |---|---|---|
-| When | An answer the client took as schema-valid and handed back (`provider.AnalysisResult.Prior`, new) that `analyst.Check` refuses with at least one issue, while the attempt has not stopped, is asked again once in the same job attempt. `analyst.Check` is unchanged. | `internal/aigraph/analysis/graph.go` |
+| When | An answer the client took as schema-valid and handed back (`provider.AnalysisResult.Prior`, new) that `analyst.Check` refuses with at least one issue, while the attempt has not stopped, is asked again once in the same job attempt. For an investigation's analysis, only while the investigation still runs, read again just before the re-ask (review round 1, §7). `analyst.Check` is unchanged. | `internal/aigraph/analysis/graph.go` |
 | Not re-asked | A first call that failed: a provider error, a spend cap, a truncated answer, a schema-invalid answer (`AI_INVALID_OUTPUT`), a cancellation. These keep their existing job failure and retry rule. An attempt that stopped once the first answer was in also keeps its refusal final. | same |
 | Why this rule | The owner's choice covers the grounding check's refusals. A failed call has no checked answer to fix: the existing rules already decide whether the job retries (a timeout, rate limit or unavailable provider) or fails (truncated, refused, invalid output, spend cap). Re-asking those would change behaviour the owner did not ask to change and would spend money on calls whose cause the issues cannot explain. A stopped attempt's refusal stays final (as `TestAStopAfterTheAnswerStillChecksIt` pinned before this slice), so no later attempt pays again. | |
 | The second request | `aicontext.ReviseAnalysis`. It resends the first call's sealed prompt byte for byte (system text, user message, role analyst, locale). The model's own answer goes back as the assistant turn, through `provider.Revision`, which the analyst's prompt now takes as well as the proposal roles' (`provider.Role.Revised`). Then comes the follow-up: `prompts/reground/system.md` (`reground-0.1.0`, English) and one `server_data` block `SERVER_CHECK` with at most 50 issues (the rest are counted). Each issue is a code the check emits, a path cut to the analysis output schema's own members and indexes, and the code's fixed rule (`aicontext.CheckRule`). | `internal/ai/aicontext/reground.go`, `prompts/reground/system.md`, `internal/ai/provider/{provider,revision}.go` |
@@ -123,7 +123,7 @@ No security, immutability or golden assertion was weakened or skipped.
 - `make backend-race` in full: NOT RUN. `make integration-test` ran the database packages with `-race`.
 - Screenshots: NOT RUN locally (only `E2E_SCREENSHOTS=1` in CI's container). No gallery sample was changed, so no baseline should move. The new line shows only when the API sets the flag, which no fixture or gallery sample does.
 - Time: a refused explanation now takes up to two analyst calls (each up to 300 s, the cap), so up to about twice as long. The worker sets no per-attempt bound on a job (the lease is renewed by the heartbeat). An investigation's own deadline still ends it with `time_limit`.
-- H-061 §12's check that an investigation still runs happens at the attempt's start, not again before the second call. The proposal repair does the same (H-057). The investigation's ceiling still bounds the spend.
+- ~~H-061 §12's check that an investigation still runs happens at the attempt's start, not again before the second call.~~ Fixed in review round 1 (§7): the re-ask reads it again first. The proposal repair (H-057) still reads it only at the attempt's start; that gap predates this slice and is recorded as open in H-061 §13.
 
 ## 6. For the coordinator
 
@@ -131,3 +131,49 @@ No security, immutability or golden assertion was weakened or skipped.
 - Record the prompt versions in §1: `reground-0.1.0` is new, `analyst-0.3.3` is unchanged, and the re-ask's version is `analyst-0.3.3+reground-0.1.0`.
 - Record the re-ask rule chosen in §1 (grounding refusals only; failed first calls as before; a stop before the re-ask keeps the refusal final; a failed second call keeps the first refusal, not retried), or ask the owner if they want a different rule.
 - The analyzer goldens' rule ("never rewritten") was broken on purpose for one case; see §2.
+
+## 7. Review round 1
+
+Four findings, all minor. Each was checked against the code; all four were fixed.
+
+| # | Finding | Verified | Fix |
+|---|---|---|---|
+| 1 | `graph.go` (recheck_context): the re-ask is a second paid call made without reading the investigation again. A stop does not cancel the analysis job's context, and 0019's `check_investigation_spend` refuses only past USD 2.50, not after a stop, so a re-ask could be sent after the person stopped the investigation (H-061 §12, §13). | Yes. `investigations.LabelOf` ran only in `analyzer.start`. The new DB test (below), run with the hook switched off, got the investigation `stopped`, the analysis `completed` and **2** analyst requests. | `analysis.Input.MayAskAgain func(ctx) (bool, error)`, asked once in `recheck_context`, after the stop check and before the follow-up is built. False: no re-ask, no record, the first refusal stands (as after a stop). An error ends the graph as the new kind `RecheckUnchecked` (the first answer's issues and the first call's metadata), which the analyzer maps to the first refusal, `ANALYSIS_UNGROUNDED`, not retried, with an ERROR log line (none when the attempt stopped). The analyzer sets it only for a labelled analysis: `stillRuns` runs `investigations.LabelOf` in a `hr.Checkpoint` (a short transaction under the job's lease; the graph still reads no storage). A labelled analysis without the read asks nothing more (fails closed). An investigation that has ended is logged at INFO ("the analysis's investigation has ended; its refused answer is not asked again"). A person's analysis is unchanged: no hook, no extra transaction. |
+| 2 | H-061 §12's cap row still said at most 10 delegated calls. | Yes. | The row says at most 14 (3 proposals × 2 with H-057's repair, plus 4 analyses × 2 with H-086 (R)'s re-ask; research at most once). The estimates list says the USD 0.8 and 1.9 figures predate H-086 (R) and that a refused explanation costs about twice as much. |
+| 3 | The same stale 10 in H-056's table, and H-061 §13's "Running child jobs either complete inertly or fail fast before their paid call", which the re-ask broke. | Yes. | H-056's table says ≤ 14. §13 now says the stop does not cancel a running child job's context and that the re-ask reads the investigation again first. Its sentence "the database refuses every labelled write and every ledger insert" was also corrected: no trigger on `ai_spend_reservations` (0016's two, 0019's `check_investigation_spend`) and nothing in `internal/storage/aispend` checks the investigation's status, so a ledger insert is bounded only by the ceiling and the planner-turn count. The proposal repair has the same gap from H-057 (verified: `generator.start` is its only `LabelOf`, and `repair.Plan` checks only `ctx.Err()`). It is recorded in §13 as **open, for the owner**, with the analysis graph's fix as the pattern. It is not changed here: it is H-057's code, outside this slice. |
+| 4 | ARCHITECTURE.md still described the analysis graph without the re-ask branch, with `analyze`'s signature "kept" and one log line. | Yes. | The entry lists `ground ↳ recheck_context → generate_2 → ground_2` (no cycle, at most one re-ask), says `analyze` returns `analyzed` (the analysis, the first call's metadata and the re-ask's record), names the injected pre-re-ask check, says there is one log line per call (`call_attempt` 2 on the re-ask), and links this report. AI_SPEC §9's H-086 (R) paragraph, which said the check "stays at the attempt's start", was corrected too. |
+
+Tests added (each fails with the hook switched off in `recheck_context`, checked by mutation):
+- `internal/aigraph/analysis` `TestTheReaskAsksWhetherItMayFirst`:
+  - The hook is asked once, after the first call, under the attempt's context. "It may": the re-ask as before, 2 requests and 2 reservations. "It may not": ungrounded with the first answer's issues and the first call's metadata, no record, 1 request, 1 reservation, 1 settlement. "It cannot tell": `RecheckUnchecked` wrapping the hook's error, the same otherwise, and its text names only the kind.
+  - The hook is not asked for a grounded first answer, a failed first call, or an attempt that stopped before the re-ask.
+- `internal/analyses/analyzer` `TestAnInvestigationsAnalysisIsAskedAgainOnlyWhileItRuns`:
+  - It still runs: the re-ask's analysis.
+  - It has ended: the first refusal, not retried, 1 request, the INFO line.
+  - The read fails: the same, with the ERROR line.
+  - No read on a labelled analysis: the same, no extra line.
+  - A person's analysis is never asked about it.
+- `internal/analyses/analyzer` `TestStillRunsReadsTheInvestigationUnderTheLease`:
+  - `LabelOf`'s query for the analysis (organization and ID) in one Checkpoint, with a fake transaction.
+  - A query error, a stopped attempt (`handler.ErrStopped`) and a lost lease (`jobs.ErrLeaseLost`) are errors, never "still runs".
+- `internal/proposals/effect` `TestAnExplanationIsNotAskedAgainOnceItsInvestigationStops` (database, the real API and worker logins):
+  - An investigation proposes, saves and runs a what-if, then queues an explanation through `analyses.Queue` in its acting-for scope.
+  - The analyzer's first analyst call gets an ungrounded answer while the requester stops the investigation (`investigations.Stop`) during that call: one analyst request; the analysis is `failed` with `ANALYSIS_UNGROUNDED`; its `analysis.attempt_failed` event has no `repair` field.
+  - The same without the stop: two requests, `completed`, `analysis.generate` `repair` grounded.
+  - With the hook switched off, the stopped case fails: the analysis was `completed` after 2 analyst requests.
+- `internal/proposals/effect/db_test.go`: `env` keeps the worker login's scope (`wscope`) so a test can run a loop of other handlers.
+
+No assertion was weakened or skipped; no golden changed (no golden case is an investigation's analysis).
+
+Residual risk: the read and the second call's reservation are two steps. A stop that commits in the milliseconds between them is not seen (the call up to 300 s before it is). The proposal repair's gap (finding 3) is unchanged.
+
+Gates of review round 1 (run in the worktree; toolchain go1.27.3, the Python venv from `requirements-spec.txt` in the session scratchpad):
+
+| Command | Exit | Result |
+|---|---|---|
+| `make spec-check` (run again after the last doc edit) | 0 | every part PASS, among them `PASS_LIMITED_SPEC_CHECKS`, `PASS_REGISTER_SHAPE_ONLY`, `PASS_TS_CONTRACTS_FRESH` (17 files, 166 types), `PASS_DB_TESTS_FRESH` (18 files), `PASS_STATIC_DEPLOY_CHECKS`; `checks/docs-check.json` regenerated (one more relative link) |
+| `make backend-test` | 0 | 104 packages ok, 0 failed, 11 without tests; `scripts/check-architecture` ok (519 s). Database tests skip here; `make integration-test` runs them. |
+| `make integration-test` on a fresh disposable `dt_test_h086f2` (PostgreSQL 16.15 started by `initdb` in the session scratchpad, trust auth, 127.0.0.1:56491 only, no Unix socket, `fsync=off`; dropped and stopped afterwards) | 0 | `DB migration smoke up/down/up completed` and the SQL tests; `db-go-test` (`GEMINUS_REQUIRE_DB_TESTS=1`, `-race`, `-p 1`) 46 packages ok, 0 failed, none skipped, among them `internal/proposals/effect` (the new test) and `internal/analyses/analyzer`. Before it, on `dt_test_h086f1`, the new DB test passed with `-race`, and failed with the hook switched off as described above. |
+| `make ai-eval` | 0 | `TestFakeProviderEval`, `TestReviewEval`, `TestAnalystEval`, `TestInvestigatorEval` PASS; fake results only, no report changed; the live eval is NOT RUN. |
+| `make frontend-test`, `make e2e-test` | NOT RUN | `apps/web` was not changed in this round. |
+| `make backend-race` in full; any live provider call | NOT RUN | |
