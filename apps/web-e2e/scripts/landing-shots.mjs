@@ -13,7 +13,10 @@
 // live demo's capture still said "Checked by Geminus"); its caption says no
 // AI was called. The landing draws every screen at its 1104 px box, so the
 // results and the Marey chart are taken at the widest the results page
-// stacks its panel under them (1100 px), near that width.
+// stacks its panel under them (1100 px), near that width; a screen narrower
+// than the box is captured at the scale that makes its pictures the box's
+// width at 1x and 2x (1104 and 2208 px), so neither is stretched on screen
+// and a 1x screen has a picture that fits (H-088 review).
 // It replaces everything in public/landing/ and writes
 // features/landing/shots.ts, the files and sizes the page renders (a module,
 // not JSON: no app module imports JSON, tests/results-preview.test.tsx).
@@ -47,6 +50,8 @@ const start = process.argv.includes("--start");
 const port = Number(arg("--port") ?? 3210);
 const base = arg("--base") ?? `http://127.0.0.1:${port}`;
 const QUALITY = 0.86;
+/** The landing's box (features/landing/shot.tsx BOX): every gallery screen is drawn at this width. */
+const BOX = 1104;
 
 /** Starts `next start` with the gallery on and waits until it answers. */
 async function serve() {
@@ -211,16 +216,32 @@ try {
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
   const blank = await (await browser.newContext()).newPage();
-  for (const theme of ["light", "dark"]) {
-    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 2, colorScheme: theme, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
+  /** A page in this theme at this device scale, with the language and the theme's cookies. */
+  const themed = async (theme, scale) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: scale, colorScheme: theme, locale: "en-US", timezoneId: "UTC", reducedMotion: "reduce" });
     await ctx.addCookies([{ name: "geminus_locale", value: "en", url: base }, { name: "geminus_theme", value: theme, url: base }]);
-    const page = await ctx.newPage();
+    return { ctx, page: await ctx.newPage() };
+  };
+  const shoot = (page, clip) => page.screenshot({ clip, fullPage: true, animations: "disabled", caret: "hide" });
+  for (const theme of ["light", "dark"]) {
+    const { ctx, page } = await themed(theme, 2);
     for (const [name, crop] of Object.entries(screens)) {
-      const clip = round(await crop(page));
-      const png = await page.screenshot({ clip, fullPage: true, animations: "disabled", caret: "hide" });
-      const files = await encode(blank, png, `${name}-${theme}`, [clip.width, clip.width * 2]);
-      (shots[name] ??= { width: clip.width, height: clip.height, themes: {} }).themes[theme] = files.map((f) => f.file);
-      console.log(`${name} (${theme}): ${clip.width}×${clip.height} → ${files.map((f) => f.file).join(", ")}`);
+      let clip = round(await crop(page));
+      let png;
+      let width = clip.width;
+      if (clip.width < BOX) {
+        // Narrower than the box: taken again at the scale that makes it 2 × BOX device pixels wide.
+        const big = await themed(theme, (2 * BOX) / clip.width);
+        clip = round(await crop(big.page));
+        png = await shoot(big.page, clip);
+        await big.ctx.close();
+        width = BOX;
+      } else {
+        png = await shoot(page, clip);
+      }
+      const files = await encode(blank, png, `${name}-${theme}`, [width, width * 2]);
+      (shots[name] ??= { width, height: files[0].height, themes: {} }).themes[theme] = files.map((f) => f.file);
+      console.log(`${name} (${theme}): ${clip.width}×${clip.height} CSS px → ${files.map((f) => `${f.file} (${f.width}×${f.height})`).join(", ")}`);
     }
     await ctx.close();
   }

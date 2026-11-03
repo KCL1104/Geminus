@@ -7,8 +7,10 @@
 // theme where both exist; and axe finds nothing (contrast and layout are
 // the browser's: apps/web-e2e). H-088: under the hero, the loop band names
 // the five steps and who acts in each, each a link to its station below
-// (the page's only other links, all inside it); the stations carry the
-// screens, the person's step none.
+// (the page's only other links, all inside it, pinned with the one action);
+// the stations carry the screens, the person's step none. The synthetic
+// note is in the hero signed out and in (it moved into the action's client
+// part); the results' and the Marey chart's captions name their own run.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -21,7 +23,7 @@ import { createTranslator } from "../lib/i18n/translate";
 import { en } from "../messages/en";
 import { zhHant } from "../messages/zh-Hant";
 import { Landing } from "../features/landing/landing";
-import { pictures, type ShotName } from "../features/landing/shot";
+import { BOX, pictures, type ShotName } from "../features/landing/shot";
 import { shots } from "../features/landing/shots";
 import { mount, violations } from "./ui-harness";
 import { templateName } from "../features/models/templates";
@@ -62,19 +64,28 @@ const stepIds = ["describe", "propose", "approve", "simulate", "explain"] as con
 const band = (el: Element) => [...el.querySelectorAll("ol[data-band] > li")];
 const stations = (el: Element) => [...el.querySelectorAll("ol[data-steps] > li")];
 const text = (el: Element) => (el.textContent ?? "").replace(/\s+/g, " ").trim();
+/** The in-page links are the loop band's five, to their stations, and no other (H-088: away() leaves them out). */
+function onlyTheBandLinksInPage(el: Element) {
+  expect(links(el).filter(([, h]) => h?.startsWith("#")).map(([, h]) => h)).toEqual(stepIds.map((s) => `#step-${s}`));
+  expect([...el.querySelectorAll('a[href^="#"]')].every((a) => a.closest("ol[data-band]"))).toBe(true);
+}
 
 describe("the landing's one action (H-048)", () => {
   it.each([["no bootstrap", auth.none], ["signed out", auth.signedOut]] as const)("%s: the sign-in, back to the projects, and where the judges' account is", async (_, value) => {
     const el = await page(value);
     expect(away(el)).toEqual([[en["landing.signIn"], "/auth/login?return_to=%2Fprojects"]]);
+    onlyTheBandLinksInPage(el);
     expect(text(el)).toContain(en["landing.judges"]);
+    expect(text(el)).toContain(en["landing.synthetic"]);
     expect(el.querySelectorAll('[data-variant="primary"]')).toHaveLength(1);
   });
 
   it.each([["loading /me", auth.loading], ["ready", auth.ready]] as const)("with a session (%s): the projects, and no sign-in", async (_, value) => {
     const el = await page(value);
     expect(away(el)).toEqual([[en["landing.openProjects"], "/projects"]]);
+    onlyTheBandLinksInPage(el);
     expect(text(el)).not.toContain(en["landing.judges"]);
+    expect(text(el)).toContain(en["landing.synthetic"]);
     expect(el.querySelectorAll('[data-variant="primary"]')).toHaveLength(1);
   });
 
@@ -135,7 +146,7 @@ describe("the landing's content (H-048)", () => {
       ["/landing/canvas-light-1208.webp"],
       ["/landing/proposed-light-1184.webp"],
       [],
-      ["/landing/results-light-1028.webp", "/landing/marey-light-1028.webp"],
+      ["/landing/results-light-1104.webp", "/landing/marey-light-1104.webp"],
       ["/landing/explained-408.webp"],
     ]);
     // Review round 1, M1: the Meta models, and web search as a tool of the Meta Model API that the Muse models use, not a model.
@@ -149,6 +160,22 @@ describe("the landing's content (H-048)", () => {
     expect(c["landing.shot.proposed.caption"]).toMatch(locale === "en" ? /no AI called/ : /沒有呼叫 AI/);
     const captions = [...el.querySelectorAll("figcaption")].map(text);
     expect(captions.filter((x) => (locale === "en" ? /Live demo/ : /線上示範/).test(x))).toEqual([c["landing.shot.explained.caption"]]);
+    // H-088 review: the loop now reads as one what-if (a third ICT tester), but the results and the Marey chart are
+    // another sample run, a second ICT fixture on a smaller board line; their captions and alt texts say so, and the
+    // live explanation's names its own run.
+    const run = locale === "en" ? /another sample run, a second ICT fixture/ : /另一組範例執行.*多加一座 ICT 治具/;
+    const simulate = stations(el)[3]!;
+    expect([...simulate.querySelectorAll("figcaption")].map(text)).toEqual([c["landing.shot.results.caption"], c["landing.shot.marey.caption"]]);
+    expect(c["landing.shot.results.caption"]).toMatch(run);
+    expect(c["landing.shot.marey.caption"]).toMatch(locale === "en" ? /of that run/ : /同一組執行/);
+    for (const img of simulate.querySelectorAll("img")) expect(img.getAttribute("alt")).toMatch(locale === "en" ? /a second ICT fixture/ : /多加一座 ICT 治具/);
+    expect(c["landing.shot.explained.caption"]).toMatch(locale === "en" ? /another run, a third ICT tester/ : /另一次執行（電子產線上多一台 ICT 測試機）/);
+    // The lede keeps the Meta model's name on one line (no-break spaces on screen; in Chinese with the word after it,
+    // so the line breaks after \u300c\u7167\u7247\u3002\u300d), the catalog's plain spaces aside.
+    expect(el.querySelector("h1 + p")?.textContent).toBe(
+      c["landing.lede"].replace("Muse Spark ", locale === "en" ? "Muse\u00a0Spark " : "Muse\u00a0Spark\u00a0"),
+    );
+    expect(c["landing.lede"]).toContain("Muse Spark ");
     expect(`${text(el)} ${[...el.querySelectorAll("img")].map((i) => i.alt).join(" ")}`).not.toMatch(/Geminus/);
     for (const k of ["electronics_assembly_test_line", "shoe_factory", "food_plant", "carton_plant", "warehouse"] as const) expect(text(el)).toContain(c[templateName(k)]);
     expect([...el.querySelectorAll("dl")[1]!.querySelectorAll("dt")].map(text)).toEqual(
@@ -286,7 +313,9 @@ describe("the landing's pictures (H-048)", () => {
     }
     // Both themes' pictures of a screen share its alt text; CSS shows one (landing.module.css).
     const results = imgs.filter((i) => /\/landing\/results-/.test(i.getAttribute("src")!));
-    expect(results.map((i) => i.getAttribute("src"))).toEqual(["/landing/results-light-1028.webp", "/landing/results-dark-1028.webp"]);
+    expect(results.map((i) => i.getAttribute("src"))).toEqual(["/landing/results-light-1104.webp", "/landing/results-dark-1104.webp"]);
+    // H-088 review: a screen drawn at the box has a 1x picture at the box's width or wider, so a 1x screen does not take the 2x one.
+    for (const name of names) if (name !== "explained") expect(shots[name].width, name).toBeGreaterThanOrEqual(BOX);
     expect(new Set(results.map((i) => i.alt)).size).toBe(1);
     // Review round 1, L9: each screen is framed as a screenshot, its caption a bar above the picture.
     for (const figure of el.querySelectorAll("figure")) expect(figure.firstElementChild?.tagName).toBe("FIGCAPTION");

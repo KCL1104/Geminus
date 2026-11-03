@@ -110,13 +110,18 @@ function Band({ t }: { t: Translator }) {
   );
 }
 
-/** A station on the spine: its number, the step, who acts and what happens, then the screens it happens on. */
+/**
+ * A station on the spine: its number, the step and who acts on one row (stacked on a phone), what happens under
+ * them, then the screens it happens on.
+ */
 function Station({ step, t }: { step: StepProps; t: Translator }) {
   return (
     <li id={`step-${step.id}`} className={styles.station}>
       <div className={styles.stationHead}>
-        <h3>{t(step.title)}</h3>
-        <Who actors={step.actors} t={t} />
+        <div className={styles.stationTitle}>
+          <h3>{t(step.title)}</h3>
+          <Who actors={step.actors} t={t} />
+        </div>
         <p>{t(step.body)}</p>
       </div>
       {step.shots.map((s) => (
@@ -168,6 +173,22 @@ const safetyActing: [MessageKey, MessageKey][] = [
   ["landing.safe.synthetic", "landing.safe.synthetic.body"],
 ];
 
+/** The Meta model the lede names, the same in both languages. */
+const MUSE = "Muse Spark";
+
+/**
+ * A name kept on one line: its spaces become no-break spaces on screen. The zh-Hant lede broke "Muse Spark" in two
+ * at every width (H-088 review: keep-all leaves the name's space as the break nearest the balance point). In
+ * Chinese the space after the name only sets it apart from the next word, so it is kept with that word too, and
+ * the line breaks at the sentence's punctuation (「…產線照片。」 / 「Muse Spark 擬好修改…」). The catalog keeps
+ * plain spaces: the lede is also the meta description, and strings.spec reads both as one space.
+ */
+export function whole(text: string, name: string): string {
+  const kept = name.replaceAll(" ", "\u00a0");
+  const at = new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( (?=\\p{Script=Han}))?`, "gu");
+  return text.replace(at, (_, han?: string) => (han === undefined ? kept : `${kept}\u00a0`));
+}
+
 export function Landing({ t }: { t: Translator }) {
   return (
     <div className={styles.landing}>
@@ -176,7 +197,7 @@ export function Landing({ t }: { t: Translator }) {
           {/* The product's name above the promise (review round 1, M3), the word only: the bar above has the mark. */}
           <p className={styles.brand}>{t("app.name")}</p>
           <h1 id="landing-title">{t("landing.title")}</h1>
-          <p className={styles.lede}>{t("landing.lede")}</p>
+          <p className={styles.lede}>{whole(t("landing.lede"), MUSE)}</p>
           <LandingAction />
         </div>
       </section>

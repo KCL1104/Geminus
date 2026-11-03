@@ -34,30 +34,30 @@ export const shots = {
     }
   },
   "results": {
-    "width": 1028,
-    "height": 348,
+    "width": 1104,
+    "height": 374,
     "themes": {
       "light": [
-        "results-light-1028.webp",
-        "results-light-2056.webp"
+        "results-light-1104.webp",
+        "results-light-2208.webp"
       ],
       "dark": [
-        "results-dark-1028.webp",
-        "results-dark-2056.webp"
+        "results-dark-1104.webp",
+        "results-dark-2208.webp"
       ]
     }
   },
   "marey": {
-    "width": 1028,
-    "height": 389,
+    "width": 1104,
+    "height": 418,
     "themes": {
       "light": [
-        "marey-light-1028.webp",
-        "marey-light-2056.webp"
+        "marey-light-1104.webp",
+        "marey-light-2208.webp"
       ],
       "dark": [
-        "marey-dark-1028.webp",
-        "marey-dark-2056.webp"
+        "marey-dark-1104.webp",
+        "marey-dark-2208.webp"
       ]
     }
   },

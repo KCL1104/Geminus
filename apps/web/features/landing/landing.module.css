@@ -205,7 +205,7 @@
 }
 
 .dot > span,
-.stationHead::before {
+.stationTitle::before {
   display: grid;
   place-items: center;
   width: 24px;
@@ -250,8 +250,8 @@
   border-radius: var(--gm-radius-lg);
 }
 
-/* The stations, on a hairline down the centre: a short run of the line, the number on it, the step, who
-   acts and what happens, then the screens. The person's step has no screen. */
+/* The stations, on a hairline down the centre: a short run of the line, then one centred row of the number,
+   the step and who acts, what happens under it, then the screens. The person's step has no screen. */
 .stations {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -270,11 +270,18 @@
   scroll-margin-block-start: var(--gm-space-xl);
 }
 
+/* The run of the line: from the screen above to 8 px over the station's row (32 + 8 = the 40 px between them). */
 .station::before {
   content: "";
-  height: var(--gm-space-split);
-  margin-block-end: calc(-1 * var(--gm-space-xl));
+  height: var(--gm-space-2xl);
+  margin-block-end: calc(-1 * var(--gm-space-gutter));
   border-inline-start: 1px solid var(--gm-color-rule-strong);
+}
+
+/* The first run of the line would hang from the band's middle cell ("You decide") onto station 1, so it is
+   kept for its space but not drawn: the spine starts at station 1 and joins each screen to the next station. */
+.station:first-child::before {
+  visibility: hidden;
 }
 
 .stationHead {
@@ -282,12 +289,21 @@
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: var(--gm-space-md);
-  max-width: 640px;
   text-align: center;
 }
 
-.stationHead::before {
+/* The number, the step and who acts on one row that wraps, centred (direction B: "(1) Ask for a change [You]"). */
+.stationTitle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--gm-space-sm) var(--gm-space-md);
+}
+
+.stationTitle::before {
   content: counter(step);
+  flex: none;
 }
 
 .stationHead h3 {
@@ -297,12 +313,14 @@
   letter-spacing: -0.015em;
 }
 
+/* What happens: centred under the row and balanced, as the lede and the section intros are. */
 .stationHead p {
+  max-width: 640px;
   margin: 0;
   color: var(--gm-color-ink-2);
   font-size: var(--gm-font-size-title);
   line-height: var(--gm-line-height-title);
-  text-wrap: pretty;
+  text-wrap: balance;
 }
 
 /* Who acts, as pills like the page header's provenance (DESIGN.md Layout). */
@@ -636,12 +654,24 @@
 
   .stationHead {
     justify-items: start;
-    max-width: none;
     text-align: start;
+  }
+
+  /* On a phone the head is stacked: the number, the step, who acts, then what happens, left-aligned. */
+  .stationTitle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: var(--gm-space-md);
   }
 
   .stationHead .who {
     justify-content: flex-start;
+  }
+
+  .stationHead p {
+    max-width: none;
+    text-wrap: pretty;
   }
 
   .shot[data-fit="own"] {
