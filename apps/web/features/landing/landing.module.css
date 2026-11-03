@@ -1,97 +1,86 @@
-/* The landing at / (H-048): the app's own system (DESIGN.md, H-041) on one
-   page for a first visit. The record of one what-if is the page's spine:
-   each step names who acts, beside the product's real screen. Five type
-   sizes, tokens only, hairlines and the card shadow; the accent marks the
-   AI (an actor pill), Ink frames DryLine's own check, as on the proposal
-   page. Sections are divided by a hairline with the split space on either
-   side. */
+/* The landing at / (H-048, laid out again in H-088): the app's own system
+   (DESIGN.md, H-041) on one page for a first visit, centred like Railway's
+   and Supabase's. Everything sits in one 1104 px box (the main region's
+   content width, less its 24 px sides) with equal margins; the hairlines
+   between sections run the full width. Short text is centred (the hero, the
+   section heads, the closing line), long text left-aligned inside the box.
+   The record of one what-if is the page's spine: the loop band under the
+   hero names who acts in each step, and each step is a station on a
+   hairline down the page's centre, above its real screen at the box's
+   width. Tokens only, hairlines and the overlay shadow on the screens; the
+   accent marks the AI (an actor pill), Ink frames DryLine's own check, as
+   on the proposal page. The h1 is the one size outside the five, on this
+   page only (H-088, DESIGN.md Typography). */
 .landing {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--gm-space-split);
-  max-width: var(--gm-content-width);
-  padding-block-end: var(--gm-space-split);
 }
 
-.section {
+/* The box: 1104 px, or the width less 24 px either side. */
+.box,
+.heroText,
+.close p {
+  width: min(calc(var(--gm-content-width) - 2 * var(--gm-space-xl)), calc(100% - 2 * var(--gm-space-xl)));
+  margin-inline: auto;
+}
+
+.box {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--gm-space-xl);
-  padding-block-start: var(--gm-space-split);
-  border-top: 1px solid var(--gm-color-rule);
 }
 
-.section > h2 {
-  margin: 0;
-  font-size: var(--gm-font-size-headline);
-  line-height: var(--gm-line-height-headline);
-  letter-spacing: -0.015em;
-}
-
-.intro {
-  max-width: 40rem;
-  margin: 0;
-  color: var(--gm-color-ink-2);
-  font-size: var(--gm-font-size-title);
-  line-height: var(--gm-line-height-title);
-}
-
-/* The first view: the promise, how, the one action, then the results as they are on screen. */
+/* The first view: the name, the promise, how, the one action and the notes, centred. */
 .hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--gm-space-2xl);
-  padding-block-start: var(--gm-space-xl);
+  padding-block: var(--gm-space-md) var(--gm-space-split);
 }
 
 .heroText {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--gm-space-gutter);
-  max-width: 44rem;
+  justify-items: center;
+  gap: var(--gm-space-lg);
+  text-align: center;
 }
 
-/* The product's name with its mark, as the rail draws the mark: the brand at Title (DESIGN.md Typography). */
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gm-space-md);
-  margin: 0;
-  font-size: var(--gm-font-size-title);
-  font-weight: var(--gm-font-weight-brand);
-  line-height: var(--gm-line-height-title);
-}
-
+/* H-088: the landing's one exception to The Five Sizes Rule, 40/44 at 600 (Display on a phone). */
 .heroText h1 {
-  max-width: 24em;
+  max-width: 880px;
   margin: 0;
+  font-size: var(--gm-font-size-hero);
+  line-height: var(--gm-line-height-hero);
+  letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
-.heroText .intro {
-  max-width: 42rem;
+.lede {
+  max-width: 600px;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  text-wrap: balance;
 }
 
 .act {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--gm-space-md) var(--gm-space-gutter);
+  justify-content: center;
   margin-block-start: var(--gm-space-md);
 }
 
-/* The page's one primary action (H-027), drawn as DESIGN.md's primary key: the ink, inverted. */
+/* The page's one primary action (H-027), drawn as DESIGN.md's primary key: the ink, inverted; 40 px on the landing (H-088). */
 .primary {
   display: inline-flex;
   align-items: center;
   gap: var(--gm-space-sm);
-  min-height: var(--gm-control-height);
-  padding: 0 var(--gm-space-gutter);
+  min-height: calc(var(--gm-control-height) + var(--gm-space-md));
+  padding: 0 var(--gm-space-section);
   border: 1px solid var(--gm-color-ink);
   border-radius: var(--gm-radius-md);
   background: var(--gm-color-ink);
   box-shadow: var(--gm-shadow-control);
   color: var(--gm-color-on-ink);
+  font-size: var(--gm-font-size-title);
   font-weight: var(--gm-font-weight-medium);
   text-decoration: none;
   white-space: nowrap;
@@ -104,18 +93,274 @@
   color: var(--gm-color-on-ink);
 }
 
-.note {
+/* The judges' note and the synthetic note: one centred row that wraps, in Ink 2 so they stay readable,
+   a dot between them (drawn only: nothing is read out). */
+.notes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gm-space-xs) var(--gm-space-md);
+}
+
+.notes p {
   margin: 0;
-  color: var(--gm-color-ink-3);
+  color: var(--gm-color-ink-2);
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
 }
 
+.notes p + p::before {
+  content: "·" / "";
+  margin-inline-end: var(--gm-space-md);
+  color: var(--gm-color-ink-3);
+}
+
+/* A section: a hairline across the page, then its head centred in the box. */
+.section {
+  padding-block: var(--gm-space-split);
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: var(--gm-space-md);
+  text-align: center;
+}
+
+.head h2 {
+  margin: 0;
+  font-size: var(--gm-font-size-headline);
+  line-height: var(--gm-line-height-headline);
+  letter-spacing: -0.015em;
+}
+
+.intro {
+  max-width: 640px;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  text-wrap: balance;
+}
+
+/* The loop band (H-088): five equal cells joined by a hairline through their numbers; each cell is a
+   link to its station (the title is the link, its area the whole cell). */
+.band {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: band;
+}
+
+.cell {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: center;
+  gap: var(--gm-space-md);
+  padding: var(--gm-space-md) var(--gm-space-lg) var(--gm-space-lg);
+  border-radius: var(--gm-radius-lg);
+  text-align: center;
+  counter-increment: band;
+  transition: background-color var(--gm-motion);
+}
+
+.cell:hover {
+  background: var(--gm-color-hover);
+}
+
+/* The number on the line: the line runs from cell to cell, broken around each number. */
+.dot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--gm-space-md);
+  justify-self: stretch;
+  margin-inline: calc(-1 * var(--gm-space-lg));
+}
+
+.dot::before,
+.dot::after {
+  content: "";
+  border-top: 1px solid var(--gm-color-rule-strong);
+}
+
+.cell:first-child .dot::before,
+.cell:last-child .dot::after {
+  visibility: hidden;
+}
+
+.dot > span,
+.stationTitle::before {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: 1;
+}
+
+.dot > span::before {
+  content: counter(band);
+}
+
+/* Centred short text breaks between words and after punctuation, not inside a Chinese word ("起草",
+   "打造"); a run too long for its line still breaks. */
+.heroText,
+.intro,
+.jump,
+.stationHead h3,
+.close p {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.jump {
+  color: var(--gm-color-ink);
+  font-size: var(--gm-font-size-title);
+  font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-title);
+  text-decoration: none;
+  text-wrap: balance;
+}
+
+.jump::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--gm-radius-lg);
+}
+
+/* The stations, on a hairline down the centre: a short run of the line, then one centred row of the number,
+   the step and who acts, what happens under it, then the screens. The person's step has no screen. */
+.stations {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: calc(-1 * var(--gm-space-lg)) 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.station {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: var(--gm-space-xl);
+  counter-increment: step;
+  scroll-margin-block-start: var(--gm-space-xl);
+}
+
+/* The run of the line: from the screen above to 8 px over the station's row (32 + 8 = the 40 px between them). */
+.station::before {
+  content: "";
+  height: var(--gm-space-2xl);
+  margin-block-end: calc(-1 * var(--gm-space-gutter));
+  border-inline-start: 1px solid var(--gm-color-rule-strong);
+}
+
+/* The first run of the line would hang from the band's middle cell ("You decide") onto station 1, so it is
+   kept for its space but not drawn: the spine starts at station 1 and joins each screen to the next station. */
+.station:first-child::before {
+  visibility: hidden;
+}
+
+.stationHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  gap: var(--gm-space-md);
+  text-align: center;
+}
+
+/* The number, the step and who acts on one row that wraps, centred (direction B: "(1) Ask for a change [You]"). */
+.stationTitle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--gm-space-sm) var(--gm-space-md);
+}
+
+.stationTitle::before {
+  content: counter(step);
+  flex: none;
+}
+
+.stationHead h3 {
+  margin: 0;
+  font-size: var(--gm-font-size-headline);
+  line-height: var(--gm-line-height-headline);
+  letter-spacing: -0.015em;
+}
+
+/* What happens: centred under the row and balanced, as the lede and the section intros are. */
+.stationHead p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--gm-color-ink-2);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+  text-wrap: balance;
+}
+
+/* Who acts, as pills like the page header's provenance (DESIGN.md Layout). */
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gm-space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.actor {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gm-space-sm);
+  min-height: 26px;
+  padding: 0 var(--gm-space-cell);
+  border: 1px solid var(--gm-color-rule-strong);
+  border-radius: var(--gm-radius-full);
+  background: var(--gm-color-sheet);
+  color: var(--gm-color-ink);
+  font-size: var(--gm-font-size-label);
+  font-weight: var(--gm-font-weight-medium);
+  line-height: var(--gm-line-height-label);
+}
+
+/* A Meta model: the accent's edge, which marks the AI everywhere, and its provider in tertiary ink. */
+.actor[data-kind="ai"] {
+  border-color: var(--gm-color-accent);
+}
+
+/* DryLine's own check: the ink frame of "Checked by DryLine" on the proposal page. */
+.actor[data-kind="server"] {
+  border-color: var(--gm-color-ink);
+}
+
+.provider {
+  color: var(--gm-color-ink-3);
+  font-weight: var(--gm-font-weight-regular);
+}
+
 /* A product screen, framed as a screenshot (review round 1, L9): a window floating over the page
    (the overlay's shadow, DESIGN.md Elevation) whose title bar, on the well, is the caption; the
-   picture's buttons sit inside the frame, not on the page. */
+   picture's buttons sit inside the frame, not on the page. At the box's width (H-088), or its own. */
 .shot {
   display: block;
+  justify-self: stretch;
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -124,13 +369,17 @@
   box-shadow: var(--gm-shadow-overlay);
 }
 
+.shot[data-fit="own"] {
+  justify-self: center;
+}
+
 .shot img {
   width: 100%;
   height: auto;
 }
 
-/* The two screens captured on the live demo exist in the light theme only: in the dark theme they
-   are dimmed a little, so they do not glare (review round 1, L6). */
+/* The screen captured on the live demo exists in the light theme only: in the dark theme it is dimmed
+   a little, so it does not glare (review round 1, L6). */
 @media (prefers-color-scheme: dark) {
   :global(:root:not([data-theme="light"])) .shot[data-live] img {
     filter: brightness(0.82);
@@ -175,151 +424,63 @@
   color: var(--gm-color-ink-2);
   font-size: var(--gm-font-size-label);
   line-height: var(--gm-line-height-label);
+  text-align: start;
 }
 
-/* The loop, in order: a number, the step, who acts; the screen it happens on below it. */
-.steps {
+/* The Meta models: three columns divided by hairlines, the text left-aligned in each. */
+.columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--gm-space-split);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-
-.step {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--gm-space-xl);
-  counter-increment: step;
-}
-
-/* A tall screen stands beside its step, and the step's text stays beside it while the page scrolls
-   past the screen (review round 1, L8). */
-.step[data-layout="beside"] {
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-  align-items: start;
-}
-
-.step[data-layout="beside"] .stepText {
-  position: sticky;
-  top: var(--gm-space-xl);
-}
-
-.stepText {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  column-gap: var(--gm-space-lg);
-  max-width: 44rem;
-}
-
-.stepText::before {
-  content: counter(step);
-  display: grid;
-  grid-row: span 3;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--gm-color-rule-strong);
-  border-radius: var(--gm-radius-full);
-  background: var(--gm-color-sheet);
-  color: var(--gm-color-ink-2);
-  font-size: var(--gm-font-size-label);
-  font-weight: var(--gm-font-weight-strong);
-}
-
-.stepText h3 {
-  margin: 0 0 var(--gm-space-sm);
-  padding-block-start: var(--gm-space-xs);
-  font-size: var(--gm-font-size-title);
-  line-height: var(--gm-line-height-title);
-}
-
-.stepText p {
-  margin: 0 0 var(--gm-space-lg);
-  color: var(--gm-color-ink-2);
-}
-
-/* Who acts, as pills like the page header's provenance (DESIGN.md Layout). */
-.who {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gm-space-sm);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.actor {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--gm-space-sm);
-  min-height: 26px;
-  padding: 0 var(--gm-space-cell);
-  border: 1px solid var(--gm-color-rule-strong);
-  border-radius: var(--gm-radius-full);
-  background: var(--gm-color-sheet);
-  color: var(--gm-color-ink);
-  font-size: var(--gm-font-size-label);
-  font-weight: var(--gm-font-weight-medium);
-  line-height: var(--gm-line-height-label);
-}
-
-/* A Meta model: the accent's edge, which marks the AI everywhere, and its provider in tertiary ink. */
-.actor[data-kind="ai"] {
-  border-color: var(--gm-color-accent);
-}
-
-/* DryLine's own check: the ink frame of "Checked by DryLine" on the proposal page. */
-.actor[data-kind="server"] {
-  border-color: var(--gm-color-ink);
-}
-
-.provider {
-  color: var(--gm-color-ink-3);
-  font-weight: var(--gm-font-weight-regular);
-}
-
-/* Two columns of terms and what they mean, divided by hairlines, as the run settings are. */
-.facts {
-  display: grid;
-  grid-template-columns: minmax(10rem, 15rem) minmax(0, 1fr);
-  max-width: 52rem;
-  margin: 0;
-}
-
-/* A term and what it means: two cells of the grid. */
-.pair {
-  display: contents;
-}
-
-.facts dt,
-.facts dd {
-  margin: 0;
-  padding: var(--gm-space-lg) 0;
   border-top: 1px solid var(--gm-color-rule);
 }
 
-.facts dt {
+.column {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--gm-space-sm);
+  padding: var(--gm-space-lg) var(--gm-space-xl);
+  border-inline-start: 1px solid var(--gm-color-rule);
+}
+
+.column:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+
+.column:last-child {
+  padding-inline-end: 0;
+}
+
+.column dt {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 var(--gm-space-sm);
-  padding-inline-end: var(--gm-space-xl);
+  font-size: var(--gm-font-size-title);
   font-weight: var(--gm-font-weight-strong);
+  line-height: var(--gm-line-height-title);
 }
 
-.facts dd {
+.column dd {
+  margin: 0;
   color: var(--gm-color-ink-2);
 }
 
-/* The industries the templates cover, in as many columns as fit. */
+.named {
+  margin: 0;
+  color: var(--gm-color-ink-3);
+  font-size: var(--gm-font-size-label);
+  line-height: var(--gm-line-height-label);
+  text-align: center;
+}
+
+/* The industries the templates cover, five columns across the box. */
 .industries {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0 var(--gm-space-xl);
-  max-width: 52rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -328,6 +489,7 @@
 .industries li {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  align-content: start;
   gap: var(--gm-space-xs);
   padding: var(--gm-space-lg) 0;
   border-top: 1px solid var(--gm-color-rule);
@@ -341,39 +503,189 @@
   line-height: var(--gm-line-height-label);
 }
 
-.industries li:first-child {
-  grid-column: 1 / -1;
-}
-
-.close {
-  max-width: 40rem;
+/* Guardrails: terms and what they mean, divided by hairlines, as the run settings are; 840 px, centred. */
+.facts {
+  display: grid;
+  grid-template-columns: minmax(10rem, 260px) minmax(0, 1fr);
+  justify-self: center;
+  width: 100%;
+  max-width: 840px;
   margin: 0;
-  padding-block-start: var(--gm-space-xl);
-  border-top: 1px solid var(--gm-color-rule);
-  color: var(--gm-color-ink-3);
 }
 
-/* A phone (DESIGN.md Layout): one column; a tall screen follows its step. */
-@media (max-width: 720px) {
-  .landing {
-    gap: var(--gm-space-2xl);
+/* A term and what it means: two cells of the grid. */
+.pair {
+  display: contents;
+}
+
+.facts dt,
+.facts dd {
+  margin: 0;
+  padding: var(--gm-space-lg) 0;
+  border-top: 1px solid var(--gm-color-rule);
+  font-size: var(--gm-font-size-title);
+  line-height: var(--gm-line-height-title);
+}
+
+.facts dt {
+  padding-inline-end: var(--gm-space-xl);
+  font-weight: var(--gm-font-weight-strong);
+}
+
+.facts dd {
+  color: var(--gm-color-ink-2);
+}
+
+/* The closing line: a hairline across the page, the line centred under it. */
+.close {
+  padding-block: var(--gm-space-split);
+  border-top: 1px solid var(--gm-color-rule);
+}
+
+.close p {
+  max-width: 640px;
+  margin-block: 0;
+  color: var(--gm-color-ink-3);
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* Too narrow for five columns: the band is a list in one hairline card, each row its number, then the
+   step over who acts. */
+@media (max-width: 960px) {
+  .band {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: hidden;
+    border: 1px solid var(--gm-color-rule);
+    border-radius: var(--gm-radius-lg);
+    background: var(--gm-color-sheet);
   }
 
-  .section {
-    padding-block-start: var(--gm-space-2xl);
+  .cell {
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-items: start;
+    column-gap: var(--gm-space-lg);
+    row-gap: var(--gm-space-sm);
+    padding: var(--gm-space-lg);
+    border-radius: 0;
+    text-align: start;
+  }
+
+  .cell + .cell {
+    border-top: 1px solid var(--gm-color-rule);
+  }
+
+  .dot {
+    display: block;
+    grid-row: span 2;
+    justify-self: start;
+    margin-inline: 0;
+  }
+
+  .dot::before,
+  .dot::after {
+    display: none;
+  }
+
+  .jump::after {
+    border-radius: 0;
+  }
+
+  .cell .who {
+    justify-content: flex-start;
+  }
+}
+
+/* A phone (DESIGN.md Layout): the box less 16 px either side; the station heads left-aligned and the
+   spine gone; the Meta models, the templates and the Guardrails single-column lists. */
+@media (max-width: 720px) {
+  .box,
+  .heroText,
+  .close p {
+    width: calc(100% - var(--gm-gutter-start) - var(--gm-gutter-end));
   }
 
   .hero {
-    gap: var(--gm-space-xl);
-    padding-block-start: 0;
+    padding-block: 0 var(--gm-space-2xl);
   }
 
-  .step[data-layout="beside"] {
+  .heroText h1 {
+    font-size: var(--gm-font-size-display);
+    line-height: var(--gm-line-height-display);
+    letter-spacing: -0.025em;
+  }
+
+  .notes {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .notes p + p::before {
+    content: none;
+  }
+
+  .section,
+  .close {
+    padding-block: var(--gm-space-2xl);
+  }
+
+  .stations {
+    gap: var(--gm-space-2xl);
+    margin-block-start: var(--gm-space-md);
+  }
+
+  .station {
+    justify-items: start;
+    scroll-margin-block-start: calc(var(--gm-space-split) + var(--gm-space-xl));
+  }
+
+  .station::before {
+    display: none;
+  }
+
+  .stationHead {
+    justify-items: start;
+    text-align: start;
+  }
+
+  /* On a phone the head is stacked: the number, the step, who acts, then what happens, left-aligned. */
+  .stationTitle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+    gap: var(--gm-space-md);
+  }
+
+  .stationHead .who {
+    justify-content: flex-start;
+  }
+
+  .stationHead p {
+    max-width: none;
+    text-wrap: pretty;
+  }
+
+  .shot[data-fit="own"] {
+    justify-self: start;
+  }
+
+  .columns {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .step[data-layout="beside"] .stepText {
-    position: static;
+  .column,
+  .column:first-child,
+  .column:last-child {
+    padding-inline: 0;
+    border-inline-start: 0;
+  }
+
+  .column + .column {
+    border-top: 1px solid var(--gm-color-rule);
+  }
+
+  .industries {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .facts {

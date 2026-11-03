@@ -124,6 +124,10 @@ describe("simplicity rules (H-027) in the stylesheets", () => {
   it("takes type sizes from the five tokens, and corners from the scale", () => {
     const sizes = all.filter((d) => d.prop === "font-size" || d.prop === "font");
     expect(sizes.filter((d) => !/^(var\(--gm-font-size-[\w-]+\)|inherit)$/.test(d.value)).map(where)).toEqual([]);
+    // The Five Sizes Rule's one written exception (H-088): the landing's h1, and nothing else, takes the hero size.
+    const hero = [...sheets, ...sources].flatMap((f) => [...readFileSync(f, "utf8").matchAll(/var\(--gm-(font-size|line-height)-hero\)/g)].map(() => relative(root, f)));
+    expect(hero).toEqual(["features/landing/landing.module.css", "features/landing/landing.module.css"]);
+    expect(readFileSync(join(root, "features/landing/landing.module.css"), "utf8")).toMatch(/\.heroText h1 \{[^}]*font-size: var\(--gm-font-size-hero\);[^}]*\}/);
     const radii = all.filter((d) => /radius/.test(d.prop));
     expect(radii.filter((d) => !/^(var\(--gm-radius-(sm|md|lg|full)\)|0)$/.test(d.value)).map(where)).toEqual([]);
   });

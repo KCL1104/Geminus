@@ -4,7 +4,7 @@
 // the disabled state on purpose); no two visible links to the same place
 // and no two visible buttons with the same name, except the pair the owner
 // is asked about; no side panel; and the rail (H-042) is 56 px wide, or on
-// a phone one row across the top.
+// a phone one row across the top (H-088: on the start page, at every width).
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { editorMotionPreviews, locales, open, routes, signedInViews, signInAs } from "./helpers";
@@ -59,9 +59,12 @@ async function controls(page: Page) {
 
 const repeated = (xs: string[]) => [...new Set(xs.filter((x, i) => xs.indexOf(x) !== i))];
 
-/** H-042: the rail is a 56 px column at the left, or on a phone one row across the top, signed in or out. */
-function railShape(c: { railWidth: number; railHeight: number; rows: number }, width: number) {
-  if (width === 390) {
+/**
+ * H-042: the rail is a 56 px column at the left, or on a phone one row across the top, signed in or out.
+ * H-088: on the start page (the landing) it is that row at every width.
+ */
+function railShape(c: { railWidth: number; railHeight: number; rows: number }, width: number, route = "") {
+  if (width === 390 || route === "/") {
     expect(c.rows, "the rail is one row on a phone").toBe(1);
     expect(c.railHeight, "the rail's row on a phone").toBeLessThanOrEqual(56);
   } else {
@@ -102,7 +105,7 @@ for (const locale of locales) {
           expect(repeated(c.links), "links to the same place").toEqual(askedAbout[route] ?? []);
           expect(repeated(c.buttons), "buttons with the same name").toEqual([]);
           expect(c.asides, "side panels").toBe(0);
-          railShape(c, width);
+          railShape(c, width, route);
         });
       }
     });

@@ -7,7 +7,7 @@ export type ShotData = { width: number; height: number; themes: { light: string[
 export const shots = {
   "canvas": {
     "width": 1208,
-    "height": 702,
+    "height": 580,
     "themes": {
       "light": [
         "canvas-light-1208.webp",
@@ -19,31 +19,45 @@ export const shots = {
       ]
     }
   },
-  "results": {
-    "width": 968,
-    "height": 348,
+  "proposed": {
+    "width": 1184,
+    "height": 795,
     "themes": {
       "light": [
-        "results-light-968.webp",
-        "results-light-1936.webp"
+        "proposed-light-1184.webp",
+        "proposed-light-2368.webp"
       ],
       "dark": [
-        "results-dark-968.webp",
-        "results-dark-1936.webp"
+        "proposed-dark-1184.webp",
+        "proposed-dark-2368.webp"
+      ]
+    }
+  },
+  "results": {
+    "width": 1104,
+    "height": 374,
+    "themes": {
+      "light": [
+        "results-light-1104.webp",
+        "results-light-2208.webp"
+      ],
+      "dark": [
+        "results-dark-1104.webp",
+        "results-dark-2208.webp"
       ]
     }
   },
   "marey": {
-    "width": 716,
-    "height": 389,
+    "width": 1104,
+    "height": 418,
     "themes": {
       "light": [
-        "marey-light-716.webp",
-        "marey-light-1432.webp"
+        "marey-light-1104.webp",
+        "marey-light-2208.webp"
       ],
       "dark": [
-        "marey-dark-716.webp",
-        "marey-dark-1432.webp"
+        "marey-dark-1104.webp",
+        "marey-dark-2208.webp"
       ]
     }
   },
@@ -53,15 +67,6 @@ export const shots = {
     "themes": {
       "light": [
         "explained-408.webp"
-      ]
-    }
-  },
-  "proposed": {
-    "width": 1188,
-    "height": 700,
-    "themes": {
-      "light": [
-        "proposed-1188.webp"
       ]
     }
   }

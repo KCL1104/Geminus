@@ -202,9 +202,12 @@ describe("design tokens", () => {
     expect(resolve("--gm-focus-ring")).toBe("2px solid #6d4aff");
   });
 
-  it("has DESIGN.md's five type sizes, spacing scale and corners", () => {
+  it("has DESIGN.md's five type sizes and the landing's hero, spacing scale and corners", () => {
     const sizes = [...light].filter(([n]) => n.startsWith("--gm-font-size-")).map(([, v]) => parseFloat(v));
-    expect(new Set(sizes)).toEqual(new Set([12, 13, 15, 20, 26]));
+    // The Five Sizes Rule, and its one written exception (H-088): the landing's hero, 40/44, used on / only (design-rules.test.ts).
+    expect(new Set(sizes)).toEqual(new Set([12, 13, 15, 20, 26, 40]));
+    expect(light.get("--gm-font-size-hero")).toBe("40px");
+    expect(light.get("--gm-line-height-hero")).toBe("44px");
     expect(designSizes).toEqual(new Set(sizes));
     for (const [key, value] of designSpacing) expect(light.get(`--gm-space-${key}`), `space ${key}`).toBe(value);
     expect([...light].filter(([n]) => n.startsWith("--gm-space-")).length).toBe(designSpacing.size);

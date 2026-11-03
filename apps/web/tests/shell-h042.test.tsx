@@ -73,6 +73,37 @@ describe("the rail (H-042)", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // H-088: only on the start page is the rail the bar across the top; every other page keeps the column.
+  it.each([["/", "top"], ["/projects", null], [`/models/${MODEL}/runs`, null]] as const)("on %s: placed %s", async (path, place) => {
+    nav.pathname = path;
+    const el = await mount(shell(false, null));
+    await settle();
+    expect(rail(el).getAttribute("data-place")).toBe(place);
+    expect(links(el)[0]).toEqual([en["nav.projects"], "/projects", null]);
+    // The product's name beside the mark, on the start page only; the link keeps its name.
+    expect(rail(el).textContent!.includes(en["app.name"])).toBe(place === "top");
+  });
+
+  // H-088 review: signed in, the start page's bar holds the account (not the settings), and its menu, who is signed in
+  // and Sign out included, opens under the bar's end; the browser checks its place in the viewport (landing.spec.ts).
+  it("on / signed in: the bar across the top, with the account and who signed in", async () => {
+    nav.pathname = "/";
+    const el = await mount(shell(true, { name: "Judge One", email: "judge@geminus-demo.invalid" }));
+    await settle();
+    expect(rail(el).getAttribute("data-place")).toBe("top");
+    expect(links(el)).toEqual([[en["nav.projects"], "/projects", null]]);
+    const avatar = menuButton(el);
+    expect(avatar.getAttribute("aria-label")).toBe(en["account.open"]);
+    expect(avatar.textContent).toBe("JO");
+    await press(avatar);
+    await settle();
+    const d = dialog()!;
+    expect(d.textContent).toContain("Judge One");
+    expect(d.textContent).toContain(`Line A · ${en["role.editor"]}`);
+    expect([...d.querySelectorAll("button")].map((b) => b.textContent)).toContain(en["auth.signOut"]);
+    expect(await violations()).toEqual([]);
+  });
+
   it("inside a model: its four sections, the page's own marked, and the account with who signed in", async () => {
     nav.pathname = `/models/${MODEL}/runs`;
     const el = await mount(shell(true, { name: "Judge One", email: "judge@geminus-demo.invalid" }));

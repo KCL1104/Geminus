@@ -4,6 +4,8 @@
 // server, so the first paint has it; without one the system's applies.
 // next/headers is replaced by a cookie jar: outside a request Next.js has no
 // cookies to read.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -69,7 +71,7 @@ describe("server shell", () => {
     expect(rail(out)).toContain('aria-label="專案"');
     expect(rail(out)).toContain('aria-label="設定"');
     expect(out).toMatch(/<a href="#main"[^>]*>跳到主要內容<\/a>/);
-    expect(out).toContain("動產線之前，先在工廠的數位分身上試試看。");
+    expect(out).toContain("改動，先在數位分身上試。");
     expect(out).toContain(">登入試用</a>");
     expect(out).not.toContain(en["landing.title"].replace(/'/g, "&#x27;"));
     expect(out).not.toContain(en["landing.signIn"]);
@@ -104,6 +106,14 @@ describe("server shell", () => {
     expect(out.match(/<nav\b/g)).toHaveLength(1);
     expect(out).not.toMatch(/<aside\b/);
     expect(out).not.toMatch(/<header\b/);
+  });
+
+  // H-088: on the start page the rail is the bar across the top (shell.module.css lays it out so at
+  // every width); it is still the one navigation, with the same two controls.
+  it("puts the rail across the top on the start page, and only there", async () => {
+    expect(rail(await shell())).toMatch(/^<nav aria-label="Workspace" class="[^"]*" data-place="top">/);
+    const css = readFileSync(join(process.cwd(), "ui/shell.module.css"), "utf8");
+    expect(css).toMatch(/\.frame:has\(> \.rail\[data-place="top"\]\) \{\s*grid-template-columns: minmax\(0, 1fr\);/);
   });
 });
 
