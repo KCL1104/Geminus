@@ -214,6 +214,59 @@
   outline: none;
 }
 
+/* The start page (H-088, the landing): the rail is the bar it is on a phone at every width, its brand
+   and settings at the edges of the landing's 1104 px box (their 40 px keys reach 8 px past it, so the
+   mark and the gear sit on its edges); under it the page spans the width, and the landing centres
+   itself (features/landing/landing.module.css). Every other page keeps the 56 px column (H-042). */
+.frame:has(> .rail[data-place="top"]) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+}
+
+.frame:has(> .rail[data-place="top"]) > .main {
+  max-width: none;
+  padding: var(--gm-space-2xl) 0 0;
+}
+
+@media (min-width: 721px) {
+  .rail[data-place="top"] {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr)
+      min(calc(var(--gm-content-width) - 2 * var(--gm-space-xl) + 2 * var(--gm-space-md)), calc(100% - 2 * var(--gm-space-xl) + 2 * var(--gm-space-md)))
+      minmax(0, 1fr);
+    align-items: center;
+    height: auto;
+    padding: var(--gm-space-xs) 0;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--gm-color-rule);
+  }
+
+  .rail[data-place="top"] > * {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .rail[data-place="top"] .home {
+    justify-self: start;
+    margin-bottom: 0;
+  }
+
+  .rail[data-place="top"] .sections {
+    flex-direction: row;
+    justify-self: center;
+  }
+
+  .rail[data-place="top"] .tip {
+    display: none;
+  }
+
+  .rail[data-place="top"] .foot {
+    justify-self: end;
+    margin-top: 0;
+  }
+}
+
 /* A phone: the rail becomes a bar across the top, the sections in a row, the account at the end. */
 @media (max-width: 720px) {
   .frame {
@@ -248,5 +301,9 @@
 
   .main {
     padding: var(--gm-space-xl) max(var(--gm-space-gutter), env(safe-area-inset-right, 0px)) var(--gm-space-2xl) max(var(--gm-space-gutter), env(safe-area-inset-left, 0px));
+  }
+
+  .frame:has(> .rail[data-place="top"]) > .main {
+    padding-block-start: var(--gm-space-xl);
   }
 }

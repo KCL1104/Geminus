@@ -68,7 +68,8 @@
 
   /* Type: Geist with tabular figures, Geist Mono for IDs and code, Noto Sans
      TC for Chinese, all self-hosted (OFL, docs/THIRD_PARTY_NOTICES.md), then
-     the faces each system already has. Five sizes only. */
+     the faces each system already has. Five sizes only, and the landing's
+     hero (H-088): the one written exception, used on / only. */
   --gm-font-sans: "Geist Variable", Geist, "Noto Sans TC Variable", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   --gm-font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
   --gm-font-features: "tnum" 1, "lnum" 1;
@@ -77,11 +78,13 @@
   --gm-font-size-title: 15px;
   --gm-font-size-headline: 20px;
   --gm-font-size-display: 26px;
+  --gm-font-size-hero: 40px;
   --gm-line-height-label: 1.4;
   --gm-line-height-body: 1.5;
   --gm-line-height-title: 22px;
   --gm-line-height-headline: 28px;
   --gm-line-height-display: 32px;
+  --gm-line-height-hero: 44px;
   --gm-font-weight-regular: 400;
   --gm-font-weight-medium: 500;
   --gm-font-weight-strong: 600;

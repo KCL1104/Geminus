@@ -87,7 +87,7 @@ function initials(profile: Profile | null, organization: string | null): string 
  * out, a settings button with the language and the theme only. Nothing in
  * the chrome is a form any more.
  */
-export function AccountMenu({ initialTheme, profile }: { initialTheme: Theme; profile: Profile | null }) {
+export function AccountMenu({ initialTheme, profile, below = false }: { initialTheme: Theme; profile: Profile | null; below?: boolean }) {
   const { account } = useAuth();
   const { t } = useI18n();
   const bootstrap = account?.bootstrap;
@@ -106,7 +106,8 @@ export function AccountMenu({ initialTheme, profile }: { initialTheme: Theme; pr
           <GearIcon />
         )}
       </Button>
-      <Popover placement="right bottom" offset={12} className={shell.menu}>
+      {/* Beside the rail's foot; under the bar's end where the rail is a bar across the top (H-088, the start page). */}
+      <Popover placement={below ? "bottom end" : "right bottom"} offset={12} className={shell.menu}>
         <Dialog aria-label={label} className={shell.menuBody}>
           {signedIn && (profile !== null || organization !== null) && (
             <div className={shell.who}>

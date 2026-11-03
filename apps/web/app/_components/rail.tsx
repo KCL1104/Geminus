@@ -2,7 +2,8 @@
 // The app's left rail (H-042, DESIGN.md Layout): the brand at the top (the
 // way to the projects), inside a model its four sections (the canvas, its
 // scenarios, its AI proposals and its runs: each a page that exists), and at
-// the bottom the account and settings. A page inside a model that is not
+// the bottom the account and settings (on the start page a bar across the
+// top instead, H-088). A page inside a model that is not
 // under /models/<id> names its model with useRailModel once it has loaded it.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -60,8 +61,11 @@ export function AppRail({ initialTheme, profile }: { initialTheme: Theme; profil
   // Under /models/<id> the address names the model; elsewhere the page does.
   const model = /^\/models\/(mdl_[0-9A-Za-z]+)/.exec(path)?.[1] ?? named;
   const current = model === null ? null : sectionOf(path, model);
+  // H-088: on the start page (the landing) the rail is the bar it is on a phone, at every width, so the
+  // page can sit centred under it; every other page keeps the 56 px column (H-042).
+  const top = path === "/";
   return (
-    <nav aria-label={t("rail.label")} className={shell.rail}>
+    <nav aria-label={t("rail.label")} className={shell.rail} data-place={top ? "top" : undefined}>
       <Link href="/projects" className={shell.home} aria-label={t("nav.projects")}>
         <svg className={shell.mark} width="22" height="22" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
           <rect x="0.75" y="0.75" width="12.5" height="12.5" rx="3.5" className={shell.markFront} />
@@ -86,7 +90,7 @@ export function AppRail({ initialTheme, profile }: { initialTheme: Theme; profil
         </ul>
       )}
       <div className={shell.foot}>
-        <AccountMenu initialTheme={initialTheme} profile={profile} />
+        <AccountMenu initialTheme={initialTheme} profile={profile} below={top} />
       </div>
     </nav>
   );

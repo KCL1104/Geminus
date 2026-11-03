@@ -2,14 +2,18 @@
 //
 // The landing (apps/web/app/page.tsx, features/landing/) shows real screens
 // of the product. This script makes them: it opens the app's review pages
-// (the component gallery's editor and results pages: the real views on the
-// synthetic sample board line, no AI called), crops each to
+// (the component gallery's editor, proposal and results pages: the real
+// views on the synthetic sample board line, no AI called), crops each to
 // the product's own view, in the light and the dark theme, at 2x, and
-// writes WebP at 1x and 2x under apps/web/public/landing/. Two screens
-// exist only on the live demo (the AI's explanation and a scenario it then
-// proposed, both written by Muse Spark 1.3 on synthetic data): they are
-// cropped from the screenshots committed under
+// writes WebP at 1x and 2x under apps/web/public/landing/. One screen
+// exists only on the live demo (the AI's explanation, written by Muse Spark
+// 1.3 on synthetic data): it is cropped from the screenshot committed under
 // checks/evidence/2026-10-30-h048-landing/live/ (light theme only, 1x).
+// H-088: the proposal is the gallery's sample scenario, in both themes (the
+// live demo's capture still said "Checked by Geminus"); its caption says no
+// AI was called. The landing draws every screen at its 1104 px box, so the
+// results and the Marey chart are taken at the widest the results page
+// stacks its panel under them (1100 px), near that width.
 // It replaces everything in public/landing/ and writes
 // features/landing/shots.ts, the files and sizes the page renders (a module,
 // not JSON: no app module imports JSON, tests/results-preview.test.tsx).
@@ -125,11 +129,24 @@ const screens = {
     });
     return pad({ ...box, height: end - box.y + 8 }, 16);
   },
-  // The results, for the first view (review round 1, M3): the Key metrics card from its heading, the
-  // median lead time sentence and the whole line's first rows, without the run IDs. At 1040 px the
-  // run settings panel follows the main column, so the card takes the width.
+  // A proposal for a person to decide (H-088): the gallery's sample scenario (no AI called), from its
+  // title to the AI's expectations: the changes, DryLine's own risk check beside the AI's claim, and
+  // the decision's Approve and Reject.
+  async proposed(page) {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`${base}/ui-gallery/proposal?state=scenario`);
+    await settle(page);
+    await page.mouse.move(0, 0);
+    // To the right edge of its cards (the page's header row is wider than they are).
+    const box = await viewBox(page);
+    const right = await page.evaluate(() => Math.max(...[...document.querySelectorAll("main section")].map((s) => s.getBoundingClientRect().right)) + scrollX);
+    return pad({ ...box, width: right - box.x }, 16);
+  },
+  // The results (review round 1, M3): the Key metrics card from its heading, the median lead time
+  // sentence and the whole line's first rows, without the run IDs. At 1100 px and below the run
+  // settings panel follows the main column, so the card takes the width (H-088: the widest it does).
   async results(page) {
-    await page.setViewportSize({ width: 1040, height: 900 });
+    await page.setViewportSize({ width: 1100, height: 900 });
     await page.goto(`${base}/ui-gallery/results`);
     await settle(page);
     const box = await page.evaluate(() => {
@@ -141,21 +158,20 @@ const screens = {
     });
     return box;
   },
-  // The Marey chart: every sampled board's path through the steps, baseline dashed, scenario solid.
+  // The Marey chart: every sampled board's path through the steps, baseline dashed, scenario solid;
+  // at 1100 px, as wide as the results card (H-088).
   async marey(page) {
-    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.setViewportSize({ width: 1100, height: 900 });
     await page.goto(`${base}/ui-gallery/results`);
     await settle(page);
     return pad(await cardBox(page, "Work items through the steps"), 16);
   },
 };
 
-/** The live demo's screens, cropped from the committed screenshots (1280 px wide, 1x, light). */
+/** The live demo's screen, cropped from the committed screenshot (1280 px wide, 1x, light). */
 const liveCrops = {
   // The AI's explanation of two runs: who wrote it, and why, with the server's figures as evidence.
   explained: { file: "explained-1280.png", box: { x: 864, y: 182, width: 408, height: 748 } },
-  // A scenario Muse Spark proposed from its own suggested next experiment: written by, the server's check, the decision.
-  proposed: { file: "proposed.png", box: { x: 72, y: 20, width: 1188, height: 700 } },
 };
 
 /** Encodes a PNG (a buffer) as WebP at each width, in the browser; returns the files written. */

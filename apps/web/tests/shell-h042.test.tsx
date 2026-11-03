@@ -73,6 +73,15 @@ describe("the rail (H-042)", () => {
     expect(await violations()).toEqual([]);
   });
 
+  // H-088: only on the start page is the rail the bar across the top; every other page keeps the column.
+  it.each([["/", "top"], ["/projects", null], [`/models/${MODEL}/runs`, null]] as const)("on %s: placed %s", async (path, place) => {
+    nav.pathname = path;
+    const el = await mount(shell(false, null));
+    await settle();
+    expect(rail(el).getAttribute("data-place")).toBe(place);
+    expect(links(el)[0]).toEqual([en["nav.projects"], "/projects", null]);
+  });
+
   it("inside a model: its four sections, the page's own marked, and the account with who signed in", async () => {
     nav.pathname = `/models/${MODEL}/runs`;
     const el = await mount(shell(true, { name: "Judge One", email: "judge@geminus-demo.invalid" }));
