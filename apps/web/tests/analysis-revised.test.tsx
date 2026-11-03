@@ -91,7 +91,7 @@ describe("an explanation revised once after the server's check (H-086 (R))", () 
     expect(text(lines[0])).toBe(words);
     // The page's own words: never marked with the language the AI wrote in.
     expect(lines[0]!.hasAttribute("lang")).toBe(false);
-    expect(words).toBe(locale === "en" ? "Revised once after Geminus's check." : "經 Geminus 檢查後修正過一次。");
+    expect(words).toBe(locale === "en" ? "Revised once after DryLine's check." : "經 DryLine 檢查後修正過一次。");
     expect(await violations()).toEqual([]);
   });
 
