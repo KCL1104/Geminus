@@ -80,6 +80,8 @@ describe("the rail (H-042)", () => {
     await settle();
     expect(rail(el).getAttribute("data-place")).toBe(place);
     expect(links(el)[0]).toEqual([en["nav.projects"], "/projects", null]);
+    // The product's name beside the mark, on the start page only; the link keeps its name.
+    expect(rail(el).textContent!.includes(en["app.name"])).toBe(place === "top");
   });
 
   // H-088 review: signed in, the start page's bar holds the account (not the settings), and its menu, who is signed in

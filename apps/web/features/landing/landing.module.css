@@ -43,15 +43,6 @@
   text-align: center;
 }
 
-/* The product's name, the word only (the bar above has the mark): Title, as the brand is (DESIGN.md Typography). */
-.brand {
-  margin: 0;
-  color: var(--gm-color-ink-2);
-  font-size: var(--gm-font-size-title);
-  font-weight: var(--gm-font-weight-brand);
-  line-height: var(--gm-line-height-title);
-}
-
 /* H-088: the landing's one exception to The Five Sizes Rule, 40/44 at 600 (Display on a phone). */
 .heroText h1 {
   max-width: 880px;

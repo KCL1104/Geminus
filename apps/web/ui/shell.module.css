@@ -62,6 +62,15 @@
   flex: none;
 }
 
+/* The product's name beside the mark, on the start page's bar only (H-088): Headline, at the brand's weight. */
+.word {
+  color: var(--gm-color-ink);
+  font-size: var(--gm-font-size-headline);
+  font-weight: var(--gm-font-weight-brand);
+  line-height: var(--gm-line-height-headline);
+  white-space: nowrap;
+}
+
 .markFront {
   fill: var(--gm-color-accent-fill);
 }
@@ -252,6 +261,11 @@
     margin-bottom: 0;
   }
 
+  .rail[data-place="top"] .word {
+    justify-self: start;
+    margin-inline-start: var(--gm-space-split); /* the 40 px key's width: the word starts where the key ends */
+  }
+
   .rail[data-place="top"] .sections {
     flex-direction: row;
     justify-self: center;
@@ -305,5 +319,10 @@
 
   .frame:has(> .rail[data-place="top"]) > .main {
     padding-block-start: var(--gm-space-xl);
+  }
+
+  /* The word starts where the mark's key ends, as it does on a wide screen. */
+  .rail[data-place="top"] .word {
+    margin-inline-start: calc(-1 * var(--gm-space-md));
   }
 }

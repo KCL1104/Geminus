@@ -194,8 +194,6 @@ export function Landing({ t }: { t: Translator }) {
     <div className={styles.landing}>
       <section className={styles.hero} aria-labelledby="landing-title">
         <div className={styles.heroText}>
-          {/* The product's name above the promise (review round 1, M3), the word only: the bar above has the mark. */}
-          <p className={styles.brand}>{t("app.name")}</p>
           <h1 id="landing-title">{t("landing.title")}</h1>
           <p className={styles.lede}>{whole(t("landing.lede"), MUSE)}</p>
           <LandingAction />

@@ -72,6 +72,9 @@ export function AppRail({ initialTheme, profile }: { initialTheme: Theme; profil
           <rect x="6.75" y="6.75" width="12.5" height="12.5" rx="3.5" className={shell.markBack} />
         </svg>
       </Link>
+      {/* H-088: the landing's bar names the product beside the mark, at Headline (the owner: 「DryLine 的字感覺有點小」);
+          plain text, so the link keeps its name, the projects. */}
+      {top && <span className={shell.word}>{t("app.name")}</span>}
       {model !== null && (
         <ul className={shell.sections}>
           {sections.map((s) => {

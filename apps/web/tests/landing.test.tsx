@@ -108,8 +108,9 @@ describe("the landing's content (H-048)", () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
     const c = catalogs[locale];
     const el = await page(auth.signedOut, locale);
-    // Review round 1, M3: the product's name stands above the promise.
-    expect(text(el.querySelector("section p")!)).toBe(c["app.name"]);
+    // H-088: the product's name is in the bar beside the mark (tests/shell-h042.test.tsx), not above the promise.
+    expect(el.querySelector(".brand")).toBeNull();
+    expect(text(el.querySelector("section p")!)).not.toBe(c["app.name"]);
     expect(text(el.querySelector("h1")!)).toBe(c["landing.title"]);
     expect([...el.querySelectorAll("h2")].map(text)).toEqual([c["landing.loop.title"], c["landing.meta.title"], c["landing.industries.title"], c["landing.safe.title"]]);
     const titles = stepIds.map((s) => c[`landing.step.${s}.title`]);
