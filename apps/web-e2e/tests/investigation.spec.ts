@@ -6,12 +6,14 @@
 // no figure is shown or announced without saying whose it is: the
 // baseline's, the what-if's, the change, or the proposal's state. axe, the
 // phone width and the simplicity rules run on these pages with every route
-// (a11y.spec.ts, simplicity.spec.ts).
+// (a11y.spec.ts, simplicity.spec.ts). H-086: the model page's Ask AI with
+// Muse Wonder 1.0 offered as the planner (H-061 §14 gate 3), signed in on
+// the fake API.
 import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { en } from "../../web/messages/en";
 import { zhHant } from "../../web/messages/zh-Hant";
-import { locales, open, violations } from "./helpers";
+import { locales, offersWonder, open, PROVIDER, signInAs, tenant, violations } from "./helpers";
 
 const catalogs = { en, "zh-Hant": zhHant } as const;
 const heads = ["investigation.col.whatIf", "investigation.col.proposal", "investigation.col.baseline", "investigation.col.scenario", "investigation.col.change"] as const;
@@ -58,6 +60,57 @@ for (const width of [390, 1280]) {
           expect(await violations(page)).toEqual([]);
         });
       }
+    }
+  });
+}
+
+// H-086 (H-061 §14 gate 3, on in production's build since step 4 passed for
+// Muse Wonder 1.0): Ask AI shows the planner only while "Let the AI act on
+// it" is ticked (a proposal has none), with both planners in the build that
+// offers Muse Wonder and none in the build without it, in either language,
+// at 390 and 1280 px; axe and the phone width hold with it shown, and
+// unticked it goes again. Each width loads its own page: the model page
+// lays the editor out again across its phone breakpoint, and Ask AI starts
+// afresh there. Nothing is sent (the fake API runs no investigation).
+for (const width of [390, 1280]) {
+  test.describe(`Ask AI at ${width}px`, () => {
+    test.use({ viewport: { width, height: 900 } });
+    for (const locale of locales) {
+      test(`${locale}: offers a planner only while "Act on it" is ticked (${offersWonder ? "Muse Spark 1.3 or Muse Wonder 1.0" : "none in the build without Muse Wonder"})`, async ({ page, request }) => {
+        const t = catalogs[locale];
+        await request.post(`${PROVIDER}/__reset`);
+        await signInAs(page, tenant.editor, `/models/${tenant.MODEL}`, locale);
+        const ask = page.locator("[data-ask]");
+        await expect(ask.getByLabel(t["ask.intent"])).toBeVisible();
+        const choice = ask.locator("[data-planner-choice]");
+        await expect(choice).toHaveCount(0);
+        const act = ask.getByRole("checkbox", { name: t["investigation.act"] });
+        await act.focus();
+        await page.keyboard.press("Space");
+        await expect(act).toBeChecked();
+        await expect(ask.getByRole("button", { name: t["investigation.start"] })).toBeVisible();
+        if (!offersWonder) {
+          await expect(choice).toHaveCount(0);
+          await expect(ask).not.toContainText(t["investigation.planner.muse-wonder-1.0"]);
+          return;
+        }
+        await expect(choice).toHaveCount(1);
+        const trigger = choice.getByRole("button");
+        await expect(trigger).toContainText(t["investigation.planner.muse-spark-1.3"]);
+        await expect(choice).toContainText(t["investigation.plannerHint.muse-spark-1.3"]);
+        expect(await violations(page), "Ask AI with the planner").toEqual([]);
+        await trigger.click();
+        await expect(page.getByRole("option")).toHaveText([t["investigation.planner.muse-spark-1.3"], t["investigation.planner.muse-wonder-1.0"]]);
+        await page.getByRole("option", { name: t["investigation.planner.muse-wonder-1.0"] }).click();
+        await expect(trigger).toContainText(t["investigation.planner.muse-wonder-1.0"]);
+        await expect(choice).toContainText(t["investigation.plannerHint.muse-wonder-1.0"]);
+        expect(await violations(page), "Ask AI with Muse Wonder as the planner").toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth), "no horizontal page scroll").toBeLessThanOrEqual(width);
+        await act.focus();
+        await page.keyboard.press("Space");
+        await expect(act).not.toBeChecked();
+        await expect(choice).toHaveCount(0);
+      });
     }
   });
 }

@@ -4,9 +4,11 @@ import { expect, type Page } from "@playwright/test";
 export type Locale = "en" | "zh-Hant";
 
 /**
- * H-051, H-065, H-069: whether this run's build offers Muse Wonder 1.0.
- * Production's build does (the default); GEMINUS_E2E_OFFER_WONDER=0 builds it
- * with NEXT_PUBLIC_GEMINUS_OFFER_WONDER="" (playwright.config.ts).
+ * H-051, H-065, H-069: whether this run's build offers Muse Wonder 1.0, for
+ * proposals and (H-086) as an investigation's planner. Production's build
+ * does (the default); GEMINUS_E2E_OFFER_WONDER=0 builds it with
+ * NEXT_PUBLIC_GEMINUS_OFFER_WONDER="" and
+ * NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER="" (playwright.config.ts).
  */
 export const offersWonder = process.env.GEMINUS_E2E_OFFER_WONDER !== "0";
 

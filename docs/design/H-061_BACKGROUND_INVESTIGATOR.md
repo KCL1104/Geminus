@@ -697,6 +697,8 @@ Budget: Spark at most USD 1, Wonder at most USD 4.
 
 **Cut line.** Without a recorded pass by 2026-11-03 02:00 UTC, Wonder is not offered and nothing changes.
 
+**Amended 2026-11-03 (H-086, the owner: 「可以，全部由你執行 (Recommended)」).** After the cut line, the owner had the coordinator run step 4 on investigator-0.4.0. It passed: inv_01M6G7229PCQAJJG36VG3PCYK7 ended finished_by_ai in 12.8 min, with no refused step, no garbled text, a median turn of 14.9 s and none over 46.5 s, and the USD 2.50 ceiling held. The finish-reason rubric is NOT_COMPUTED. The record is in [checks/H-061_PLANNER_EVAL.md](../../checks/H-061_PLANNER_EVAL.md). Gate 2 is set in Railway and in deploy/railway/variables.json (the API). Gate 3 is set by the web build of the same commit (NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER defaults to 1). Wonder is offered as planner once that build is deployed.
+
 ## 15. Security argument per AGENTS.md §2 invariant (replaces §12)
 
 1. **The four boundaries stay separate.**
@@ -763,7 +765,7 @@ Budget: Spark at most USD 1, Wonder at most USD 4.
 **Cut lines**
 - **2026-11-02 18:00 UTC.** If A5, A6 and A7 are not green, GEMINUS_INVESTIGATIONS stays off and the demo uses the manual loop. No server-ordered fallback is built (H-060 superseded it).
 - **2026-11-02 18:00 UTC.** Edit mode and entry B ship only if reviewed by then; scenario mode from a request ships first.
-- **2026-11-03 02:00 UTC.** Muse Wonder as planner only with a recorded pass.
+- **2026-11-03 02:00 UTC.** Muse Wonder as planner only with a recorded pass. (Amended 2026-11-03, H-086: the owner had step 4 run after this time; it passed, see section 14.)
 - **2026-11-03 06:00 UTC.** Everything merged and live-checked.
 
 ## 17. Blockers and how this delta resolves each
@@ -1129,7 +1131,7 @@ Live runs on Muse Spark as planner:
 
 Record durations, planner turns, per-call cost from the ledger, reasons, labels and audit events (the requester as actor, with investigation_id) in checks/H-061_LIVE_VALIDATION.md. Total at most USD 5.
 
-Muse Wonder: run A5's live planner eval against the section 14 pass bar (at most USD 4) into checks/H-061_PLANNER_EVAL.md. Only on a pass recorded by 2026-11-03 02:00 UTC, set INVESTIGATION_PLANNER_MODELS and NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER and tell the owner. Otherwise nothing changes.
+Muse Wonder: run A5's live planner eval against the section 14 pass bar (at most USD 4) into checks/H-061_PLANNER_EVAL.md. Only on a pass recorded by 2026-11-03 02:00 UTC, set INVESTIGATION_PLANNER_MODELS and NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER and tell the owner. Otherwise nothing changes. (Amended 2026-11-03, H-086: step 4 passed after the cut line at the owner's request, and both are set; see section 14.)
 
 Leave one finished investigation in the demo organization. Anything not run is listed as NOT RUN.
   Files: internal/investigations/loop_integration_test.go, checks/H-061_LIVE_VALIDATION.md, checks/H-061_PLANNER_EVAL.md, deploy/railway/variables.json, docs/runbooks/deploy.md
@@ -1199,5 +1201,5 @@ The statements are pinned by a source test and by an architecture rule. EndLost 
 - PROPOSED: cut lines.
 - 2026-11-02 18:00 UTC: if the planner and executor slices are not green, GEMINUS_INVESTIGATIONS stays off and the demo uses the manual loop.
 - 2026-11-02 18:00 UTC: edit mode and the from-analysis entry ship only if reviewed by then.
-- 2026-11-03 02:00 UTC: Muse Wonder is offered as planner only with a recorded pass.
+- 2026-11-03 02:00 UTC: Muse Wonder is offered as planner only with a recorded pass. (Amended 2026-11-03, H-086: see section 14.)
 - 2026-11-03 06:00 UTC: everything is merged and live-checked.
