@@ -324,7 +324,7 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
 
   it("ticked in scenario mode: says the caps, takes run settings and an objective, and starts the investigation", async () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
-    // A build without Muse Wonder as planner (next.config.ts's "" since H-086).
+    // A build without Muse Wonder as planner, whatever the shell has set (next.config.ts builds with "1" since H-086).
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "");
     const { el, api, started } = await modelPage();
     const form = ask(el);
@@ -570,6 +570,8 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
 
   it("starts an investigation from the analysis, reusing its baseline, and follows it", async () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    // A build without Muse Wonder as planner, whatever the shell has set (next.config.ts builds with "1" since H-086).
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "");
     const api = fakeApi(answers({ [`POST ${v1}/models/${model.id}/investigations`]: json(202, { investigation_id: INV, status: "running" }) }), editor);
     const el = await page(api);
     const s = section(el);
