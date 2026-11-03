@@ -14,7 +14,11 @@ const provider = "http://127.0.0.1:3101";
 // GEMINUS_E2E_OFFER_WONDER=0, which builds it with the switch off
 // (tests/helpers.ts offersWonder says which to the tests). make e2e-test and
 // CI run both. The screenshot baselines are the production build's, so the
-// run without Muse Wonder does not compare them.
+// run without Muse Wonder does not compare them. H-086: the same switch sets
+// Muse Wonder 1.0 as an investigation's planner
+// (NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER, on in production since H-061
+// §14 step 4 passed for it), so the run without Muse Wonder offers it
+// nowhere.
 const offerWonder = process.env.GEMINUS_E2E_OFFER_WONDER !== "0";
 
 // Test values only: a fixed sealing key and the fake provider's client.
@@ -75,11 +79,14 @@ export default defineConfig({
       url: `http://127.0.0.1:${port}/`,
       timeout: 300_000,
       reuseExistingServer: false,
-      // H-051: built as production is, without Muse Wonder 1.0 on offer,
-      // whatever the shell running the tests has set; H-069: with it unless
-      // GEMINUS_E2E_OFFER_WONDER=0; H-061 A8: without AI investigations or
-      // Muse Wonder 1.0 as their planner.
-      env: { GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: offerWonder ? "1" : "", NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: "", ...session },
+      // H-051: built as production is, whatever the shell running the tests
+      // has set; H-069: with Muse Wonder 1.0 on offer unless
+      // GEMINUS_E2E_OFFER_WONDER=0; H-071: with AI investigations; H-086:
+      // with Muse Wonder 1.0 as their planner, unless GEMINUS_E2E_OFFER_WONDER=0.
+      env: {
+        GEMINUS_UI_GALLERY: "1", NEXT_TELEMETRY_DISABLED: "1", NEXT_PUBLIC_GEMINUS_OFFER_WONDER: offerWonder ? "1" : "", NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: "1",
+        NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: offerWonder ? "1" : "", ...session,
+      },
       stdout: "ignore",
       stderr: "pipe",
     },

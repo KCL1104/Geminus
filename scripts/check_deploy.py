@@ -294,7 +294,9 @@ def railway(known: set) -> dict:
     # reviewed and A9's closed-loop live checks pass; the coordinator turns
     # them on, never this file. The agent lanes they would run on need split
     # lanes, and Muse Wonder 1.0 is a planner only after its recorded
-    # evaluation (H-061 section 14), which this file never names.
+    # evaluation (H-061 section 14): the worker's planner models are the
+    # coordinator's, never this file's (the API's, gate 2, are declared here,
+    # with Muse Wonder 1.0 since its recorded pass, H-086).
     wv = {n: e.get("value") for n, e in worker["variables"].items()}
     for name in ("GEMINUS_INVESTIGATIONS", "INVESTIGATION_PLANNER_MODELS", "INVESTIGATOR_TRANSCRIPT"):
         if wv.get(name) is not None:

@@ -4,9 +4,13 @@
 // investigation page (the API answers 503 INVESTIGATIONS_OFF while its own
 // GEMINUS_INVESTIGATIONS is off, whatever the web says);
 // NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER=1 offers Muse Wonder 1.0 as the
-// planner, set only after its planner evaluation passes (H-061 §14), apart
-// from H-051's NEXT_PUBLIC_GEMINUS_OFFER_WONDER for proposals. next.config.ts
-// fixes both at build time, set or not, so the server and the browser agree.
+// planner (H-061 §14 gate 3; the default of next.config.ts since its
+// planner evaluation passed, H-086), apart from H-051's
+// NEXT_PUBLIC_GEMINUS_OFFER_WONDER for proposals; "" builds the app with
+// Muse Spark 1.3 alone and no choice. next.config.ts fixes both at build
+// time, set or not, so the server and the browser agree. The API offers a
+// planner only when its INVESTIGATION_PLANNER_MODELS lists it (422 at
+// /planner_model otherwise, whatever the web says).
 // Not a "use client" module: the landing, a server component, reads it too.
 import type { PlannerModel } from "../../lib/contracts";
 

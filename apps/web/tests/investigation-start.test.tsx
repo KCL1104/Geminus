@@ -147,6 +147,11 @@ describe("the build flags (H-061 A8, H-061 §14)", () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", undefined);
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", "1");
     expect(offeredPlanners()).toEqual(["muse-spark-1.3"]);
+    // "" is the build without it (H-086: next.config.ts defaults to "1"); nothing but "1" offers it.
+    for (const v of ["", "0", "true", "yes", " 1"]) {
+      vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", v);
+      expect(offeredPlanners(), v).toEqual(["muse-spark-1.3"]);
+    }
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "1");
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER", undefined);
     expect(offeredPlanners()).toEqual(["muse-spark-1.3", "muse-wonder-1.0"]);
@@ -155,10 +160,11 @@ describe("the build flags (H-061 A8, H-061 §14)", () => {
     expect(plannerField("muse-wonder-1.0")).toEqual({ planner_model: "muse-wonder-1.0" });
   });
 
-  it("are fixed at build time even when unset, like H-051's", () => {
+  // H-071 (A9) and H-086 (H-061 §14 step 4 for Muse Wonder): on in production builds; "" builds the app without them (above).
+  it("are fixed at build time even when unset, like H-051's, and on unless the build sets them off", () => {
     const config = readFileSync(join(process.cwd(), "next.config.ts"), "utf8");
     expect(config).toContain('NEXT_PUBLIC_GEMINUS_INVESTIGATIONS: process.env.NEXT_PUBLIC_GEMINUS_INVESTIGATIONS ?? "1"');
-    expect(config).toContain('NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER ?? ""');
+    expect(config).toContain('NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER: process.env.NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER ?? "1"');
   });
 });
 
@@ -318,7 +324,8 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
 
   it("ticked in scenario mode: says the caps, takes run settings and an objective, and starts the investigation", async () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
-    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", undefined);
+    // A build without Muse Wonder as planner (next.config.ts's "" since H-086).
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "");
     const { el, api, started } = await modelPage();
     const form = ask(el);
     await choose(form, t("ask.mode"), t("ask.mode.scenario"));
@@ -375,7 +382,11 @@ describe("Ask AI on the model page: Let the AI act on it (entry A)", () => {
     vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "1");
     const { el, api, started } = await modelPage();
     const form = ask(el);
+    // H-086: on in production builds, and still only once "Act on it" is ticked: a proposal has no planner.
+    expect(form.querySelector("[data-planner-choice]")).toBeNull();
+    expect(text(form)).not.toContain(t("investigation.planner"));
     await tick(checkbox(form, t("investigation.act")));
+    expect(form.querySelectorAll("[data-planner-choice]")).toHaveLength(1);
     expect(text(form)).toContain(t("investigation.plannerHint.muse-spark-1.3"));
     await choose(form, t("investigation.planner"), t("investigation.planner.muse-wonder-1.0"));
     expect(text(form)).toContain(t("investigation.plannerHint.muse-wonder-1.0"));
@@ -564,6 +575,8 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
     const s = section(el);
     await waitFor(() => text(s).includes(t("investigation.testThese")), "the button");
     expect(text(s)).toContain(t("investigation.testTheseHint"));
+    // Not a build that offers Muse Wonder as planner: nothing to choose.
+    expect(s.querySelector("[data-planner-choice]")).toBeNull();
     const go = button(s, t("investigation.testThese"));
     expect(go.getAttribute("data-variant")).toBe("ai");
     expect(await violations()).toEqual([]);
@@ -572,6 +585,26 @@ describe("Let the AI test these, under an explanation's suggestions (entry B)", 
     const post = api.calls.find((c) => c.method === "POST" && c.path.endsWith("/investigations"))!;
     expect(post.body).toEqual({ from_analysis_id: ANA, output_locale: "en" });
     expect(post.key).toMatch(/^[\x21-\x7e]{8,128}$/);
+    expect(nav.push.mock.calls).toEqual([[`/investigations/${INV}`]]);
+  });
+
+  // H-086 (H-061 §14 gate 3, on in production builds): entry B as the live check ran it, with Muse Wonder 1.0 chosen as planner.
+  it("in a build that offers Muse Wonder as planner, offers the choice beside the button and sends it only when chosen", async () => {
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_INVESTIGATIONS", "1");
+    vi.stubEnv("NEXT_PUBLIC_GEMINUS_OFFER_WONDER_PLANNER", "1");
+    const api = fakeApi(answers({ [`POST ${v1}/models/${model.id}/investigations`]: json(202, { investigation_id: INV, status: "running" }) }), editor);
+    const el = await page(api);
+    const s = section(el);
+    await waitFor(() => text(s).includes(t("investigation.testThese")), "the button");
+    expect(s.querySelectorAll("[data-test-these] [data-planner-choice]")).toHaveLength(1);
+    expect(text(s)).toContain(t("investigation.plannerHint.muse-spark-1.3"));
+    await choose(s, t("investigation.planner"), t("investigation.planner.muse-wonder-1.0"));
+    expect(text(s)).toContain(t("investigation.plannerHint.muse-wonder-1.0"));
+    expect(await violations()).toEqual([]);
+    await press(button(s, t("investigation.testThese")));
+    await waitFor(() => nav.push.mock.calls.length > 0, "the investigation page");
+    const post = api.calls.find((c) => c.method === "POST" && c.path.endsWith("/investigations"))!;
+    expect(post.body).toEqual({ from_analysis_id: ANA, output_locale: "en", planner_model: "muse-wonder-1.0" });
     expect(nav.push.mock.calls).toEqual([[`/investigations/${INV}`]]);
   });
 
