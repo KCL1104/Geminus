@@ -27,6 +27,13 @@ func TestTemplates(t *testing.T) {
 		// guess, and that it is the last chance.
 		"repair": {"FOLLOW_UP", "SERVER_REVIEW", "server_data", "issues_not_listed", "/changes", "same format", "complete JSON document",
 			"no web search", "needs_input", "last chance"},
+		// H-086 (R): the follow-up of the one re-ask of an explanation the
+		// server's grounding check refused (internal/ai/aicontext
+		// ReviseAnalysis): the server's issues with the rule each code stands
+		// for, the same format, a complete answer, no number of its own, no
+		// invented value, and that it is the last chance.
+		"reground": {"FOLLOW_UP", "SERVER_CHECK", "server_data", "issues_not_listed", "same format", "complete JSON document",
+			"ANALYSIS_NUMBER_UNVERIFIED", "never compute", "Never invent", "uncertainty", "last chance", "MODEL_SUMMARY"},
 		// H-068: what the Meta adapter adds to a Muse Wonder 1.0 proposal
 		// request's system text, before the answer's schema with native
 		// values: one JSON object and nothing around it, every value

@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/kcl1104/geminus/internal/httpapi"
+	"github.com/kcl1104/geminus/internal/model/validate"
 	store "github.com/kcl1104/geminus/internal/storage/analyses"
 	"github.com/kcl1104/geminus/internal/tenant"
 )
@@ -160,5 +161,46 @@ func TestOutputLocaleIsListed(t *testing.T) {
 	a.OutputLocale = "fr"
 	if _, err := listed(a, "req_01M4YDQK00V6H8S0ST4F7510KR"); err == nil {
 		t.Error("an output locale outside the contract was listed")
+	}
+}
+
+// H-086 (R): a completed analysis that holds the AI's second answer (the
+// job's one re-ask after the server's grounding check refused the first)
+// says so in generated_by.revised_after_check, as a revised proposal does;
+// nothing of the re-ask's call is shown, and the record is the contract's
+// AnalysisRecord. One without a re-ask shows no flag.
+func TestARevisedAnalysisSaysSo(t *testing.T) {
+	base := "sim_01M4YDQK00FGZZWH0PP15XPNFA"
+	analysis := `{"baseline":null,"scenario":{"summary":"The second server shortened the queue."},"delta":[],"bottleneck":[],"assumptions":[],` +
+		`"uncertainty":["Only one replication was run."],"suggested_next_experiments":[]}`
+	first := `"provider":"meta","model":"muse-spark-1.3","role":"analyst","prompt_template_version":"analyst-0.3.3","input_hash":"sha256:aa"`
+	repair := `,"repair":{"outcome":"grounded","issues":2,"call":{"provider":"meta","model":"muse-spark-1.3","role":"analyst",` +
+		`"prompt_template_version":"analyst-0.3.3+reground-0.1.0","input_hash":"sha256:bb","cost_nano_usd":99,"spend_reservation_id":"asr_01M4YDQK00TA00000000000003"}}`
+	for _, c := range []struct {
+		metadata string
+		revised  bool
+	}{{`{` + first + `}`, false}, {`{` + first + repair + `}`, true}} {
+		a := store.Analysis{ID: "ana_01M4YDQK00B8S5WQXJ3TQ7ZK61", OrganizationID: "org_01M4YDQK00Y5H2929M9WWZWTVH", RunID: "sim_01M4YDQK00FGZZWH0PP15XPNFB",
+			BaselineRunID: &base, Status: store.Completed, OutputLocale: "en", Analysis: []byte(analysis), ProviderMetadata: []byte(c.metadata),
+			CreatedAt: time.Date(2026, 11, 3, 6, 0, 0, 0, time.UTC)}
+		got, err := public(a, "req_01M4YDQK00V6H8S0ST4F7510KR")
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(got)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if issues, err := validate.Document(data, "http.schema.json#/$defs/AnalysisRecord", "RESPONSE"); err != nil || len(issues) > 0 {
+			t.Errorf("%s: %v %v", data, issues, err)
+		}
+		if got.GeneratedBy == nil || got.GeneratedBy.RevisedAfterCheck != c.revised || strings.Contains(string(data), "false") {
+			t.Errorf("revised %v: %s", c.revised, data)
+		}
+		for _, leak := range []string{"reground", "sha256", "asr_", "99", "issues\":2", "repair"} {
+			if strings.Contains(string(data), leak) {
+				t.Errorf("%s leaks %q", data, leak)
+			}
+		}
 	}
 }

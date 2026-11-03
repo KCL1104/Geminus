@@ -76,7 +76,8 @@ func TestAStoppedAttemptEndsAsTheHandlerDid(t *testing.T) {
 			if c.edit != nil {
 				c.edit(&st)
 			}
-			_, meta, issues, err := h.analyze(ctx, tOrg, st, tAttr)
+			a, err := h.analyze(ctx, tOrg, st, tAttr)
+			meta, issues := a.meta, a.issues
 			var fl *jobs.Failure
 			switch {
 			case c.code != "":
@@ -131,7 +132,8 @@ func TestAStopAfterTheAnswerStillChecksIt(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, meta, issues, err := h.analyze(ctx, tOrg, fixture(t), tAttr)
+			a, err := h.analyze(ctx, tOrg, fixture(t), tAttr)
+			out, meta, issues := a.out, a.meta, a.issues
 			if ctx.Err() == nil {
 				t.Fatal("the attempt did not stop as the call's line was written")
 			}

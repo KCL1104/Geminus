@@ -20,9 +20,10 @@
 // The pages are example.com addresses (RFC 2606): never a real source.
 //
 // Repair (H-057): a request with a Revision (the second turn of a proposal's
-// one repair) is answered from ScriptRevision's script under the same key;
-// unscripted, as the first request was (the fake repeats itself). Every
-// answer it gives is also its Response.Answer.
+// one repair, or of an explanation's one re-ask, H-086 (R)) is answered from
+// ScriptRevision's script under the same key; unscripted, as the first
+// request was (the fake repeats itself). Every answer it gives is also its
+// Response.Answer.
 //
 // Tool turns (H-060): the fake is a provider.ToolTurner for every role. A
 // turn (a request that offers tools) is answered from ScriptTools' script

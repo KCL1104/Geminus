@@ -207,7 +207,10 @@ func TestARevisionIsSealed(t *testing.T) {
 	bad("no blocks", func(p *Prompt) { p.Revision.Blocks = nil })
 	bad("a repeated block", func(p *Prompt) { p.Revision.Blocks = []Block{reviewBlock(t), reviewBlock(t)} })
 	bad("research", func(p *Prompt) { p.Research = true })
-	bad("a role that takes no proposal", func(p *Prompt) { p.Role = RoleAnalyst })
+	// H-086 (R): the analyst's prompt takes a revision too
+	// (TestAnExplanationsRevision); the importer's and the investigator's never.
+	bad("the importer's prompt", func(p *Prompt) { p.Role = RoleImporter })
+	bad("the investigator's prompt", func(p *Prompt) { p.Role = RoleInvestigator })
 	// The prior answer is the sealed prompt's own copy.
 	src := []byte(validProposal)
 	p := first
@@ -284,5 +287,74 @@ func TestARevisionCall(t *testing.T) {
 	}))
 	if _, err := slow.GenerateModelProposal(context.Background(), ProposalContext{OrganizationID: orgA, Mode: ModeEdit, Prompt: researched}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// validAnalysis is a schema-valid explanation whose prose holds the
+// sentinel, as a model's answer would hold its own words.
+const validAnalysis = `{"baseline":null,"scenario":{"summary":"` + priorSentinel + ` The server sets the pace."},"delta":[],"bottleneck":[],` +
+	`"assumptions":[],"uncertainty":["Only one replication was run."],"suggested_next_experiments":[]}`
+
+// H-086 (R): an explanation's schema-valid answer is held for its one re-ask
+// after the server's grounding check (AnalysisResult.Prior), withheld when
+// printed or encoded; a refused one is not (an explanation the client
+// refuses is not asked again). The analyst's prompt takes a revision, sealed
+// as a proposal's is, and the revision call is the analyst's checked call:
+// the analyst's output bound and timeouts (its reasoning is not cut, H-055),
+// the prior answer sent back by the backend only through Bytes, never
+// research.
+func TestAnExplanationsRevision(t *testing.T) {
+	ask := func(c *Client, p Prompt) (AnalysisResult, error) {
+		return c.AnalyzeSimulation(context.Background(), AnalysisContext{OrganizationID: orgA, Prompt: p})
+	}
+	first := prompt(t, RoleAnalyst)
+	res, err := ask(client(t, answered(validAnalysis)), first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Prior.Present() || string(res.Prior.Bytes()) != validAnalysis {
+		t.Fatalf("no prior answer: %v", res.Prior)
+	}
+	for _, verb := range []string{"%v", "%+v", "%#v"} {
+		if s := fmt.Sprintf(verb, res.Prior); strings.Contains(s, priorSentinel) {
+			t.Errorf("%s prints the prior answer: %s", verb, s)
+		}
+	}
+	if data, err := json.Marshal(struct{ Prior PriorAnswer }{res.Prior}); err != nil || strings.Contains(string(data), priorSentinel) {
+		t.Errorf("the prior answer encodes: %s %v", data, err)
+	}
+	refused := strings.Replace(validAnalysis, `"delta":[]`, `"delta":[],"run_id":"sim_01M4YDQK00TA00000000000001"`, 1)
+	if res, err := ask(client(t, answered(refused)), first); CodeOf(err) != CodeInvalidOutput || res.Prior.Present() {
+		t.Errorf("a refused explanation: %v, prior kept %v", err, res.Prior.Present())
+	}
+	var got []Request
+	rec := backendFunc(func(_ context.Context, req Request) (Response, error) {
+		got = append(got, req)
+		return Response{Text: []byte(validAnalysis), Answer: []byte(validAnalysis), Model: "test-model"}, nil
+	})
+	r := revised(t, first, validAnalysis)
+	if r.Verify() != nil || r.InputHash == first.InputHash || r.User() != first.User() || r.System != first.System || r.Role != RoleAnalyst {
+		t.Fatalf("the analyst's revision: %v", r.Verify())
+	}
+	if _, err := ask(client(t, rec), r); err != nil {
+		t.Fatal(err)
+	}
+	req := got[len(got)-1]
+	b := DefaultBudget()
+	if req.Prompt.Revision == nil || string(req.Prompt.Revision.Prior.Bytes()) != validAnalysis || req.Prompt.Research ||
+		req.OutputSchema != RoleAnalyst.OutputSchema() || req.MaxOutputTokens != ImageMaxOutputTokens ||
+		req.AttemptTimeout != b.ImageTimeout(b.AttemptTimeout) || req.MaxRetries != b.MaxRetries {
+		t.Errorf("the analyst's revision call: %+v", req)
+	}
+	researched := first
+	researched.Revision = &Revision{Prior: PriorAnswer{text: []byte(validAnalysis)}, Rules: "Fix it.", Blocks: []Block{reviewBlock(t)}}
+	researched.Research = true
+	if _, err := Seal(researched); !errors.Is(err, ErrInvalidPrompt) {
+		t.Errorf("a researched explanation: %v", err)
+	}
+	for role, want := range map[Role]bool{RoleModeler: true, RoleScenario: true, RoleAnalyst: true, RoleImporter: false, RoleInvestigator: false, "": false} {
+		if role.Revised() != want {
+			t.Errorf("%q revised %v", role, !want)
+		}
 	}
 }

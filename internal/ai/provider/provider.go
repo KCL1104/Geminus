@@ -164,6 +164,12 @@ type AnalysisResult struct {
 	Output   AnalysisOutput
 	Raw      jsontext.Value
 	Metadata Metadata
+	// Prior is the model's answer as its backend took it, for the one
+	// re-ask of an explanation the server's grounding check refuses (H-086
+	// (R), revision.go): present with a schema-valid answer of the request's
+	// own (as ProposalResult.Prior), absent with every failure. Withheld when
+	// printed; never store or log it.
+	Prior PriorAnswer
 }
 
 // Request is what a Backend sends.
@@ -626,12 +632,15 @@ func (c *Client) ProposeImportMapping(ctx context.Context, in MappingContext) (M
 	return MappingResult{Output: out, Raw: r.raw, Metadata: r.meta}, nil
 }
 
-// AnalyzeSimulation asks for an analysis of supplied results.
+// AnalyzeSimulation asks for an analysis of supplied results. A
+// schema-valid answer's result holds the answer for the one re-ask after the
+// server's grounding check (Prior, H-086 (R)); a failed call's holds none:
+// an explanation the client refuses is not asked again.
 func (c *Client) AnalyzeSimulation(ctx context.Context, in AnalysisContext) (AnalysisResult, error) {
 	var out AnalysisOutput
 	r, err := c.call(ctx, in.OrganizationID, RoleAnalyst, in.Prompt, in.Attribution, nil, "", &out, nil)
 	if err != nil {
 		return AnalysisResult{Metadata: r.meta}, err
 	}
-	return AnalysisResult{Output: out, Raw: r.raw, Metadata: r.meta}, nil
+	return AnalysisResult{Output: out, Raw: r.raw, Metadata: r.meta, Prior: r.prior}, nil
 }

@@ -70,8 +70,23 @@ func TestRevisedAfterCheck(t *testing.T) {
 	if issues, err := validate.Document(data, "proposal.schema.json", "RESPONSE"); err != nil || len(issues) > 0 || !p.GeneratedBy.RevisedAfterCheck {
 		t.Errorf("%s: %v %v", data, issues, err)
 	}
-	// An analysis's metadata never has a repair: its label never says so.
+	// An analysis without a re-ask: its label never says so.
 	if g := FromMetadata([]byte(`{"provider":"meta","model":"muse-spark-1.3","role":"analyst"}`)); g == nil || g.RevisedAfterCheck {
 		t.Errorf("an analysis: %+v", g)
+	}
+	// H-086 (R): a completed analysis that holds the AI's second answer (the
+	// analysis job's re-ask, outcome grounded) says so; nothing of the second
+	// call leaves the server.
+	analysisCall := `"call":{"provider":"meta","model":"muse-spark-1.3","prompt_template_version":"analyst-0.3.3+reground-0.1.0",` +
+		`"input_hash":"sha256:dd","cost_nano_usd":99,"spend_reservation_id":"asr_01M4YDQK00TA00000000000003"}`
+	g := FromMetadata([]byte(`{"provider":"meta","model":"muse-spark-1.3","role":"analyst","repair":{"outcome":"grounded","issues":2,` + analysisCall + `}}`))
+	out, _ := json.Marshal(g)
+	if g == nil || !g.RevisedAfterCheck || string(out) != `{"provider":"meta","model":"muse-spark-1.3","revised_after_check":true}` {
+		t.Errorf("a re-asked analysis: %s", out)
+	}
+	for _, outcome := range []string{"ungrounded", "failed"} {
+		if g := FromMetadata([]byte(`{"provider":"meta","role":"analyst","repair":{"outcome":"` + outcome + `","issues":1}}`)); g == nil || g.RevisedAfterCheck {
+			t.Errorf("%s: %+v", outcome, g)
+		}
 	}
 }

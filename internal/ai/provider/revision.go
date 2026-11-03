@@ -12,7 +12,10 @@ import (
 // decision): when the server refuses a proposal's first answer for what it
 // says (the client's invalid_output with the model's own answer in hand, or
 // the server's review), the job asks the model once more, and the review of
-// that second answer is the proposal's outcome. The second request is the
+// that second answer is the proposal's outcome. H-086 (R): an explanation
+// the server's grounding check refused (internal/ai/analyst) is asked again
+// the same way, once, with the check's issues (aicontext.ReviseAnalysis);
+// only these roles' prompts take a revision (Role.Revised). The second request is the
 // first one's sealed prompt again (the same system text, blocks and images),
 // the model's previous answer as the assistant turn after it, and a user
 // turn of the server's (Revision.User: the versioned repair template and the
@@ -135,8 +138,8 @@ func sealRevision(r *Revision, p Prompt) (*Revision, error) {
 		return nil, fmt.Errorf("%w: the revision: "+format, append([]any{ErrInvalidPrompt}, a...)...)
 	}
 	switch {
-	case !p.Role.Researches():
-		return fail("only a proposal role's prompt is revised")
+	case !p.Role.Revised():
+		return fail("only a proposal or an explanation role's prompt is revised")
 	case p.Research:
 		return fail("a revision is never researched")
 	case !r.Prior.Present():
@@ -166,6 +169,11 @@ func sealRevision(r *Revision, p Prompt) (*Revision, error) {
 	}
 	return out, nil
 }
+
+// Revised reports whether a prompt of role may carry a revision: the
+// proposal roles' (H-057) and the analyst's (H-086 (R)); never the
+// importer's or the investigator's.
+func (r Role) Revised() bool { return r.Researches() || r == RoleAnalyst }
 
 // revisionsEqual reports whether two sealed revisions are the same.
 func revisionsEqual(a, b *Revision) bool {

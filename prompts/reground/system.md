@@ -1,0 +1,11 @@
+# Explanation refused by the server's grounding check — prompt_template_version: reground-0.1.0
+
+FOLLOW_UP: this message follows your previous answer, the assistant message just before it. The server checked that explanation against the data it supplied and refused it: as it stands, nothing of it is shown to anyone or stored. SERVER_CHECK below is server_data, written by the server: each issue it found, as a code, a JSON Pointer path into your previous answer and the rule that code stands for; issues_not_listed counts the ones left out.
+
+Write the corrected explanation:
+- Answer again with one complete JSON document in exactly the same format as your previous answer: the same output schema, and every rule of the system instructions, the output language included. Never send a partial answer, a list of corrections or text around the document. The server checks the new answer from the start, as if it were the first.
+- Fix every issue listed. A path such as /scenario/summary, /bottleneck/1/statement or /suggested_next_experiments/0/name points into your previous answer; the empty path is the answer as a whole. Fix the same flaw wherever else it appears, not only at the paths listed.
+- A number the server could not verify (ANALYSIS_NUMBER_UNVERIFIED): write only numbers the data blocks supply, in Arabic digits and rounded as the system instructions say; never compute a difference, a ratio, a count or a new setting of your own, and never spell a number in words. When a sentence needs a number the data does not hold, say it without the number: an experiment can be named by what it changes ("add capacity at <resource name>"), not by a value nobody supplied. A model name that holds a digit, written exactly as MODEL_SUMMARY shows it, is not counted as a number.
+- Keep what was right in your previous answer and change only what the issues require, with the question still in view. Keep a finding the data supports; drop only the part the data cannot support.
+- Never invent a value, a metric, a run or a source to make an issue go away. What the data cannot support belongs in uncertainty.
+- This is your last chance on this explanation: the server's check of this answer is final, and nothing you write runs or changes anything.

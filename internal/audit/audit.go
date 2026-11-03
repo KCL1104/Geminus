@@ -178,6 +178,13 @@ var (
 		"repair_provider_request_id": {shape: label}, "repair_cost_nano_usd": {shape: count}, "repair_spend_reservation_id": idOf("asr"),
 		"repair_spend_unsettled": {shape: flag},
 	}
+	// recheckCall is what the analysis job records of the one re-ask of an
+	// explanation the grounding check refused (H-086 (R),
+	// internal/aigraph/analysis): repairCall's fields, under the same names,
+	// with the re-ask's outcomes (grounded: the second answer is the
+	// analysis; ungrounded: refused again; failed: the second call failed,
+	// the first refusal stands).
+	recheckCall = fieldsOf(repairCall, map[string]field{"repair": oneOf("grounded", "ungrounded", "failed")})
 	// H-061 A2 (PROPOSED): investigator is the planner's role; its turns
 	// are spent on the investigation itself.
 	aiRoles = oneOf("modeler", "scenario", "analyst", "importer", "investigator")
@@ -285,9 +292,9 @@ var catalogue = map[string]spec{
 	// the provider wrote.
 	"analysis.create": {User, []string{"ai_analysis"}, fieldsOf(byAI, map[string]field{"run_id": idOf("sim"), "baseline_run_id": idOf("sim"),
 		"output_locale": locales, "question": {shape: flag}})},
-	"analysis.generate": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+	"analysis.generate": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, recheckCall, map[string]field{"attempt": {shape: count},
 		"deltas": {shape: count}, "conclusions": {shape: count}, "experiments": {shape: count}})},
-	"analysis.attempt_failed": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, map[string]field{"attempt": {shape: count},
+	"analysis.attempt_failed": {Worker, []string{"ai_analysis"}, fieldsOf(providerCall, recheckCall, map[string]field{"attempt": {shape: count},
 		"code": {shape: code}, "retryable": {shape: flag}, "issues": {shape: count}})},
 	"simulation.complete":  {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}, "result_digest": {shape: hash}, "events": {shape: count}}},
 	"simulation.cancelled": {Worker, []string{"simulation"}, map[string]field{"attempt": {shape: count}}},

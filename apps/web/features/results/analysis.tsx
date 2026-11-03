@@ -275,6 +275,12 @@ function Explained({ analysis, rows, generatedBy, modelId, analysisId, baseline,
           </>
         )}
       </p>
+      {/* H-086 (R): the server refused the AI's first explanation and this is its second, said as a revised proposal says it (H-057). */}
+      {generatedBy?.revised_after_check === true && (
+        <p className={styles.note} data-revised>
+          {t("proposal.revisedAfterCheck")}
+        </p>
+      )}
       {/* The summaries and what changed say again what the table shows: one click away (H-039). */}
       <details className={styles.details}>
         <summary>{t("analysis.summaries")}</summary>

@@ -269,6 +269,583 @@
       }
     ]
   },
+  "reask-call-fails": {
+    "result": "failure",
+    "code": "ANALYSIS_UNGROUNDED",
+    "message": "the AI answer is not grounded in the results (ANALYSIS_NUMBER_UNVERIFIED at /scenario/summary)",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 1,
+    "recheck": {
+      "Issues": 1,
+      "NotListed": 0,
+      "Outcome": "failed",
+      "Code": "AI_UNAVAILABLE",
+      "Call": {
+        "provider": "fake",
+        "model": "fake",
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "schema": "analysis-output.schema.json",
+        "output_locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "latency_ms": 0,
+        "context": {
+          "omitted": {
+            "baseline_results.replication_summaries:bounded": 1,
+            "baseline_results.run_id:server_bound": 1,
+            "baseline_results.unavailable_named_metrics:not_available": 1,
+            "comparison.metrics:not_available": 3,
+            "metric_references.baseline:not_available": 1,
+            "metric_references.scenario:not_available": 1,
+            "scenario_results.replication_summaries:bounded": 1,
+            "scenario_results.run_id:server_bound": 1,
+            "scenario_results.unavailable_named_metrics:not_available": 1
+          },
+          "redacted": {
+            "server_id": 2
+          }
+        }
+      }
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000
+      },
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000,
+        "revision_sha256": "e43e95ec588e282d6dbda51c7a6915f20369b7fcb5e89e0762bd9e74db52e2bc"
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      },
+      {
+        "call_attempt": 2,
+        "code": "AI_UNAVAILABLE",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "reask-grounded": {
+    "result": "analysis",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 0,
+    "analysis": {
+      "baseline": {
+        "summary": "Baseline."
+      },
+      "scenario": {
+        "summary": "Throughput rose with the second server."
+      },
+      "delta": [],
+      "bottleneck": [],
+      "assumptions": [],
+      "uncertainty": [
+        "Only one replication was run."
+      ],
+      "suggested_next_experiments": []
+    },
+    "recheck": {
+      "Issues": 1,
+      "NotListed": 0,
+      "Outcome": "grounded",
+      "Code": "",
+      "Call": {
+        "provider": "fake",
+        "model": "fake",
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "schema": "analysis-output.schema.json",
+        "output_locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "output_hash": "sha256:e06e491d20472fd2d4a5e8cf786c33dfa1f55a25ede2e02e90852c9e0eaeead3",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "latency_ms": 0,
+        "context": {
+          "omitted": {
+            "baseline_results.replication_summaries:bounded": 1,
+            "baseline_results.run_id:server_bound": 1,
+            "baseline_results.unavailable_named_metrics:not_available": 1,
+            "comparison.metrics:not_available": 3,
+            "metric_references.baseline:not_available": 1,
+            "metric_references.scenario:not_available": 1,
+            "scenario_results.replication_summaries:bounded": 1,
+            "scenario_results.run_id:server_bound": 1,
+            "scenario_results.unavailable_named_metrics:not_available": 1
+          },
+          "redacted": {
+            "server_id": 2
+          }
+        }
+      }
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000
+      },
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000,
+        "revision_sha256": "e43e95ec588e282d6dbda51c7a6915f20369b7fcb5e89e0762bd9e74db52e2bc"
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      },
+      {
+        "call_attempt": 2,
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
+  "reask-grounded-metered": {
+    "result": "analysis",
+    "metadata": {
+      "provider": "fake",
+      "model": "muse-spark-1.3",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+      "usage": {
+        "input_tokens": 700,
+        "output_tokens": 90,
+        "cache_read_input_tokens": 10
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      },
+      "cost_nano_usd": 1259000,
+      "spend_reservation_id": "set"
+    },
+    "issues": 0,
+    "analysis": {
+      "baseline": {
+        "summary": "Baseline."
+      },
+      "scenario": {
+        "summary": "Throughput rose with the second server."
+      },
+      "delta": [],
+      "bottleneck": [],
+      "assumptions": [],
+      "uncertainty": [
+        "Only one replication was run."
+      ],
+      "suggested_next_experiments": []
+    },
+    "recheck": {
+      "Issues": 1,
+      "NotListed": 0,
+      "Outcome": "grounded",
+      "Code": "",
+      "Call": {
+        "provider": "fake",
+        "model": "muse-spark-1.3",
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "schema": "analysis-output.schema.json",
+        "output_locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "output_hash": "sha256:e06e491d20472fd2d4a5e8cf786c33dfa1f55a25ede2e02e90852c9e0eaeead3",
+        "usage": {
+          "input_tokens": 700,
+          "output_tokens": 90,
+          "cache_read_input_tokens": 10
+        },
+        "latency_ms": 0,
+        "context": {
+          "omitted": {
+            "baseline_results.replication_summaries:bounded": 1,
+            "baseline_results.run_id:server_bound": 1,
+            "baseline_results.unavailable_named_metrics:not_available": 1,
+            "comparison.metrics:not_available": 3,
+            "metric_references.baseline:not_available": 1,
+            "metric_references.scenario:not_available": 1,
+            "scenario_results.replication_summaries:bounded": 1,
+            "scenario_results.run_id:server_bound": 1,
+            "scenario_results.unavailable_named_metrics:not_available": 1
+          },
+          "redacted": {
+            "server_id": 2
+          }
+        },
+        "cost_nano_usd": 1259000,
+        "spend_reservation_id": "set"
+      }
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000
+      },
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000,
+        "revision_sha256": "e43e95ec588e282d6dbda51c7a6915f20369b7fcb5e89e0762bd9e74db52e2bc"
+      }
+    ],
+    "charges": [
+      {
+        "organization_id": "org_01M4YDQK00TA00000000000000",
+        "role": "analyst",
+        "model": "muse-spark-1.3",
+        "target": "ai_analysis:ana_01M4YDQK00FGZZWH0PP15XPNFC:req_01M4YDQK00FGZZWH0PP15XPNFD",
+        "nano_usd": 483000000
+      },
+      {
+        "organization_id": "org_01M4YDQK00TA00000000000000",
+        "role": "analyst",
+        "model": "muse-spark-1.3",
+        "target": "ai_analysis:ana_01M4YDQK00FGZZWH0PP15XPNFC:req_01M4YDQK00FGZZWH0PP15XPNFD",
+        "nano_usd": 483000000
+      }
+    ],
+    "settled": [
+      {
+        "nano_usd": 1259000,
+        "outcome": "usage"
+      },
+      {
+        "nano_usd": 1259000,
+        "outcome": "usage"
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 1259000,
+        "credential_label": "",
+        "input_tokens": 700,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "muse-spark-1.3",
+        "msg": "ai provider call ended",
+        "output_tokens": 90,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": "memory-1"
+      },
+      {
+        "call_attempt": 2,
+        "code": "OK",
+        "cost_nano_usd": 1259000,
+        "credential_label": "",
+        "input_tokens": 700,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "muse-spark-1.3",
+        "msg": "ai provider call ended",
+        "output_tokens": 90,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": "memory-2"
+      }
+    ]
+  },
+  "reask-ungrounded-again": {
+    "result": "failure",
+    "code": "ANALYSIS_UNGROUNDED",
+    "message": "the AI answer is not grounded in the results (ANALYSIS_CERTAINTY at /scenario/summary)",
+    "metadata": {
+      "provider": "fake",
+      "model": "fake",
+      "role": "analyst",
+      "prompt_template_version": "analyst-0.3.3",
+      "schema": "analysis-output.schema.json",
+      "output_locale": "zh-Hant",
+      "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+      "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0
+      },
+      "latency_ms": 0,
+      "context": {
+        "omitted": {
+          "baseline_results.replication_summaries:bounded": 1,
+          "baseline_results.run_id:server_bound": 1,
+          "baseline_results.unavailable_named_metrics:not_available": 1,
+          "comparison.metrics:not_available": 3,
+          "metric_references.baseline:not_available": 1,
+          "metric_references.scenario:not_available": 1,
+          "scenario_results.replication_summaries:bounded": 1,
+          "scenario_results.run_id:server_bound": 1,
+          "scenario_results.unavailable_named_metrics:not_available": 1
+        },
+        "redacted": {
+          "server_id": 2
+        }
+      }
+    },
+    "issues": 2,
+    "recheck": {
+      "Issues": 1,
+      "NotListed": 0,
+      "Outcome": "ungrounded",
+      "Code": "",
+      "Call": {
+        "provider": "fake",
+        "model": "fake",
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "schema": "analysis-output.schema.json",
+        "output_locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "output_hash": "sha256:a91d0d66d873e50155e8c324ff9cb2b2fd5b5e3da8e1ce9c2161f9daaab30440",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "latency_ms": 0,
+        "context": {
+          "omitted": {
+            "baseline_results.replication_summaries:bounded": 1,
+            "baseline_results.run_id:server_bound": 1,
+            "baseline_results.unavailable_named_metrics:not_available": 1,
+            "comparison.metrics:not_available": 3,
+            "metric_references.baseline:not_available": 1,
+            "metric_references.scenario:not_available": 1,
+            "scenario_results.replication_summaries:bounded": 1,
+            "scenario_results.run_id:server_bound": 1,
+            "scenario_results.unavailable_named_metrics:not_available": 1
+          },
+          "redacted": {
+            "server_id": 2
+          }
+        }
+      }
+    },
+    "requests": [
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:ebbe0c170ebc6ecab5f0d00993ef145c5bb43765d19a645d676c5287e6c7fd4a",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000
+      },
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000,
+        "revision_sha256": "e43e95ec588e282d6dbda51c7a6915f20369b7fcb5e89e0762bd9e74db52e2bc"
+      }
+    ],
+    "logs": [
+      {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      },
+      {
+        "call_attempt": 2,
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      }
+    ]
+  },
   "the-answer-is-not-an-analysis": {
     "result": "failure",
     "code": "AI_INVALID_OUTPUT",
@@ -370,6 +947,43 @@
       }
     },
     "issues": 1,
+    "recheck": {
+      "Issues": 1,
+      "NotListed": 0,
+      "Outcome": "ungrounded",
+      "Code": "",
+      "Call": {
+        "provider": "fake",
+        "model": "fake",
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "schema": "analysis-output.schema.json",
+        "output_locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "output_hash": "sha256:ced76fe37afd715f6dfee960994a7453c8bf3c9bfbe6796cb341e10707325fbd",
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0
+        },
+        "latency_ms": 0,
+        "context": {
+          "omitted": {
+            "baseline_results.replication_summaries:bounded": 1,
+            "baseline_results.run_id:server_bound": 1,
+            "baseline_results.unavailable_named_metrics:not_available": 1,
+            "comparison.metrics:not_available": 3,
+            "metric_references.baseline:not_available": 1,
+            "metric_references.scenario:not_available": 1,
+            "scenario_results.replication_summaries:bounded": 1,
+            "scenario_results.run_id:server_bound": 1,
+            "scenario_results.unavailable_named_metrics:not_available": 1
+          },
+          "redacted": {
+            "server_id": 2
+          }
+        }
+      }
+    },
     "requests": [
       {
         "role": "analyst",
@@ -380,10 +994,37 @@
         "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
         "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
         "max_output_tokens": 32000
+      },
+      {
+        "role": "analyst",
+        "prompt_template_version": "analyst-0.3.3+reground-0.1.0",
+        "locale": "zh-Hant",
+        "input_hash": "sha256:92d519f30438dc6b3df4eb69cc91ab3e83643bf87c74471e7eb4c83fa432f0e6",
+        "schema": "analysis-output.schema.json",
+        "system_sha256": "ffe0732054d4182bc47b40703f21e977b35dbb8b7fe4a10d3cc14bba7673d697",
+        "user_sha256": "addcd63c7b635ac3cdfac6aa95875068b9c81720a2e7a53d82081487dda60660",
+        "max_output_tokens": 32000,
+        "revision_sha256": "e43e95ec588e282d6dbda51c7a6915f20369b7fcb5e89e0762bd9e74db52e2bc"
       }
     ],
     "logs": [
       {
+        "code": "OK",
+        "cost_nano_usd": 0,
+        "credential_label": "",
+        "input_tokens": 0,
+        "latency_ms": 0,
+        "level": "INFO",
+        "model": "fake",
+        "msg": "ai provider call ended",
+        "output_tokens": 0,
+        "provider": "fake",
+        "provider_request_id": "",
+        "role": "analyst",
+        "spend_reservation_id": ""
+      },
+      {
+        "call_attempt": 2,
         "code": "OK",
         "cost_nano_usd": 0,
         "credential_label": "",

@@ -53,6 +53,11 @@ type analysisView struct {
 		} `json:"scenario"`
 		Delta []any `json:"delta"`
 	} `json:"analysis"`
+	// GeneratedBy is the label (H-043); RevisedAfterCheck H-086 (R)'s.
+	GeneratedBy *struct {
+		Provider          string `json:"provider"`
+		RevisedAfterCheck bool   `json:"revised_after_check"`
+	} `json:"generated_by"`
 	Error *struct {
 		Error struct {
 			Code    string `json:"code"`
@@ -171,7 +176,9 @@ func TestAnalysisClosedLoop(t *testing.T) {
 }
 
 // An answer that invents a delta is never stored: the job fails for good
-// and the analysis follows it, with the failure's code in the details.
+// and the analysis follows it, with the failure's code in the details. H-086
+// (R): it is asked again once first; the fake repeats itself, so the second
+// answer is refused too, and the audit says so.
 func TestAnUngroundedAnalysisFails(t *testing.T) {
 	e := setupRuns(t, api.WithAI(proposals.Available))
 	editor := e.a.Members[tenant.Editor]
@@ -199,8 +206,72 @@ func TestAnUngroundedAnalysisFails(t *testing.T) {
 		t.Fatalf("an ungrounded answer: %+v %+v", v, v.Error)
 	}
 	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND target_id=$2 AND action='analysis.attempt_failed'
-		AND metadata->>'code'='ANALYSIS_UNGROUNDED' AND (metadata->>'issues')::int = 1`, e.a.ID, id); n != 1 {
+		AND metadata->>'code'='ANALYSIS_UNGROUNDED' AND (metadata->>'issues')::int = 1 AND metadata->>'repair'='ungrounded'
+		AND (metadata->>'repair_issues')::int = 1 AND metadata->>'repair_prompt_template_version' LIKE '%+reground-0.1.0'`, e.a.ID, id); n != 1 {
 		t.Errorf("%d attempt_failed events", n)
+	}
+	if n := len(f.Requests()); n != 2 {
+		t.Errorf("%d provider requests, want the answer and its one re-ask", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.ai_analyses WHERE organization_id=$1 AND id=$2 AND provider_metadata = '{}' AND analysis IS NULL`, e.a.ID, id); n != 1 {
+		t.Errorf("the failed analysis keeps content: %d", n)
+	}
+}
+
+// H-086 (R): an answer the grounding check refuses is asked again once, in
+// the same job, with the check's issues; the second answer, grounded, is the
+// analysis, stored with the first call's metadata and the re-ask's record,
+// labelled revised_after_check for every member who reads it, and audited
+// with the re-ask's fields; nothing of the first answer is stored or
+// audited.
+func TestAnAnalysisAskedAgainIsCompleted(t *testing.T) {
+	e := setupRuns(t, api.WithAI(proposals.Available))
+	editor, viewer := e.a.Members[tenant.Editor], e.a.Members[tenant.Viewer]
+	_, base, scen := e.completedPair(t, "ana-again")
+	answer := func(summary string) []byte {
+		b, err := json.Marshal(provider.AnalysisOutput{
+			Baseline: &provider.AnalysisSummary{Summary: "Baseline."}, Scenario: provider.AnalysisSummary{Summary: summary},
+			Delta: []provider.AnalysisDelta{}, Bottleneck: []provider.Bottleneck{}, Assumptions: []string{}, Uncertainty: []string{"Only one replication was run."},
+			SuggestedNextExperiments: []provider.Experiment{}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	f := fake.New()
+	f.Script(provider.RoleAnalyst, "Explain it", answer("Throughput rose by 4242.5 SENTINEL-FIRST."))
+	f.ScriptRevision(provider.RoleAnalyst, "Explain it", answer("The second server shortened the queue."))
+	r := e.analyze(editor.Subject, e.a.ID, "ana-again-1", scen, `{"baseline_run_id":"`+base+`","question":"Explain it"}`)
+	if r.status != 202 {
+		t.Fatalf("create: %d %s", r.status, r.body)
+	}
+	id := decode[struct {
+		ID string `json:"id"`
+	}](t, r).ID
+	drain(t, e.analysisLoop(t, f), time.Minute)
+	v := e.analysis(t, viewer.Subject, e.a.ID, id)
+	if v.Status != "completed" || v.Analysis == nil || v.Analysis.Scenario.Summary != "The second server shortened the queue." || v.Error != nil ||
+		v.GeneratedBy == nil || !v.GeneratedBy.RevisedAfterCheck {
+		t.Fatalf("a re-asked analysis: %+v %+v", v, v.GeneratedBy)
+	}
+	if n := len(f.Requests()); n != 2 {
+		t.Errorf("%d provider requests", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.ai_analyses WHERE organization_id=$1 AND id=$2
+		AND provider_metadata->>'prompt_template_version' = 'analyst-0.3.3' AND provider_metadata->'repair'->>'outcome' = 'grounded'
+		AND (provider_metadata->'repair'->>'issues')::int = 1
+		AND provider_metadata->'repair'->'call'->>'prompt_template_version' = 'analyst-0.3.3+reground-0.1.0'`, e.a.ID, id); n != 1 {
+		t.Errorf("the stored metadata: %d", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND target_id=$2 AND action='analysis.generate'
+		AND metadata->>'repair'='grounded' AND (metadata->>'repair_issues')::int = 1`, e.a.ID, id); n != 1 {
+		t.Errorf("%d analysis.generate events with the re-ask", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.audit_events WHERE organization_id=$1 AND (metadata::text LIKE '%SENTINEL-FIRST%' OR metadata::text LIKE '%4242%')`, e.a.ID); n != 0 {
+		t.Errorf("the first answer is in %d audit events", n)
+	}
+	if n := e.count(`SELECT count(*) FROM twin.ai_analyses WHERE organization_id=$1 AND (analysis::text LIKE '%SENTINEL-FIRST%' OR provider_metadata::text LIKE '%SENTINEL-FIRST%')`, e.a.ID); n != 0 {
+		t.Errorf("the first answer is stored in %d analyses", n)
 	}
 }
 

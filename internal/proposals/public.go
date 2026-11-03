@@ -207,7 +207,11 @@ const maxSegments = 64
 // revisedOutcomes are the stored repair outcomes (internal/ai/repair) of a
 // proposal that holds the AI's second answer: the server reviewed it,
 // whatever it found. A failed repair call left the first answer's outcome.
-var revisedOutcomes = map[string]bool{"ready": true, "needs_input": true, "invalid": true}
+// H-086 (R): grounded is the outcome of an analysis that holds the AI's
+// second answer, written after the server's grounding check refused its
+// first (internal/analyses/analyzer; a completed analysis has no other
+// repair outcome, and only a completed one shows generated_by).
+var revisedOutcomes = map[string]bool{"ready": true, "needs_input": true, "invalid": true, "grounded": true}
 
 // maxQueries bounds the queries GeneratedBy shows (common.schema.json):
 // a count outside it leaves web_search out rather than shown.
@@ -238,8 +242,9 @@ func generatedBy(metadata []byte, rec *store.Image) *GeneratedBy {
 			Boxes    jsontext.Value `json:"boxes"`
 		} `json:"segmenter"`
 		WebSearch *provider.WebSearch `json:"web_search"`
-		// Repair is the generator's record of the one repair (H-057); only
-		// its outcome is read.
+		// Repair is the generator's record of the one repair (H-057), or the
+		// analysis job's of its one re-ask (H-086 (R)); only its outcome is
+		// read.
 		Repair *struct {
 			Outcome string `json:"outcome"`
 		} `json:"repair"`

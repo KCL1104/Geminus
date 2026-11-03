@@ -7,14 +7,18 @@
 	},
 	"checks_passed": {
 		"grounded_answer_kept": 10,
+		"recheck_follow_up_lists_every_issue_with_its_rule": 9,
+		"recheck_not_asked_after_the_clients_refusal": 1,
 		"unsafe_answer_refused_for_its_flaw": 10
 	},
 	"zero_tolerance_gates": {
+		"recheck_follow_up_echoes_untrusted_text": 0,
 		"reference_refused": 0,
 		"unsafe_answer_kept": 0
 	},
 	"not_run": [
 		"a model's own answers (the answers here are hand-written; a live provider: T-038)",
-		"database effects: an ungrounded answer fails the analysis and stores nothing (make integration-test, internal/api TestAnUngroundedAnalysisFails)"
+		"database effects: an ungrounded answer fails the analysis and stores nothing (make integration-test, internal/api TestAnUngroundedAnalysisFails)",
+		"a live model's answer to the re-ask (H-086 (R)): whether it fixes a refused explanation is not measured here (the follow-up is built from hand-written answers)"
 	]
 }

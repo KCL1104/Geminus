@@ -67,7 +67,7 @@ func TestAStoppedAttemptIsSeenByItsSteps(t *testing.T) {
 			f := fake.New()
 			var calls []seen
 			g, err := analysis.New(analysis.Config{Provider: client(t, f), Budget: provider.DefaultBudget(), Packs: packs(t),
-				Called: func(ctx context.Context, _ provider.Metadata, err error) {
+				Called: func(ctx context.Context, _ int, _ provider.Metadata, err error) {
 					d, _ := ctx.Deadline()
 					calls = append(calls, seen{value: ctx.Value(callerKey{}), err: ctx.Err(), cause: context.Cause(ctx), deadline: d, callErr: err})
 				}})

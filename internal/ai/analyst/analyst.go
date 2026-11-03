@@ -74,6 +74,13 @@ const (
 	OutputInvalid = "ANALYSIS_OUTPUT_INVALID"
 )
 
+// Codes are every issue code Check emits. The one re-ask of a refused
+// explanation (H-086 (R)) lists each issue with the fixed rule its code
+// stands for (internal/ai/aicontext CheckRule); the tests keep the two
+// equal.
+var Codes = []string{NoBaseline, DeltaUnknown, DeltaRepeated, DeltaMismatch, EvidenceUnknown, NumberUnverified, Certainty, ServerID,
+	UncertaintyMissing, OutputInvalid}
+
 // Issue is one reason the answer is not grounded.
 type Issue struct {
 	Code string
