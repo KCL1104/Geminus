@@ -294,7 +294,7 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
     const line = text(outcome.querySelector("[data-closing]"));
     expect(line).toBe(t("investigation.closing.improved", { index: "1", best: t("investigation.best./metrics/lead_time_minutes/p50"), delta: "−2.6 min", percent: "−6.1%" }));
     // Review round 1: a sentence, in H-056's shape ("Lowest median lead time: …"), not the table's label mid-sentence.
-    expect(line).toBe("Lowest median lead time, by Geminus's comparison: what-if 1, −2.6 min (−6.1%) against the baseline.");
+    expect(line).toBe("Lowest median lead time, by DryLine's comparison: what-if 1, −2.6 min (−6.1%) against the baseline.");
     expect(line).not.toContain(t("metric.leadTimeMedian"));
     expect(text(outcome)).toContain(t("investigation.noSignificance"));
     expect(fact(el, t("band.status"))).toBe(t("investigation.status.finished"));
@@ -320,7 +320,7 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
       // The AI's claim sits beside the server's line, not in its place.
       expect(outcome.querySelector("[data-claim]")).not.toBeNull();
     }
-    expect(text((await page({ investigation: zero })).el.querySelector("[data-closing]"))).toBe("Most completed work items, by Geminus's comparison: what-if 1, +3 against the baseline.");
+    expect(text((await page({ investigation: zero })).el.querySelector("[data-closing]"))).toBe("Most completed work items, by DryLine's comparison: what-if 1, +3 against the baseline.");
   });
 
   it("names the aim's metric in words in a line that found no improvement", async () => {
@@ -328,7 +328,7 @@ describe("the investigation page: what the AI is doing (H-061 A8)", () => {
     const none: Investigation = { ...inv, best: null, ai_outcome: "no_improvement",
       closing_line: { key: "no_improvement", candidate_index: null, metric_path: "/metrics/lead_time_minutes/p50", absolute_delta: null, relative_delta: null, compared: 2, draft_revision: null } };
     const { el } = await page({ investigation: none });
-    expect(text(el.querySelector("[data-closing]"))).toBe("None of the 2 compared what-ifs improved the median lead time on the baseline, by Geminus's comparison.");
+    expect(text(el.querySelector("[data-closing]"))).toBe("None of the 2 compared what-ifs improved the median lead time on the baseline, by DryLine's comparison.");
     const zh = await page({ investigation: none, locale: "zh-Hant" });
     expect(text(zh.el.querySelector("[data-closing]"))).toBe(createTranslator("zh-Hant")("investigation.closing.no_improvement", { count: 2, metric: zhHant["investigation.metric./metrics/lead_time_minutes/p50"] }));
     expect(text(zh.el.querySelector("[data-closing]"))).not.toContain(zhHant["metric.leadTimeMedian"]);

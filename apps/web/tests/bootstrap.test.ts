@@ -38,7 +38,7 @@ describe("bootstrapFrom: what /me means for the UI", () => {
     expect(bootstrapFrom(failed(401, "UNAUTHENTICATED"), A)).toEqual({ state: "signed_out" });
   });
 
-  it("is no access, with the API's problem, for an identity Geminus does not know (403, D-008: never provisioned here)", () => {
+  it("is no access, with the API's problem, for an identity DryLine does not know (403, D-008: never provisioned here)", () => {
     const b = bootstrapFrom(failed(403, "FORBIDDEN"), A);
     expect(b.state).toBe("no_access");
     expect(b.state === "no_access" && b.problem?.requestId).toBe(REQ);

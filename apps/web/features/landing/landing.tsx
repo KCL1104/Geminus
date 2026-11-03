@@ -1,5 +1,5 @@
 // The landing at / (H-048), for the hackathon's judges first and anyone who
-// opens the app: what Geminus is, the loop it runs on real screens of the
+// opens the app: what DryLine is, the loop it runs on real screens of the
 // product, which Meta model does each step, the industries the templates
 // cover and why it is safe to try. Only facts the product holds today
 // (README.md, PRODUCT.md): no figure, customer or result beyond the
@@ -8,14 +8,14 @@
 //
 // Direction (impeccable, a Persuade surface inside the Operate product):
 // THESIS: the page is the record of one what-if, from the question to the
-// decision; each step names who acts (you, a Meta model, the Geminus
+// decision; each step names who acts (you, a Meta model, the DryLine
 // server, the engine) beside the screen it happens on. It refuses the
 // feature-card grid and the big-number hero.
 // OWN-WORLD: the app's own system, unchanged (DESIGN.md, H-041): the
 // near-white or near-black ground, cards in a hairline ring, Geist at the
-// five sizes, the violet accent only for the AI, Ink for Geminus's own
+// five sizes, the violet accent only for the AI, Ink for DryLine's own
 // check, green only inside the screens' scenario data.
-// STORY: a first-time reader learns in one view that Geminus tries a change
+// STORY: a first-time reader learns in one view that DryLine tries a change
 // on a digital twin before the real line, sees the results screen, and can
 // sign in; scrolling, they follow the loop step by step, see which Meta
 // model does what, the templates' industries, and the safety rules.
@@ -33,7 +33,7 @@ import { Shot, type ShotName } from "./shot";
 
 type Actor = "you" | "muse" | "sam" | "geminus" | "engine";
 
-/** Who acts in a step, as a pill: a Meta model with its provider, Geminus's server, the engine or the person. */
+/** Who acts in a step, as a pill: a Meta model with its provider, DryLine's server, the engine or the person. */
 function ActorPill({ actor, t }: { actor: Actor; t: Translator }) {
   if (actor === "muse" || actor === "sam") {
     return (

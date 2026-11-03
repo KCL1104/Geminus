@@ -1,12 +1,14 @@
-# Geminus
+# DryLine
 
-Geminus is an AI-native digital-twin tool for modelling a process, running discrete-event simulations on the model, and comparing what-if scenarios before a decision. The first domain is an electronics assembly and test line.
+Formerly Geminus.
+
+DryLine is an AI-native digital-twin tool for modelling a process, running discrete-event simulations on the model, and comparing what-if scenarios before a decision. The first domain is an electronics assembly and test line.
 
 This repository holds the Go API and worker, the Next.js web app, the contracts (JSON Schema, OpenAPI, SQL migrations), the specs and decision log, and the validation evidence. It is a hackathon build with a public demo on synthetic data. It is not a production system, and no part of it has been used with real customer data.
 
 Coding agents: read [AGENTS.md](AGENTS.md) first. It sets the rules for every change in this repository.
 
-## What Geminus does
+## What DryLine does
 
 The product is built around one closed loop:
 
@@ -44,7 +46,7 @@ The owner chose the electronics assembly and test line as the P0 domain (H-016, 
 
 Since H-047 the first what-if works the researched line's bottleneck (FCT; it was "Third ICT tester"), and the debug crew changes per shift, which is what the engine staffs. The live results of these five on the researched template (one week, 5 replications, synthetic data) are in [checks/H-045_H-048_LIVE_VALIDATION.md](checks/H-045_H-048_LIVE_VALIDATION.md) §5; the first set, on the earlier template, and its open copy issue are in [checks/DEMO_WHATIFS_VALIDATION.md](checks/DEMO_WHATIFS_VALIDATION.md).
 
-## How Geminus uses Meta AI
+## How DryLine uses Meta AI
 
 Meta models do the AI steps of the loop, through the Meta Model API in Standard mode (H-029, H-033, [ADR-030](docs/adr/ADR-030-meta-model-api-adapter.md)). In every step below the AI's output is only a proposal or a text, and nothing the AI says changes the model by itself; an AI investigation a person asks for (below) acts further, but never approves or publishes.
 
@@ -52,7 +54,7 @@ Meta models do the AI steps of the loop, through the Meta Model API in Standard 
 |---|---|---|---|
 | Describe a change or a what-if in words | Muse Spark (`muse-spark-1.3`) | Writes an edit proposal or a scenario proposal from the person's words and the current version, with its assumptions. The person picks which kind ("A change to the model" or "A scenario to simulate"). | The server validates the patch (schema, allowlist, pack rules) and computes the risk. A person approves or rejects it. |
 | Turn a photo or floor plan of a line into a model | SAM 3.1 (`sam-3.1`), then Muse Spark | SAM 3.1 boxes what is drawn or seen, for the pack's concepts (machines, conveyors, and a floor plan's rectangles and arrows). Muse Spark reads the image, its labels and SAM's boxes, judges the stations and the flow between them, and writes an edit proposal (T-056). The proposal page draws SAM's boxes on the photo (H-052). | If SAM finds no objects, the server answers `needs_input` without calling Muse Spark (D-131 (d), PROPOSED). Otherwise the proposal goes through the same validation, risk and human approval. |
-| Research a real process on the web first (opt-in per request, H-046) | Muse Spark with the Meta Model API's built-in `web_search` tool (Search grounding) | Before it writes an edit or a scenario proposal, searches the web for how the process works and its typical parameters, preferring English-language engineering and industry sources, and lists the pages it relied on. Meta runs the searches; Geminus fetches no page. | The person ticks the opt-in; the description they typed is used for the web search. The server keeps only sources the call actually asked the search tool to open (https only; Meta returns no tool result, so the proposal page calls them "Pages the AI asked to open" and says Geminus cannot confirm they loaded) and shows them with the number of searches; the proposal is validated, risk-scored and approved like any other. A photo is never researched. Live research ran after the review: a Muse Spark 1.3 research proposal was ready for review in 60 s for US$0.155 ([checks/H-045_H-048_LIVE_VALIDATION.md](checks/H-045_H-048_LIVE_VALIDATION.md) §5), and a Muse Wonder 1.0 one in 42 s (H-069 in [docs/DECISIONS_AND_TBD.md](docs/DECISIONS_AND_TBD.md)). |
+| Research a real process on the web first (opt-in per request, H-046) | Muse Spark with the Meta Model API's built-in `web_search` tool (Search grounding) | Before it writes an edit or a scenario proposal, searches the web for how the process works and its typical parameters, preferring English-language engineering and industry sources, and lists the pages it relied on. Meta runs the searches; DryLine fetches no page. | The person ticks the opt-in; the description they typed is used for the web search. The server keeps only sources the call actually asked the search tool to open (https only; Meta returns no tool result, so the proposal page calls them "Pages the AI asked to open" and says DryLine cannot confirm they loaded) and shows them with the number of searches; the proposal is validated, risk-scored and approved like any other. A photo is never researched. Live research ran after the review: a Muse Spark 1.3 research proposal was ready for review in 60 s for US$0.155 ([checks/H-045_H-048_LIVE_VALIDATION.md](checks/H-045_H-048_LIVE_VALIDATION.md) §5), and a Muse Wonder 1.0 one in 42 s (H-069 in [docs/DECISIONS_AND_TBD.md](docs/DECISIONS_AND_TBD.md)). |
 | Explain a baseline vs. scenario comparison | Muse Spark (`muse-spark-1.3`) | Explains two completed runs: bottlenecks, what changed, assumptions, uncertainty, and suggested next experiments (T-030; live analyst approved in H-038). | The server checks every cited metric path and every number in the text against the computed comparison. An ungrounded answer fails with `ANALYSIS_UNGROUNDED` and is not saved. |
 
 Provider settings:
@@ -187,7 +189,7 @@ The demo runs on Railway (H-031): `migrate`, `api`, `worker` and `web` services 
 
 ## Hackathon context
 
-Geminus is entered in the Meta Global AI Developer Hackathon (Cerebral Valley and Meta), Indie track (H-029). The plan is [planning/HACKATHON_PLAN.md](planning/HACKATHON_PLAN.md).
+DryLine is entered in the Meta Global AI Developer Hackathon (Cerebral Valley and Meta), Indie track (H-029). The plan is [planning/HACKATHON_PLAN.md](planning/HACKATHON_PLAN.md).
 
 - Code freeze: 2026-11-03 23:59 UTC. Product slices may merge until the owner starts the demo on the evening of 2026-11-03, UTC+8 (H-055, which replaced H-038's 11-01 cut).
 - Submission deadline: 2026-11-04 21:00 ET (2026-11-05 02:00 UTC).

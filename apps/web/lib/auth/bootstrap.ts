@@ -21,7 +21,7 @@ export type Bootstrap =
   | { state: "loading" }
   /** /me failed otherwise (provider or API unavailable, network, a broken answer): retry. */
   | { state: "failed"; problem: Problem }
-  /** Signed in, but Geminus has no user for the identity (403, D-008: never created here) or no membership. */
+  /** Signed in, but DryLine has no user for the identity (403, D-008: never created here) or no membership. */
   | { state: "no_access"; problem: Problem | null }
   /** Several organizations and none chosen yet. */
   | { state: "choose"; organizations: Organization[]; truncated: boolean }

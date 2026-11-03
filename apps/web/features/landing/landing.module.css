@@ -2,7 +2,7 @@
    page for a first visit. The record of one what-if is the page's spine:
    each step names who acts, beside the product's real screen. Five type
    sizes, tokens only, hairlines and the card shadow; the accent marks the
-   AI (an actor pill), Ink frames Geminus's own check, as on the proposal
+   AI (an actor pill), Ink frames DryLine's own check, as on the proposal
    page. Sections are divided by a hairline with the split space on either
    side. */
 .landing {
@@ -271,7 +271,7 @@
   border-color: var(--gm-color-accent);
 }
 
-/* Geminus's own check: the ink frame of "Checked by Geminus" on the proposal page. */
+/* DryLine's own check: the ink frame of "Checked by DryLine" on the proposal page. */
 .actor[data-kind="server"] {
   border-color: var(--gm-color-ink);
 }

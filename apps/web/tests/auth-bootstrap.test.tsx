@@ -190,7 +190,7 @@ describe("signed in: /me through the BFF", () => {
     expect(probe(el)).toBe(`${A} owner true`);
   });
 
-  it("shows the permission state for an identity Geminus does not know (403), with the request ID, and offers sign-out", async () => {
+  it("shows the permission state for an identity DryLine does not know (403), with the request ID, and offers sign-out", async () => {
     answers["GET /api/v1/me"] = () => error(403, "FORBIDDEN");
     const el = await mount(app({ signedIn: true, organization: A }));
     await settle();

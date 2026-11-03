@@ -174,13 +174,13 @@ test.describe("at 1280px", () => {
     await expect(page.getByRole("link", { name: "SMT line 1" })).toBeVisible();
   });
 
-  for (const [who, subject] of [["a user without memberships", tenant.noMember], ["an identity Geminus does not know (403)", tenant.unknown]] as const) {
+  for (const [who, subject] of [["a user without memberships", tenant.noMember], ["an identity DryLine does not know (403)", tenant.unknown]] as const) {
     test(`${who} sees the permission state, can sign out, and nothing of a tenant is asked`, async ({ page, request }) => {
       const before = (await providerState(request)).apiCalls.length;
       await signInAs(page, subject, "/projects");
       const alert = page.locator('[data-problem="forbidden"]');
       await expect(alert).toContainText("You do not have permission to do this");
-      await expect(alert).toContainText("This sign-in has no access to any organization in Geminus.");
+      await expect(alert).toContainText("This sign-in has no access to any organization in DryLine.");
       await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveCount(0);
       await expect((await openAccount(page)).getByRole("button", { name: "Sign out" })).toBeVisible();
       expect((await providerState(request)).apiCalls.slice(before).map((c) => c.path)).toEqual(["/v1/me"]);

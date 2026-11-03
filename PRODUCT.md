@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-This file records Geminus's product facts for UI design and review. It holds no visual decisions (the visual system is recorded separately in DESIGN.md once the owner has chosen a direction). Sources: `docs/PRD.md`, `docs/DECISIONS_AND_TBD.md`, and the owner's answers of 2026-10-19 (H-012, H-016). Where this file conflicts with SOURCE or the PRD, they prevail.
+This file records DryLine's product facts for UI design and review. It holds no visual decisions (the visual system is recorded separately in DESIGN.md once the owner has chosen a direction). Sources: `docs/PRD.md`, `docs/DECISIONS_AND_TBD.md`, and the owner's answers of 2026-10-19 (H-012, H-016). Where this file conflicts with SOURCE or the PRD, they prevail.
 
 ## Platform
 
@@ -22,13 +22,13 @@ The three usage situations the owner confirmed (H-012):
 
 ## Product Purpose
 
-Geminus is an AI-native Digital Twin Modeling + Simulation + Decision Support product. Its core closed loop is: Describe/Import → Model → AI Proposal → Human Approval → Simulate → Compare → AI Explain → Iterate.
+DryLine is an AI-native Digital Twin Modeling + Simulation + Decision Support product. Its core closed loop is: Describe/Import → Model → AI Proposal → Human Approval → Simulate → Compare → AI Explain → Iterate.
 
 Success is defined as validating SOURCE's three hypotheses: AI lowers the barrier to modelling; simulation gives answers users are willing to decide on; the same Generic IR, DES and AI architecture can support the next domain. These three are hypotheses for a pilot to validate; none of them is proven yet.
 
 ## Positioning
 
-Geminus is not a line dashboard, and not a 3D animation tool. Architecturally it consists of four separate boundaries: a generic Twin kernel (Generic IR + DES), a DomainPack per domain, an AI layer that can only make suggestions, and the human-approved ModelChangeProposal.
+DryLine is not a line dashboard, and not a 3D animation tool. Architecturally it consists of four separate boundaries: a generic Twin kernel (Generic IR + DES), a DomainPack per domain, an AI layer that can only make suggestions, and the human-approved ModelChangeProposal.
 
 It differs in three points:
 
@@ -61,7 +61,7 @@ The product must let users see the difference between two operations: "save the 
 
 ## Brand Commitments
 
-The product name is **Geminus**. There is no logo, brand color or tone-of-voice guide yet (H-012); these are built by the design system and approved by the owner.
+The product name is **DryLine** (pronounced "DRY-line": a dry run of the line), written with a capital D and L, possessive DryLine's, and kept in Latin letters in zh-Hant. It was Geminus until 2026-11-03 (H-087). There is no logo, brand color or tone-of-voice guide yet (H-012); these are built by the design system and approved by the owner.
 
 The visual constraint the owner set (H-012): the dark theme uses grey-black, not blue.
 

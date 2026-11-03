@@ -95,7 +95,7 @@ describe("the landing's content (H-048)", () => {
     expect([...el.querySelectorAll("ol > li h3")].map(text)).toEqual(
       (["describe", "propose", "approve", "simulate", "explain"] as const).map((s) => c[`landing.step.${s}.title`]),
     );
-    // Who acts in each step: the person, the Meta models by name, the Geminus server, the engine.
+    // Who acts in each step: the person, the Meta models by name, the DryLine server, the engine.
     const who = [...el.querySelectorAll("ol > li")].map((li) => [...li.querySelectorAll(`ul[aria-label="${c["landing.who"]}"] > li`)].map(text));
     const meta = c["ai.provider.meta"];
     expect(who).toEqual([
@@ -105,7 +105,7 @@ describe("the landing's content (H-048)", () => {
       [c["landing.actor.you"], c["landing.actor.engine"], c["landing.actor.geminus"]],
       [`${meta} Muse Spark 1.3`, c["landing.actor.geminus"]],
     ]);
-    // A Meta model's pill has the accent's edge (the AI), Geminus's the ink (its own check).
+    // A Meta model's pill has the accent's edge (the AI), DryLine's the ink (its own check).
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="ai"]')).toHaveLength(2);
     expect([...el.querySelectorAll("ol > li")][1]!.querySelectorAll('[data-kind="server"]')).toHaveLength(1);
     // Review round 1, M1: the Meta models, and web search as a tool of the Meta Model API that the Muse models use, not a model.

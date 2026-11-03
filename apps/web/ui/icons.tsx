@@ -119,7 +119,7 @@ export function ApproveIcon() {
   );
 }
 
-// A link that leaves Geminus for another site, in a new tab (H-046 (2): a source the AI read).
+// A link that leaves DryLine for another site, in a new tab (H-046 (2): a source the AI read).
 export function ExternalIcon() {
   return (
     <svg {...common}>

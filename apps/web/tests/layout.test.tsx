@@ -58,7 +58,7 @@ describe("server shell", () => {
     // H-048: the start page is the landing; signed out, its action is the sign-in.
     expect(out).toContain(en["landing.title"].replace(/'/g, "&#x27;"));
     expect(out).toContain(`>${en["landing.signIn"]}</a>`);
-    expect(await generateMetadata()).toEqual({ title: "Geminus" });
+    expect(await generateMetadata()).toEqual({ title: "DryLine" });
   });
 
   it("is Traditional Chinese when that was chosen", async () => {

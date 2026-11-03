@@ -79,7 +79,7 @@ export function sampleInvestigation(state: SampleState): Investigation {
       // Waiting for the runs of its first what-if (step 3 carried out, not yet observed).
       return base;
     case "planning":
-      // Step 3 asked and not yet carried out: Geminus is carrying it out.
+      // Step 3 asked and not yet carried out: DryLine is carrying it out.
       return { ...base, activity: { state: "carrying_out" }, used: { what_ifs: 1, runs: 0, explanations: 0, steps: 3 }, baseline_run_id: null,
         steps: [proposeStep(IDEA, NOTE), saveStep, { ...runStep(false), status: "pending", effect: null, resolved_at: null }], candidates: [candidate({ run_id: null })] };
     case "refused":

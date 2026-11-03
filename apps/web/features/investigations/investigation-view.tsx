@@ -6,7 +6,7 @@
 // has ended. The header names the planner ("Done by Muse Spark 1.3 (Meta) for
 // you"), the version, the aim and the budget, and the clock (H-063: it keeps
 // going after the page closes, until the deadline). The steps are the
-// ledger's rows in words: what the AI asked for, whether Geminus carried it
+// ledger's rows in words: what the AI asked for, whether DryLine carried it
 // out, refused it or failed, what it waits for, and a step still asked when
 // it ended is "Not carried out". The AI's words (its idea, question and
 // note) are data: labelled as the AI's, shown as text in a <bdi>, with what
